@@ -216,6 +216,9 @@
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Payments" ? "active" : "")" asp-controller="Reports" asp-action="Payments">
                     <i class="bi bi-wallet2"></i> تقرير المدفوعات
                 </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "CashFlow" ? "active" : "")" asp-controller="Reports" asp-action="CashFlow">
+                    <i class="bi bi-cash-stack"></i> التدفق النقدي
+                </a>
                 @if (await Perm.HasAsync("AuditLedger.View"))
                 {
                     <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "AuditLedger" ? "active" : "")" asp-controller="Reports" asp-action="AuditLedger">

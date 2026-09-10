@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Models.Sales;
+using Silk.Trading.Web.Services;
 using Silk.Trading.Web.ViewModels.Sales;
 
 namespace Silk.Trading.Web.Controllers;
@@ -12,7 +13,12 @@ namespace Silk.Trading.Web.Controllers;
 public class CustomersController : Controller
 {
     private readonly AppDbContext _db;
-    public CustomersController(AppDbContext db) => _db = db;
+    private readonly IReportService _report;
+    public CustomersController(AppDbContext db, IReportService report)
+    {
+        _db = db;
+        _report = report;
+    }
 
     [RequirePerm("Customers.View")]
     public async Task<IActionResult> Index(string? search, int page = 1)
@@ -143,5 +149,13 @@ public class CustomersController : Controller
             Balance = customer.OpeningBalance + totalInvoices - totalReturns - totalPayments
         };
         return View(vm);
+    }
+
+    [RequirePerm("Customers.View")]
+    public async Task<IActionResult> LedgerXlsx(int id)
+    {
+        var bytes = await _report.ExportCustomerStatementXlsxAsync(id);
+        if (bytes.Length == 0) return NotFound();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"customer-statement-{id}.xlsx");
     }
 }

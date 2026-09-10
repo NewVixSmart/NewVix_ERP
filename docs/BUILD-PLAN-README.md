@@ -446,3 +446,14 @@ Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPN
   - `PermissionCatalog`: وحدة `Aging` (View/Export) + إدخال قائمة جانبية «القائمة العمرية»؛ `PermissionDefaults`: إضافة إلى مدير الحسابات.
   - لوحة التحكم (`DashboardService` + `DashboardViewModel` + `Views/Home/Index.cshtml`): بطاقة «فواتير متأخرة أو تستحق خلال 7 أيام» لذمم العملاء والموردين (عدد + إجمالي) مع رابط للقائمة العمرية.
 - **التحقق:** `dotnet build Silk.Trading.slnx` = 0W/0E؛ اختبارات **122/122 PASS** (117 سابقة + 5 جديدة في `AgingTests`: التقسيم العمري حسب تاريخ الاستحقاق، فواتير OnReceipt، استبعاد المسدد بالكامل، التجميع الفارغ، صلاحبة ملف XLSX)؛ بوابة Playwright+axe `GATE: PASS` على `/Reports/Aging` و`/` و`/Reports` (200 + صفر انتهاكات Critical/Serious + صفر أخطاء console).
+
+### P5d — كشف التدفق النقدي + كشوف حسابات قابلة للتصدير — مكتمل ومُتحقَّق (2026-09-10)
+
+**الميزة:** تقرير تدفق نقدي فعلي مبني على حركات الدفعات + تصدير كشوف حساب العملاء/الموردين (Excel).
+
+- **التدفق النقدي (`/Reports/CashFlow`):**
+  - `CashFlowReportViewModel` + `ReportService.CashFlowAsync`: رصيد افتتاحي (مجموع الحركات قبل الفترة)، مقبوضات/مصروفات الفترة، صافي التدفق، رصيد ختامي، وتوزيع حسب طريقة الدفع (نقداً/شيك/تحويل/بطاقة). المبلغ المرجعي = `BaseAmount` وإلا `Amount` (يعمل بالعملات المتعددة).
+  - `Views/Reports/CashFlow.cshtml`: منتقي فترة (form) + 4 بطاقات + جدول طرق الدفع + جدول تفاصيل الحركات (قبض/صرف، الطرف، الطريقة، المرجع).
+  - `CashFlowXlsx`: ورقة بملخص + توزيع الطرق + التفاصيل؛ الصلاحيات بنمط BudgetVariance (`Reports.View` للعرض، `Reports.Export` للتصدير) دون وحدة جديدة؛ بطاقة في فهرس التقارير + رابط في الشريط الجانبي.
+- **كشوف الحساب:** `CustomersController.LedgerXlsx` + `SuppliersController.LedgerXlsx` (بصلاحية عرض العملاء/الموردين) عبر `ExportCustomerStatementXlsxAsync`/`ExportSupplierStatementXlsxAsync` — رصيد افتتاحي + سطور (فاتورة مدين / مرتجع دائن / دفعة دائن) مع رصيد جارٍ وختامي. زر «تصدير كشف حساب» في عرضَي الدفترين.
+- **التحقق:** build 0W/0E؛ اختبارات **128/128 PASS** (122 سابقة + 6 جديدة: التدفق النقدي افتتاحي/فترة/ختامي، صفري، XLSX صالح، كشف عميل ومورد بالرصيد الختامي، طرف مجهول → فارغ)؛ بوابة `GATE: PASS` على `/Reports/CashFlow` و`/Reports` و`/` و`/Customers` و`/Suppliers` مع صفر انتهاكات Critical/Serious وصفر أخطاء console؛ روابط التحميل الثلاثة (`CashFlowXlsx`, `LedgerXlsx` للعميل والمورد) ترجع 200 بنوع الملف الصحيح.

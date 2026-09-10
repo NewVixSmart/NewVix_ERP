@@ -6,6 +6,7 @@ public interface IReportService
 {
     Task<DashboardReportViewModel> GetDashboardAsync();
     Task<AgingReportViewModel> AgingAsync();
+    Task<CashFlowReportViewModel> CashFlowAsync(DateTime from, DateTime to);
     Task<TrialBalanceReportViewModel> TrialBalanceAsync(DateTime asOf);
     Task<IncomeStatementReportViewModel> IncomeStatementAsync(DateTime from, DateTime to);
     Task<BalanceSheetReportViewModel> BalanceSheetAsync(DateTime asOf);
@@ -24,5 +25,8 @@ public interface IReportService
 
     Task<byte[]> ExportAuditLedgerXlsxAsync(DateTime? from, DateTime? to, int? accountId, Models.Accounting.JournalSource? source);
     Task<byte[]> ExportAgingXlsxAsync();
+    Task<byte[]> ExportCashFlowXlsxAsync(DateTime from, DateTime to);
+    Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId);
+    Task<byte[]> ExportSupplierStatementXlsxAsync(int supplierId);
     Task<byte[]> ExportBudgetVarianceXlsxAsync(int year, IReadOnlyList<(string Code, string Name, decimal Budget, decimal Actual, decimal Variance, decimal VariancePct)> rows);
 }

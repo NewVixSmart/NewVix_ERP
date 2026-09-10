@@ -791,4 +791,187 @@ public class ReportService : IReportService
         wb.SaveAs(ms);
         return ms.ToArray();
     }
+
+    public async Task<CashFlowReportViewModel> CashFlowAsync(DateTime from, DateTime to)
+    {
+        var fromDate = from.Date;
+        var toDate = to.Date;
+
+        var payments = await _db.Payments
+            .AsNoTracking()
+            .Include(p => p.Customer)
+            .Include(p => p.Supplier)
+            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
+            .ToListAsync();
+
+        var vm = new CashFlowReportViewModel { From = fromDate, To = toDate };
+
+        foreach (var p in payments)
+        {
+            if (p.PaymentDate >= fromDate) break;
+            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            vm.OpeningBalance += p.Type == PaymentType.Receipt ? amount : -amount;
+        }
+
+        var period = payments.Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate).ToList();
+        vm.Payments = period;
+        foreach (var p in period)
+        {
+            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            if (p.Type == PaymentType.Receipt) vm.TotalReceipts += amount;
+            else vm.TotalDisbursements += amount;
+        }
+
+        vm.ByMethod = period
+            .GroupBy(p => p.Method)
+            .Select(g => new CashFlowMethodTotal
+            {
+                Method = g.Key,
+                Receipts = g.Where(p => p.Type == PaymentType.Receipt).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount),
+                Disbursements = g.Where(p => p.Type == PaymentType.Disbursement).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount)
+            })
+            .OrderBy(m => m.Method)
+            .ToList();
+
+        return vm;
+    }
+
+    public async Task<byte[]> ExportCashFlowXlsxAsync(DateTime from, DateTime to)
+    {
+        var vm = await CashFlowAsync(from, to);
+        using var wb = new XLWorkbook();
+
+        var ws = wb.Worksheets.Add("التدفق النقدي");
+        WriteReportHeading(ws, 1, $"كشف التدفق النقدي — من {vm.From:dd/MM/yyyy} إلى {vm.To:dd/MM/yyyy}");
+        ws.Cell(3, 1).Value = "رصيد افتتاحي";
+        ws.Cell(3, 2).Value = (double)vm.OpeningBalance;
+        ws.Cell(4, 1).Value = "المقبوضات";
+        ws.Cell(4, 2).Value = (double)vm.TotalReceipts;
+        ws.Cell(5, 1).Value = "المصروفات";
+        ws.Cell(5, 2).Value = (double)vm.TotalDisbursements;
+        ws.Cell(6, 1).Value = "صافي التدفق";
+        ws.Cell(6, 2).Value = (double)vm.NetCashFlow;
+        ws.Cell(7, 1).Value = "رصيد ختامي";
+        ws.Cell(7, 2).Value = (double)vm.ClosingBalance;
+        ws.Cell(7, 2).Style.Font.Bold = true;
+
+        ws.Cell(9, 1).Value = "التوزيع حسب طريقة الدفع";
+        ws.Cell(9, 1).Style.Font.Bold = true;
+        ws.Range(10, 1, 10, 4).Style.Font.Bold = true;
+        ws.Cell(10, 1).Value = "طريقة الدفع";
+        ws.Cell(10, 2).Value = "مقبوضات";
+        ws.Cell(10, 3).Value = "مصروفات";
+        ws.Cell(10, 4).Value = "الصافي";
+        int row = 11;
+        foreach (var m in vm.ByMethod)
+        {
+            ws.Cell(row, 1).Value = m.Method.GetDisplayName();
+            ws.Cell(row, 2).Value = (double)m.Receipts;
+            ws.Cell(row, 3).Value = (double)m.Disbursements;
+            ws.Cell(row, 4).Value = (double)m.Net;
+            row++;
+        }
+
+        ws.Cell(row + 1, 1).Value = "تفاصيل الحركات";
+        ws.Cell(row + 1, 1).Style.Font.Bold = true;
+        ws.Range(row + 2, 1, row + 2, 6).Style.Font.Bold = true;
+        ws.Cell(row + 2, 1).Value = "التاريخ";
+        ws.Cell(row + 2, 2).Value = "الإيصال";
+        ws.Cell(row + 2, 3).Value = "النوع";
+        ws.Cell(row + 2, 4).Value = "الطرف";
+        ws.Cell(row + 2, 5).Value = "الطريقة";
+        ws.Cell(row + 2, 6).Value = "المبلغ";
+        int detailRow = row + 3;
+        foreach (var p in vm.Payments)
+        {
+            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            ws.Cell(detailRow, 1).Value = p.PaymentDate.ToString("dd/MM/yyyy");
+            ws.Cell(detailRow, 2).Value = p.ReceiptNumber;
+            ws.Cell(detailRow, 3).Value = p.Type == PaymentType.Receipt ? "قبض" : "صرف";
+            ws.Cell(detailRow, 4).Value = p.Customer?.Name ?? p.Supplier?.Name ?? "";
+            ws.Cell(detailRow, 5).Value = p.Method.GetDisplayName();
+            ws.Cell(detailRow, 6).Value = (double)amount;
+            detailRow++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId)
+    {
+        var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == customerId);
+        if (customer == null) return Array.Empty<byte>();
+
+        var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == customerId).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == customerId).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var receipts = await _db.Payments.AsNoTracking()
+            .Where(p => p.CustomerId == customerId && p.Type == PaymentType.Receipt)
+            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+
+        var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
+        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, inv.NetAmount, 0));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, r.TotalAmount));
+        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.Amount));
+
+        return BuildStatementWorkbook($"كشف حساب — {customer.Name}", customer.OpeningBalance, lines);
+    }
+
+    public async Task<byte[]> ExportSupplierStatementXlsxAsync(int supplierId)
+    {
+        var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == supplierId);
+        if (supplier == null) return Array.Empty<byte>();
+
+        var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == supplierId).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == supplierId).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var disbursements = await _db.Payments.AsNoTracking()
+            .Where(p => p.SupplierId == supplierId && p.Type == PaymentType.Disbursement)
+            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+
+        var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
+        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, inv.NetAmount, 0));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, r.TotalAmount));
+        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.Amount));
+
+        return BuildStatementWorkbook($"كشف حساب — {supplier.Name}", supplier.OpeningBalance, lines);
+    }
+
+    private static byte[] BuildStatementWorkbook(string title, decimal openingBalance, List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)> unordered)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("كشف حساب");
+        WriteReportHeading(ws, 1, title);
+        ws.Cell(2, 1).Value = $"الرصيد الافتتاحي: {openingBalance:N2}";
+        ws.Range(3, 1, 3, 5).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "التاريخ";
+        ws.Cell(3, 2).Value = "البيان";
+        ws.Cell(3, 3).Value = "المستند";
+        ws.Cell(3, 4).Value = "مدين";
+        ws.Cell(3, 5).Value = "دائن";
+
+        int row = 4;
+        decimal running = openingBalance;
+        foreach (var (date, desc, doc, debit, credit) in unordered.OrderBy(l => l.Date).ThenBy(l => l.Doc))
+        {
+            running += debit - credit;
+            ws.Cell(row, 1).Value = date.ToString("dd/MM/yyyy");
+            ws.Cell(row, 2).Value = desc;
+            ws.Cell(row, 3).Value = doc;
+            ws.Cell(row, 4).Value = (double)debit;
+            ws.Cell(row, 5).Value = (double)credit;
+            row++;
+        }
+
+        ws.Cell(row + 1, 1).Value = "الرصيد الختامي";
+        ws.Cell(row + 1, 1).Style.Font.Bold = true;
+        ws.Cell(row + 1, 5).Value = (double)running;
+        ws.Cell(row + 1, 5).Style.Font.Bold = true;
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
 }

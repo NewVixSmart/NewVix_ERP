@@ -447,6 +447,28 @@ public class ReportsController : Controller
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"aging_{DateTime.Today:yyyyMMdd}.xlsx");
     }
 
+    // ---------- Cash flow (التدفق النقدي) ----------
+
+    [RequirePerm("Reports.View")]
+    public async Task<IActionResult> CashFlow(DateTime? from, DateTime? to)
+    {
+        var now = DateTime.Today;
+        from ??= new DateTime(now.Year, now.Month, 1);
+        to ??= now;
+        return View(await _report.CashFlowAsync(from.Value, to.Value));
+    }
+
+    [HttpGet]
+    [RequirePerm("Reports.Export")]
+    public async Task<IActionResult> CashFlowXlsx(DateTime? from, DateTime? to)
+    {
+        var now = DateTime.Today;
+        from ??= new DateTime(now.Year, now.Month, 1);
+        to ??= now;
+        var bytes = await _report.ExportCashFlowXlsxAsync(from.Value, to.Value);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"cashflow_{from.Value:yyyyMMdd}_{to.Value:yyyyMMdd}.xlsx");
+    }
+
     // ---------- Financial report exports (PDF + XLSX) ----------
 
     [HttpGet]
