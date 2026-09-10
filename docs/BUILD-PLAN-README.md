@@ -403,3 +403,26 @@
 | الملفات الجديدة | `.gitignore`, `.dockerignore`, `.env.example`, `.github/workflows/ci.yml`, تحديث `Silk.Trading.slnx` |
 
 **الحالة النهائية: P4d مكتمل — Git + CI (build/test/vuln/docker) + Docker محصَّن؛ كل المراحل الخمس (P4e→P4a→P4b→P4c→P4d) منجزة → P4 مكتمل بالكامل.**
+
+---
+
+### P5a — ضغط الأمان: قفل JWT + CORS + تسليك CSP — مكتمل ومُتحقَّق (2026-09-10)
+
+**النطاق**: تحصين طبقة الأمان المعرفي (config/startup) دون تغيير أي منطق تجاري — لا ميزات، لا تغيير في الصفحات.
+
+| البند | الحالة قبل | ما أُنفذ | التحقق الحي |
+|---|---|---|---|
+| **JWT Key** | placeholder `REPLACE_WITH_LONG_SECRET_IN_PRODUCTION` في `appsettings.json` يُقبل في أي بيئة | حارس إقلاع جديد في `Program.cs` (سطر 33-39): في بيئة غير `Development`، إن كان المفتاح `<32` حرفًا أو يحوي `REPLACE_WITH` → `InvalidOperationException` «refusing to start in production with a placeholder or weak key» مع توجيه «اضبطه عبر Jwt__Key أو User Secrets» | ✅ Prod+placeholder: إقلاع مرفوض رسالة واضحة وخروج (port حر)؛ Prod+`Jwt__Key` قوي: يقلع ويُصدِر `200` |
+| **CORS** | لا توجد أي سياسة (كل الطلبات بدون قيود عبرية منفذة) | سياسة اسمية `ApiCors` (أسطر 67-81): مغلقة افتراضيًا (`WithOrigins()` فارغة)، وإن ضُبط `Cors:AllowedOrigins` (فاصلة) تُتيح الأصول المذكورة فقط مع `GET/POST/PUT/DELETE/PATCH/OPTIONS` + أي headers + **بلا اعتماديات** (`DisallowCredentials`)؛ `app.UseCors("ApiCors")` بعد `UseRouting` | ✅ افتراضيًا: preflight من `evil.example.com` → 204 **بلا أي Access-Control-Allow-* ** (المتصفح يحظر)؛ مع تكوين origin: preflight من `app.example.com` → `Access-Control-Allow-Origin: https://app.example.com` + Allow-Methods + Allow-Headers (Authorization)، ومن evil → بلا رؤوس |
+| **CSP + رؤوس** | قوية مسبقًا (nonce CSP، `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`) | لم تُلمس — أبقت كما هي (داخل middleware أسطر 132-144) | ✅ استمرار الأرحام بعد التغييرات |
+| **AllowedHosts** | `"*"` | لم تُغيّر (توثيق ملاحظة: للـ Prod اضبطها) | — |
+
+**الوثائق/الاستخدام (للـ Prod):**
+```bash
+# تشغيل إنتاج محصَّن
+Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPNETCORE_ENVIRONMENT=Production dotnet run --no-launch-profile
+```
+
+**البيع (gateway):** build slnx (Debug+Release) **0W/0E**؛ `dotnet test` من الـ slnx **117/117 PASS**؛ التطبيق Dev يعمل على `http://localhost:5165` (`app41.log`). الملف المتغيّر: `src/Silk.Trading.Web/Program.cs` فقط (حارس JWT + سياسة CORS + `UseCors`).
+
+**الحالة النهائية: P5a مكتمل — JWT رافض للـ placeholder في Prod، CORS مغلقة افتراضيًا بقائمة أصول، CSP/Rؤوس أمنية سليمة؛ بلا تغيير منطقي وبلا انحدار (117/117).**

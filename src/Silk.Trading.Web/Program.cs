@@ -31,6 +31,12 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+if (!builder.Environment.IsDevelopment()
+    && (jwtKey.Length < 32 || jwtKey.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase)))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key must be a strong secret (>= 32 chars). Set it via the Jwt__Key environment variable or User Secrets; refusing to start in production with a placeholder or weak key.");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SilkTrading";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SilkTrading";
 
@@ -62,6 +68,27 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
+
+var corsOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ApiCors", policy =>
+    {
+        if (corsOrigins.Length == 0)
+        {
+            // Locked by default: no cross-origin origins allowed unless configured.
+            policy.WithOrigins();
+        }
+        else
+        {
+            policy.WithOrigins(corsOrigins)
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                  .AllowAnyHeader()
+                  .DisallowCredentials();
+        }
+    });
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -144,6 +171,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseRouting();
+
+app.UseCors("ApiCors");
 
 app.UseAuthentication();
 app.UseAuthorization();
