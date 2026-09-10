@@ -426,3 +426,9 @@ Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPN
 **البيع (gateway):** build slnx (Debug+Release) **0W/0E**؛ `dotnet test` من الـ slnx **117/117 PASS**؛ التطبيق Dev يعمل على `http://localhost:5165` (`app41.log`). الملف المتغيّر: `src/Silk.Trading.Web/Program.cs` فقط (حارس JWT + سياسة CORS + `UseCors`).
 
 **الحالة النهائية: P5a مكتمل — JWT رافض للـ placeholder في Prod، CORS مغلقة افتراضيًا بقائمة أصول، CSP/Rؤوس أمنية سليمة؛ بلا تغيير منطقي وبلا انحدار (117/117).**
+
+---
+
+### P5b — README جذر احترافي للمستودع — مكتمل (2026-09-10)
+
+`README.md` في جذر المستودع: نظرة عامة + بنية المشروع (slnx+src/tests/aspire/docs)، أبرز الميزات، تشغيل محلي خطوة-بخطوة (restore/build/test/run) مع عنوان `:5165` وcreds التجريبية الثلاث، قسم إنتاج (Docker عبر `.env`+`SQL_SA_PASSWORD` + CORS/JWT الحوافز)، بوابة CI والتضمين، فهرس التوثيق، وجدول الأذونات. بلا تغيير كود.
