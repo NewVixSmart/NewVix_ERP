@@ -1,0 +1,94 @@
+@model Silk.Trading.Web.Models.Stock.InventoryAdjustment
+@{
+    ViewData["Title"] = "جرد / تعديل مخزون";
+    var items = (List<Silk.Trading.Web.Models.Core.Item>)ViewBag.ItemsData;
+    var itemsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }), new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+}
+
+<div class="page-header"><h2><i class="bi bi-clipboard-data text-primary"></i> جرد / تعديل مخزون يدوي</h2></div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="ReferenceNumber" class="form-label"></label>
+                    <input asp-for="ReferenceNumber" class="form-control" value="@ViewBag.NextNumber" />
+                    <span asp-validation-for="ReferenceNumber" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="itemSelect">الصنف</label>
+                    <select asp-for="ItemId" asp-items="@(ViewBag.Items as SelectList)" class="form-select" id="itemSelect">
+                        <option value="">-- اختر الصنف --</option>
+                    </select>
+                    <span asp-validation-for="ItemId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="AdjustmentDate" class="form-label"></label>
+                    <input asp-for="AdjustmentDate" class="form-control" type="date" />
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-light border small py-2 mb-0" id="currentStockBox">
+                        <i class="bi bi-info-circle"></i> اختر صنفًا لعرض الرصيد الحالي لديك.
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label" for="newCount">العدد الجديد</label>
+                    <input asp-for="NewCount" class="form-control" type="number" step="0.01" id="newCount" />
+                    <span asp-validation-for="NewCount" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="newQuantity">الكمية الجديدة</label>
+                    <input asp-for="NewQuantity" class="form-control" type="number" step="0.01" id="newQuantity" />
+                    <span asp-validation-for="NewQuantity" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Reason" class="form-label"></label>
+                    <textarea asp-for="Reason" class="form-control" rows="2" placeholder="مثال: جرد دوري، توالف، هدر، تصحيح رصيد..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ الجرد</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script nonce="@Context.GetCspNonce()">
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    const items = @Html.Raw(itemsJson);
+    const itemSelect = document.getElementById('itemSelect');
+    const newCount = document.getElementById('newCount');
+    const newQuantity = document.getElementById('newQuantity');
+    const stockBox = document.getElementById('currentStockBox');
+
+    function selectedItem() {
+        return items.find(i => i.Id == itemSelect.value);
+    }
+
+    itemSelect.addEventListener('change', function() {
+        const it = selectedItem();
+        if (!it) { stockBox.innerHTML = '<i class="bi bi-info-circle"></i> اختر صنفًا لعرض الرصيد الحالي.'; return; }
+        stockBox.innerHTML = '<i class="bi bi-info-circle"></i> الرصيد الحالي: ' +
+            '<strong>' + it.currentCount + '</strong> ' + escapeHtml(it.countUnit || '') +
+            ' / <strong>' + it.currentQuantity + '</strong> ' + escapeHtml(it.quantityUnit || '') +
+            '. أدخل العدد والكمية <b>الجديدين</b> بعد الجرد.';
+        if (!newCount.value) newCount.value = it.currentCount;
+        if (!newQuantity.value) newQuantity.value = it.currentQuantity;
+    });
+</script>
+}

@@ -1,0 +1,68 @@
+@model IEnumerable<Silk.Trading.Web.ViewModels.Users.UserListItemViewModel>
+@{
+    ViewData["Title"] = "المستخدمون والصلاحيات";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-person-gear text-primary"></i> المستخدمون والصلاحيات</h2>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> مستخدم جديد</a>
+</div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th scope="col">اسم المستخدم</th>
+                <th scope="col">الدور</th>
+                <th scope="col">عدد الصلاحيات</th>
+                <th scope="col" class="text-center">إدارة الصلاحيات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td>
+                        <strong>@u.UserName</strong>
+                        @if (u.Roles.Contains("Admin"))
+                        {
+                            <span class="badge bg-dark ms-2">مدير النظام</span>
+                        }
+                    </td>
+                    <td>
+                        @foreach (var r in u.Roles.Where(x => x != "Admin"))
+                        {
+                            <span class="badge bg-secondary me-1">@(r == "Accountant" ? "محاسب" : "أمين مخزن")</span>
+                        }
+                        @if (u.Roles.Count == 0)
+                        {
+                            <span class="text-muted">بدون دور</span>
+                        }
+                    </td>
+                    <td>
+                        @if (u.Roles.Contains("Admin"))
+                        {
+                            <span class="badge bg-success">كامل (تلقائي)</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info text-dark">@u.PermissionCount إجراء</span>
+                        }
+                    </td>
+                    <td class="text-center">
+                        @if (u.Roles.Contains("Admin"))
+                        {
+                            <span class="text-muted small">—</span>
+                        }
+                        else
+                        {
+                            <a asp-action="Permissions" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" aria-label="إدارة صلاحيات @u.UserName">
+                                <i class="bi bi-toggles" aria-hidden="true"></i> صلاحيات
+                            </a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

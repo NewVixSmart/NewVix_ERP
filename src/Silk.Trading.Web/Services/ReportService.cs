@@ -1,0 +1,667 @@
+using ClosedXML.Excel;
+using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using Silk.Trading.Web.Data;
+using Silk.Trading.Web.Extensions;
+using Silk.Trading.Web.Models.Accounting;
+using Silk.Trading.Web.ViewModels.Reports;
+
+namespace Silk.Trading.Web.Services;
+
+public class ReportService : IReportService
+{
+    private readonly AppDbContext _db;
+    private readonly IFinancialReportService _financial;
+
+    public ReportService(AppDbContext db, IFinancialReportService financial)
+    {
+        _db = db;
+        _financial = financial;
+        QuestPDF.Settings.License = LicenseType.Community;
+    }
+
+    // ---------- IReportService ----------
+
+    public Task<TrialBalanceReportViewModel> TrialBalanceAsync(DateTime asOf) => _financial.TrialBalanceAsync(asOf);
+
+    public Task<IncomeStatementReportViewModel> IncomeStatementAsync(DateTime from, DateTime to) => _financial.IncomeStatementAsync(from, to);
+
+    public Task<BalanceSheetReportViewModel> BalanceSheetAsync(DateTime asOf) => _financial.BalanceSheetAsync(asOf);
+
+    public async Task<DashboardReportViewModel> GetDashboardAsync()
+    {
+        var today = DateTime.Today;
+        var vm = new DashboardReportViewModel { AsOf = today };
+
+        var receivables = await _db.SaleInvoices
+            .AsNoTracking()
+            .Include(s => s.Customer)
+            .Where(s => s.DueDate.HasValue
+                && s.DueDate.Value.Date < today
+                && s.PaidAmount < s.NetAmount)
+            .ToListAsync();
+
+        vm.OverdueReceivables = receivables.Select(s => new OverdueInvoiceViewModel
+        {
+            Id = s.Id,
+            InvoiceNumber = s.InvoiceNumber,
+            PartyName = s.Customer?.Name ?? "—",
+            InvoiceDate = s.InvoiceDate,
+            DueDate = s.DueDate!.Value,
+            NetAmount = s.NetAmount,
+            PaidAmount = s.PaidAmount
+        }).OrderByDescending(x => x.DaysOverdue).ToList();
+
+        var payables = await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Include(p => p.Supplier)
+            .Where(p => p.DueDate.HasValue
+                && p.DueDate.Value.Date < today
+                && p.PaidAmount < p.NetAmount)
+            .ToListAsync();
+
+        vm.OverduePayables = payables.Select(p => new OverdueInvoiceViewModel
+        {
+            Id = p.Id,
+            InvoiceNumber = p.InvoiceNumber,
+            PartyName = p.Supplier?.Name ?? "—",
+            InvoiceDate = p.InvoiceDate,
+            DueDate = p.DueDate!.Value,
+            NetAmount = p.NetAmount,
+            PaidAmount = p.PaidAmount
+        }).OrderByDescending(x => x.DaysOverdue).ToList();
+
+        var lowStock = await _db.Items
+            .AsNoTracking()
+            .Where(i => i.IsActive
+                && ((i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount <= i.MinCount)
+                 || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity <= i.MinQuantity)))
+            .Include(i => i.Category)
+            .OrderBy(i => i.Name)
+            .ToListAsync();
+
+        vm.LowStockItems = lowStock.Select(i => new LowStockItemViewModel
+        {
+            Id = i.Id,
+            Name = i.Name,
+            Code = i.Code,
+            Barcode = i.Barcode,
+            CategoryName = i.Category?.Name ?? "—",
+            CurrentCount = i.CurrentCount,
+            CurrentQuantity = i.CurrentQuantity,
+            MinCount = i.MinCount,
+            MinQuantity = i.MinQuantity
+        }).ToList();
+
+        return vm;
+    }
+
+    // ---------- XLSX exports ----------
+
+    public async Task<byte[]> ExportTrialBalanceXlsxAsync(DateTime asOf)
+    {
+        var vm = await TrialBalanceAsync(asOf);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("ميزان المراجعة");
+        WriteReportHeading(ws, 1, $"ميزان المراجعة — حتى {asOf:dd/MM/yyyy}");
+        ws.Range(3, 1, 3, 4).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "الرمز";
+        ws.Cell(3, 2).Value = "الحساب";
+        ws.Cell(3, 3).Value = "مدين";
+        ws.Cell(3, 4).Value = "دائن";
+
+        int row = 4;
+        foreach (var r in vm.Rows)
+        {
+            ws.Cell(row, 1).Value = r.Code;
+            ws.Cell(row, 2).Value = r.Name;
+            ws.Cell(row, 3).Value = (double)r.Debit;
+            ws.Cell(row, 4).Value = (double)r.Credit;
+            row++;
+        }
+        ws.Cell(row, 2).Value = "الإجمالي";
+        ws.Cell(row, 3).Value = (double)vm.TotalDebit;
+        ws.Cell(row, 4).Value = (double)vm.TotalCredit;
+        ws.Range(row, 1, row, 4).Style.Font.Bold = true;
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportIncomeStatementXlsxAsync(DateTime from, DateTime to)
+    {
+        var vm = await IncomeStatementAsync(from, to);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("قائمة الدخل");
+        WriteReportHeading(ws, 1, $"قائمة الدخل — من {from:dd/MM/yyyy} إلى {to:dd/MM/yyyy}");
+        ws.Range(3, 1, 3, 3).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "الرمز";
+        ws.Cell(3, 2).Value = "البند";
+        ws.Cell(3, 3).Value = "المبلغ";
+
+        int row = 4;
+        foreach (var l in vm.RevenueLines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = (double)l.Amount; row++; }
+        foreach (var l in vm.ContraRevenueLines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = -1 * (double)l.Amount; row++; }
+        ws.Cell(row, 2).Value = "صافي الإيرادات";
+        ws.Cell(row, 3).Value = (double)vm.NetRevenue;
+        row += 2;
+        foreach (var l in vm.ExpenseLines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = (double)l.Amount; row++; }
+        foreach (var l in vm.ContraExpenseLines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = -1 * (double)l.Amount; row++; }
+        ws.Cell(row, 2).Value = "صافي المصروفات";
+        ws.Cell(row, 3).Value = (double)vm.NetExpenses;
+        row += 2;
+        ws.Cell(row, 2).Value = "صافي الدخل";
+        ws.Cell(row, 3).Value = (double)vm.NetIncome;
+        ws.Range(row, 1, row, 3).Style.Font.Bold = true;
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportBalanceSheetXlsxAsync(DateTime asOf)
+    {
+        var vm = await BalanceSheetAsync(asOf);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("الميزانية العمومية");
+        WriteReportHeading(ws, 1, $"الميزانية العمومية — حتى {asOf:dd/MM/yyyy}");
+        ws.Range(3, 1, 3, 3).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "الرمز";
+        ws.Cell(3, 2).Value = "الحساب";
+        ws.Cell(3, 3).Value = "المبلغ";
+
+        int row = 4;
+        foreach (var l in vm.Assets.Lines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = (double)l.Amount; row++; }
+        ws.Cell(row, 2).Value = "إجمالي الأصول";
+        ws.Cell(row, 3).Value = (double)vm.Assets.Total;
+        row += 2;
+        foreach (var l in vm.Liabilities.Lines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = (double)l.Amount; row++; }
+        ws.Cell(row, 2).Value = "إجمالي الخصوم";
+        ws.Cell(row, 3).Value = (double)vm.Liabilities.Total;
+        row += 2;
+        foreach (var l in vm.Equity.Lines) { ws.Cell(row, 1).Value = l.Code; ws.Cell(row, 2).Value = l.Name; ws.Cell(row, 3).Value = (double)l.Amount; row++; }
+        ws.Cell(row, 2).Value = "صافي الدخل (الفترة)";
+        ws.Cell(row, 3).Value = (double)vm.NetIncome;
+        row++;
+        ws.Cell(row, 2).Value = "إجمالي حقوق الملكية";
+        ws.Cell(row, 3).Value = (double)(vm.Equity.Total + vm.NetIncome);
+        row++;
+        ws.Cell(row, 2).Value = "إجمالي الخصوم + حقوق الملكية";
+        ws.Cell(row, 3).Value = (double)(vm.Liabilities.Total + vm.Equity.Total + vm.NetIncome);
+        row++;
+        ws.Cell(row, 2).Value = "إجمالي الأصول";
+        ws.Cell(row, 3).Value = (double)vm.Assets.Total;
+        ws.Range(row - 1, 1, row, 3).Style.Font.Bold = true;
+        ws.Columns().AdjustToContents();
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportItemsXlsxAsync()
+    {
+        var items = await _db.Items
+            .AsNoTracking()
+            .Include(i => i.Category)
+            .Include(i => i.CountUnit)
+            .Include(i => i.QuantityUnit)
+            .Where(i => i.IsActive)
+            .OrderBy(i => i.Name)
+            .ToListAsync();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("الأصناف وأرصدتها");
+        ws.Range(1, 1, 1, 8).Style.Font.Bold = true;
+        ws.Cell(1, 1).Value = "الكود";
+        ws.Cell(1, 2).Value = "الاسم";
+        ws.Cell(1, 3).Value = "التصنيف";
+        ws.Cell(1, 4).Value = "الباركود";
+        ws.Cell(1, 5).Value = "الرصيد (عدد)";
+        ws.Cell(1, 6).Value = "الرصيد (كمية)";
+        ws.Cell(1, 7).Value = "سعر البيع";
+        ws.Cell(1, 8).Value = "سعر الشراء";
+
+        int row = 2;
+        foreach (var i in items)
+        {
+            ws.Cell(row, 1).Value = i.Code ?? "";
+            ws.Cell(row, 2).Value = i.Name;
+            ws.Cell(row, 3).Value = i.Category?.Name ?? "";
+            ws.Cell(row, 4).Value = i.Barcode ?? "";
+            ws.Cell(row, 5).Value = (double)i.CurrentCount;
+            ws.Cell(row, 6).Value = (double)i.CurrentQuantity;
+            ws.Cell(row, 7).Value = (double)i.SalePrice;
+            ws.Cell(row, 8).Value = (double)i.PurchasePrice;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportStockXlsxAsync(bool lowOnly)
+    {
+        var items = await _db.Items
+            .AsNoTracking()
+            .Include(i => i.Category)
+            .Include(i => i.CountUnit)
+            .Include(i => i.QuantityUnit)
+            .Where(i => i.IsActive)
+            .ToListAsync();
+
+        if (lowOnly)
+            items = items.Where(i => (i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount <= i.MinCount)
+                || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity <= i.MinQuantity)).ToList();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add(lowOnly ? "انخفاض المخزون" : "لقطة المخزون");
+        ws.Range(1, 1, 1, 8).Style.Font.Bold = true;
+        ws.Cell(1, 1).Value = "الكود";
+        ws.Cell(1, 2).Value = "الاسم";
+        ws.Cell(1, 3).Value = "التصنيف";
+        ws.Cell(1, 4).Value = "الرصيد (عدد)";
+        ws.Cell(1, 5).Value = "الحد الأدنى (عدد)";
+        ws.Cell(1, 6).Value = "الرصيد (كمية)";
+        ws.Cell(1, 7).Value = "الحد الأدنى (كمية)";
+        ws.Cell(1, 8).Value = "قيمة المخزون (سعر الشراء)";
+
+        int row = 2;
+        foreach (var i in items)
+        {
+            decimal value = (i.QuantityUnitId.HasValue || i.CurrentQuantity > 0)
+                ? i.CurrentQuantity * i.PurchasePrice
+                : i.CurrentCount * i.PurchasePrice;
+            ws.Cell(row, 1).Value = i.Code ?? "";
+            ws.Cell(row, 2).Value = i.Name;
+            ws.Cell(row, 3).Value = i.Category?.Name ?? "";
+            ws.Cell(row, 4).Value = (double)i.CurrentCount;
+            ws.Cell(row, 5).Value = (double)i.MinCount;
+            ws.Cell(row, 6).Value = (double)i.CurrentQuantity;
+            ws.Cell(row, 7).Value = (double)i.MinQuantity;
+            ws.Cell(row, 8).Value = (double)value;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportSalesXlsxAsync(DateTime from, DateTime to)
+    {
+        var invoices = await _db.SaleInvoices
+            .AsNoTracking()
+            .Include(s => s.Customer)
+            .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
+            .OrderByDescending(s => s.InvoiceDate)
+            .ToListAsync();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("المبيعات");
+        ws.Range(1, 1, 1, 7).Style.Font.Bold = true;
+        ws.Cell(1, 1).Value = "الفاتورة";
+        ws.Cell(1, 2).Value = "العميل";
+        ws.Cell(1, 3).Value = "التاريخ";
+        ws.Cell(1, 4).Value = "الإجمالي";
+        ws.Cell(1, 5).Value = "الخصم";
+        ws.Cell(1, 6).Value = "الضريبة";
+        ws.Cell(1, 7).Value = "الصافي";
+
+        int row = 2;
+        foreach (var i in invoices)
+        {
+            ws.Cell(row, 1).Value = i.InvoiceNumber;
+            ws.Cell(row, 2).Value = i.Customer?.Name ?? "";
+            ws.Cell(row, 3).Value = i.InvoiceDate.ToString("dd/MM/yyyy");
+            ws.Cell(row, 4).Value = (double)i.TotalAmount;
+            ws.Cell(row, 5).Value = (double)(i.Discount + (i.Discount2 ?? 0) + (i.Discount3 ?? 0));
+            ws.Cell(row, 6).Value = (double)i.Tax;
+            ws.Cell(row, 7).Value = (double)i.NetAmount;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportPurchasesXlsxAsync(DateTime from, DateTime to)
+    {
+        var invoices = await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Include(p => p.Supplier)
+            .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
+            .OrderByDescending(p => p.InvoiceDate)
+            .ToListAsync();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("المشتريات");
+        ws.Range(1, 1, 1, 7).Style.Font.Bold = true;
+        ws.Cell(1, 1).Value = "الفاتورة";
+        ws.Cell(1, 2).Value = "المورد";
+        ws.Cell(1, 3).Value = "التاريخ";
+        ws.Cell(1, 4).Value = "الإجمالي";
+        ws.Cell(1, 5).Value = "الخصم";
+        ws.Cell(1, 6).Value = "الضريبة";
+        ws.Cell(1, 7).Value = "الصافي";
+
+        int row = 2;
+        foreach (var i in invoices)
+        {
+            ws.Cell(row, 1).Value = i.InvoiceNumber;
+            ws.Cell(row, 2).Value = i.Supplier?.Name ?? "";
+            ws.Cell(row, 3).Value = i.InvoiceDate.ToString("dd/MM/yyyy");
+            ws.Cell(row, 4).Value = (double)i.TotalAmount;
+            ws.Cell(row, 5).Value = (double)(i.Discount + (i.Discount2 ?? 0) + (i.Discount3 ?? 0));
+            ws.Cell(row, 6).Value = (double)i.Tax;
+            ws.Cell(row, 7).Value = (double)i.NetAmount;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportPaymentsXlsxAsync(DateTime from, DateTime to)
+    {
+        var payments = await _db.Payments
+            .AsNoTracking()
+            .Include(p => p.Customer)
+            .Include(p => p.Supplier)
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("المدفوعات");
+        ws.Range(1, 1, 1, 5).Style.Font.Bold = true;
+        ws.Cell(1, 1).Value = "الإيصال";
+        ws.Cell(1, 2).Value = "النوع";
+        ws.Cell(1, 3).Value = "العميل/المورد";
+        ws.Cell(1, 4).Value = "المبلغ";
+        ws.Cell(1, 5).Value = "التاريخ";
+
+        int row = 2;
+        foreach (var p in payments)
+        {
+            ws.Cell(row, 1).Value = p.ReceiptNumber;
+            ws.Cell(row, 2).Value = p.Type == Models.Accounting.PaymentType.Receipt ? "قبض" : "صرف";
+            ws.Cell(row, 3).Value = p.Customer?.Name ?? p.Supplier?.Name ?? "";
+            ws.Cell(row, 4).Value = (double)p.Amount;
+            ws.Cell(row, 5).Value = p.PaymentDate.ToString("dd/MM/yyyy");
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> ExportAuditLedgerXlsxAsync(DateTime? from, DateTime? to, int? accountId, JournalSource? source)
+    {
+        var today = DateTime.Today;
+        from = (from ?? new DateTime(today.Year, today.Month, 1)).Date;
+        to = (to ?? today).Date;
+
+        var entryQuery = _db.JournalEntries
+            .AsNoTracking()
+            .Include(j => j.Lines)
+            .ThenInclude(l => l.Account)
+            .Where(j => j.IsPosted && j.Date >= from.Value && j.Date <= to.Value);
+        if (source is not null)
+            entryQuery = entryQuery.Where(j => j.Source == source);
+        if (accountId is not null)
+            entryQuery = entryQuery.Where(j => j.Lines.Any(l => l.AccountId == accountId));
+
+        var entries = await entryQuery.OrderBy(j => j.EntryNumber).ToListAsync();
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("سجل التدقيق");
+        WriteReportHeading(ws, 1, $"سجل التدقيق المركزي — من {from:dd/MM/yyyy} إلى {to:dd/MM/yyyy}");
+        ws.Range(3, 1, 3, 11).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "رقم القيد";
+        ws.Cell(3, 2).Value = "التاريخ";
+        ws.Cell(3, 3).Value = "المصدر";
+        ws.Cell(3, 4).Value = "معرف المستند";
+        ws.Cell(3, 5).Value = "البيان";
+        ws.Cell(3, 6).Value = "رمز الحساب";
+        ws.Cell(3, 7).Value = "اسم الحساب";
+        ws.Cell(3, 8).Value = "مدين";
+        ws.Cell(3, 9).Value = "دائن";
+        ws.Cell(3, 10).Value = "الفرع";
+        ws.Cell(3, 11).Value = "أنشئ بواسطة";
+
+        int row = 4;
+        foreach (var e in entries)
+        {
+            foreach (var l in e.Lines)
+            {
+                ws.Cell(row, 1).Value = e.EntryNumber;
+                ws.Cell(row, 2).Value = e.Date.ToString("dd/MM/yyyy");
+                ws.Cell(row, 3).Value = e.Source.GetDisplayName();
+                ws.Cell(row, 4).Value = e.SourceId;
+                ws.Cell(row, 5).Value = e.Description;
+                ws.Cell(row, 6).Value = l.Account?.Code ?? "";
+                ws.Cell(row, 7).Value = l.Account?.Name ?? "";
+                ws.Cell(row, 8).Value = (double)l.Debit;
+                ws.Cell(row, 9).Value = (double)l.Credit;
+                ws.Cell(row, 10).Value = e.BranchId?.ToString() ?? "";
+                ws.Cell(row, 11).Value = e.CreatedBy ?? "";
+                row++;
+            }
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    // ---------- PDF exports ----------
+
+    public async Task<byte[]> ExportTrialBalancePdfAsync(DateTime asOf)
+    {
+        var vm = await TrialBalanceAsync(asOf);
+        return BuildFinancialPdf($"ميزان المراجعة — حتى {asOf:dd/MM/yyyy}", doc =>
+        {
+            doc.Column(c =>
+            {
+                c.Item().Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); cd.ConstantColumn(90); });
+                    t.Header(hd =>
+                    {
+                        hd.Cell().Element(BoldHeader).Text("الرمز");
+                        hd.Cell().Element(BoldHeader).Text("الحساب");
+                        hd.Cell().Element(BoldHeader).Text("مدين");
+                        hd.Cell().Element(BoldHeader).Text("دائن");
+                    });
+                    foreach (var r in vm.Rows)
+                    {
+                        t.Cell().Text(r.Code);
+                        t.Cell().Text(r.Name);
+                        t.Cell().AlignRight().Text(r.Debit.ToString("N2"));
+                        t.Cell().AlignRight().Text(r.Credit.ToString("N2"));
+                    }
+                    t.Cell().Element(BoldFooter).Text("الإجمالي");
+                    t.Cell().Element(BoldFooter).Text("");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalDebit.ToString("N2"));
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalCredit.ToString("N2"));
+                });
+            });
+        });
+    }
+
+    public async Task<byte[]> ExportIncomeStatementPdfAsync(DateTime from, DateTime to)
+    {
+        var vm = await IncomeStatementAsync(from, to);
+        return BuildFinancialPdf($"قائمة الدخل — من {from:dd/MM/yyyy} إلى {to:dd/MM/yyyy}", doc =>
+        {
+            doc.Column(c =>
+            {
+                c.Item().Text("الايرادات").FontSize(12).SemiBold();
+                c.Item().Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
+                    t.Header(hd =>
+                    {
+                        hd.Cell().Element(BoldHeader).Text("الرمز");
+                        hd.Cell().Element(BoldHeader).Text("البند");
+                        hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+                    });
+                    foreach (var l in vm.RevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(l.Amount.ToString("N2")); }
+                    foreach (var l in vm.ContraRevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text((-l.Amount).ToString("N2")); }
+                    t.Cell().Element(BoldFooter).Text("");
+                    t.Cell().Element(BoldFooter).Text("صافي الإيرادات");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetRevenue.ToString("N2"));
+                });
+                c.Item().PaddingTop(12).Text("المصروفات").FontSize(12).SemiBold();
+                c.Item().Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
+                    t.Header(hd =>
+                    {
+                        hd.Cell().Element(BoldHeader).Text("الرمز");
+                        hd.Cell().Element(BoldHeader).Text("البند");
+                        hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+                    });
+                    foreach (var l in vm.ExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(l.Amount.ToString("N2")); }
+                    foreach (var l in vm.ContraExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text((-l.Amount).ToString("N2")); }
+                    t.Cell().Element(BoldFooter).Text("");
+                    t.Cell().Element(BoldFooter).Text("صافي المصروفات");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetExpenses.ToString("N2"));
+                });
+                c.Item().PaddingTop(12).Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
+                    t.Cell().Element(BoldFooter).Text("صافي الدخل");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetIncome.ToString("N2"));
+                });
+            });
+        });
+    }
+
+    public async Task<byte[]> ExportBalanceSheetPdfAsync(DateTime asOf)
+    {
+        var vm = await BalanceSheetAsync(asOf);
+        return BuildFinancialPdf($"الميزانية العمومية — حتى {asOf:dd/MM/yyyy}", doc =>
+        {
+            doc.Column(c =>
+            {
+                c.Item().Text("الأصول").FontSize(12).SemiBold();
+                c.Item().Table(t => BalanceSheetSection(t, vm.Assets, vm.Assets.Total));
+                c.Item().PaddingTop(12).Text("الخصوم").FontSize(12).SemiBold();
+                c.Item().Table(t => BalanceSheetSection(t, vm.Liabilities, vm.Liabilities.Total));
+                c.Item().PaddingTop(12).Text("حقوق الملكية").FontSize(12).SemiBold();
+                c.Item().Table(t => BalanceSheetSection(t, vm.Equity, vm.Equity.Total));
+                c.Item().PaddingTop(12).Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
+                    t.Cell().Element(BoldFooter).Text("صافي الدخل (الفترة)");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetIncome.ToString("N2"));
+                });
+                c.Item().PaddingTop(6).Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
+                    t.Cell().Element(BoldFooter).Text("إجمالي الخصوم + حقوق الملكية");
+                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalLiabilitiesEquity.ToString("N2"));
+                });
+            });
+        });
+    }
+
+    private static void BalanceSheetSection(TableDescriptor t, BalanceSheetSectionViewModel section, decimal total)
+    {
+        t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
+        t.Header(hd =>
+        {
+            hd.Cell().Element(BoldHeader).Text("الرمز");
+            hd.Cell().Element(BoldHeader).Text("الحساب");
+            hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+        });
+        foreach (var l in section.Lines)
+        {
+            t.Cell().Text(l.Code);
+            t.Cell().Text(l.Name);
+            t.Cell().AlignRight().Text(l.Amount.ToString("N2"));
+        }
+        t.Cell().Element(BoldFooter).Text("");
+        t.Cell().Element(BoldFooter).Text("الإجمالي");
+        t.Cell().Element(BoldFooter).AlignRight().Text(total.ToString("N2"));
+    }
+
+    private byte[] BuildFinancialPdf(string title, Action<IContainer> content)
+    {
+        return QuestPDF.Fluent.Document.Create(doc =>
+        {
+            doc.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(30);
+                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Header().Column(col =>
+                {
+                    col.Item().AlignCenter().Text("سلك للتجارة").FontSize(18).Bold();
+                    col.Item().AlignCenter().Text(title).FontSize(13).SemiBold();
+                    col.Item().PaddingTop(6).LineHorizontal(1);
+                });
+                page.Content().PaddingTop(10).Element(content);
+                page.Footer().AlignCenter().Text(x => { x.Span("صفحة "); x.CurrentPageNumber(); x.Span(" من "); x.TotalPages(); });
+            });
+        }).GeneratePdf();
+    }
+
+    private static IContainer BoldHeader(IContainer c) => c.Background(Colors.Grey.Lighten3).BorderBottom(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
+    private static IContainer BoldFooter(IContainer c) => c.Background(Colors.Grey.Lighten2).BorderTop(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
+
+    private static void WriteReportHeading(IXLWorksheet ws, int row, string title)
+    {
+        ws.Cell(row, 1).Value = title;
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 14;
+    }
+
+    public async Task<byte[]> ExportBudgetVarianceXlsxAsync(int year, IReadOnlyList<(string Code, string Name, decimal Budget, decimal Actual, decimal Variance, decimal VariancePct)> rows)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("واريانس الميزانية");
+        WriteReportHeading(ws, 1, $"واريانس الميزانية — سنة {year}");
+        ws.Range(3, 1, 3, 6).Style.Font.Bold = true;
+        ws.Cell(3, 1).Value = "رمز الحساب";
+        ws.Cell(3, 2).Value = "اسم الحساب";
+        ws.Cell(3, 3).Value = "الميزانية";
+        ws.Cell(3, 4).Value = "الفعلي";
+        ws.Cell(3, 5).Value = "الواريانس";
+        ws.Cell(3, 6).Value = "النسبة %";
+
+        int row = 4;
+        foreach (var r in rows)
+        {
+            ws.Cell(row, 1).Value = r.Code;
+            ws.Cell(row, 2).Value = r.Name;
+            ws.Cell(row, 3).Value = (double)r.Budget;
+            ws.Cell(row, 4).Value = (double)r.Actual;
+            ws.Cell(row, 5).Value = (double)r.Variance;
+            ws.Cell(row, 6).Value = (double)r.VariancePct;
+            ws.Cell(row, 6).Style.NumberFormat.Format = "0.0%";
+            row++;
+        }
+
+        ws.Columns().AdjustToContents();
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return await Task.FromResult(ms.ToArray());
+    }
+}

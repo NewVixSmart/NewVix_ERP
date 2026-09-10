@@ -1,0 +1,73 @@
+@model Silk.Trading.Web.ViewModels.Users.UserPermissionViewModel
+@using Silk.Trading.Web.Services
+@{
+    ViewData["Title"] = $"صلاحيات - {Model.UserName}";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-toggles text-primary"></i> صلاحيات المستخدم: @Model.UserName</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+</div>
+
+@if (Model.IsAdmin)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> هذا المستخدم من مديري النظام (Admin) ويملك <strong>كل الصلاحيات تلقائيًا</strong> دون حاجة لضبط مصفوفة.
+    </div>
+}
+else
+{
+    <div class="alert alert-light border small">
+        <i class="bi bi-info-circle"></i> منح <strong>أي إجراء</strong> في وحدة يفتح تلقائيًا <strong>رؤية</strong> الصفحة في القائمة الجانبية.
+        صلاحيات المدير لا تخضع لهذا الجدول.
+    </div>
+
+    <form asp-action="Permissions" asp-route-id="@Model.UserId" method="post">
+        <div class="table-container">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col" style="min-width: 220px;">الوحدة</th>
+                        <th>عرض</th>
+                        <th>إضافة</th>
+                        <th>تعديل</th>
+                        <th>حذف</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.Modules)
+                    {
+                        <tr>
+                            <td><strong>@m.TitleAr</strong></td>
+                            @foreach (var act in PermissionCatalog.ActionsFor(m.Key))
+                            {
+                                var key = PermissionCatalog.Key(m.Key, act);
+                                var label = act switch
+                                {
+                                    PermissionCatalog.View => "عرض",
+                                    PermissionCatalog.Create => "إضافة",
+                                    PermissionCatalog.Edit => "تعديل",
+                                    "SalesCreate" => "مبيعات",
+                                    "AdjustmentCreate" => "جرد",
+                                    _ => "حذف"
+                                };
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="perm" value="@key" id="@key"
+                                               @(m.HasAction(act) ? "checked" : "") />
+                                        <label class="form-check-label small text-muted" for="@key">@label</label>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ الصلاحيات</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+        </div>
+    </form>
+}

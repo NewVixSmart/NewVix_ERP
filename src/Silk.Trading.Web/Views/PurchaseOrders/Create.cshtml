@@ -1,0 +1,159 @@
+@model Silk.Trading.Web.ViewModels.Purchases.PurchaseOrderViewModel
+@inject Silk.Trading.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = (Model.Order.Id > 0 ? "تعديل أمر شراء" : "أمر شراء جديد"); }
+
+<div class="page-header">
+    <h2><i class="bi bi-clipboard-check text-primary"></i> @ViewData["Title"]</h2>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+}
+
+<form asp-action="@(Model.Order.Id > 0 ? "Edit" : "Create")" id="orderForm">
+    <input type="hidden" asp-for="Order.Id" />
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Order.SupplierId" class="form-label"></label>
+                    <select asp-for="Order.SupplierId" asp-items="@Model.Suppliers" class="form-select">
+                        <option value="">-- اختر المورد --</option>
+                    </select>
+                    <span asp-validation-for="Order.SupplierId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Order.OrderDate" class="form-label"></label>
+                    <input asp-for="Order.OrderDate" class="form-control" type="date" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Order.ExpectedDate" class="form-label"></label>
+                    <input asp-for="Order.ExpectedDate" class="form-control" type="date" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label d-block">&nbsp;</label>
+                    @if (Model.Order.Id > 0)
+                    {
+                        <span class="badge @(Model.Order.Status == Silk.Trading.Web.Models.Purchases.PurchaseOrderStatus.Draft ? "bg-secondary" : "bg-success")">@Model.Order.Status.GetDisplayName()</span>
+                    }
+                </div>
+            </div>
+            <div class="col-12 mt-3">
+                <label asp-for="Order.Notes" class="form-label"></label>
+                <textarea asp-for="Order.Notes" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-list-ul"></i> أصناف أمر الشراء</div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width:25%">الصنف</th>
+                        <th scope="col" style="width:15%">العدد المطلوب</th>
+                        <th scope="col" style="width:15%">الكمية المطلوبة</th>
+                        <th scope="col" style="width:15%">سعر الوحدة</th>
+                        <th scope="col" style="width:20%">الإجمالي</th>
+                        <th scope="col" style="width:10%" class="text-center">حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                    @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 1); idx++)
+                    {
+                        var line = idx < Model.Items.Count ? Model.Items[idx] : null;
+                        <tr>
+                            <td>
+                                @if (line != null)
+                                {
+                                    <input type="hidden" name="items[@idx].Id" value="@line.Id" />
+                                }
+                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                                    <option value="">اختر صنف</option>
+                                    @foreach (var item in Model.ItemsData)
+                                    { <option value="@item.Id" data-price="@item.PurchasePrice" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
+                                </select>
+                            </td>
+                            <td><input name="items[@idx].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 1)" aria-label="العدد المطلوب" /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية المطلوبة" /></td>
+                            <td><input name="items[@idx].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
+                            <td><span class="total fw-bold">0.00</span></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus"></i> إضافة صنف</button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-3"><label class="form-label" for="totalAmount">الإجمالي</label><input class="form-control" id="totalAmount" readonly /></div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+<script nonce="@Context.GetCspNonce()">
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+let rowIndex = @(Model.Items.Any() ? Model.Items.Count : 1);
+document.getElementById('addRow').addEventListener('click', function() {
+    const tbody = document.getElementById('itemsBody');
+    const items = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.ItemsData.Select(i => new { i.Id, i.Name, i.PurchasePrice }),
+        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default }));
+    let options = '<option value="">اختر صنف</option>';
+    items.forEach(i => { options += `<option value="${i.id}" data-price="${i.purchasePrice}">${escapeHtml(i.name)}</option>`; });
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
+        <td><input name="items[${rowIndex}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="1" aria-label="العدد المطلوب" /></td>
+        <td><input name="items[${rowIndex}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية المطلوبة" /></td>
+        <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+        <td><span class="total fw-bold">0.00</span></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;
+    tbody.appendChild(tr);
+    rowIndex++;
+    bindEvents();
+});
+
+function bindEvents() {
+    document.querySelectorAll('.remove-row').forEach(btn => btn.onclick = function() { this.closest('tr').remove(); calculateTotals(); });
+    document.querySelectorAll('.item-select').forEach(sel => sel.onchange = function() {
+        const price = this.options[this.selectedIndex].dataset.price || 0;
+        this.closest('tr').querySelector('.price').value = parseFloat(price).toFixed(2);
+        calculateTotals();
+    });
+    document.querySelectorAll('.qty, .count, .price').forEach(inp => inp.oninput = calculateTotals);
+}
+
+function calculateTotals() {
+    let total = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(tr => {
+        const qty = parseFloat(tr.querySelector('.qty')?.value) || 0;
+        const count = parseFloat(tr.querySelector('.count')?.value) || 0;
+        const price = parseFloat(tr.querySelector('.price')?.value) || 0;
+        const lineTotal = (qty > 0 ? qty : count) * price;
+        tr.querySelector('.total').textContent = lineTotal.toFixed(2);
+        total += lineTotal;
+    });
+    document.getElementById('totalAmount').value = total.toFixed(2);
+}
+
+bindEvents();
+calculateTotals();
+</script>
+}

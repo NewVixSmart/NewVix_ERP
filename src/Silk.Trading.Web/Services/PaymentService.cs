@@ -1,0 +1,274 @@
+using Microsoft.EntityFrameworkCore;
+using Silk.Trading.Web.Data;
+using Silk.Trading.Web.Models.Accounting;
+
+namespace Silk.Trading.Web.Services;
+
+public sealed class PaymentService : IPaymentService
+{
+    private readonly AppDbContext _db;
+    private readonly IAccountingService? _accounting;
+
+    public PaymentService(AppDbContext db, IAccountingService? accounting = null)
+    {
+        _db = db;
+        _accounting = accounting;
+    }
+
+    public async Task<(bool Success, string? Error, Payment? Payment)> CreatePaymentAsync(Payment payment, string? user, int? branchId = null)
+    {
+        if (await IsPeriodClosedAsync(payment.PaymentDate))
+            return (false, $"السنة المالية {payment.PaymentDate.Year} مغلقة — لا يمكن إدراج قيود فيها", null);
+
+        if (payment.Type == PaymentType.Receipt && !payment.CustomerId.HasValue)
+            return (false, "اختر العميل الذي تم القبض منه", null);
+        if (payment.Type == PaymentType.Disbursement && !payment.SupplierId.HasValue)
+            return (false, "اختر المورد الذي تم الصرف له", null);
+
+        if (payment.Type == PaymentType.Receipt)
+            payment.SupplierId = null;
+        else
+            payment.CustomerId = null;
+
+        var currency = payment.CurrencyId.HasValue
+            ? await _db.Currencies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == payment.CurrencyId.Value)
+            : null;
+        if (payment.CurrencyId.HasValue && currency == null)
+            return (false, "العملة غير موجودة", null);
+
+        bool foreign = IsForeignPayment(payment, currency);
+        payment.BaseAmount = foreign
+            ? decimal.Round(payment.Amount * payment.ExchangeRate!.Value, 2)
+            : payment.Amount;
+
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                if (await HasDuplicatePaymentAsync(payment))
+                {
+                    await tx.RollbackAsync();
+                    _db.ChangeTracker.Clear();
+                    return (false, "توجد دفعة مطابقة أُنشئت قبل قليل؛ تخلَّص من الإرسال المكرر", null);
+                }
+
+                payment.CreatedBy = user;
+                payment.CreatedAt = DateTime.UtcNow;
+                payment.BranchId = branchId;
+                _db.Payments.Add(payment);
+                await _db.SaveChangesAsync();
+
+                var (remaining, partyBaseReduction) = await ApplyInvoiceAllocationAsync(payment, foreign);
+
+                if (remaining > 0.01m)
+                {
+                    await tx.RollbackAsync();
+                    _db.ChangeTracker.Clear();
+                    return (false, "المبلغ أكبر من إجمالي المستحق لهذا الطرف", null);
+                }
+
+                if (_accounting != null)
+                {
+                    if (foreign)
+                    {
+                        var netFx = decimal.Round(payment.BaseAmount - partyBaseReduction, 2);
+                        var economicGain = payment.Type == PaymentType.Receipt ? netFx : -netFx;
+                        var fxGain = economicGain > 0.01m ? economicGain : 0m;
+                        var fxLoss = economicGain < -0.01m ? -economicGain : 0m;
+                        var source = payment.Type == PaymentType.Receipt
+                            ? JournalSource.Receipt : JournalSource.Disbursement;
+                        var sourceId = payment.Type == PaymentType.Receipt
+                            ? payment.CustomerId!.Value : payment.SupplierId!.Value;
+                        await _accounting.RecordFxSettlementAsync(payment.PaymentDate, payment.BaseAmount,
+                            partyBaseReduction, fxGain, fxLoss, payment.Method, source, sourceId, user, branchId);
+                    }
+                    else if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
+                        await _accounting.RecordReceiptAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.CustomerId.Value, user, branchId);
+                    else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
+                        await _accounting.RecordDisbursementAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.SupplierId.Value, user, branchId);
+                }
+
+                await tx.CommitAsync();
+                return (true, null, payment);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync();
+                _db.ChangeTracker.Clear();
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
+                payment.ReceiptNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
+            }
+        }
+        return (false, "تعارض في البيانات أثناء الحفظ، يرجى إعادة المحاولة", null);
+    }
+
+    public async Task<IReadOnlyList<Payment>> GetPaymentsAsync(int page, int pageSize)
+    {
+        page = Math.Max(1, page);
+        return await _db.Payments
+            .Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
+            .AsNoTracking()
+            .OrderByDescending(p => p.PaymentDate)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<Payment?> GetPaymentAsync(int id) =>
+        await _db.Payments.Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
+            .Include(p => p.PaymentAllocations)
+            .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+
+    private Task<bool> IsPeriodClosedAsync(DateTime date)
+        => _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed);
+
+    private async Task<(decimal Remaining, decimal PartyBaseReduction)> ApplyInvoiceAllocationAsync(Payment payment, bool foreign)
+    {
+        decimal remaining = payment.BaseAmount;
+        decimal partyBaseReduction = 0m;
+        var rows = new List<PaymentAllocation>();
+
+        if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue && remaining > 0)
+        {
+            var invoices = await _db.SaleInvoices
+                .Where(s => s.CustomerId == payment.CustomerId && s.PaidAmount < s.NetAmount)
+                .OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id)
+                .ToListAsync();
+            foreach (var inv in invoices)
+            {
+                if (remaining <= 0.005m) break;
+                var outstanding = inv.NetAmount - inv.PaidAmount;
+                if (outstanding <= 0.005m) continue;
+
+                var allocate = remaining;
+                if (foreign)
+                {
+                    var r1 = payment.ExchangeRate!.Value;
+                    var r0 = inv.ExchangeRate ?? 1m;
+                    var maxAlloc = outstanding * r1 / r0;
+                    if (allocate > maxAlloc) allocate = maxAlloc;
+                    if (allocate < 0.005m) continue;
+                    var invoiceBase = decimal.Round(allocate * r0 / r1, 2);
+                    var fxDiff = decimal.Round(allocate - invoiceBase, 2);
+                    inv.PaidAmount += invoiceBase;
+                    remaining -= allocate;
+                    partyBaseReduction += invoiceBase;
+                    rows.Add(new PaymentAllocation
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceType = PaymentAllocationInvoiceType.Sales,
+                        InvoiceId = inv.Id,
+                        AllocatedBaseAmount = decimal.Round(allocate, 2),
+                        ExchangeRateAtSettlement = r1,
+                        FxGain = fxDiff > 0 ? fxDiff : 0m,
+                        FxLoss = fxDiff < 0 ? -fxDiff : 0m
+                    });
+                }
+                else
+                {
+                    if (allocate > outstanding) allocate = outstanding;
+                    inv.PaidAmount += allocate;
+                    remaining -= allocate;
+                    partyBaseReduction += allocate;
+                    rows.Add(new PaymentAllocation
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceType = PaymentAllocationInvoiceType.Sales,
+                        InvoiceId = inv.Id,
+                        AllocatedBaseAmount = allocate,
+                        ExchangeRateAtSettlement = null,
+                        FxGain = 0m,
+                        FxLoss = 0m
+                    });
+                }
+                if (inv.PaidAmount >= inv.NetAmount - 0.005m) inv.IsPaid = true;
+            }
+        }
+        else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue && remaining > 0)
+        {
+            var invoices = await _db.PurchaseInvoices
+                .Where(p => p.SupplierId == payment.SupplierId && p.PaidAmount < p.NetAmount)
+                .OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id)
+                .ToListAsync();
+            foreach (var inv in invoices)
+            {
+                if (remaining <= 0.005m) break;
+                var outstanding = inv.NetAmount - inv.PaidAmount;
+                if (outstanding <= 0.005m) continue;
+
+                var allocate = remaining;
+                if (foreign)
+                {
+                    var r1 = payment.ExchangeRate!.Value;
+                    var r0 = inv.ExchangeRate ?? 1m;
+                    var maxAlloc = outstanding * r1 / r0;
+                    if (allocate > maxAlloc) allocate = maxAlloc;
+                    if (allocate < 0.005m) continue;
+                    var invoiceBase = decimal.Round(allocate * r0 / r1, 2);
+                    var fxDiff = decimal.Round(allocate - invoiceBase, 2);
+                    inv.PaidAmount += invoiceBase;
+                    remaining -= allocate;
+                    partyBaseReduction += invoiceBase;
+                    rows.Add(new PaymentAllocation
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceType = PaymentAllocationInvoiceType.Purchases,
+                        InvoiceId = inv.Id,
+                        AllocatedBaseAmount = decimal.Round(allocate, 2),
+                        ExchangeRateAtSettlement = r1,
+                        FxGain = fxDiff < 0 ? -fxDiff : 0m,
+                        FxLoss = fxDiff > 0 ? fxDiff : 0m
+                    });
+                }
+                else
+                {
+                    if (allocate > outstanding) allocate = outstanding;
+                    inv.PaidAmount += allocate;
+                    remaining -= allocate;
+                    partyBaseReduction += allocate;
+                    rows.Add(new PaymentAllocation
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceType = PaymentAllocationInvoiceType.Purchases,
+                        InvoiceId = inv.Id,
+                        AllocatedBaseAmount = allocate,
+                        ExchangeRateAtSettlement = null,
+                        FxGain = 0m,
+                        FxLoss = 0m
+                    });
+                }
+                if (inv.PaidAmount >= inv.NetAmount - 0.005m) inv.IsPaid = true;
+            }
+        }
+
+        if (rows.Count > 0)
+        {
+            _db.PaymentAllocations.AddRange(rows);
+            await _db.SaveChangesAsync();
+        }
+
+        return (remaining, partyBaseReduction);
+    }
+
+    private static bool IsForeignPayment(Payment payment, Currency? currency)
+        => payment.CurrencyId.HasValue && currency != null && !currency.IsBase
+           && payment.ExchangeRate.HasValue && payment.ExchangeRate.Value > 0
+           && payment.ExchangeRate.Value != 1m;
+
+    private async Task<bool> HasDuplicatePaymentAsync(Payment payment)
+    {
+        var window = DateTime.UtcNow.AddMinutes(-2);
+        var q = _db.Payments.AsNoTracking()
+            .Where(p => p.CreatedAt >= window && p.Amount == payment.Amount && p.Type == payment.Type);
+        if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
+            q = q.Where(p => p.CustomerId == payment.CustomerId);
+        else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
+            q = q.Where(p => p.SupplierId == payment.SupplierId);
+        return await q.AnyAsync();
+    }
+}

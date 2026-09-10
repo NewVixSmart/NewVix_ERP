@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>silk-aspire-apphost</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="10.0.0" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TODO: Adjust Aspire package versions above once Aspire GA packages are published for .NET 10 -->
+    <ProjectReference Include="../../src/Silk.Trading.Web/Silk.Trading.Web.csproj" />
+    <ProjectReference Include="../Silk.ServiceDefaults/Silk.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

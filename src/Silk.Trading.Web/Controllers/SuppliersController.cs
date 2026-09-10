@@ -1,0 +1,168 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Silk.Trading.Web.Data;
+using Silk.Trading.Web.Extensions;
+using Silk.Trading.Web.Models.Purchases;
+using Silk.Trading.Web.ViewModels.Purchases;
+
+namespace Silk.Trading.Web.Controllers;
+
+[Authorize]
+public class SuppliersController : Controller
+{
+    private readonly AppDbContext _db;
+    public SuppliersController(AppDbContext db) => _db = db;
+
+    [RequirePerm("Suppliers.View")]
+    public async Task<IActionResult> Index(string? search, int page = 1)
+    {
+        page = Math.Max(1, page);
+        search = search?.Trim();
+        if (search?.Length > 100) search = search[..100];
+        var query = _db.Suppliers.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrEmpty(search))
+            query = query.Where(s => s.Name.Contains(search) || (s.Code != null && s.Code.Contains(search)));
+        query = query.Where(s => s.IsActive).OrderBy(s => s.Name);
+
+        const int pageSize = 50;
+        var total = await query.CountAsync();
+        ViewBag.Search = search;
+        ViewBag.Page = page;
+        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+        return View(await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync());
+    }
+
+    [RequirePerm("Suppliers.Create")]
+    public IActionResult Create() => View(new Supplier { IsActive = true });
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("Suppliers.Create")]
+    public async Task<IActionResult> Create(Supplier supplier)
+    {
+        if (!string.IsNullOrWhiteSpace(supplier.Code) && await _db.Suppliers.AnyAsync(s => s.Code == supplier.Code))
+            ModelState.AddModelError(nameof(Supplier.Code), "الكود مستخدم بالفعل لمورد آخر");
+
+        if (ModelState.IsValid)
+        {
+            try
+            {
+                _db.Suppliers.Add(supplier);
+                await _db.SaveChangesAsync();
+                TempData["Success"] = "تم إضافة المورد بنجاح";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError("", "تعذر الحفظ: تأكد من عدم تكرار كود المورد");
+            }
+        }
+        return View(supplier);
+    }
+
+    [RequirePerm("Suppliers.Edit")]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        if (supplier == null) return NotFound();
+        return View(supplier);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("Suppliers.Edit")]
+    public async Task<IActionResult> Edit(int id, Supplier supplier)
+    {
+        if (id != supplier.Id) return NotFound();
+        if (ModelState.IsValid)
+        {
+            var existing = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
+            if (existing == null) return NotFound();
+
+            existing.Name = supplier.Name;
+            existing.Code = supplier.Code;
+            existing.Address = supplier.Address;
+            existing.Phone = supplier.Phone;
+            existing.Email = supplier.Email;
+            existing.TaxNumber = supplier.TaxNumber;
+            existing.OpeningBalance = supplier.OpeningBalance;
+            existing.Notes = supplier.Notes;
+            existing.IsActive = supplier.IsActive;
+
+            if (!string.IsNullOrWhiteSpace(existing.Code) && await _db.Suppliers.AnyAsync(s => s.Id != id && s.Code == existing.Code))
+                ModelState.AddModelError(nameof(Supplier.Code), "الكود مستخدم بالفعل لمورد آخر");
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    TempData["Success"] = "تم تعديل المورد بنجاح";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException)
+                {
+                    ModelState.AddModelError("", "تعذر الحفظ: تأكد من عدم تكرار كود المورد");
+                }
+            }
+        }
+        return View(supplier);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("Suppliers.Delete")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var supplier = await _db.Suppliers.FindAsync(id);
+        if (supplier == null) return NotFound();
+        supplier.IsActive = false;
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "تم حذف المورد بنجاح";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [RequirePerm("Suppliers.View")]
+    public async Task<IActionResult> Ledger(int id)
+    {
+        var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        if (supplier == null) return NotFound();
+
+        var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.InvoiceDate).ToListAsync();
+        var payments = await _db.Payments.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == id).OrderByDescending(r => r.ReturnDate).ToListAsync();
+
+        decimal totalInvoices = invoices.Sum(i => i.NetAmount);
+        decimal totalReturns = returns.Sum(r => r.TotalAmount);
+        decimal totalPayments = payments.Where(p => p.Type == Models.Accounting.PaymentType.Disbursement).Sum(p => p.Amount);
+
+        var vm = new SupplierLedgerViewModel
+        {
+            Supplier = supplier,
+            Invoices = invoices,
+            Payments = payments,
+            Returns = returns,
+            Balance = supplier.OpeningBalance + totalInvoices - totalReturns - totalPayments
+        };
+        return View(vm);
+    }
+
+    [RequirePerm("Suppliers.View")]
+    public async Task<IActionResult> Quotes(int? supplierId)
+    {
+        var query = _db.SupplierQuotes
+            .Include(q => q.Supplier)
+            .Include(q => q.Item)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (supplierId.HasValue && supplierId > 0)
+            query = query.Where(q => q.SupplierId == supplierId.Value);
+
+        query = query.OrderByDescending(q => q.EffectiveDate);
+
+        ViewBag.Suppliers = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
+            await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
+        ViewBag.SelectedSupplierId = supplierId;
+
+        return View(await query.Take(200).ToListAsync());
+    }
+}

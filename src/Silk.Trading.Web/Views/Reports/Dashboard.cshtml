@@ -1,0 +1,143 @@
+@model Silk.Trading.Web.ViewModels.Reports.DashboardReportViewModel
+@{ ViewData["Title"] = "لوحة التقارير"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-speedometer2 text-primary"></i> لوحة التقارير التشغيلية</h2>
+    <p class="text-muted mb-0">تنبيهات الاستحقاق والمخزون المنخفض — حتى @Model.AsOf.ToString("dd/MM/yyyy")</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card text-center border-danger">
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-down-circle text-danger"></i></div>
+            <div class="text-muted small mt-2">ذمم عملاء متأخرة (عدد)</div>
+            <h4 class="mb-0 text-danger">@Model.OverdueReceivableCount</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center border-danger">
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-up-circle text-danger"></i></div>
+            <div class="text-muted small mt-2">ذمم موردين متأخرة (عدد)</div>
+            <h4 class="mb-0 text-danger">@Model.OverduePayableCount</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center border-warning">
+            <div class="stat-icon mx-auto bg-warning-subtle"><i class="bi bi-exclamation-triangle text-warning"></i></div>
+            <div class="text-muted small mt-2">أصناف منخفضة المخزون</div>
+            <h4 class="mb-0 text-warning">@Model.LowStockCount</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center border-danger">
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-cash-coin text-danger"></i></div>
+            <div class="text-muted small mt-2">إجمالي المتأخر</div>
+            <h4 class="mb-0 text-danger">@((Model.OverdueReceivableTotal + Model.OverduePayableTotal).ToString("N2"))</h4>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="table-container">
+                    <table class="table table-hover mb-0">
+                <caption class="visually-hidden">الذمم المدينة المتأخرة (العملاء)</caption>
+                <thead>
+                    <tr>
+                        <th colspan="6" class="text-danger">الذمم المدينة المتأخرة (العملاء)</th>
+                    </tr>
+                    <tr><th scope="col">الفاتورة</th><th scope="col">العميل</th><th scope="col">الاستحقاق</th><th scope="col">المبلغ</th><th scope="col">المتبقي</th><th scope="col">تأخر (يوم)</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.OverdueReceivables)
+                    {
+                        <tr class="table-danger">
+                            <td><code>@r.InvoiceNumber</code></td>
+                            <td>@r.PartyName</td>
+                            <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
+                            <td>@r.NetAmount.ToString("N2")</td>
+                            <td class="fw-bold">@r.Outstanding.ToString("N2")</td>
+                            <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.OverdueReceivables.Any())
+                {
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Model.OverdueReceivableTotal.ToString("N2")</td><td></td></tr></tfoot>
+                }
+            </table>
+        </div>
+        @if (!Model.OverdueReceivables.Any())
+        {
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد ذمم عملاء متأخرة</p></div>
+        }
+    </div>
+    <div class="col-lg-6">
+        <div class="table-container">
+                    <table class="table table-hover mb-0">
+                <caption class="visually-hidden">الذمم الدائنة المتأخرة (الموردون)</caption>
+                <thead>
+                    <tr>
+                        <th colspan="6" class="text-danger">الذمم الدائنة المتأخرة (الموردون)</th>
+                    </tr>
+                    <tr><th scope="col">الفاتورة</th><th scope="col">المورد</th><th scope="col">الاستحقاق</th><th scope="col">المبلغ</th><th scope="col">المتبقي</th><th scope="col">تأخر (يوم)</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.OverduePayables)
+                    {
+                        <tr class="table-danger">
+                            <td><code>@r.InvoiceNumber</code></td>
+                            <td>@r.PartyName</td>
+                            <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
+                            <td>@r.NetAmount.ToString("N2")</td>
+                            <td class="fw-bold">@r.Outstanding.ToString("N2")</td>
+                            <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.OverduePayables.Any())
+                {
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Model.OverduePayableTotal.ToString("N2")</td><td></td></tr></tfoot>
+                }
+            </table>
+        </div>
+        @if (!Model.OverduePayables.Any())
+        {
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد ذمم موردين متأخرة</p></div>
+        }
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="table-container">
+                    <table class="table table-hover mb-0">
+                <caption class="visually-hidden">الأصناف منخفضة المخزون</caption>
+                <thead>
+                    <tr>
+                        <th colspan="7" class="text-warning">الأصناف منخفضة المخزون</th>
+                    </tr>
+                    <tr><th scope="col">الكود</th><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد (عدد)</th><th scope="col">الحد الأدنى</th><th scope="col">الرصيد (كمية)</th><th scope="col">الحد الأدنى</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var i in Model.LowStockItems)
+                    {
+                        <tr>
+                            <td><code>@(i.Code ?? "—")</code></td>
+                            <td><a asp-controller="Items" asp-action="Details" asp-route-id="@i.Id" class="fw-bold">@i.Name</a></td>
+                            <td>@i.CategoryName</td>
+                            <td class="fw-bold text-danger">@i.CurrentCount.ToString("N2")</td>
+                            <td>@i.MinCount.ToString("N2")</td>
+                            <td class="fw-bold text-danger">@i.CurrentQuantity.ToString("N2")</td>
+                            <td>@i.MinQuantity.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!Model.LowStockItems.Any())
+        {
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد أصناف منخفضة المخزون</p></div>
+        }
+    </div>
+</div>

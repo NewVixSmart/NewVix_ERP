@@ -1,0 +1,72 @@
+@model Silk.Trading.Web.Models.Accounting.GLAccount
+@{ ViewData["Title"] = "تعديل الحساب"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-pencil text-primary"></i> تعديل الحساب — @Model.Code</h2>
+</div>
+
+@if (ViewBag.IsSystem == true)
+{
+    <div class="alert alert-warning">حساب نظامي مُعرَّف بالبذرة — لا يمكن تغيير رمزه.</div>
+}
+@if (ViewBag.IsPosted == true)
+{
+    <div class="alert alert-warning">هذا الحساب له قيود مرحلة — لا يمكن تغيير رمزه؛ يمكنك فقط تعديل الاسم أو التعطيل.</div>
+}
+
+<div class="card" style="max-width:640px">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <div class="mb-3">
+                <label class="form-label">رمز الحساب</label>
+                @{ var codeLocked = (ViewBag.IsPosted == true || ViewBag.IsSystem == true); }
+                @if (codeLocked)
+                {
+                    <input asp-for="Code" class="form-control" dir="ltr" required readonly />
+                }
+                else
+                {
+                    <input asp-for="Code" class="form-control" dir="ltr" required />
+                }
+                @if (ViewBag.IsPosted == true || ViewBag.IsSystem == true)
+                {
+                    <div class="form-text text-danger">الرمز مقفل لأنه حساب مستخدم/نظامي</div>
+                }
+            </div>
+            <div class="mb-3">
+                <label class="form-label">اسم الحساب</label>
+                <input asp-for="Name" class="form-control" required />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">نوع الحساب</label>
+                <select asp-for="Type" class="form-select">
+                    @foreach (var t in Enum.GetValues<Silk.Trading.Web.Models.Accounting.GLAccountType>())
+                    {
+                        <option value="@((int)t)">@t.ToString()</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">طبيعة الحساب</label>
+                <select asp-for="NormalBalance" class="form-select">
+                    <option value="1">مدين</option>
+                    <option value="2">دائن</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">الحساب الأب (اختياري)</label>
+                <select asp-for="ParentAccountId" class="form-select" asp-items="ViewBag.ParentList">
+                    <option value="">—</option>
+                </select>
+            </div>
+            <div class="mb-3 form-check form-switch">
+                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActive" />
+                <label class="form-check-label" for="isActive">نشط</label>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+        </form>
+    </div>
+</div>

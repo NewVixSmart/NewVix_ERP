@@ -1,0 +1,165 @@
+@model Silk.Trading.Web.ViewModels.Batch.BatchAdjustmentViewModel
+@{
+    ViewData["Title"] = "الجرد الجماعي";
+    var itemsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.ItemsData.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }),
+        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+}
+
+<div class="page-header"><h2><i class="bi bi-clipboard-check text-primary"></i> الجرد الجماعي — جرد عدة أصناف دفعة واحدة</h2></div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+}
+
+<form asp-action="Adjustment" id="batchAdjustForm">
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-calendar-event"></i> بيانات مشتركة</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="AdjustDate" class="form-label"></label>
+                    <input asp-for="AdjustDate" class="form-control" type="date" />
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="Reason" class="form-label"></label>
+                    <input asp-for="Reason" class="form-control" placeholder="مثال: جرد دوري، توالف، هدر، تصحيح رصيد..." />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clipboard-data"></i> الأصناف — أدخل العدد والكمية <b>الجديدين</b> بعد الجرد</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus"></i> إضافة صنف</button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width:30%">الصنف</th>
+                        <th scope="col" style="width:22%">الرصيد الحالي</th>
+                        <th scope="col" style="width:14%">العدد الجديد</th>
+                        <th scope="col" style="width:14%">الكمية الجديدة</th>
+                        <th scope="col" style="width:20%">الفرق بعد الحفظ</th>
+                        <th scope="col" style="width:5%" class="text-center">حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="adjRows">
+                    @for (var j = 0; j < Model.Lines.Count; j++)
+                    {
+                        <tr>
+                            <td>
+                                <select name="Lines[@j].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                                    <option value="">اختر صنف</option>
+                                    @foreach (var item in Model.ItemsData)
+                                    {
+                                        <option value="@item.Id" selected="@(Model.Lines[j].ItemId == item.Id)">@item.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><span class="stock-info small text-muted">—</span></td>
+                            <td><input name="Lines[@j].NewCount" type="number" step="0.01" class="form-control form-control-sm new-count" value="@Model.Lines[j].NewCount" aria-label="العدد الجديد" /></td>
+                            <td><input name="Lines[@j].NewQuantity" type="number" step="0.01" class="form-control form-control-sm new-qty" value="@Model.Lines[j].NewQuantity" aria-label="الكمية الجديدة" /></td>
+                            <td><span class="diff-info small fw-bold">—</span></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> ترحيل الجرد دفعة واحدة</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script nonce="@Context.GetCspNonce()">
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+const items = @Html.Raw(itemsJson);
+let rowIndex = @Model.Lines.Count;
+let itemsOptions = '<option value="">اختر صنف</option>';
+items.forEach(i => {
+    itemsOptions += `<option value="${i.id}">${escapeHtml(i.name)}</option>`;
+});
+
+function rowHtml(idx) {
+    return `<tr>
+        <td><select name="Lines[${idx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
+        <td><span class="stock-info small text-muted">—</span></td>
+        <td><input name="Lines[${idx}].NewCount" type="number" step="0.01" class="form-control form-control-sm new-count" value="0" aria-label="العدد الجديد" /></td>
+        <td><input name="Lines[${idx}].NewQuantity" type="number" step="0.01" class="form-control form-control-sm new-qty" value="0" aria-label="الكمية الجديدة" /></td>
+        <td><span class="diff-info small fw-bold">—</span></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+    </tr>`;
+}
+
+function bindRow(tr) {
+    const sel = tr.querySelector('.item-select');
+    sel.addEventListener('change', function() {
+        const it = items.find(i => i.Id == sel.value);
+        const stock = tr.querySelector('.stock-info');
+        if (!it) { stock.textContent = '—'; tr.querySelector('.diff-info').textContent = '—'; return; }
+        stock.innerHTML = '<strong>' + it.currentCount + '</strong> ' + escapeHtml(it.countUnit || '') +
+            ' / <strong>' + it.currentQuantity + '</strong> ' + escapeHtml(it.quantityUnit || '');
+        recomputeDiff(tr);
+    });
+    tr.querySelector('.new-count').addEventListener('input', () => recomputeDiff(tr));
+    tr.querySelector('.new-qty').addEventListener('input', () => recomputeDiff(tr));
+    tr.querySelector('.remove-row').addEventListener('click', () => {
+        tr.remove();
+        requeueRows();
+    });
+    if (sel.value) sel.dispatchEvent(new Event('change'));
+}
+
+function recomputeDiff(tr) {
+    const it = items.find(i => i.Id == tr.querySelector('.item-select').value);
+    if (!it) { tr.querySelector('.diff-info').textContent = '—'; return; }
+    const count = parseFloat(tr.querySelector('.new-count').value) || 0;
+    const qty = parseFloat(tr.querySelector('.new-qty').value) || 0;
+    const parts = [];
+    const dc = count - it.currentCount;
+    const dq = qty - it.currentQuantity;
+    if (dc !== 0) parts.push((dc > 0 ? '+' : '') + dc + ' ' + escapeHtml(it.countUnit || ''));
+    if (dq !== 0) parts.push((dq > 0 ? '+' : '') + dq + ' ' + escapeHtml(it.quantityUnit || ''));
+    const d = tr.querySelector('.diff-info');
+    d.textContent = parts.length ? parts.join('، ') : 'بدون تغيير';
+    d.className = 'diff-info small fw-bold ' + ((dc < 0 || dq < 0) ? 'text-danger' : 'text-success');
+}
+
+function requeueRows() {
+    document.querySelectorAll('#adjRows tr').forEach((tr, idx) => {
+        tr.querySelectorAll('select, input').forEach(inp => {
+            inp.name = inp.name.replace(/Lines\[\d+\]/, `Lines[${idx}]`);
+        });
+    });
+}
+
+document.getElementById('addRow').addEventListener('click', function() {
+    const tbody = document.getElementById('adjRows');
+    tbody.insertAdjacentHTML('beforeend', rowHtml(rowIndex));
+    rowIndex++;
+    bindRow(tbody.lastElementChild);
+});
+
+document.querySelectorAll('#adjRows tr').forEach(bindRow);
+
+document.getElementById('batchAdjustForm').addEventListener('submit', function(e) {
+    document.querySelectorAll('#adjRows tr').forEach(tr => {
+        if (!tr.querySelector('.item-select').value) tr.remove();
+    });
+});
+</script>
+}

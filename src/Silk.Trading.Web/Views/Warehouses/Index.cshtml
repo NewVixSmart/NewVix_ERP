@@ -1,0 +1,53 @@
+@model IEnumerable<Silk.Trading.Web.Models.Stock.Warehouse>
+@inject Silk.Trading.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "المستودعات"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-building text-primary"></i> المستودعات</h2>
+    @if (await Perm.HasAsync("Warehouses.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> مستودع جديد</a>
+    }
+</div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th scope="col">الرمز</th>
+                <th>الاسم</th>
+                <th>الحالة</th>
+                <th>تاريخ الإنشاء</th>
+                <th class="text-center">إجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var w in Model)
+            {
+                <tr>
+                    <td><code>@w.Code</code></td>
+                    <td><strong>@w.Name</strong></td>
+                    <td>
+                        @if (w.IsActive)
+                        { <span class="badge-stock-ok px-2 py-1 rounded">نشط</span> }
+                        else
+                        { <span class="badge-stock-low px-2 py-1 rounded">غير نشط</span> }
+                    </td>
+                    <td>@w.CreatedAt.ToString("dd/MM/yyyy")</td>
+                    <td class="text-center d-flex gap-1 justify-content-center">
+                        @if (await Perm.HasAsync("Warehouses.Edit"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@w.Id" class="btn btn-sm btn-outline-primary" title="تعديل"><i class="bi bi-pencil"></i></a>
+                        }
+                        @if (await Perm.HasAsync("Warehouses.Delete"))
+                        {
+                            <form asp-action="Delete" asp-route-id="@w.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذا المستودع؟')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

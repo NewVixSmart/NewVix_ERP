@@ -1,0 +1,47 @@
+# ============================================
+# .NET
+# ============================================
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.psess
+*.publishsettings
+*.nupkg
+*.snupkg
+TestResults/
+project.lock.json
+.vs/
+.idea/
+*.swp
+*.sln.docstates
+
+# ============================================
+# Test / local artifacts
+# ============================================
+test-out*.txt
+tests-result.txt
+*.log
+coverage*.xml
+coverage*.json
+
+# ============================================
+# Tooling (opencode/playwright temp)
+# ============================================
+.playwright-cli/
+node_modules/
+package-lock.json
+package.json
+
+# ============================================
+# Secrets / local config (never commit real credentials)
+# ============================================
+appsettings.Local.json
+appsettings.Development.local.json
+*.pfx
+*.p12
+.env
+.env.*
+!.env.example
+secrets/

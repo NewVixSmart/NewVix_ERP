@@ -1,0 +1,51 @@
+@model Silk.Trading.Web.Controllers.LoginViewModel
+@{ Layout = null; ViewData["Title"] = "تسجيل الدخول"; }
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تسجيل الدخول - سلك</title>
+    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+    <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); }
+        .login-card { background: #fff; border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .login-card h2 { font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 0.5rem; }
+        .login-card .subtitle { color: #64748b; text-align: center; margin-bottom: 2rem; font-size: 0.9rem; }
+        .form-control { border-radius: 8px; padding: 0.75rem 1rem; }
+        .btn-primary { border-radius: 8px; padding: 0.75rem; font-weight: 600; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h2><i class="bi bi-shop" aria-hidden="true"></i> سلك</h2>
+            <p class="subtitle">نظام التجارة - تسجيل الدخول</p>
+
+            <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="Username" class="form-label"></label>
+                    <input asp-for="Username" class="form-control" placeholder="أدخل اسم المستخدم" autofocus />
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" placeholder="أدخل كلمة المرور" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="mb-3 form-check">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> دخول
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

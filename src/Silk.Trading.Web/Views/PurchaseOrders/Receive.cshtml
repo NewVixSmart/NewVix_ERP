@@ -1,0 +1,65 @@
+@model Silk.Trading.Web.Models.Purchases.PurchaseOrder
+@using Silk.Trading.Web.Models.Purchases
+@{ ViewData["Title"] = $"استلام: {Model.OrderNumber}"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-box-arrow-in-down text-primary"></i> استلام: @Model.OrderNumber</h2>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<p class="text-muted">أدخل الكمية/العدد المستلم لكل صنف (لا يتجاوز المطلوب).</p>
+
+<div class="table-container">
+    <table class="table mb-0">
+        <thead><tr><th scope="col">الصنف</th><th>العدد المطلوب</th><th>الكمية المطلوبة</th><th>المستلم عدد</th><th>المستلم كمية</th><th class="text-center">استلام</th></tr></thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                var remainingCount = item.Count - item.ReceivedCount;
+                var remainingQty = item.Quantity - item.ReceivedQty;
+                @if (remainingCount > 0 || remainingQty > 0)
+                {
+                    <tr>
+                        <td>@item.Item.Name</td>
+                        <td>@item.Count</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.ReceivedCount</td>
+                        <td>@item.ReceivedQty</td>
+                        <td class="text-center">
+                            <form asp-action="Receive" asp-route-id="@Model.Id" method="post" class="row g-1 align-items-center">
+                                <input type="hidden" name="orderItemId" value="@item.Id" />
+                                <div class="col">
+                                    <label class="small d-block">عدد</label>
+                                    <input type="number" name="receiveCount" step="0.01" min="0" max="@remainingCount" class="form-control form-control-sm" value="0" />
+                                </div>
+                                <div class="col">
+                                    <label class="small d-block">كمية</label>
+                                    <input type="number" name="receiveQty" step="0.01" min="0" max="@remainingQty" class="form-control form-control-sm" value="0" />
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-sm btn-primary mt-2"><i class="bi bi-box-arrow-in-down"></i></button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td>@item.Item.Name</td>
+                        <td>@item.Count</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.ReceivedCount</td>
+                        <td>@item.ReceivedQty</td>
+                        <td class="text-center"><span class="badge bg-success">مستلم</span></td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

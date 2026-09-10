@@ -1,0 +1,41 @@
+@model IEnumerable<Silk.Trading.Web.Models.Stock.StockTransfer>
+@inject Silk.Trading.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "سجلات نقل المخزون"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-arrow-left-right text-primary"></i> سجلات نقل المخزون</h2>
+    @if (await Perm.HasAsync("StockTransfers.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> تحويل جديد</a>
+    }
+</div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th scope="col">رقم التحويل</th>
+                <th scope="col">المستودع المصدر</th>
+                <th scope="col">المستودع الوجهة</th>
+                <th scope="col">التاريخ</th>
+                <th scope="col">عدد الأصناف</th>
+                <th scope="col">بواسطة</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td><code>@t.TransferNumber</code></td>
+                    <td><strong>@t.SourceWarehouse?.Name</strong></td>
+                    <td><strong>@t.TargetWarehouse?.Name</strong></td>
+                    <td>@t.TransferDate.ToString("dd/MM/yyyy")</td>
+                    <td>@t.Items.Count</td>
+                    <td>@(t.CreatedBy ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<partial name="_Pager" />

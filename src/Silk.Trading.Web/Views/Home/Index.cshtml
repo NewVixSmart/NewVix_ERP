@@ -1,0 +1,150 @@
+@model Silk.Trading.Web.ViewModels.Dashboard.DashboardViewModel
+@inject Silk.Trading.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "لوحة التحكم"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-speedometer2 text-primary"></i> لوحة التحكم</h2>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">إجمالي الأصناف</div>
+                    <h3 class="mb-0 mt-1">@Model.TotalItems</h3>
+                </div>
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-box-seam"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">العملاء</div>
+                    <h3 class="mb-0 mt-1">@Model.TotalCustomers</h3>
+                </div>
+                <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-people"></i></div>
+            </div>
+        </div>
+    </div>
+    @if (await Perm.HasAsync("Purchases.View"))
+    {
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">إجمالي المشتريات</div>
+                    <h3 class="mb-0 mt-1">@Model.TotalPurchaseAmount.ToString("N0")</h3>
+                </div>
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-cart-dash"></i></div>
+            </div>
+        </div>
+    </div>
+    }
+    @if (await Perm.HasAsync("Sales.View"))
+    {
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">إجمالي المبيعات</div>
+                    <h3 class="mb-0 mt-1">@Model.TotalSaleAmount.ToString("N0")</h3>
+                </div>
+                <div class="stat-icon bg-info bg-opacity-10 text-info"><i class="bi bi-cart-check"></i></div>
+            </div>
+        </div>
+    </div>
+    }
+</div>
+
+@if (Model.LowStockItems.Any())
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-exclamation-triangle"></i> تنبيه: أصناف بمخزون منخفض (@Model.LowStockCount)</span>
+            @if (await Perm.HasAsync("Stock.View"))
+            {
+                <a asp-controller="Stock" asp-action="LowStock" class="btn btn-sm btn-dark"><i class="bi bi-boxes"></i> عرض الكل</a>
+            }
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead><tr><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد (عدد/كمية)</th><th scope="col">الحد الأدنى</th><th scope="col">النقص</th></tr></thead>
+                <tbody>
+                    @foreach (var item in Model.LowStockItems)
+                    {
+                        <tr>
+                            <td><strong>@item.Name</strong></td>
+                            <td>@item.CategoryName</td>
+                            <td><span class="badge bg-warning text-dark">@item.CurrentCount.ToString("N2") / @item.CurrentQuantity.ToString("N2")</span></td>
+                            <td>@item.MinCount.ToString("N2") / @item.MinQuantity.ToString("N2")</td>
+                            <td class="text-danger fw-bold">
+                                @if (item.IsCountLow) { <span>عدد: @item.CountDeficit.ToString("N2")</span> }
+                                @if (item.IsQuantityLow) { <span>كمية: @item.QuantityDeficit.ToString("N2")</span> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    @if (await Perm.HasAsync("Purchases.View"))
+    {
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cart-dash"></i> آخر المشتريات</span>
+                <a asp-controller="Purchases" asp-action="Index" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th scope="col">الفاتورة</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
+                    <tbody>
+                        @foreach (var inv in Model.RecentPurchases)
+                        {
+                            <tr>
+                                <td><code>@inv.InvoiceNumber</code></td>
+                                <td>@inv.PartyName</td>
+                                <td>@inv.InvoiceDate.ToString("dd/MM")</td>
+                                <td class="fw-bold">@inv.NetAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    }
+    @if (await Perm.HasAsync("Sales.View"))
+    {
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cart-check"></i> آخر المبيعات</span>
+                <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-primary">عرض الكل</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th scope="col">الفاتورة</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
+                    <tbody>
+                        @foreach (var inv in Model.RecentSales)
+                        {
+                            <tr>
+                                <td><code>@inv.InvoiceNumber</code></td>
+                                <td>@inv.PartyName</td>
+                                <td>@inv.InvoiceDate.ToString("dd/MM")</td>
+                                <td class="fw-bold">@inv.NetAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    }
+</div>

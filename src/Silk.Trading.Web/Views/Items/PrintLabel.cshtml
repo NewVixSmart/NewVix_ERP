@@ -1,0 +1,45 @@
+@model Silk.Trading.Web.Models.Core.Item
+@{
+    ViewData["Title"] = "طباعة ملصق الصنف";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ملصق - @Model.Name</title>
+    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        * { font-family: 'Arial', 'Cairo', sans-serif; }
+        body { margin: 0; padding: 0; }
+        .label { width: 100%; padding: 16px; border: 1px solid #ddd; }
+        .label-body { text-align: center; }
+        .label-title { font-size: 22px; font-weight: 700; color: #1e293b; }
+        .label-item { font-size: 18px; font-weight: 600; color: #2563eb; }
+        .label-meta { font-size: 14px; color: #475569; margin-top: 6px; }
+        .label-price { font-size: 20px; font-weight: 700; color: #161515; margin-top: 6px; }
+        .label-barcode { margin-top: 12px; }
+        @@media print {
+            .no-print { display: none !important; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="label">
+        <div class="label-body">
+            <div class="label-title">سلك للتجارة</div>
+            <div class="label-item">@Model.Name</div>
+            <div class="label-meta">الكود: @(Model.Code ?? "—")</div>
+            <div class="label-price">@Model.SalePrice.ToString("N2") @(Model.CountUnit?.Name ?? Model.QuantityUnit?.Name ?? "")</div>
+            <div class="label-barcode">
+                <partial name="_Barcode" model="@(Model.Barcode ?? Model.Code ?? $"ITM{Model.Id:D8}")" />
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-3 no-print">
+        <button type="button" class="btn btn-primary" onclick="window.print()">طباعة الملصق</button>
+    </div>
+</body>
+</html>
