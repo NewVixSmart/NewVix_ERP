@@ -85,6 +85,53 @@ public class DashboardService : IDashboardService
             NetAmount = s.NetAmount
         }).ToList();
 
+        await LoadDueAlertsAsync(vm);
+
         return vm;
+    }
+
+    private async Task LoadDueAlertsAsync(DashboardViewModel vm)
+    {
+        var today = DateTime.Today;
+
+        var sales = await _db.SaleInvoices
+            .AsNoTracking()
+            .Select(s => new { s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate })
+            .ToListAsync();
+        var purchases = await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Select(p => new { p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate })
+            .ToListAsync();
+
+        (vm.OverdueReceivableCount, vm.OverdueReceivableTotal) =
+            DueAggregates(sales.Select(s => (s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate)), today, upcoming: false);
+        (vm.DueSoonReceivableCount, vm.DueSoonReceivableTotal) =
+            DueAggregates(sales.Select(s => (s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate)), today, upcoming: true);
+        (vm.OverduePayableCount, vm.OverduePayableTotal) =
+            DueAggregates(purchases.Select(p => (p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate)), today, upcoming: false);
+        (vm.DueSoonPayableCount, vm.DueSoonPayableTotal) =
+            DueAggregates(purchases.Select(p => (p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate)), today, upcoming: true);
+    }
+
+    private static (int Count, decimal Total) DueAggregates(
+        IEnumerable<(decimal Net, decimal Paid, DateTime Invoice, DateTime? Due)> items,
+        DateTime today,
+        bool upcoming)
+    {
+        int count = 0;
+        decimal total = 0;
+        foreach (var (net, paid, invoice, due) in items)
+        {
+            var outstanding = net - paid;
+            if (outstanding <= 0.005m) continue;
+            var dueDate = (due ?? invoice).Date;
+            bool hit = upcoming
+                ? dueDate >= today && dueDate <= today.AddDays(7)
+                : dueDate < today;
+            if (!hit) continue;
+            count++;
+            total += outstanding;
+        }
+        return (count, total);
     }
 }

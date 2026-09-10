@@ -431,6 +431,22 @@ public class ReportsController : Controller
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"budget-variance-{year}.xlsx");
     }
 
+    // ---------- Aging (القائمة العمرية) ----------
+
+    [RequirePerm("Aging.View")]
+    public async Task<IActionResult> Aging()
+    {
+        return View(await _report.AgingAsync());
+    }
+
+    [HttpGet]
+    [RequirePerm("Aging.Export")]
+    public async Task<IActionResult> AgingXlsx()
+    {
+        var bytes = await _report.ExportAgingXlsxAsync();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"aging_{DateTime.Today:yyyyMMdd}.xlsx");
+    }
+
     // ---------- Financial report exports (PDF + XLSX) ----------
 
     [HttpGet]

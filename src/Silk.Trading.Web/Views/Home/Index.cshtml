@@ -59,6 +59,43 @@
     }
 </div>
 
+@if (Model.OverdueReceivableCount > 0 || Model.OverduePayableCount > 0 || Model.DueSoonReceivableCount > 0 || Model.DueSoonPayableCount > 0)
+{
+    <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-hourglass-split"></i> تنبيه: فواتير متأخرة أو تستحق خلال 7 أيام</span>
+            @if (await Perm.HasAsync("Aging.View"))
+            {
+                <a asp-controller="Reports" asp-action="Aging" class="btn btn-sm btn-light"><i class="bi bi-hourglass-split"></i> القائمة العمرية</a>
+            }
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <caption class="visually-hidden">فواتير متأخرة أو تستحق قريباً مع عددها وإجماليها</caption>
+                <thead><tr><th scope="col">الذمم</th><th scope="col">الحالة</th><th scope="col">عدد الفواتير</th><th scope="col">الإجمالي</th></tr></thead>
+                <tbody>
+                    @if (Model.OverdueReceivableCount > 0)
+                    {
+                        <tr><td>عملاء</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverdueReceivableCount</td><td class="fw-bold">@Model.OverdueReceivableTotal.ToString("N2")</td></tr>
+                    }
+                    @if (Model.OverduePayableCount > 0)
+                    {
+                        <tr><td>موردون</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverduePayableCount</td><td class="fw-bold">@Model.OverduePayableTotal.ToString("N2")</td></tr>
+                    }
+                    @if (Model.DueSoonReceivableCount > 0)
+                    {
+                        <tr><td>عملاء</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonReceivableCount</td><td class="fw-bold">@Model.DueSoonReceivableTotal.ToString("N2")</td></tr>
+                    }
+                    @if (Model.DueSoonPayableCount > 0)
+                    {
+                        <tr><td>موردون</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonPayableCount</td><td class="fw-bold">@Model.DueSoonPayableTotal.ToString("N2")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 @if (Model.LowStockItems.Any())
 {
     <div class="card mb-4 border-warning">

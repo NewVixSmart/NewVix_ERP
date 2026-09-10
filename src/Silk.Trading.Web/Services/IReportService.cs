@@ -5,6 +5,7 @@ namespace Silk.Trading.Web.Services;
 public interface IReportService
 {
     Task<DashboardReportViewModel> GetDashboardAsync();
+    Task<AgingReportViewModel> AgingAsync();
     Task<TrialBalanceReportViewModel> TrialBalanceAsync(DateTime asOf);
     Task<IncomeStatementReportViewModel> IncomeStatementAsync(DateTime from, DateTime to);
     Task<BalanceSheetReportViewModel> BalanceSheetAsync(DateTime asOf);
@@ -22,5 +23,6 @@ public interface IReportService
     Task<byte[]> ExportPaymentsXlsxAsync(DateTime from, DateTime to);
 
     Task<byte[]> ExportAuditLedgerXlsxAsync(DateTime? from, DateTime? to, int? accountId, Models.Accounting.JournalSource? source);
+    Task<byte[]> ExportAgingXlsxAsync();
     Task<byte[]> ExportBudgetVarianceXlsxAsync(int year, IReadOnlyList<(string Code, string Name, decimal Budget, decimal Actual, decimal Variance, decimal VariancePct)> rows);
 }

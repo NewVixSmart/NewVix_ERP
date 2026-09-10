@@ -87,5 +87,18 @@
                 </div>
             </div>
         </div>
-    }
+        }
+        @if (await Perm.HasAsync("Aging.View"))
+        {
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body py-5">
+                    <i class="bi bi-hourglass-split text-warning" style="font-size:3rem;"></i>
+                    <h5 class="mt-3">القائمة العمرية</h5>
+                    <p class="text-muted small">تحليل ذمم العملاء والموردين حسب تاريخ الاستحقاق مع تصدير Excel</p>
+                    <a asp-action="Aging" class="btn btn-primary"><i class="bi bi-arrow-left"></i> فتح التقرير</a>
+                </div>
+            </div>
+        </div>
+        }
 </div>

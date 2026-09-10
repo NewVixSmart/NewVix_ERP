@@ -432,3 +432,17 @@ Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPN
 ### P5b — README جذر احترافي للمستودع — مكتمل (2026-09-10)
 
 `README.md` في جذر المستودع: نظرة عامة + بنية المشروع (slnx+src/tests/aspire/docs)، أبرز الميزات، تشغيل محلي خطوة-بخطوة (restore/build/test/run) مع عنوان `:5165` وcreds التجريبية الثلاث، قسم إنتاج (Docker عبر `.env`+`SQL_SA_PASSWORD` + CORS/JWT الحوافز)، بوابة CI والتضمين، فهرس التوثيق، وجدول الأذونات. بلا تغيير كود.
+
+### P5c — القائمة العمرية (Aging A/R + A/P) وتنبيهات الاستحقاق — مكتمل ومُتحقَّق (2026-09-10)
+
+**الميزة:** تحليل ذمم العملاء والموردين حسب عمر الاستحقاق + تنبيهات فورية في لوحة التحكم.
+
+- **البيانات:** استُغلت البنية الجاهزة — `SaleInvoice`/`PurchaseInvoice` بكل من `PaymentTerms` (OnReceipt/Net7/Net15/Net30/Net60) و`DueDate` (nullable) و`NetAmount`/`PaidAmount` دون أي مهاجرة. مرجع الاستحقاق = `DueDate ?? InvoiceDate` (يشمل فواتير OnReceipt التي كانت مستثناة سابقًا في `ReportService.GetDashboardAsync`).
+- **الجديد:**
+  - `ViewModels/Reports/AgingReportViewModel.cs`: `AgingBucketRow` (لم يستحق / 1-30 / 31-60 / 61-90 / +90 / الإجمالي) + مجاميع A/R وA/P.
+  - `ReportService.AgingAsync()`: تجميع الفواتير المفتوحة (مستحق > 0.005) لكل طرف، حذف المُسَدَّدة بالكامل؛ و`ExportAgingXlsxAsync()` بورقة لكل من ذمم العملاء والموردين.
+  - `ReportsController`: `Aging` (عرض) + `AgingXlsx` (تصدير).
+  - `Views/Reports/Aging.cshtml`: 4 بطاقات ملخص + جدولا A/R وA/P (scope/caption + aria-labelledby) + زر تصدير مُقيَّد بالصلاحية.
+  - `PermissionCatalog`: وحدة `Aging` (View/Export) + إدخال قائمة جانبية «القائمة العمرية»؛ `PermissionDefaults`: إضافة إلى مدير الحسابات.
+  - لوحة التحكم (`DashboardService` + `DashboardViewModel` + `Views/Home/Index.cshtml`): بطاقة «فواتير متأخرة أو تستحق خلال 7 أيام» لذمم العملاء والموردين (عدد + إجمالي) مع رابط للقائمة العمرية.
+- **التحقق:** `dotnet build Silk.Trading.slnx` = 0W/0E؛ اختبارات **122/122 PASS** (117 سابقة + 5 جديدة في `AgingTests`: التقسيم العمري حسب تاريخ الاستحقاق، فواتير OnReceipt، استبعاد المسدد بالكامل، التجميع الفارغ، صلاحبة ملف XLSX)؛ بوابة Playwright+axe `GATE: PASS` على `/Reports/Aging` و`/` و`/Reports` (200 + صفر انتهاكات Critical/Serious + صفر أخطاء console).

@@ -664,4 +664,131 @@ public class ReportService : IReportService
         wb.SaveAs(ms);
         return await Task.FromResult(ms.ToArray());
     }
+
+    public async Task<AgingReportViewModel> AgingAsync()
+    {
+        var today = DateTime.Today;
+        var vm = new AgingReportViewModel { AsOf = today };
+
+        var saleInvoices = await _db.SaleInvoices
+            .AsNoTracking()
+            .Include(s => s.Customer)
+            .Where(s => s.PaidAmount < s.NetAmount)
+            .ToListAsync();
+
+        vm.Receivables = saleInvoices
+            .Select(s => new { Name = s.Customer?.Name ?? "—", Due = s.DueDate ?? s.InvoiceDate, Outstanding = s.NetAmount - s.PaidAmount })
+            .Where(x => x.Outstanding > 0.005m)
+            .GroupBy(x => x.Name)
+            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))
+            .OrderByDescending(r => r.Total)
+            .ToList();
+
+        var purchaseInvoices = await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Include(p => p.Supplier)
+            .Where(p => p.PaidAmount < p.NetAmount)
+            .ToListAsync();
+
+        vm.Payables = purchaseInvoices
+            .Select(p => new { Name = p.Supplier?.Name ?? "—", Due = p.DueDate ?? p.InvoiceDate, Outstanding = p.NetAmount - p.PaidAmount })
+            .Where(x => x.Outstanding > 0.005m)
+            .GroupBy(x => x.Name)
+            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))
+            .OrderByDescending(r => r.Total)
+            .ToList();
+
+        return vm;
+    }
+
+    private static AgingBucketRow BuildAgingRow(string name, IEnumerable<(DateTime Due, decimal Amount)> items, DateTime asOf)
+    {
+        var row = new AgingBucketRow { PartyName = name };
+        foreach (var (due, amount) in items)
+        {
+            var days = (asOf.Date - due.Date).TotalDays;
+            if (days <= 0) row.Current += amount;
+            else if (days <= 30) row.Days1To30 += amount;
+            else if (days <= 60) row.Days31To60 += amount;
+            else if (days <= 90) row.Days61To90 += amount;
+            else row.Days90Plus += amount;
+        }
+        return row;
+    }
+
+    public async Task<byte[]> ExportAgingXlsxAsync()
+    {
+        var vm = await AgingAsync();
+        using var wb = new XLWorkbook();
+
+        var ar = wb.Worksheets.Add("ذمم العملاء");
+        WriteReportHeading(ar, 1, $"القائمة العمرية — ذمم العملاء حتى {vm.AsOf:dd/MM/yyyy}");
+        ar.Range(3, 1, 3, 7).Style.Font.Bold = true;
+        ar.Cell(3, 1).Value = "العميل";
+        ar.Cell(3, 2).Value = "لم يستحق";
+        ar.Cell(3, 3).Value = "1-30 يوم";
+        ar.Cell(3, 4).Value = "31-60 يوم";
+        ar.Cell(3, 5).Value = "61-90 يوم";
+        ar.Cell(3, 6).Value = "أكثر من 90";
+        ar.Cell(3, 7).Value = "الإجمالي";
+        int arRow = 4;
+        foreach (var row in vm.Receivables)
+        {
+            ar.Cell(arRow, 1).Value = row.PartyName;
+            ar.Cell(arRow, 2).Value = (double)row.Current;
+            ar.Cell(arRow, 3).Value = (double)row.Days1To30;
+            ar.Cell(arRow, 4).Value = (double)row.Days31To60;
+            ar.Cell(arRow, 5).Value = (double)row.Days61To90;
+            ar.Cell(arRow, 6).Value = (double)row.Days90Plus;
+            ar.Cell(arRow, 7).Value = (double)row.Total;
+            arRow++;
+        }
+        ar.Cell(arRow, 1).Value = "الإجمالي";
+        ar.Cell(arRow, 1).Style.Font.Bold = true;
+        ar.Cell(arRow, 2).Value = (double)vm.ArCurrent;
+        ar.Cell(arRow, 3).Value = (double)vm.ArDays1To30;
+        ar.Cell(arRow, 4).Value = (double)vm.ArDays31To60;
+        ar.Cell(arRow, 5).Value = (double)vm.ArDays61To90;
+        ar.Cell(arRow, 6).Value = (double)vm.ArDays90Plus;
+        ar.Cell(arRow, 7).Value = (double)vm.ArTotal;
+        ar.Cell(arRow, 7).Style.Font.Bold = true;
+        ar.Columns().AdjustToContents();
+
+        var ap = wb.Worksheets.Add("ذمم الموردين");
+        WriteReportHeading(ap, 1, $"القائمة العمرية — ذمم الموردين حتى {vm.AsOf:dd/MM/yyyy}");
+        ap.Range(3, 1, 3, 7).Style.Font.Bold = true;
+        ap.Cell(3, 1).Value = "المورد";
+        ap.Cell(3, 2).Value = "لم يستحق";
+        ap.Cell(3, 3).Value = "1-30 يوم";
+        ap.Cell(3, 4).Value = "31-60 يوم";
+        ap.Cell(3, 5).Value = "61-90 يوم";
+        ap.Cell(3, 6).Value = "أكثر من 90";
+        ap.Cell(3, 7).Value = "الإجمالي";
+        int apRow = 4;
+        foreach (var row in vm.Payables)
+        {
+            ap.Cell(apRow, 1).Value = row.PartyName;
+            ap.Cell(apRow, 2).Value = (double)row.Current;
+            ap.Cell(apRow, 3).Value = (double)row.Days1To30;
+            ap.Cell(apRow, 4).Value = (double)row.Days31To60;
+            ap.Cell(apRow, 5).Value = (double)row.Days61To90;
+            ap.Cell(apRow, 6).Value = (double)row.Days90Plus;
+            ap.Cell(apRow, 7).Value = (double)row.Total;
+            apRow++;
+        }
+        ap.Cell(apRow, 1).Value = "الإجمالي";
+        ap.Cell(apRow, 1).Style.Font.Bold = true;
+        ap.Cell(apRow, 2).Value = (double)vm.ApCurrent;
+        ap.Cell(apRow, 3).Value = (double)vm.ApDays1To30;
+        ap.Cell(apRow, 4).Value = (double)vm.ApDays31To60;
+        ap.Cell(apRow, 5).Value = (double)vm.ApDays61To90;
+        ap.Cell(apRow, 6).Value = (double)vm.ApDays90Plus;
+        ap.Cell(apRow, 7).Value = (double)vm.ApTotal;
+        ap.Cell(apRow, 7).Style.Font.Bold = true;
+        ap.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
 }

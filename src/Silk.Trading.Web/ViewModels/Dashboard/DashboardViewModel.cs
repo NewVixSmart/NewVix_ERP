@@ -12,4 +12,13 @@ public class DashboardViewModel
     public List<LowStockItemViewModel> LowStockItems { get; set; } = new();
     public List<RecentPurchaseViewModel> RecentPurchases { get; set; } = new();
     public List<RecentSaleViewModel> RecentSales { get; set; } = new();
+
+    public int OverdueReceivableCount { get; set; }
+    public decimal OverdueReceivableTotal { get; set; }
+    public int OverduePayableCount { get; set; }
+    public decimal OverduePayableTotal { get; set; }
+    public int DueSoonReceivableCount { get; set; }
+    public decimal DueSoonReceivableTotal { get; set; }
+    public int DueSoonPayableCount { get; set; }
+    public decimal DueSoonPayableTotal { get; set; }
 }

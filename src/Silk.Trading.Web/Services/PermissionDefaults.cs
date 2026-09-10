@@ -20,6 +20,7 @@ public static class PermissionDefaults
             "StockTransfers.View", "StockTransfers.Create",
             "Reports.View", "Reports.Dashboard", "Reports.Export",
             "AuditLedger.View", "AuditLedger.Export",
+            "Aging.View", "Aging.Export",
             "Shipments.View", "Shipments.Create", "Shipments.Edit",
             "Batch.SalesCreate", "Batch.AdjustmentCreate",
             "FiscalClose.Close",
