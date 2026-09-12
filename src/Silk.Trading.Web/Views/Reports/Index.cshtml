@@ -9,7 +9,7 @@
 <p class="text-muted mb-0">اختار نوع التقرير لعرض ملخص وحركات الفترة</p>
 
 <div class="row g-4">
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-cart-check text-primary" style="font-size:3rem;"></i>
@@ -19,7 +19,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-cart-dash text-warning" style="font-size:3rem;"></i>
@@ -29,7 +29,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-wallet2 text-success" style="font-size:3rem;"></i>
@@ -42,7 +42,7 @@
 </div>
 
 <div class="row g-4 mt-1">
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-box-seam text-primary" style="font-size:3rem;"></i>
@@ -52,7 +52,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-boxes text-warning" style="font-size:3rem;"></i>
@@ -65,7 +65,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-12 col-sm-6 col-lg-4">
         <div class="card h-100 text-center">
             <div class="card-body py-5">
                 <i class="bi bi-balance-scale text-danger" style="font-size:3rem;"></i>
@@ -77,7 +77,7 @@
     </div>
     @if (await Perm.HasAsync("AuditLedger.View"))
     {
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-lg-4">
             <div class="card h-100 text-center">
                 <div class="card-body py-5">
                     <i class="bi bi-journal-bookmark text-dark" style="font-size:3rem;"></i>
@@ -90,7 +90,7 @@
         }
         @if (await Perm.HasAsync("Aging.View"))
         {
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-lg-4">
             <div class="card h-100 text-center">
                 <div class="card-body py-5">
                     <i class="bi bi-hourglass-split text-warning" style="font-size:3rem;"></i>
@@ -101,7 +101,7 @@
             </div>
         </div>
         }
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-lg-4">
             <div class="card h-100 text-center">
                 <div class="card-body py-5">
                     <i class="bi bi-cash-stack text-success" style="font-size:3rem;"></i>

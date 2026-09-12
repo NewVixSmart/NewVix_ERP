@@ -17,9 +17,9 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h4 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h4></div></div>
-    <div class="col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h4 class="mb-0 text-primary">@Model.TotalCredit.ToString("N2")</h4></div></div>
-    <div class="col-md-4"><div class="stat-card text-center">
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h4 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h4 class="mb-0 text-primary">@Model.TotalCredit.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
         { <h4 class="mb-0 text-success"><i class="bi bi-check-circle"></i> متوازن</h4> }

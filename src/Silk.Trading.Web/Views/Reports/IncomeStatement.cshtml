@@ -21,10 +21,10 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h4 class="mb-0 text-success">@Model.TotalRevenue.ToString("N2")</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h4 class="mb-0 text-danger">@Model.TotalExpenses.ToString("N2")</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h4 class="mb-0">@Model.NetRevenue.ToString("N2")</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h4 class="mb-0 text-success">@Model.TotalRevenue.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h4 class="mb-0 text-danger">@Model.TotalExpenses.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h4 class="mb-0">@Model.NetRevenue.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h4></div></div>
 </div>
 
 <div class="table-container mb-4">

@@ -33,22 +33,54 @@
             qs += "&source=" + Uri.EscapeDataString(source);
         return qs;
     };
+    const int windowSize = 2;
+    var windowStart = Math.Max(2, page - windowSize);
+    var windowEnd = Math.Min(totalPages - 1, page + windowSize);
 }
 @if (totalPages > 1)
 {
     <nav aria-label="ترقيم الصفحات" class="mt-3">
-        <ul class="pagination justify-content-center mb-0">
+        <ul class="pagination justify-content-center mb-0 flex-wrap">
             <li class="page-item @(page <= 1 ? "disabled" : "")">
                 <a class="page-link" href="@(page > 1 ? href((page - 1).ToString()) : "#")" aria-label="السابق" tabindex="@(page > 1 ? 0 : -1)">
                     <span aria-hidden="true">&raquo;</span>
                 </a>
             </li>
-            @for (var i = 1; i <= totalPages; i++)
+
+            <li class="page-item @(page == 1 ? "active" : "")" @(page == 1 ? "aria-current=\"page\"" : "")>
+                <a class="page-link" href="@href("1")">1</a>
+            </li>
+
+            @if (windowStart > 2)
+            {
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&hellip;</span>
+                    <span class="visually-hidden">صفحات أخرى</span>
+                </li>
+            }
+
+            @for (var i = windowStart; i <= windowEnd; i++)
             {
                 <li class="page-item @(i == page ? "active" : "")" @(i == page ? "aria-current=\"page\"" : "")>
                     <a class="page-link" href="@href(i.ToString())">@i</a>
                 </li>
             }
+
+            @if (windowEnd < totalPages - 1)
+            {
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&hellip;</span>
+                    <span class="visually-hidden">صفحات أخرى</span>
+                </li>
+            }
+
+            @if (totalPages > 1)
+            {
+                <li class="page-item @(page == totalPages ? "active" : "")" @(page == totalPages ? "aria-current=\"page\"" : "")>
+                    <a class="page-link" href="@href(totalPages.ToString())">@totalPages</a>
+                </li>
+            }
+
             <li class="page-item @(page >= totalPages ? "disabled" : "")">
                 <a class="page-link" href="@(page < totalPages ? href((page + 1).ToString()) : "#")" aria-label="التالي" tabindex="@(page < totalPages ? 0 : -1)">
                     <span aria-hidden="true">&laquo;</span>

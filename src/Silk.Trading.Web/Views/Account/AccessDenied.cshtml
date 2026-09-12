@@ -5,14 +5,18 @@
     <meta charset="utf-8" />
     <title>غير مصرح - سلك</title>
     <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+    <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
     <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
-    <style>* { font-family: 'Cairo', sans-serif; }</style>
+    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
 </head>
-<body class="bg-light d-flex align-items-center" style="min-height:100vh;">
-    <div class="container text-center">
-        <h1 class="text-danger mb-3">غير مصرح</h1>
-        <p class="text-muted">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
-        <a href="/" class="btn btn-primary">العودة للرئيسية</a>
+<body>
+    <div class="login-stage">
+        <div class="auth-card text-center">
+            <div class="brand-monogram" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
+            <h2>غير مصرح</h2>
+            <p class="subtitle">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
+            <a href="/" class="btn btn-primary w-100"><i class="bi bi-house-door" aria-hidden="true"></i> العودة للرئيسية</a>
+        </div>
     </div>
 </body>
 </html>
