@@ -5,6 +5,7 @@ using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Core;
 using Silk.Trading.Web.Models.Purchases;
 using Silk.Trading.Web.Models.Sales;
+using Silk.Trading.Web.Models.Stock;
 using Silk.Trading.Web.Services;
 using Xunit;
 
@@ -189,6 +190,35 @@ public sealed class MilestoneM8aTests : IDisposable
     }
 
     // ---------- Branch CRUD ----------
+
+    [Fact]
+    public async Task Sale_WithLayers_AndAccounting_PostsCogs_AtBaseCost()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var (itemId, custId, supId) = await SeedSaleAsync(db);
+        db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var accounting = new AccountingService(db);
+        var svc = new InventoryService(db, accounting);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        var invoice = new SaleInvoice { CustomerId = custId, CurrencyId = usd.Id, ExchangeRate = 500m };
+
+        var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 4, 80) }, "test");
+        Assert.True(ok);
+        Assert.Equal(6, (await db.StockLayers.SingleAsync()).RemainingQty);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync();
+        Assert.Equal(4, entry.Lines.Count);
+        Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
+        // value 4 × 80 = 320 USD @500 = 160,000 ; COGS 4 × 40 = 160 @500 = 80,000
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "1200" && l.Debit == 160000m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "4000" && l.Credit == 160000m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "5000" && l.Debit == 80000m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "1300" && l.Credit == 80000m);
+    }
 
     [Fact]
     public async Task Branch_CreateUpdateDelete()

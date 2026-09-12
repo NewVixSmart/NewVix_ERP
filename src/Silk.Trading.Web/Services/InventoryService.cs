@@ -52,7 +52,7 @@ public sealed class InventoryService : IInventoryService
                     movementDate: DateTime.UtcNow, user);
                 if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
 
-                await ConsumeFifoLayersAsync(stockLines, DateTime.UtcNow);
+                var (consumedQtyCost, consumedCountCost) = await ConsumeFifoLayersAsync(stockLines, DateTime.UtcNow);
 
                 invoice.TotalAmount = valid.Sum(i => i.Total);
                 invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
@@ -72,8 +72,9 @@ public sealed class InventoryService : IInventoryService
                 _db.SaleInvoices.Add(invoice);
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && invoice.NetAmount > 0)
-                    await _accounting.RecordSaleInvoiceAsync(invoice.InvoiceDate, invoice.CustomerId, invoice.NetAmount, user, branchId);
+                if (_accounting != null && (invoice.NetAmount > 0 || consumedQtyCost + consumedCountCost > 0))
+                    await _accounting.RecordSaleInvoiceAsync(invoice.InvoiceDate, invoice.CustomerId, invoice.NetAmount,
+                        consumedQtyCost + consumedCountCost, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
 
                 await tx.CommitAsync();
                 _logger?.LogInformation("فُتحت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
@@ -153,7 +154,7 @@ public sealed class InventoryService : IInventoryService
                 await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate);
 
                 if (_accounting != null && invoice.NetAmount > 0)
-                    await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, user, branchId);
+                    await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
 
                 await tx.CommitAsync();
                 _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",

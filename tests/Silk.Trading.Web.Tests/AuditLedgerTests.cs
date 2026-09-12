@@ -54,9 +54,9 @@ public sealed class AuditLedgerTests : IDisposable
     private static async Task SeedEntriesAsync(AppDbContext db)
     {
         var accounting = new AccountingService(db);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, "auditor");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, 0m, null, null, "auditor");
         await accounting.RecordReceiptAsync(new DateTime(2026, 1, 7), 300m, PaymentMethod.Cash, 1, "auditor");
-        await accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 9), 2, 200m, "auditor");
+        await accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 9), 2, 200m, null, null, "auditor");
     }
 
     private static (DateTime from, DateTime to) FullYear => (new DateTime(2026, 1, 1), new DateTime(2026, 12, 31));

@@ -11,8 +11,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!builder.Environment.IsDevelopment()
+    && (string.IsNullOrWhiteSpace(defaultConnection)
+        || defaultConnection.Contains("mssqllocaldb", StringComparison.OrdinalIgnoreCase)))
+{
+    throw new InvalidOperationException(
+        "DefaultConnection must point to a real SQL Server in production. Set ConnectionStrings__DefaultConnection (Docker/env) to a reachable server; the localdb default cannot boot outside a dev machine.");
+}
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(defaultConnection));
 
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {

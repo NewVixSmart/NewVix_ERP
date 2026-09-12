@@ -59,9 +59,15 @@ public sealed class PaymentService : IPaymentService
                 _db.Payments.Add(payment);
                 await _db.SaveChangesAsync();
 
-                var (remaining, partyBaseReduction) = await ApplyInvoiceAllocationAsync(payment, foreign);
+                var (remaining, partyBaseReduction, remainingForeign) = await ApplyInvoiceAllocationAsync(payment, foreign);
 
-                if (remaining > 0.01m)
+                var realizedFx = foreign ? decimal.Round(payment.BaseAmount - partyBaseReduction, 2) : 0m;
+                var residualAllowed = foreign
+                    && remainingForeign <= 0.005m
+                    && realizedFx > 0.01m
+                    && decimal.Round(remaining, 2) == decimal.Round(realizedFx, 2);
+
+                if (remaining > 0.01m && !residualAllowed)
                 {
                     await tx.RollbackAsync();
                     _db.ChangeTracker.Clear();
@@ -127,9 +133,10 @@ public sealed class PaymentService : IPaymentService
     private Task<bool> IsPeriodClosedAsync(DateTime date)
         => _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed);
 
-    private async Task<(decimal Remaining, decimal PartyBaseReduction)> ApplyInvoiceAllocationAsync(Payment payment, bool foreign)
+    private async Task<(decimal Remaining, decimal PartyBaseReduction, decimal RemainingForeign)> ApplyInvoiceAllocationAsync(Payment payment, bool foreign)
     {
         decimal remaining = payment.BaseAmount;
+        decimal remainingForeign = payment.Amount;
         decimal partyBaseReduction = 0m;
         var rows = new List<PaymentAllocation>();
 
@@ -148,31 +155,43 @@ public sealed class PaymentService : IPaymentService
                 var allocate = remaining;
                 if (foreign)
                 {
-                    var r1 = payment.ExchangeRate!.Value;
+                    if (remainingForeign <= 0.005m) break;
                     var r0 = inv.ExchangeRate ?? 1m;
-                    var maxAlloc = outstanding * r1 / r0;
-                    if (allocate > maxAlloc) allocate = maxAlloc;
-                    if (allocate < 0.005m) continue;
-                    var invoiceBase = decimal.Round(allocate * r0 / r1, 2);
-                    var fxDiff = decimal.Round(allocate - invoiceBase, 2);
-                    inv.PaidAmount += invoiceBase;
-                    remaining -= allocate;
+                    var outstandingBase = decimal.Round(outstanding * r0, 2);
+                    var fCap = Math.Min(remainingForeign, outstanding);
+                    if (remaining < outstandingBase)
+                    {
+                        var baseCapped = decimal.Round(remaining / r0, 2);
+                        if (fCap > baseCapped) fCap = baseCapped;
+                    }
+                    fCap = decimal.Round(fCap, 2);
+                    if (fCap < 0.005m) continue;
+                    var invoiceBase = decimal.Round(fCap * r0, 2);
+                    var paidBase = decimal.Round(fCap * payment.ExchangeRate!.Value, 2);
+                    var fxDiff = decimal.Round(paidBase - invoiceBase, 2);
+                    inv.PaidAmount += fCap;
+                    remaining -= invoiceBase;
+                    remainingForeign -= fCap;
                     partyBaseReduction += invoiceBase;
                     rows.Add(new PaymentAllocation
                     {
                         PaymentId = payment.Id,
                         InvoiceType = PaymentAllocationInvoiceType.Sales,
                         InvoiceId = inv.Id,
-                        AllocatedBaseAmount = decimal.Round(allocate, 2),
-                        ExchangeRateAtSettlement = r1,
+                        AllocatedBaseAmount = invoiceBase,
+                        ExchangeRateAtSettlement = payment.ExchangeRate,
                         FxGain = fxDiff > 0 ? fxDiff : 0m,
                         FxLoss = fxDiff < 0 ? -fxDiff : 0m
                     });
                 }
                 else
                 {
-                    if (allocate > outstanding) allocate = outstanding;
-                    inv.PaidAmount += allocate;
+                    var baseR0 = inv.ExchangeRate ?? 1m;
+                    var outstandingBase = decimal.Round(outstanding * baseR0, 2);
+                    if (allocate > outstandingBase) allocate = outstandingBase;
+                    if (allocate < 0.005m) continue;
+                    var foreignApplied = decimal.Round(allocate / baseR0, 2);
+                    inv.PaidAmount += foreignApplied;
                     remaining -= allocate;
                     partyBaseReduction += allocate;
                     rows.Add(new PaymentAllocation
@@ -204,31 +223,43 @@ public sealed class PaymentService : IPaymentService
                 var allocate = remaining;
                 if (foreign)
                 {
-                    var r1 = payment.ExchangeRate!.Value;
+                    if (remainingForeign <= 0.005m) break;
                     var r0 = inv.ExchangeRate ?? 1m;
-                    var maxAlloc = outstanding * r1 / r0;
-                    if (allocate > maxAlloc) allocate = maxAlloc;
-                    if (allocate < 0.005m) continue;
-                    var invoiceBase = decimal.Round(allocate * r0 / r1, 2);
-                    var fxDiff = decimal.Round(allocate - invoiceBase, 2);
-                    inv.PaidAmount += invoiceBase;
-                    remaining -= allocate;
+                    var outstandingBase = decimal.Round(outstanding * r0, 2);
+                    var fCap = Math.Min(remainingForeign, outstanding);
+                    if (remaining < outstandingBase)
+                    {
+                        var baseCapped = decimal.Round(remaining / r0, 2);
+                        if (fCap > baseCapped) fCap = baseCapped;
+                    }
+                    fCap = decimal.Round(fCap, 2);
+                    if (fCap < 0.005m) continue;
+                    var invoiceBase = decimal.Round(fCap * r0, 2);
+                    var paidBase = decimal.Round(fCap * payment.ExchangeRate!.Value, 2);
+                    var fxDiff = decimal.Round(paidBase - invoiceBase, 2);
+                    inv.PaidAmount += fCap;
+                    remaining -= invoiceBase;
+                    remainingForeign -= fCap;
                     partyBaseReduction += invoiceBase;
                     rows.Add(new PaymentAllocation
                     {
                         PaymentId = payment.Id,
                         InvoiceType = PaymentAllocationInvoiceType.Purchases,
                         InvoiceId = inv.Id,
-                        AllocatedBaseAmount = decimal.Round(allocate, 2),
-                        ExchangeRateAtSettlement = r1,
+                        AllocatedBaseAmount = invoiceBase,
+                        ExchangeRateAtSettlement = payment.ExchangeRate,
                         FxGain = fxDiff < 0 ? -fxDiff : 0m,
                         FxLoss = fxDiff > 0 ? fxDiff : 0m
                     });
                 }
                 else
                 {
-                    if (allocate > outstanding) allocate = outstanding;
-                    inv.PaidAmount += allocate;
+                    var baseR0 = inv.ExchangeRate ?? 1m;
+                    var outstandingBase = decimal.Round(outstanding * baseR0, 2);
+                    if (allocate > outstandingBase) allocate = outstandingBase;
+                    if (allocate < 0.005m) continue;
+                    var foreignApplied = decimal.Round(allocate / baseR0, 2);
+                    inv.PaidAmount += foreignApplied;
                     remaining -= allocate;
                     partyBaseReduction += allocate;
                     rows.Add(new PaymentAllocation
@@ -252,7 +283,7 @@ public sealed class PaymentService : IPaymentService
             await _db.SaveChangesAsync();
         }
 
-        return (remaining, partyBaseReduction);
+        return (remaining, partyBaseReduction, remainingForeign);
     }
 
     private static bool IsForeignPayment(Payment payment, Currency? currency)

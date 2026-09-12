@@ -14,13 +14,34 @@ public class AccountingService : IAccountingService
         _db = db;
     }
 
-    public async Task RecordSaleInvoiceAsync(DateTime entryDate, int customerId, decimal netAmount, string? user, int? branchId = null)
-        => await PostAsync(JournalSource.SaleInvoice, customerId, entryDate, "فاتورة بيع",
-            new[] { new JournalLine("1200", netAmount, 0), new JournalLine("4000", 0, netAmount) }, user, branchId);
+    public async Task RecordSaleInvoiceAsync(DateTime entryDate, int customerId, decimal netAmount, decimal costAmount,
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+    {
+        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
+        var localCost = decimal.Round(costAmount * (exchangeRate ?? 1m), 2);
+        var lines = new List<JournalLine>();
+        if (localValue > 0)
+        {
+            lines.Add(new JournalLine("1200", localValue, 0));
+            lines.Add(new JournalLine("4000", 0, localValue));
+        }
+        if (localCost > 0)
+        {
+            lines.Add(new JournalLine("5000", localCost, 0));
+            lines.Add(new JournalLine("1300", 0, localCost));
+        }
+        if (lines.Count == 0) throw new InvalidOperationException("فاتورة البيع بلا قيمة أو تكلفة");
+        await PostAsync(JournalSource.SaleInvoice, customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
+    }
 
-    public async Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount, string? user, int? branchId = null)
-        => await PostAsync(JournalSource.PurchaseInvoice, supplierId, entryDate, "فاتورة شراء",
-            new[] { new JournalLine("1300", netAmount, 0), new JournalLine("2000", 0, netAmount) }, user, branchId);
+    public async Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount,
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+    {
+        if (netAmount <= 0) throw new InvalidOperationException("فاتورة الشراء بلا قيمة");
+        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
+        await PostAsync(JournalSource.PurchaseInvoice, supplierId, entryDate, "فاتورة شراء",
+            new[] { new JournalLine("1300", localValue, 0), new JournalLine("2000", 0, localValue) }, user, branchId);
+    }
 
     public async Task RecordReceiptAsync(DateTime entryDate, decimal amount, PaymentMethod method, int customerId, string? user, int? branchId = null)
     {

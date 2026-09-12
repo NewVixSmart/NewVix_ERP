@@ -358,8 +358,105 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Equal(usd.Id, response.Data!.CurrencyId);
         Assert.Equal(520m, response.Data.ExchangeRate);
         Assert.Equal(1040m, response.Data.BaseAmount);
-        Assert.Equal(1000m, (await db.SaleInvoices.SingleAsync()).PaidAmount);
-        Assert.True((await db.SaleInvoices.SingleAsync()).IsPaid);
+        Assert.Equal(2m, (await db.SaleInvoices.SingleAsync()).PaidAmount); // paid in invoice's own (foreign) units
+        Assert.False((await db.SaleInvoices.SingleAsync()).IsPaid); // only 2 of 1000 USD settled
         Assert.Equal(40m, (await db.PaymentAllocations.SingleAsync()).FxGain);
+    }
+
+    // (g) Base payment against a foreign invoice is applied in invoice (foreign) units — no unit mixing.
+    [Fact]
+    public async Task BasePayment_OnForeignInvoice_AppliesInInvoiceUnits()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var cust = await SeedCustomerAsync(db);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        await SeedForeignSaleAsync(db, cust, usd.Id, 500m, 1000m);
+        var svc = await NewPaymentServiceAsync(db);
+
+        var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-6", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 1000m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+
+        Assert.True(ok, error);
+        var inv = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(2m, inv.PaidAmount); // 1000 SDG @500 covers 2 of 1000 USD
+        Assert.False(inv.IsPaid);
+        var allocation = await db.PaymentAllocations.SingleAsync();
+        Assert.Equal(1000m, allocation.AllocatedBaseAmount);
+        Assert.Null(allocation.ExchangeRateAtSettlement);
+        Assert.Equal(0m, allocation.FxGain);
+    }
+
+    // (h) Full base coverage of a foreign invoice pays it off using invoice units.
+    [Fact]
+    public async Task BasePayment_FullCoverage_OfForeignInvoice_MarksPaid()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var cust = await SeedCustomerAsync(db);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        await SeedForeignSaleAsync(db, cust, usd.Id, 500m, 1000m);
+        var svc = await NewPaymentServiceAsync(db);
+
+        var (ok, error, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-7", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 500000m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+
+        Assert.True(ok, error);
+        var inv = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(1000m, inv.PaidAmount);
+        Assert.True(inv.IsPaid);
+        Assert.Equal(500000m, (await db.PaymentAllocations.SingleAsync()).AllocatedBaseAmount);
+    }
+
+    // (i) Partial foreign payments accumulate in invoice foreign units across steps.
+    [Fact]
+    public async Task ForeignPayment_PartialSteps_AccumulateInInvoiceUnits()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var cust = await SeedCustomerAsync(db);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        await SeedForeignSaleAsync(db, cust, usd.Id, 500m, 1000m);
+        var svc = await NewPaymentServiceAsync(db);
+
+        var (ok1, err1, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-8", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 1m, CurrencyId = usd.Id, ExchangeRate = 500m,
+            Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+        Assert.True(ok1, err1);
+        var inv = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(1m, inv.PaidAmount);
+        Assert.False(inv.IsPaid);
+
+        var (ok2, err2, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-9", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 2m, CurrencyId = usd.Id, ExchangeRate = 500m,
+            Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+        Assert.True(ok2, err2);
+        Assert.Equal(3m, (await db.SaleInvoices.SingleAsync()).PaidAmount);
+
+        var (ok3, err3, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-10", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 997m, CurrencyId = usd.Id, ExchangeRate = 500m,
+            Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+        Assert.True(ok3, err3);
+        var paid = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(1000m, paid.PaidAmount);
+        Assert.True(paid.IsPaid);
     }
 }
