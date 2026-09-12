@@ -71,6 +71,15 @@ public class AccountsService
         account.ParentAccountId = model.ParentAccountId;
         account.NormalBalance = model.NormalBalance;
         account.Type = model.Type;
+
+        if (!model.IsActive && account.IsActive)
+        {
+            if (IsSystemAccount(account.Code))
+                return new AccountEditResult { Ok = false, Error = "لا يمكن تعطيل حساب نظامي مُعرَّف بالبذرة" };
+            if (await HasPostedLinesAsync(account.Id))
+                return new AccountEditResult { Ok = false, Error = "لا يمكن تعطيل حساب له قيود مرحلة" };
+        }
+
         account.IsActive = model.IsActive;
 
         if (!string.IsNullOrWhiteSpace(model.Code))

@@ -184,6 +184,9 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user)
     {
+        if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+            return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
+
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
 
@@ -228,6 +231,9 @@ public sealed class InventoryService : IInventoryService
         if (saleReturn.Status == ReturnStatus.Posted) return (false, "مرتجع البيع مرحّل بالفعل");
         if (await IsPeriodClosedAsync(saleReturn.ReturnDate))
             return (false, $"السنة المالية {saleReturn.ReturnDate.Year} مغلقة — لا يمكن ترحيل مرتجع فيها");
+
+        if (saleReturn.Items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+            return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع");
 
         var valid = saleReturn.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
@@ -287,6 +293,9 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user)
     {
+        if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+            return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
+
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
 
@@ -331,6 +340,9 @@ public sealed class InventoryService : IInventoryService
         if (purchaseReturn.Status == ReturnStatus.Posted) return (false, "مرتجع الشراء مرحّل بالفعل");
         if (await IsPeriodClosedAsync(purchaseReturn.ReturnDate))
             return (false, $"السنة المالية {purchaseReturn.ReturnDate.Year} مغلقة — لا يمكن ترحيل مرتجع فيها");
+
+        if (purchaseReturn.Items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+            return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع");
 
         var valid = purchaseReturn.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
@@ -429,6 +441,11 @@ public sealed class InventoryService : IInventoryService
                 {
                     CreateOrTopUpLayer(adjustment.ItemId, addedQty, addedCount,
                         item.PurchasePrice, item.PurchasePrice, adjustment.AdjustmentDate);
+                    await _db.SaveChangesAsync();
+                }
+                else if (addedQty < 0 || addedCount < 0)
+                {
+                    await ConsumeAdjustmentLayersAsync(adjustment.ItemId, -addedQty, -addedCount);
                     await _db.SaveChangesAsync();
                 }
 
@@ -543,6 +560,35 @@ public sealed class InventoryService : IInventoryService
         return new ConsumedCostResult(qtyCost, countCost);
     }
 
+    private async Task ConsumeAdjustmentLayersAsync(int itemId, decimal qtyToRemove, decimal countToRemove)
+    {
+        if (qtyToRemove <= 0 && countToRemove <= 0) return;
+
+        var layers = await _db.StockLayers
+            .Where(sl => sl.ItemId == itemId && (sl.RemainingQty > 0 || sl.RemainingCount > 0))
+            .OrderBy(sl => sl.DateReceived).ThenBy(sl => sl.Id)
+            .ToListAsync();
+
+        var q = qtyToRemove;
+        var c = countToRemove;
+        foreach (var layer in layers)
+        {
+            if (q > 0 && layer.RemainingQty > 0)
+            {
+                var takeQty = Math.Min(q, layer.RemainingQty);
+                layer.RemainingQty -= takeQty;
+                q -= takeQty;
+            }
+            if (c > 0 && layer.RemainingCount > 0)
+            {
+                var takeCount = Math.Min(c, layer.RemainingCount);
+                layer.RemainingCount -= takeCount;
+                c -= takeCount;
+            }
+            if (q <= 0 && c <= 0) break;
+        }
+    }
+
     private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived)
     {
         foreach (var line in lines)
@@ -606,6 +652,9 @@ public sealed class InventoryService : IInventoryService
 
     private async Task<string?> ValidateSaleReturnQuantitiesAsync(SaleReturn saleReturn, List<SaleReturnItem> valid)
     {
+        if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
+            return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
+
         if (saleReturn.SaleInvoiceId == null) return null;
 
         var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
@@ -631,6 +680,9 @@ public sealed class InventoryService : IInventoryService
 
     private async Task<string?> ValidatePurchaseReturnQuantitiesAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> valid)
     {
+        if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
+            return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
+
         if (purchaseReturn.PurchaseInvoiceId == null) return null;
 
         var invoice = await _db.PurchaseInvoices.Include(i => i.Items).AsNoTracking()
@@ -951,7 +1003,7 @@ public sealed class InventoryService : IInventoryService
     {
         var items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
         var layers = warehouseId.HasValue
-            ? await _db.StockLayers.Where(sl => sl.WarehouseId == warehouseId.Value).AsNoTracking().ToListAsync()
+            ? await _db.StockLayers.Where(sl => sl.WarehouseId == warehouseId.Value || sl.WarehouseId == null).AsNoTracking().ToListAsync()
             : await _db.StockLayers.AsNoTracking().ToListAsync();
 
         var result = items.Select(item =>

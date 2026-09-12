@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Silk.Trading.Web.Api.Dtos;
 using System.IdentityModel.Tokens.Jwt;
@@ -24,11 +25,23 @@ public class TokensController : ControllerBase
 
     [HttpPost("token")]
     [AllowAnonymous]
+    [EnableRateLimiting("token")]
     public async Task<IActionResult> CreateToken([FromBody] TokenRequest request)
     {
         var user = await _userManager.FindByNameAsync(request.Username);
-        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
+        if (user == null)
             return Unauthorized(new { message = "Invalid credentials" });
+
+        if (await _userManager.IsLockedOutAsync(user))
+            return Unauthorized(new { message = "Invalid credentials" });
+
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized(new { message = "Invalid credentials" });
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         var roles = await _userManager.GetRolesAsync(user);
         var claims = new List<Claim>

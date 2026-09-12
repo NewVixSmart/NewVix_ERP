@@ -149,6 +149,33 @@ public sealed class FiscalCloseTests : IDisposable
     }
 
     [Fact]
+    public async Task CloseYear_IncludesInactivePlAccount_WithPostedActivity()
+    {
+        using var db = CreateContext();
+        var accounting = new AccountingService(db);
+        var fiscal = CreateFiscalService(db);
+
+        await fiscal.EnsurePeriodAsync(2026);
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, null, null, "test");
+
+        var financing = await db.GLAccounts.SingleAsync(a => a.Code == "4000");
+        financing.IsActive = false;
+        await db.SaveChangesAsync();
+
+        var financial = new FinancialReportService(db);
+        var beforeClose = await financial.IncomeStatementAsync(new DateTime(2026, 1, 1), new DateTime(2026, 12, 31));
+        Assert.Equal(100m, beforeClose.TotalRevenue);
+
+        var summary = await fiscal.CloseYearAsync(2026, "admin");
+
+        Assert.Equal(1, summary.AccountsCleared);
+        Assert.Equal(100m, summary.NetIncomeToRetainedEarnings);
+
+        var r3001 = await db.GLAccounts.SingleAsync(a => a.Code == "3001");
+        Assert.Equal(100m, (await db.JournalEntryLines.Where(l => l.AccountId == r3001.Id).ToListAsync()).Sum(l => l.Credit));
+    }
+
+    [Fact]
     public async Task Guard_PostingInClosedYear_Throws()
     {
         using var db = CreateContext();

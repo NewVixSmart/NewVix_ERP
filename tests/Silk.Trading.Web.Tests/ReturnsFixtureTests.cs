@@ -334,4 +334,64 @@ public sealed class ReturnsFixtureTests : IDisposable
         Assert.Equal(90m, lines.Where(l => l.AccountId == a1200.Id).Sum(l => l.Credit));
         Assert.Equal(40m, lines.Where(l => l.AccountId == a1300.Id).Sum(l => l.Debit));
     }
+
+    // ---------- Negative quantity rejection (N-7) ----------
+
+    [Fact]
+    public async Task SaleReturnDraft_NegativeQuantity_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 3, 1) };
+        var (ok, err, _) = await svc.CreateSaleReturnDraftAsync(ret,
+            new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = -3, Count = 0, UnitPrice = 80 } }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالبة", err);
+        Assert.Equal(0, await db.SaleReturns.CountAsync());
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        Assert.Equal(0, await db.StockMovements.CountAsync());
+    }
+
+    [Fact]
+    public async Task PurchaseReturnDraft_NegativeCount_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var ret = new PurchaseReturn { SupplierId = supId, ReturnDate = new DateTime(2026, 3, 1) };
+        var (ok, err, _) = await svc.CreatePurchaseReturnDraftAsync(ret,
+            new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 0, Count = -2, UnitPrice = 45 } }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالبة", err);
+        Assert.Equal(0, await db.PurchaseReturns.CountAsync());
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+    }
+
+    [Fact]
+    public async Task PostSaleReturn_NegativeQuantityStoredDraft_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 3, 2) };
+        var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,
+            new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
+        Assert.True(ok);
+
+        var saved = await db.SaleReturnItems.SingleAsync();
+        saved.Quantity = -2;
+        await db.SaveChangesAsync();
+
+        var (posted, err) = await svc.PostSaleReturnAsync(id, "test");
+        Assert.False(posted);
+        Assert.Contains("سالبة", err);
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        Assert.Equal(ReturnStatus.Draft, (await db.SaleReturns.SingleAsync()).Status);
+    }
 }

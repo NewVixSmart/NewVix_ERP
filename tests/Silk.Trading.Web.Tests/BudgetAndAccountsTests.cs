@@ -139,6 +139,46 @@ public sealed class BudgetAndAccountsTests : IDisposable
         Assert.Equal("لا يمكن تغيير رمز حساب النظام", codeChange);
     }
 
+    [Fact]
+    public async Task EditSystemAccount_Deactivation_Rejected()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        var svc = CreateAccountsService(db);
+
+        var system = await db.GLAccounts.SingleAsync(a => a.Code == "4000");
+        var model = new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = false };
+        var result = await svc.ApplyEditAsync(system, model);
+
+        Assert.False(result.Ok);
+        Assert.Contains("نظامي", result.Error);
+        Assert.True((await db.GLAccounts.AsNoTracking().SingleAsync(a => a.Code == "4000")).IsActive);
+    }
+
+    [Fact]
+    public async Task EditPostedAccount_Deactivation_Rejected()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+
+        var custom = new GLAccount { Code = "7000", Name = "إيرادات استثنائية", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true };
+        db.GLAccounts.Add(custom);
+        await db.SaveChangesAsync();
+
+        var accounting = new AccountingService(db);
+        await accounting.PostAsync(JournalSource.Receipt, 1, new DateTime(2026, 3, 12), "قبض يدوي",
+            new[] { new JournalLine("7000", 50m, 0m), new JournalLine("1000", 0m, 50m) }, "test");
+
+        var svc = CreateAccountsService(db);
+        var account = await db.GLAccounts.SingleAsync(a => a.Code == "7000");
+        var model = new GLAccount { Code = "7000", Name = "إيرادات استثنائية", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = false };
+        var result = await svc.ApplyEditAsync(account, model);
+
+        Assert.False(result.Ok);
+        Assert.Contains("مرحلة", result.Error);
+        Assert.True((await db.GLAccounts.AsNoTracking().SingleAsync(a => a.Code == "7000")).IsActive);
+    }
+
     // ---------- (b) Duplicate Code ----------
 
     [Fact]

@@ -701,4 +701,57 @@ public sealed class InventoryServiceTests : IDisposable
         Assert.Equal(new DateTime(2026, 3, 15), targetLayer.DateReceived);
         Assert.Equal(0, (await db.StockLayers.SingleAsync(sl => sl.WarehouseId == wh1Id)).RemainingQty);
     }
+
+    // ---------- Adjustment countdown (N-6) ----------
+
+    [Fact]
+    public async Task Adjustment_Countdown_ConsumesFifoLayers()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var item = await db.Items.SingleAsync(i => i.Id == itemId);
+        item.CurrentCount = 0;
+        item.CurrentQuantity = 0;
+        await db.SaveChangesAsync();
+
+        var inv1 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
+        await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 60, Count = 0, UnitPrice = 30 } }, "test");
+
+        var inv2 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 2, 1) };
+        await svc.CreatePurchaseAsync(inv2, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 60, Count = 0, UnitPrice = 50 } }, "test");
+
+        Assert.Equal(120, db.Items.Single(i => i.Id == itemId).CurrentQuantity);
+
+        var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 110, AdjustmentDate = new DateTime(2026, 3, 1) };
+        var (ok, err) = await svc.CreateAdjustmentAsync(adjustment, "test");
+
+        Assert.True(ok);
+        Assert.Null(err);
+
+        var layers = await db.StockLayers.OrderBy(l => l.DateReceived).ToListAsync();
+        Assert.Equal(50, layers[0].RemainingQty);
+        Assert.Equal(60, layers[1].RemainingQty);
+        Assert.Equal(110, db.Items.Single(i => i.Id == itemId).CurrentQuantity);
+    }
+
+    // ---------- Warehouse snapshot (N-5) ----------
+
+    [Fact]
+    public async Task WarehouseSnapshot_IncludesUnassignedPurchaseLayers()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var (wh1Id, _) = await SeedWarehousesAsync(db);
+        var svc = new InventoryService(db);
+
+        var invoice = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
+        await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 25, Count = 0, UnitPrice = 40 } }, "test");
+
+        var snap = await svc.GetStockSnapshotAsync(wh1Id);
+        var row = Assert.Single(snap, r => r.ItemId == itemId);
+        Assert.Equal(25, row.WarehouseQuantity);
+        Assert.Equal(25, row.TotalQuantity);
+    }
 }

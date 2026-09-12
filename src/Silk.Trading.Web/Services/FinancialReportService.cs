@@ -198,7 +198,7 @@ public class FinancialReportService : IFinancialReportService
     {
         var query = _db.GLAccounts
             .AsNoTracking()
-            .Where(a => a.IsActive && types.Contains(a.Type));
+            .Where(a => types.Contains(a.Type));
 
         var accounts = await query.OrderBy(a => a.Code).ToListAsync();
 
@@ -223,6 +223,7 @@ public class FinancialReportService : IFinancialReportService
         foreach (var a in accounts)
         {
             byAccount.TryGetValue(a.Id, out var act);
+            if (!a.IsActive && (act?.Debit ?? 0m) == 0m && (act?.Credit ?? 0m) == 0m) continue;
             result.Add(new AccountActivity(a.Code, a.Name, a.Type, a.NormalBalance, act?.Debit ?? 0m, act?.Credit ?? 0m));
         }
 
