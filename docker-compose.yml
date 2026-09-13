@@ -29,6 +29,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:80"
+      Jwt__Key: "${JWT_KEY:?JWT_KEY (strong secret >= 32 chars) must be set in the gitignored .env}"
       ConnectionStrings__DefaultConnection: "Server=db,1433;Database=SilkTradingDb;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
 
 volumes:

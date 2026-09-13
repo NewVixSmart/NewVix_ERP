@@ -63,8 +63,8 @@ public sealed class InventoryService : IInventoryService
                 }
                 if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt && invoice.DueDate == null)
                     invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
-                invoice.PaidAmount = 0;
-                invoice.IsPaid = false;
+                invoice.PaidAmount = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt ? invoice.NetAmount : 0;
+                invoice.IsPaid = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt;
                 invoice.CreatedBy = user;
                 invoice.CreatedAt = DateTime.UtcNow;
                 invoice.Items = valid;
@@ -75,6 +75,11 @@ public sealed class InventoryService : IInventoryService
                 if (_accounting != null && (invoice.NetAmount > 0 || consumedQtyCost + consumedCountCost > 0))
                     await _accounting.RecordSaleInvoiceAsync(invoice.InvoiceDate, invoice.CustomerId, invoice.NetAmount,
                         consumedQtyCost + consumedCountCost, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
+
+                if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
+                    await _accounting.RecordReceiptAsync(invoice.InvoiceDate,
+                        decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
+                        PaymentMethod.Cash, invoice.CustomerId, user, branchId);
 
                 await tx.CommitAsync();
                 _logger?.LogInformation("فُتحت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
@@ -142,8 +147,8 @@ public sealed class InventoryService : IInventoryService
                     }
                 }
 
-                invoice.PaidAmount = 0;
-                invoice.IsPaid = false;
+                invoice.PaidAmount = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt ? invoice.NetAmount : 0;
+                invoice.IsPaid = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt;
                 invoice.CreatedBy = user;
                 invoice.CreatedAt = DateTime.UtcNow;
                 invoice.Items = valid;
@@ -155,6 +160,11 @@ public sealed class InventoryService : IInventoryService
 
                 if (_accounting != null && invoice.NetAmount > 0)
                     await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
+
+                if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
+                    await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
+                        decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
+                        PaymentMethod.Cash, invoice.SupplierId, user, branchId);
 
                 await tx.CommitAsync();
                 _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
@@ -453,6 +463,8 @@ public sealed class InventoryService : IInventoryService
                 {
                     if (addedQty > 0 || addedCount > 0)
                         await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user);
+                    else if (addedQty < 0 || addedCount < 0)
+                        await _accounting.RecordStockWriteDownAsync(item.Id, Math.Max(-addedQty, 0), Math.Max(-addedCount, 0), item.PurchasePrice, user);
                 }
 
                 await tx.CommitAsync();
@@ -608,9 +620,48 @@ public sealed class InventoryService : IInventoryService
         foreach (var item in items)
         {
             if (item.Quantity <= 0 && item.Count <= 0) continue;
-            var price = itemsById.TryGetValue(item.ItemId, out var it) ? it.PurchasePrice : item.UnitPrice;
-            totalCost += item.Quantity * price + item.Count * price;
-            CreateOrTopUpLayer(item.ItemId, item.Quantity, item.Count, price, price, returnDate);
+
+            var layers = await _db.StockLayers
+                .Where(sl => sl.ItemId == item.ItemId)
+                .OrderBy(sl => sl.DateReceived).ThenBy(sl => sl.Id)
+                .ToListAsync();
+
+            decimal remainingQty = item.Quantity;
+            decimal remainingCount = item.Count;
+
+            foreach (var layer in layers)
+            {
+                if (remainingQty > 0)
+                {
+                    var capacity = Math.Max(0m, layer.Qty - layer.RemainingQty);
+                    if (capacity > 0)
+                    {
+                        var take = Math.Min(remainingQty, capacity);
+                        layer.RemainingQty += take;
+                        totalCost += take * layer.UnitCost;
+                        remainingQty -= take;
+                    }
+                }
+                if (remainingCount > 0)
+                {
+                    var capacity = Math.Max(0m, layer.Count - layer.RemainingCount);
+                    if (capacity > 0)
+                    {
+                        var take = Math.Min(remainingCount, capacity);
+                        layer.RemainingCount += take;
+                        totalCost += take * layer.CountCost;
+                        remainingCount -= take;
+                    }
+                }
+                if (remainingQty <= 0 && remainingCount <= 0) break;
+            }
+
+            if (remainingQty > 0 || remainingCount > 0)
+            {
+                var price = itemsById.TryGetValue(item.ItemId, out var it) ? it.PurchasePrice : item.UnitPrice;
+                totalCost += remainingQty * price + remainingCount * price;
+                CreateOrTopUpLayer(item.ItemId, remainingQty, remainingCount, price, price, returnDate);
+            }
         }
         await _db.SaveChangesAsync();
         return totalCost;

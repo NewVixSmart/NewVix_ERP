@@ -118,8 +118,8 @@ public sealed class BatchOperationsTests : IDisposable
 
         Assert.Equal(80, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
 
-        Assert.Equal(2, await db.JournalEntries.CountAsync());
-        Assert.All(await db.JournalEntries.ToListAsync(), e => Assert.Equal(JournalSource.SaleInvoice, e.Source));
+        Assert.Equal(2, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.SaleInvoice));
+        Assert.Equal(2, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.Receipt));
 
         Assert.Equal(2, await db.StockMovements.CountAsync());
         Assert.All(await db.StockMovements.ToListAsync(), m => Assert.Equal(DocumentType.SaleInvoice, m.DocumentType));
@@ -156,7 +156,7 @@ public sealed class BatchOperationsTests : IDisposable
         Assert.Single(await db.SaleInvoices.ToListAsync());
         Assert.Equal(90, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
         Assert.Equal(10 * 50m, (await db.SaleInvoices.SingleAsync()).TotalAmount);
-        Assert.Single(await db.JournalEntries.ToListAsync());
+        Assert.Equal(2, await db.JournalEntries.CountAsync());
         Assert.Single(await db.StockMovements.ToListAsync());
     }
 
@@ -194,13 +194,21 @@ public sealed class BatchOperationsTests : IDisposable
         Assert.Equal(50, layer.RemainingQty);
         Assert.Equal(50, layer.UnitCost);
 
-        Assert.Single(await db.JournalEntries.ToListAsync());
-        var entry = await db.JournalEntries.Include(e => e.Lines).SingleAsync();
-        Assert.Equal(JournalSource.OpeningStock, entry.Source);
-        Assert.Equal(2, entry.Lines.Count);
-        var inventoryLine = entry.Lines.Single(l => l.Debit > 0);
+        Assert.Equal(2, await db.JournalEntries.CountAsync());
+
+        var increaseEntry = await db.JournalEntries.Include(e => e.Lines).SingleAsync(e => e.SourceId == item1.Id);
+        Assert.Equal(JournalSource.OpeningStock, increaseEntry.Source);
+        Assert.Equal(2, increaseEntry.Lines.Count);
+        var inventoryLine = increaseEntry.Lines.Single(l => l.Debit > 0);
         Assert.Equal(50 * 50m, inventoryLine.Debit);
         Assert.Equal("1300", (await db.GLAccounts.SingleAsync(a => a.Id == inventoryLine.AccountId)).Code);
+
+        var writeDownEntry = await db.JournalEntries.Include(e => e.Lines).SingleAsync(e => e.SourceId == item2.Id);
+        Assert.Equal(JournalSource.OpeningStock, writeDownEntry.Source);
+        Assert.Equal(2, writeDownEntry.Lines.Count);
+        var writeDownDebit = writeDownEntry.Lines.Single(l => l.Debit > 0);
+        Assert.Equal(60 * 50m, writeDownDebit.Debit);
+        Assert.Equal("3000", (await db.GLAccounts.SingleAsync(a => a.Id == writeDownDebit.AccountId)).Code);
 
         var movements = await db.StockMovements.OrderBy(m => m.Id).ToListAsync();
         Assert.Equal(2, movements.Count);

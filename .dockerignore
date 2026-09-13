@@ -10,7 +10,7 @@
 docs
 plan
 scripts
-aspire
+aspire/Silk.AppHost
 test-out*.txt
 tests-result.txt
 *.log

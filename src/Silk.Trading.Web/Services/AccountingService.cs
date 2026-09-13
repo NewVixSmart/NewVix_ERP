@@ -117,10 +117,18 @@ public class AccountingService : IAccountingService
 
     public async Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null)
     {
-        decimal amount = qty * cost;
+        decimal amount = (qty + count) * cost;
         if (amount <= 0) return;
         await PostAsync(JournalSource.OpeningStock, itemId, DateTime.UtcNow, "جرد افتتاحي",
             new[] { new JournalLine("1300", amount, 0), new JournalLine("3000", 0, amount) }, user, branchId);
+    }
+
+    public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null)
+    {
+        decimal amount = (qty + count) * cost;
+        if (amount <= 0) return;
+        await PostAsync(JournalSource.OpeningStock, itemId, DateTime.UtcNow, "جرد تخفيض",
+            new[] { new JournalLine("3000", amount, 0), new JournalLine("1300", 0, amount) }, user, branchId);
     }
 
     public async Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null)

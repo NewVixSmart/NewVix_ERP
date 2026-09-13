@@ -51,7 +51,7 @@ public class ReportsController : Controller
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
 
         decimal totalReturns = await _db.SaleReturns
-            .Where(r => r.ReturnDate >= fromDate && r.ReturnDate <= toDate)
+            .Where(r => r.ReturnDate >= fromDate && r.ReturnDate <= toDate && r.Status == ReturnStatus.Posted)
             .SumAsync(r => (decimal?)r.TotalAmount) ?? 0;
 
         var vm = new SalesReportViewModel
@@ -92,7 +92,7 @@ public class ReportsController : Controller
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
 
         decimal totalReturns = await _db.PurchaseReturns
-            .Where(r => r.ReturnDate >= fromDate && r.ReturnDate <= toDate)
+            .Where(r => r.ReturnDate >= fromDate && r.ReturnDate <= toDate && r.Status == ReturnStatus.Posted)
             .SumAsync(r => (decimal?)r.TotalAmount) ?? 0;
 
         var vm = new PurchaseReportViewModel

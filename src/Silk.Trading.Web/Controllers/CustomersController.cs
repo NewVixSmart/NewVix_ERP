@@ -134,7 +134,7 @@ public class CustomersController : Controller
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderByDescending(s => s.InvoiceDate).ToListAsync();
         var payments = await _db.Payments.AsNoTracking().Where(p => p.CustomerId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
-        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id).OrderByDescending(r => r.ReturnDate).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
 
         decimal totalInvoices = invoices.Sum(i => i.NetAmount);
         decimal totalReturns = returns.Sum(r => r.TotalAmount);

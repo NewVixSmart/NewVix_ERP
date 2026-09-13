@@ -70,10 +70,10 @@ public static class SeedData
 
         await EnsureDefaultPermissionsAsync(serviceProvider);
 
-        await EnsureDemoDataAsync(db);
+        await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<Silk.Trading.Web.Services.IAccountingService>());
     }
 
-    private static async Task EnsureDemoDataAsync(AppDbContext db)
+    private static async Task EnsureDemoDataAsync(AppDbContext db, Silk.Trading.Web.Services.IAccountingService accounting)
     {
         if (!db.Warehouses.Any())
         {
@@ -335,6 +335,29 @@ public static class SeedData
             });
         }
 
+        await db.SaveChangesAsync();
+
+        var demoItemCodes = items.Select(i => i.Code).Append("ITM-016").ToArray();
+        var demoItems = await db.Items.Where(i => demoItemCodes.Contains(i.Code)).ToListAsync();
+        foreach (var demoItem in demoItems)
+        {
+            if (await db.StockLayers.AnyAsync(sl => sl.ItemId == demoItem.Id))
+                continue;
+
+            db.StockLayers.Add(new StockLayer
+            {
+                ItemId = demoItem.Id,
+                Qty = demoItem.CurrentQuantity,
+                Count = demoItem.CurrentCount,
+                UnitCost = demoItem.PurchasePrice,
+                CountCost = demoItem.PurchasePrice,
+                DateReceived = DateTime.Today,
+                RemainingQty = demoItem.CurrentQuantity,
+                RemainingCount = demoItem.CurrentCount
+            });
+            await accounting.RecordOpeningStockAsync(demoItem.Id, demoItem.CurrentQuantity, demoItem.CurrentCount,
+                demoItem.PurchasePrice, "admin");
+        }
         await db.SaveChangesAsync();
     }
 

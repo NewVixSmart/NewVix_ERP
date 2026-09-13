@@ -167,6 +167,9 @@ public sealed class ProcurementService : IProcurementService
         if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.PartiallyReceived)
             return (false, "يمكن إنشاء فاتورة لأمر معتمد أو مستلم فقط");
 
+        if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == order.Id))
+            return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
+
         var receivedLines = order.Items
             .Where(i => (i.ReceivedQty > 0 || i.ReceivedCount > 0))
             .ToList();

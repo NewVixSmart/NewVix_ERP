@@ -131,7 +131,8 @@ public sealed class CashFlowTests : IDisposable
             ReturnNumber = "R-1",
             CustomerId = customer.Id,
             ReturnDate = DateTime.Today.AddDays(-5),
-            TotalAmount = 50m
+            TotalAmount = 50m,
+            Status = ReturnStatus.Posted
         });
         var pay1 = Payment("PAY-1", DateTime.Today.AddDays(-2), PaymentType.Receipt, 120m);
         pay1.CustomerId = customer.Id;
@@ -169,7 +170,8 @@ public sealed class CashFlowTests : IDisposable
             ReturnNumber = "PR-1",
             SupplierId = supplier.Id,
             ReturnDate = DateTime.Today.AddDays(-5),
-            TotalAmount = 60m
+            TotalAmount = 60m,
+            Status = ReturnStatus.Posted
         });
         var pay2 = Payment("PAY-2", DateTime.Today.AddDays(-1), PaymentType.Disbursement, 140m);
         pay2.SupplierId = supplier.Id;

@@ -74,6 +74,12 @@ public class InventoryAdjustmentsController : Controller
         var adj = await _db.InventoryAdjustments.FindAsync(id);
         if (adj == null) return NotFound();
 
+        if (await _db.JournalEntries.AnyAsync(j => j.Source == Silk.Trading.Web.Models.Accounting.JournalSource.OpeningStock && j.SourceId == adj.ItemId))
+        {
+            TempData["Error"] = "لا يمكن حذف هذا الجرد لأن بياناته رُحّلت إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك";
+            return RedirectToAction(nameof(Index));
+        }
+
         await using var tx = await _db.Database.BeginTransactionAsync();
         var stock = await _db.StockMovements.FirstOrDefaultAsync(s => s.DocumentType == DocumentType.Adjustment && s.DocumentNumber == adj.ReferenceNumber);
         if (stock != null)

@@ -906,7 +906,7 @@ public class ReportService : IReportService
         if (customer == null) return Array.Empty<byte>();
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == customerId).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
-        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == customerId).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == customerId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var receipts = await _db.Payments.AsNoTracking()
             .Where(p => p.CustomerId == customerId && p.Type == PaymentType.Receipt)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
@@ -925,7 +925,7 @@ public class ReportService : IReportService
         if (supplier == null) return Array.Empty<byte>();
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == supplierId).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
-        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == supplierId).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == supplierId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var disbursements = await _db.Payments.AsNoTracking()
             .Where(p => p.SupplierId == supplierId && p.Type == PaymentType.Disbursement)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();

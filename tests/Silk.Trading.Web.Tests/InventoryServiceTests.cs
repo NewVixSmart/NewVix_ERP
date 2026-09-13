@@ -80,7 +80,11 @@ public sealed class InventoryServiceTests : IDisposable
         var (itemId, custId, _) = await SeedAsync(db);
         var svc = new InventoryService(db);
 
-        var invoice = new SaleInvoice { CustomerId = custId };
+        var invoice = new SaleInvoice
+        {
+            CustomerId = custId,
+            PaymentTerms = Silk.Trading.Web.Models.Accounting.InvoicePaymentTerms.Net30
+        };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) };
 
         var (ok, _) = await svc.CreateSaleAsync(invoice, lines, "test");

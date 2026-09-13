@@ -216,8 +216,9 @@ public sealed class ProcurementServiceTests : IDisposable
         Assert.Equal(10, layer.Qty);
         Assert.Equal(40, layer.UnitCost);
 
-        var entry = await db.JournalEntries.SingleAsync();
+        var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.PurchaseInvoice);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).Include(l => l.Account).ToListAsync();
+        Assert.Single(await db.JournalEntries.Where(e => e.Source == JournalSource.Disbursement).ToListAsync());
         Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Debit == 400m);
         Assert.Contains(lines, l => l.Account!.Code == "2000" && l.Credit == 400m);
     }

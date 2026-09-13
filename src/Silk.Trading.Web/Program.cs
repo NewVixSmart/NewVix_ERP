@@ -5,13 +5,17 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Silk.ServiceDefaults;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Services;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!builder.Environment.IsDevelopment()
@@ -29,13 +33,19 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+var jwtKey = builder.Configuration["Jwt:Key"];
 if (!builder.Environment.IsDevelopment()
-    && (jwtKey.Length < 32 || jwtKey.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase)))
+    && (string.IsNullOrWhiteSpace(jwtKey)
+        || jwtKey.Length < 32
+        || jwtKey.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase)))
 {
     throw new InvalidOperationException(
-        "Jwt:Key must be a strong secret (>= 32 chars). Set it via the Jwt__Key environment variable or User Secrets; refusing to start in production with a placeholder or weak key.");
+        "Jwt:Key must be a strong secret (>= 32 chars) in production and is not shipped in appsettings.json. Set it via the Jwt__Key environment variable or User Secrets; refusing to start in production with a missing, placeholder, or weak key.");
+}
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key is not configured. Set Jwt__Key via User Secrets or appsettings.Development.json for local development.");
 }
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SilkTrading";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SilkTrading";
@@ -55,6 +65,20 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var userId = context.Principal?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userManager = context.HttpContext.RequestServices
+                .GetRequiredService<UserManager<IdentityUser>>();
+            var user = userId == null ? null : await userManager.FindByIdAsync(userId);
+            if (user == null || await userManager.IsLockedOutAsync(user))
+            {
+                context.Fail("الحساب غير نشط أو محظور");
+            }
+        }
     };
 });
 
@@ -199,6 +223,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+
+app.MapHealthChecks("/healthz");
 
 using (var scope = app.Services.CreateScope())
 {
