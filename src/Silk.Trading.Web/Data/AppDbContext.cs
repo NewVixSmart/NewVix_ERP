@@ -165,6 +165,7 @@ public class AppDbContext : IdentityDbContext
             e.HasOne(s => s.Customer).WithMany().HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(s => s.SupplierQuote).WithMany().HasForeignKey(s => s.SupplierQuoteId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<SaleQuoteItem>(e =>

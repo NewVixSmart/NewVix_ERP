@@ -331,6 +331,15 @@
         initRail();
     }
 
+    // Bulk-select (MassConvert) — select-all toggles all row checkboxes
+    var selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            var checked = selectAll.checked;
+            document.querySelectorAll('.mass-convert-check').forEach(function (cb) { cb.checked = checked; });
+        });
+    }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initSidebar);
     } else {

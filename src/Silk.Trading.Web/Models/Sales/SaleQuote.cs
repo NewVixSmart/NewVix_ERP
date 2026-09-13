@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Silk.Trading.Web.Models.Accounting;
+using Silk.Trading.Web.Models.Purchases;
 
 namespace Silk.Trading.Web.Models.Sales;
 
@@ -65,6 +66,12 @@ public class SaleQuote
 
     [Display(Name = "حالة العرض")]
     public SaleQuoteStatus Status { get; set; } = SaleQuoteStatus.Draft;
+
+    [Display(Name = "عرض مورد مرجعي (اختياري)")]
+    public int? SupplierQuoteId { get; set; }
+
+    [BindNever]
+    public SupplierQuote? SupplierQuote { get; set; }
 
     [Display(Name = "فاتورة البيع")]
     public int? SaleInvoiceId { get; set; }

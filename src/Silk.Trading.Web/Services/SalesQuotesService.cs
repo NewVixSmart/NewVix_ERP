@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Sales;
@@ -10,6 +13,7 @@ public interface ISalesQuotesService
     Task<(bool Success, string? Error, SaleQuote? Quote)> CreateAsync(SaleQuote quote, List<SaleQuoteItem> items, string? user, int? branchId = null);
     Task<(bool Success, string? Error, SaleInvoice? Invoice)> ConvertToInvoiceAsync(int quoteId, string? user, int? branchId = null);
     Task<(bool Success, string? Error)> DeleteAsync(int quoteId);
+    Task<(int Converted, int Failed, IReadOnlyList<(int Id, string Error)> Failures)> MassConvertAsync(IEnumerable<int> quoteIds, string? user, int? branchId = null);
 }
 
 public sealed class SalesQuotesService : ISalesQuotesService
@@ -156,6 +160,86 @@ public sealed class SalesQuotesService : ISalesQuotesService
         await _db.SaleQuotes.Where(q => q.Id == quoteId).ExecuteDeleteAsync();
         return (true, null);
     }
+
+    public async Task<(int Converted, int Failed, IReadOnlyList<(int Id, string Error)> Failures)> MassConvertAsync(IEnumerable<int> quoteIds, string? user, int? branchId = null)
+    {
+        var failures = new List<(int Id, string Error)>();
+        int converted = 0;
+        foreach (var id in quoteIds.Distinct().ToList())
+        {
+            var (ok, error, _) = await ConvertToInvoiceAsync(id, user, branchId);
+            if (ok) { converted++; continue; }
+            failures.Add((id, error ?? "تعذر تحويل عرض السعر"));
+        }
+        return (converted, failures.Count, failures);
+    }
+
+    public static byte[] RenderQuotePdf(SaleQuote quote)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        return Document.Create(doc =>
+        {
+            doc.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(30);
+                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Header().Column(col =>
+                {
+                    col.Item().AlignCenter().Text("سلك للتجارة").FontSize(18).Bold();
+                    col.Item().AlignCenter().Text($"عرض سعر — {quote.QuoteNumber}").FontSize(13).SemiBold();
+                    col.Item().PaddingTop(6).LineHorizontal(1);
+                });
+                page.Content().PaddingTop(10).Column(col =>
+                {
+                    col.Item().Row(row =>
+                    {
+                        row.RelativeItem().Text($"العميل: {quote.Customer?.Name ?? "—"}");
+                        row.RelativeItem().AlignLeft().Text($"التاريخ: {quote.QuoteDate:dd/MM/yyyy}");
+                        row.RelativeItem().AlignLeft().Text(quote.ValidUntil.HasValue ? $"صالح حتى: {quote.ValidUntil:dd/MM/yyyy}" : "صالح حتى: —");
+                    });
+                    if (quote.SupplierQuote != null)
+                    {
+                        col.Item().PaddingTop(4).Text($"عرض المورد المرجعي: مرتبط بعرض المورد #{quote.SupplierQuote.Id} — {quote.SupplierQuote.Supplier?.Name ?? "—"}");
+                    }
+                    col.Item().PaddingTop(10).Table(t =>
+                    {
+                        t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(70); cd.ConstantColumn(70); cd.ConstantColumn(80); cd.ConstantColumn(80); });
+                        t.Header(hd =>
+                        {
+                            hd.Cell().Element(BoldHeader).Text("الصنف");
+                            hd.Cell().Element(BoldHeader).Text("العدد");
+                            hd.Cell().Element(BoldHeader).Text("الكمية");
+                            hd.Cell().Element(BoldHeader).AlignRight().Text("سعر الوحدة");
+                            hd.Cell().Element(BoldHeader).AlignRight().Text("الإجمالي");
+                        });
+                        foreach (var line in quote.Items)
+                        {
+                            t.Cell().Text(line.Item?.Name ?? "—");
+                            t.Cell().Text(line.Count.ToString("N0"));
+                            t.Cell().Text(line.Quantity.ToString("N0"));
+                            t.Cell().AlignRight().Text(line.UnitPrice.ToString("N2"));
+                            t.Cell().AlignRight().Text(line.Total.ToString("N2"));
+                        }
+                        t.Cell().Element(BoldFooter).Text("");
+                        t.Cell().Element(BoldFooter).Text("");
+                        t.Cell().Element(BoldFooter).Text("");
+                        t.Cell().Element(BoldFooter).Text("الصافي");
+                        t.Cell().Element(BoldFooter).AlignRight().Text(quote.NetAmount.ToString("N2"));
+                    });
+                    col.Item().PaddingTop(10).Text($"الإجمالي: {quote.TotalAmount.ToString("N2")} — الخصم: {quote.Discount.ToString("N2")} — الضريبة: {quote.Tax.ToString("N2")}");
+                    if (!string.IsNullOrWhiteSpace(quote.Notes))
+                    {
+                        col.Item().PaddingTop(6).Text($"ملاحظات: {quote.Notes}");
+                    }
+                });
+                page.Footer().AlignCenter().Text(x => { x.Span("صفحة "); x.CurrentPageNumber(); x.Span(" من "); x.TotalPages(); });
+            });
+        }).GeneratePdf();
+    }
+
+    private static IContainer BoldHeader(IContainer c) => c.Background(Colors.Grey.Lighten3).BorderBottom(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
+    private static IContainer BoldFooter(IContainer c) => c.Background(Colors.Grey.Lighten2).BorderTop(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
 
     private async Task<string> NextQuoteNumberAsync()
     {

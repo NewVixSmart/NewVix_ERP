@@ -4,10 +4,16 @@
 
 <div class="page-header d-flex justify-content-between align-items-center">
     <h2><i class="bi bi-receipt-cutoff text-primary"></i> عروض أسعار العملاء</h2>
-    @if (await Perm.HasAsync("SalesQuotes.Create"))
-    {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> عرض سعر جديد</a>
-    }
+    <div class="d-flex gap-2">
+        @if (await Perm.HasAsync("SalesQuotes.Convert"))
+        {
+            <a asp-action="MassConvert" class="btn btn-outline-success"><i class="bi bi-arrow-repeat"></i> تحويل جماعي</a>
+        }
+        @if (await Perm.HasAsync("SalesQuotes.Create"))
+        {
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> عرض سعر جديد</a>
+        }
+    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -57,6 +63,7 @@ else
                         </td>
                         <td class="text-center">
                             <a asp-action="Details" asp-route-id="@q.Id" class="btn btn-sm btn-outline-info" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye"></i></a>
+                            <a asp-action="Print" asp-route-id="@q.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" aria-label="طباعة عرض السعر @q.QuoteNumber"><i class="bi bi-printer"></i></a>
                             @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
                             {
                                 <form asp-action="Convert" asp-route-id="@q.Id" method="post" class="d-inline" onclick="return confirm('هل تريد تحويل هذا العرض إلى فاتورة بيع؟')">

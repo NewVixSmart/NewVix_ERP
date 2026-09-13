@@ -842,9 +842,16 @@ input[type="checkbox"].form-check-input, input[type="radio"].form-check-input {
     tr { page-break-inside: avoid; }
     body { background: #fff !important; }
     .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    .print-toolbar { display: none !important; }
+    .print-doc { max-width: none !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
     a[href]::after { content: none; }
     @page { margin: 14mm; }
 }
+
+/* ---------- 19b. PRINT SHEET (SalesQuotes.Print + MassConvert) ---------- */
+.print-doc { max-width: 210mm; margin-inline: auto; }
+.print-doc .table { font-size: 0.92rem; }
+.print-doc .table td, .print-doc .table th { padding: 0.5rem 0.6rem; }
 
 /* ---------- 20. SCREEN-READER ONLY ---------- */
 .visually-hidden, .sr-only {

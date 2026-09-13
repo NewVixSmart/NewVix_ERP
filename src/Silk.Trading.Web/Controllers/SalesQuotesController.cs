@@ -89,11 +89,75 @@ public class SalesQuotesController : Controller
             .Include(q => q.Customer)
             .Include(q => q.Currency)
             .Include(q => q.SaleInvoice)
+            .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
             .Include(q => q.Items).ThenInclude(i => i.Item)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
         if (quote == null) return NotFound();
         return View(quote);
+    }
+
+    [RequirePerm("SalesQuotes.View")]
+    public async Task<IActionResult> Print(int id)
+    {
+        var quote = await _db.SaleQuotes
+            .Include(q => q.Customer)
+            .Include(q => q.Currency)
+            .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
+            .Include(q => q.Items).ThenInclude(i => i.Item)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(q => q.Id == id);
+        if (quote == null) return NotFound();
+        return View(quote);
+    }
+
+    [RequirePerm("SalesQuotes.View")]
+    public async Task<IActionResult> Pdf(int id)
+    {
+        var quote = await _db.SaleQuotes
+            .Include(q => q.Customer)
+            .Include(q => q.Currency)
+            .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
+            .Include(q => q.Items).ThenInclude(i => i.Item)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(q => q.Id == id);
+        if (quote == null) return NotFound();
+        var bytes = SalesQuotesService.RenderQuotePdf(quote);
+        return File(bytes, "application/pdf", $"SaleQuote-{quote.QuoteNumber}.pdf");
+    }
+
+    [RequirePerm("SalesQuotes.Convert")]
+    public async Task<IActionResult> MassConvert()
+    {
+        var drafts = await _db.SaleQuotes
+            .Include(q => q.Customer)
+            .AsNoTracking()
+            .Where(q => q.Status == SaleQuoteStatus.Draft)
+            .OrderByDescending(q => q.QuoteDate)
+            .ToListAsync();
+        return View(drafts);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("SalesQuotes.Convert")]
+    public async Task<IActionResult> MassConvert(int[] ids)
+    {
+        if (ids is null || ids.Length == 0)
+        {
+            TempData["Error"] = "لم يتم تحديد أي عروض للتحويل";
+            return RedirectToAction(nameof(MassConvert));
+        }
+        int? branchId = HttpContext.Session.GetCurrentBranchId();
+        var (converted, failed, failures) = await _quotes.MassConvertAsync(ids, User.Identity?.Name, branchId);
+        if (converted > 0)
+        {
+            TempData["Success"] = $"تم تحويل {converted} عرضاً بنجاح";
+        }
+        if (failed > 0)
+        {
+            TempData["Error"] = $"فشل تحويل {failed} من العروض: " + string.Join("، ", failures.Select(f => $"#{f.Id} ({f.Error})"));
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -129,6 +193,10 @@ public class SalesQuotesController : Controller
     {
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
+        vm.SupplierQuotes = new SelectList(await _db.SupplierQuotes.AsNoTracking()
+            .Select(sq => new { sq.Id, Label = sq.Supplier.Name + " — " + sq.Item.Name + " (" + sq.UnitPrice.ToString("N2") + ")" })
+            .OrderByDescending(x => x.Id)
+            .ToListAsync(), "Id", "Label");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync();
         return vm;
     }

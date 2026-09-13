@@ -42,6 +42,12 @@
                     <input asp-for="Quote.ExchangeRate" class="form-control" type="number" step="any" id="exchangeRate" />
                     <small class="text-muted">للعرض فقط؛ حسابات الأستاذ بالعملة الأساسية</small>
                 </div>
+                <div class="col-md-3">
+                    <label asp-for="Quote.SupplierQuoteId" class="form-label"></label>
+                    <select asp-for="Quote.SupplierQuoteId" asp-items="@Model.SupplierQuotes" class="form-select">
+                        <option value="">لا يوجد</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
