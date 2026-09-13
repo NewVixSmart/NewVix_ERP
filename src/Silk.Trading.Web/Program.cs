@@ -165,6 +165,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ISalesQuotesService, SalesQuotesService>();
 builder.Services.AddScoped<IAccountingService, AccountingService>();
 builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddScoped<IProcurementService, ProcurementService>();

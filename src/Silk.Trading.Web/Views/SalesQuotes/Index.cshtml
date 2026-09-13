@@ -1,0 +1,81 @@
+@model IReadOnlyList<Silk.Trading.Web.Models.Sales.SaleQuote>
+@inject Silk.Trading.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "عروض أسعار العملاء"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-receipt-cutoff text-primary"></i> عروض أسعار العملاء</h2>
+    @if (await Perm.HasAsync("SalesQuotes.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> عرض سعر جديد</a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">لا توجد عروض أسعار مسجلة بعد.</div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover mb-0">
+            <thead><tr><th scope="col">رقم العرض</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">صالح حتى</th><th scope="col">الصافي</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <tbody>
+                @foreach (var q in Model)
+                {
+                    <tr>
+                        <td><code>@q.QuoteNumber</code></td>
+                        <td><strong>@(q.Customer?.Name ?? "—")</strong></td>
+                        <td>@q.QuoteDate.ToString("dd/MM/yyyy")</td>
+                        <td>@(q.ValidUntil?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="fw-bold">@q.NetAmount.ToString("N2") ج.م</td>
+                        <td>
+                            @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Converted)
+                            {
+                                <span class="badge bg-success">محوّل</span>
+                            }
+                            else if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Cancelled)
+                            {
+                                <span class="badge bg-secondary">ملغي</span>
+                            }
+                            else if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Converting)
+                            {
+                                <span class="badge bg-warning text-dark">جارٍ التحويل</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">مسودة</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a asp-action="Details" asp-route-id="@q.Id" class="btn btn-sm btn-outline-info" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye"></i></a>
+                            @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
+                            {
+                                <form asp-action="Convert" asp-route-id="@q.Id" method="post" class="d-inline" onclick="return confirm('هل تريد تحويل هذا العرض إلى فاتورة بيع؟')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تحويل عرض السعر @q.QuoteNumber"><i class="bi bi-arrow-repeat"></i></button>
+                                </form>
+                            }
+                            @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Delete"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline" onclick="return confirm('هل تريد حذف عرض السعر هذا؟')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.QuoteNumber"><i class="bi bi-trash"></i></button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <partial name="_Pager" />
+    </div>
+}

@@ -26,6 +26,8 @@ public class AppDbContext : IdentityDbContext
     public DbSet<SaleInvoiceItem> SaleInvoiceItems => Set<SaleInvoiceItem>();
     public DbSet<SaleReturn> SaleReturns => Set<SaleReturn>();
     public DbSet<SaleReturnItem> SaleReturnItems => Set<SaleReturnItem>();
+    public DbSet<SaleQuote> SaleQuotes => Set<SaleQuote>();
+    public DbSet<SaleQuoteItem> SaleQuoteItems => Set<SaleQuoteItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -155,6 +157,20 @@ public class AppDbContext : IdentityDbContext
         {
             e.HasOne(si => si.SaleReturn).WithMany(s => s.Items).HasForeignKey(si => si.SaleReturnId);
             e.HasOne(si => si.Item).WithMany(i => i.SaleReturnItems).HasForeignKey(si => si.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SaleQuote>(e =>
+        {
+            e.HasIndex(s => s.QuoteNumber).IsUnique();
+            e.HasOne(s => s.Customer).WithMany().HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<SaleQuoteItem>(e =>
+        {
+            e.HasOne(si => si.SaleQuote).WithMany(s => s.Items).HasForeignKey(si => si.SaleQuoteId);
+            e.HasOne(si => si.Item).WithMany().HasForeignKey(si => si.ItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<StockMovement>(e =>
