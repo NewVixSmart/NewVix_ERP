@@ -67,7 +67,7 @@ public class UsersController : Controller
             }
             else
             {
-                var user = new IdentityUser { UserName = vm.Username, Email = $"{vm.Username}@silk.local", EmailConfirmed = true };
+                var user = new IdentityUser { UserName = vm.Username, Email = $"{vm.Username}@silk.local", EmailConfirmed = false };
                 var result = await _userManager.CreateAsync(user, vm.Password);
                 if (result.Succeeded)
                 {

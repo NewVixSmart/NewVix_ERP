@@ -48,6 +48,7 @@ public class TokensController : ControllerBase
         {
             new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Name, user.UserName ?? string.Empty),
+            new(TokenStampChecks.StampClaimType, await _userManager.GetSecurityStampAsync(user)),
         };
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));

@@ -6,6 +6,7 @@ using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Core;
 using Silk.Trading.Web.ViewModels.Core;
+using System.ComponentModel.DataAnnotations;
 
 namespace Silk.Trading.Web.Controllers;
 
@@ -40,25 +41,30 @@ public class SettingsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> AddCurrency(Currency currency)
+    public async Task<IActionResult> AddCurrency(AddCurrencyRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(currency.Code) && !string.IsNullOrWhiteSpace(currency.Name))
+        if (!ModelState.IsValid)
         {
-            currency.Code = currency.Code.Trim().ToUpperInvariant();
-            if (await _db.Currencies.AnyAsync(c => c.Code == currency.Code))
-                TempData["Error"] = "عملة بهذا الرمز موجودة بالفعل";
-            else
-            {
-                currency.ExchangeRate = currency.ExchangeRate <= 0 ? 1m : currency.ExchangeRate;
-                _db.Currencies.Add(currency);
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم إضافة العملة بنجاح";
-            }
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
         }
-        else
+        var code = request.Code.Trim().ToUpperInvariant();
+        if (await _db.Currencies.AnyAsync(c => c.Code == code))
         {
-            TempData["Error"] = "يرجى إدخال رمز واسم العملة";
+            TempData["Error"] = "عملة بهذا الرمز موجودة بالفعل";
+            return RedirectToAction(nameof(Index));
         }
+        _db.Currencies.Add(new Currency
+        {
+            Code = code,
+            Name = request.Name.Trim(),
+            Symbol = request.Symbol,
+            ExchangeRate = request.ExchangeRate,
+            IsActive = request.IsActive,
+            IsBase = false
+        });
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "تم إضافة العملة بنجاح";
         return RedirectToAction(nameof(Index));
     }
 
@@ -146,22 +152,20 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> AddBranch(Branch branch)
     {
-        if (!string.IsNullOrWhiteSpace(branch.Code) && !string.IsNullOrWhiteSpace(branch.Name))
+        if (!ModelState.IsValid)
         {
-            branch.Code = branch.Code.Trim().ToUpperInvariant();
-            if (await _db.Branches.AnyAsync(b => b.Code == branch.Code))
-                TempData["Error"] = "فرع بهذا الرمز موجود بالفعل";
-            else
-            {
-                branch.CreatedAt = DateTime.UtcNow;
-                _db.Branches.Add(branch);
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم إضافة الفرع بنجاح";
-            }
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
         }
+        branch.Code = branch.Code.Trim().ToUpperInvariant();
+        if (await _db.Branches.AnyAsync(b => b.Code == branch.Code))
+            TempData["Error"] = "فرع بهذا الرمز موجود بالفعل";
         else
         {
-            TempData["Error"] = "يرجى إدخال رمز واسم الفرع";
+            branch.CreatedAt = DateTime.UtcNow;
+            _db.Branches.Add(branch);
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "تم إضافة الفرع بنجاح";
         }
         return RedirectToAction(nameof(Index));
     }
@@ -226,9 +230,14 @@ public class SettingsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("Settings.Edit")]
-    public IActionResult SetCurrentBranch(int branchId)
+    public async Task<IActionResult> SetCurrentBranch(int branchId)
     {
-        _http.SetCurrentBranchId(branchId > 0 ? branchId : null);
+        if (branchId <= 0 || !await _db.Branches.AnyAsync(b => b.Id == branchId && b.IsActive))
+        {
+            TempData["Error"] = "الفرع المحدد غير موجود أو غير نشط";
+            return RedirectToAction(nameof(Index));
+        }
+        _http.SetCurrentBranchId(branchId);
         return RedirectToAction(nameof(Index));
     }
 
@@ -237,29 +246,27 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> AddUnit(Unit unit)
     {
-        if (!string.IsNullOrWhiteSpace(unit.Name))
+        if (!ModelState.IsValid)
         {
-            if (await _db.Units.AnyAsync(u => u.Name == unit.Name.Trim()))
-            {
-                TempData["Error"] = "الوحدة بهذا الاسم موجودة بالفعل";
-            }
-            else if (unit.Id == unit.ParentUnitId || await CreatesCycleAsync(unit.Id, unit.ParentUnitId))
-            {
-                TempData["Error"] = "لا يمكن ربط الوحدة بنفسها أو إنشاء حلقة في الوحدات";
-            }
-            else
-            {
-                unit.Id = 0;
-                unit.Name = unit.Name.Trim();
-                unit.ShortName = string.IsNullOrWhiteSpace(unit.ShortName) ? unit.Name : unit.ShortName;
-                _db.Units.Add(unit);
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم إضافة الوحدة بنجاح";
-            }
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
+        }
+        if (await _db.Units.AnyAsync(u => u.Name == unit.Name.Trim()))
+        {
+            TempData["Error"] = "الوحدة بهذا الاسم موجودة بالفعل";
+        }
+        else if (unit.Id == unit.ParentUnitId || await CreatesCycleAsync(unit.Id, unit.ParentUnitId))
+        {
+            TempData["Error"] = "لا يمكن ربط الوحدة بنفسها أو إنشاء حلقة في الوحدات";
         }
         else
         {
-            TempData["Error"] = "يرجى إدخال اسم الوحدة";
+            unit.Id = 0;
+            unit.Name = unit.Name.Trim();
+            unit.ShortName = string.IsNullOrWhiteSpace(unit.ShortName) ? unit.Name : unit.ShortName;
+            _db.Units.Add(unit);
+            await _db.SaveChangesAsync();
+            TempData["Success"] = "تم إضافة الوحدة بنجاح";
         }
         return RedirectToAction(nameof(Index));
     }
@@ -331,4 +338,23 @@ public class SettingsController : Controller
         }
         return false;
     }
+}
+
+public class AddCurrencyRequest
+{
+    [Required(ErrorMessage = "رمز العملة مطلوب")]
+    [StringLength(10)]
+    public string Code { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "اسم العملة مطلوب")]
+    [StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(10)]
+    public string? Symbol { get; set; }
+
+    [Range(0.000001, 999999999, ErrorMessage = "سعر الصرف يجب أن يكون أكبر من صفر")]
+    public decimal ExchangeRate { get; set; } = 1m;
+
+    public bool IsActive { get; set; } = true;
 }

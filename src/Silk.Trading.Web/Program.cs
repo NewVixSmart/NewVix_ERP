@@ -77,9 +77,23 @@ builder.Services.AddAuthentication(options =>
             if (user == null || await userManager.IsLockedOutAsync(user))
             {
                 context.Fail("الحساب غير نشط أو محظور");
+                return;
+            }
+            var tokenStamp = context.Principal?.Claims.FirstOrDefault(c => c.Type == TokenStampChecks.StampClaimType)?.Value;
+            var currentStamp = await userManager.GetSecurityStampAsync(user);
+            if (!TokenStampChecks.StampMatches(tokenStamp, currentStamp))
+            {
+                context.Fail("رمز الأمان غير صالح؛ يرجى إعادة تسجيل الدخول");
             }
         }
     };
+});
+
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+    options.Preload = true;
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -87,6 +101,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    if (!builder.Environment.IsDevelopment())
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -182,9 +200,27 @@ builder.Services.AddSession();
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        if (app.Environment.IsDevelopment())
+            throw;
+        app.Logger.LogError(ex, "Unhandled exception");
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsJsonAsync(new { message = "حدث خطأ غير متوقع. حاول مرة أخرى.", detail = string.Empty });
+    }
+});
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
 if (app.Environment.IsDevelopment())
@@ -236,3 +272,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+public static class TokenStampChecks
+{
+    public const string StampClaimType = "stamp";
+
+    public static bool StampMatches(string? tokenStamp, string currentStamp) =>
+        string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal);
+}

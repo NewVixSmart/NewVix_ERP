@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Models.Access;
 using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Core;
 using Silk.Trading.Web.Models.Purchases;
 using Silk.Trading.Web.Models.Sales;
+using System.Security.Cryptography;
 
 using Silk.Trading.Web.Models.Stock;
 
@@ -17,6 +20,8 @@ public static class SeedData
     {
         var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var config = serviceProvider.GetRequiredService<IConfiguration>();
+        var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
 
         string[] roles = ["Admin", "Accountant", "Warehouse"];
         foreach (var role in roles)
@@ -28,13 +33,27 @@ public static class SeedData
         var adminUser = await userManager.FindByNameAsync("admin");
         if (adminUser == null)
         {
+            var configuredAdminPwd = config["Seed:AdminPassword"];
+            var adminPwd = !string.IsNullOrWhiteSpace(configuredAdminPwd) ? configuredAdminPwd : GenerateSecurePassword();
             adminUser = new IdentityUser { UserName = "admin", Email = "admin@silk.com", EmailConfirmed = true };
-            await userManager.CreateAsync(adminUser, "Admin@123");
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            var result = await userManager.CreateAsync(adminUser, adminPwd);
+            if (!result.Succeeded && !string.IsNullOrWhiteSpace(configuredAdminPwd))
+            {
+                logger.LogWarning("كلمة المرور المضبوطة للمستخدم Admin لا تلبي سياسة التعقيد، جارٍ توليد كلمة مرور عشوائية");
+                adminPwd = GenerateSecurePassword();
+                adminUser = new IdentityUser { UserName = "admin", Email = "admin@silk.com", EmailConfirmed = true };
+                result = await userManager.CreateAsync(adminUser, adminPwd);
+            }
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                if (string.IsNullOrWhiteSpace(configuredAdminPwd))
+                    logger.LogInformation("مستخدم البذرة Admin: كلمة المرور = {Password}", adminPwd);
+            }
         }
 
-        await EnsureUserAsync(userManager, "accountant", "Accountant@123", "accountant@silk.com", "Accountant");
-        await EnsureUserAsync(userManager, "warehouse", "Warehouse@123", "warehouse@silk.com", "Warehouse");
+        await EnsureUserAsync(userManager, config, logger, "accountant", "Seed:AccountantPassword", "accountant@silk.com", "Accountant");
+        await EnsureUserAsync(userManager, config, logger, "warehouse", "Seed:WarehousePassword", "warehouse@silk.com", "Warehouse");
 
         var db = serviceProvider.GetRequiredService<AppDbContext>();
         if (!db.ItemCategories.Any())
@@ -394,15 +413,48 @@ public static class SeedData
         }
     }
 
-    private static async Task EnsureUserAsync(UserManager<IdentityUser> userManager, string userName, string password, string email, string role)
+    private static async Task EnsureUserAsync(UserManager<IdentityUser> userManager, IConfiguration config, ILogger logger, string userName, string configKey, string email, string role)
     {
         var user = await userManager.FindByNameAsync(userName);
         if (user == null)
         {
+            var configuredPwd = config[configKey];
+            var password = !string.IsNullOrWhiteSpace(configuredPwd) ? configuredPwd : GenerateSecurePassword();
             user = new IdentityUser { UserName = userName, Email = email, EmailConfirmed = true };
-            await userManager.CreateAsync(user, password);
+            var result = await userManager.CreateAsync(user, password);
+            if (!result.Succeeded && !string.IsNullOrWhiteSpace(configuredPwd))
+            {
+                logger.LogWarning("كلمة المرور المضبوطة للمستخدم {Role} لا تلبي سياسة التعقيد، جارٍ توليد كلمة مرور عشوائية", role);
+                password = GenerateSecurePassword();
+                user = new IdentityUser { UserName = userName, Email = email, EmailConfirmed = true };
+                result = await userManager.CreateAsync(user, password);
+            }
+            if (result.Succeeded && string.IsNullOrWhiteSpace(configuredPwd))
+                logger.LogInformation("مستخدم البذرة {Role}: كلمة المرور = {Password}", role, password);
         }
         if (!await userManager.IsInRoleAsync(user, role))
             await userManager.AddToRoleAsync(user, role);
+    }
+
+    private static string GenerateSecurePassword()
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string special = "!@#$%^&*";
+        string all = upper + lower + digits + special;
+        var chars = new char[16];
+        chars[0] = upper[RandomNumberGenerator.GetInt32(upper.Length)];
+        chars[1] = lower[RandomNumberGenerator.GetInt32(lower.Length)];
+        chars[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
+        chars[3] = special[RandomNumberGenerator.GetInt32(special.Length)];
+        for (int i = 4; i < chars.Length; i++)
+            chars[i] = all[RandomNumberGenerator.GetInt32(all.Length)];
+        for (int i = chars.Length - 1; i > 0; i--)
+        {
+            int j = RandomNumberGenerator.GetInt32(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
+        }
+        return new string(chars);
     }
 }

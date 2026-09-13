@@ -25,11 +25,30 @@ public class ItemsController : ControllerBase
 
     [HttpGet("items")]
     [ApiAuthorize("Items.View")]
-    public async Task<IActionResult> GetItems()
+    public async Task<IActionResult> GetItems([FromQuery] int? page, [FromQuery] int? pageSize, [FromQuery] string? search)
     {
-        var items = await _db.Items
+        var query = _db.Items
             .Where(i => i.IsActive)
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            if (term.Length > 100) term = term[..100];
+            query = query.Where(i => i.Name.Contains(term) || (i.Code != null && i.Code.Contains(term)));
+        }
+
+        query = query.OrderBy(i => i.Name);
+
+        if (page.HasValue)
+        {
+            var ps = Math.Clamp(pageSize ?? 100, 1, 500);
+            var p = Math.Max(1, page.Value);
+            query = query.Skip((p - 1) * ps).Take(ps);
+        }
+
+        var items = await query
             .Select(i => new ItemResponse
             {
                 Id = i.Id,

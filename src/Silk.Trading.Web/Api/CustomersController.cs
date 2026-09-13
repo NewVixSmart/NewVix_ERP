@@ -19,11 +19,30 @@ public class CustomersController : ControllerBase
 
     [HttpGet("customers")]
     [ApiAuthorize("Customers.View")]
-    public async Task<IActionResult> GetCustomers()
+    public async Task<IActionResult> GetCustomers([FromQuery] int? page, [FromQuery] int? pageSize, [FromQuery] string? search)
     {
-        var customers = await _db.Customers
+        var query = _db.Customers
             .Where(c => c.IsActive)
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            if (term.Length > 100) term = term[..100];
+            query = query.Where(c => c.Name.Contains(term) || (c.Code != null && c.Code.Contains(term)));
+        }
+
+        query = query.OrderBy(c => c.Name);
+
+        if (page.HasValue)
+        {
+            var ps = Math.Clamp(pageSize ?? 100, 1, 500);
+            var p = Math.Max(1, page.Value);
+            query = query.Skip((p - 1) * ps).Take(ps);
+        }
+
+        var customers = await query
             .Select(c => new CustomerResponse
             {
                 Id = c.Id,

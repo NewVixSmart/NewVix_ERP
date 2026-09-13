@@ -19,11 +19,30 @@ public class SuppliersController : ControllerBase
 
     [HttpGet("suppliers")]
     [ApiAuthorize("Suppliers.View")]
-    public async Task<IActionResult> GetSuppliers()
+    public async Task<IActionResult> GetSuppliers([FromQuery] int? page, [FromQuery] int? pageSize, [FromQuery] string? search)
     {
-        var suppliers = await _db.Suppliers
+        var query = _db.Suppliers
             .Where(s => s.IsActive)
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            if (term.Length > 100) term = term[..100];
+            query = query.Where(s => s.Name.Contains(term) || (s.Code != null && s.Code.Contains(term)));
+        }
+
+        query = query.OrderBy(s => s.Name);
+
+        if (page.HasValue)
+        {
+            var ps = Math.Clamp(pageSize ?? 100, 1, 500);
+            var p = Math.Max(1, page.Value);
+            query = query.Skip((p - 1) * ps).Take(ps);
+        }
+
+        var suppliers = await query
             .Select(s => new SupplierResponse
             {
                 Id = s.Id,

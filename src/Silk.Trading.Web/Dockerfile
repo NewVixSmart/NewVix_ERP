@@ -33,6 +33,10 @@ EXPOSE 80
 
 COPY --from=build /app/publish .
 
+RUN chown -R 1654:1654 /app
+
+USER 1654
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:80/healthz || exit 1
 

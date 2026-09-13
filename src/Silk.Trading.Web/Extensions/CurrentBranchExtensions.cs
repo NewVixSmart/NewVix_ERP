@@ -11,7 +11,7 @@ public static class CurrentBranchExtensions
 
     public static void SetCurrentBranchId(this ISession session, int? branchId)
     {
-        if (branchId.HasValue)
+        if (branchId.HasValue && branchId > 0)
             session.SetString(Key, branchId.Value.ToString());
         else
             session.Remove(Key);
