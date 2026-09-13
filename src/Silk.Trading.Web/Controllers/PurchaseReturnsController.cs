@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Silk.Trading.Web.Data;
+using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Purchases;
 using Silk.Trading.Web.Services;
 using Silk.Trading.Web.Extensions;
@@ -73,7 +74,7 @@ public class PurchaseReturnsController : Controller
             }
             else
             {
-                var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id).ToListAsync();
+                var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id && r.PurchaseReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);

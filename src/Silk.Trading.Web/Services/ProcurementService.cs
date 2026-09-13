@@ -125,37 +125,51 @@ public sealed class ProcurementService : IProcurementService
 
     public async Task<(bool Success, string? Error)> ReceiveOrderLineAsync(int orderId, int orderItemId, decimal receiveQty, decimal receiveCount)
     {
-        var order = await _db.PurchaseOrders
-            .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null) return (false, "أمر الشراء غير موجود");
-        if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
-            return (false, "يمكن الاستلام على أوامر معتمدة فقط");
-
-        var line = order.Items.FirstOrDefault(i => i.Id == orderItemId);
-        if (line == null) return (false, "البند غير موجود");
-
         if (receiveQty < 0 || receiveCount < 0)
             return (false, "الكمية المستلمة لا يمكن أن تكون سالبة");
 
-        if (line.ReceivedQty + receiveQty > line.Quantity || line.ReceivedCount + receiveCount > line.Count)
-            return (false, "الكمية المستلمة أكبر من الكمية المطلوبة");
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _db.PurchaseOrders
+                    .Include(o => o.Items)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+                if (order == null) return (false, "أمر الشراء غير موجود");
+                if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
+                    return (false, "يمكن الاستلام على أوامر معتمدة فقط");
 
-        line.ReceivedQty += receiveQty;
-        line.ReceivedCount += receiveCount;
+                var line = order.Items.FirstOrDefault(i => i.Id == orderItemId);
+                if (line == null) return (false, "البند غير موجود");
 
-        var allFullyReceived = order.Items.All(i =>
-            (i.Quantity <= 0 || i.ReceivedQty >= i.Quantity) &&
-            (i.Count <= 0 || i.ReceivedCount >= i.Count));
-        var anyReceived = order.Items.Any(i => i.ReceivedQty > 0 || i.ReceivedCount > 0);
+                if (line.ReceivedQty + receiveQty > line.Quantity || line.ReceivedCount + receiveCount > line.Count)
+                    return (false, "الكمية المستلمة أكبر من الكمية المطلوبة");
 
-        if (allFullyReceived)
-            order.Status = PurchaseOrderStatus.Received;
-        else if (anyReceived)
-            order.Status = PurchaseOrderStatus.PartiallyReceived;
+                line.ReceivedQty += receiveQty;
+                line.ReceivedCount += receiveCount;
 
-        await _db.SaveChangesAsync();
-        return (true, null);
+                var allFullyReceived = order.Items.All(i =>
+                    (i.Quantity <= 0 || i.ReceivedQty >= i.Quantity) &&
+                    (i.Count <= 0 || i.ReceivedCount >= i.Count));
+                var anyReceived = order.Items.Any(i => i.ReceivedQty > 0 || i.ReceivedCount > 0);
+
+                if (allFullyReceived)
+                    order.Status = PurchaseOrderStatus.Received;
+                else if (anyReceived)
+                    order.Status = PurchaseOrderStatus.PartiallyReceived;
+
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync();
+                _db.ChangeTracker.Clear();
+            }
+        }
+        return (false, "تعارض في البيانات أثناء الاستلام، يرجى إعادة المحاولة");
     }
 
     public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)

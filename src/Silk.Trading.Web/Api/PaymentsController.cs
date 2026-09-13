@@ -31,7 +31,6 @@ public class PaymentsController : ControllerBase
     {
         var payment = new Payment
         {
-            ReceiptNumber = $"PAY-{DateTime.UtcNow:yyyyMMddHHmmss}",
             Type = request.Type.Equals("disbursement", StringComparison.OrdinalIgnoreCase)
                 ? PaymentType.Disbursement : PaymentType.Receipt,
             CustomerId = request.CustomerId,

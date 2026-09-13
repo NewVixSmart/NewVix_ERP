@@ -42,9 +42,6 @@ public class PaymentsController : Controller
     [RequirePerm("Payments.Create")]
     public async Task<IActionResult> Create(string type = "receipt")
     {
-        var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
-        string nextNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
-
         var currencies = await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync();
         var vm = new PaymentFormViewModel
         {
@@ -55,7 +52,7 @@ public class PaymentsController : Controller
             CurrencyOptions = currencies,
             Payment = new Payment
             {
-                ReceiptNumber = nextNumber,
+                ReceiptNumber = "يتم التوليد تلقائياً",
                 PaymentDate = DateTime.Today,
                 Type = type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt,
                 CurrencyId = await BaseCurrencyIdAsync(),

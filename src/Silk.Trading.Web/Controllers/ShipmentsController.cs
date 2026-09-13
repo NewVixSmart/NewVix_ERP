@@ -81,6 +81,33 @@ public class ShipmentsController : Controller
             ? vm.Shipment.SaleInvoiceId.HasValue
             : vm.Shipment.PurchaseInvoiceId.HasValue)
         {
+            if (vm.Shipment.InvoiceType == ShipmentInvoiceType.Sale && vm.Shipment.SaleInvoiceId.HasValue)
+            {
+                var saleInv = await _db.SaleInvoices.AsNoTracking().FirstOrDefaultAsync(s => s.Id == vm.Shipment.SaleInvoiceId.Value);
+                if (saleInv == null || saleInv.CustomerId != vm.Shipment.CustomerId)
+                {
+                    ModelState.AddModelError("", "الفاتورة المختارة لا تخص العميل المحدد للشحنة");
+                    vm.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().ToListAsync(), "Id", "InvoiceNumber");
+                    vm.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().ToListAsync(), "Id", "InvoiceNumber");
+                    vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
+                    vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
+                    return View(vm);
+                }
+            }
+            else if (vm.Shipment.InvoiceType == ShipmentInvoiceType.Purchase && vm.Shipment.PurchaseInvoiceId.HasValue)
+            {
+                var purchaseInv = await _db.PurchaseInvoices.AsNoTracking().FirstOrDefaultAsync(p => p.Id == vm.Shipment.PurchaseInvoiceId.Value);
+                if (purchaseInv == null || purchaseInv.SupplierId != vm.Shipment.SupplierId)
+                {
+                    ModelState.AddModelError("", "الفاتورة المختارة لا تخص المورد المحدد للشحنة");
+                    vm.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().ToListAsync(), "Id", "InvoiceNumber");
+                    vm.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().ToListAsync(), "Id", "InvoiceNumber");
+                    vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
+                    vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
+                    return View(vm);
+                }
+            }
+
             vm.Shipment.ShipmentNumber = await NextShipmentNumberAsync();
             vm.Shipment.CreatedBy = User.Identity?.Name;
             vm.Shipment.CreatedAt = DateTime.UtcNow;

@@ -35,6 +35,9 @@ public sealed class InventoryService : IInventoryService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var duplicateSale = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicateSale != null)
+            return (false, $"الصنف رقم {duplicateSale.Key} مكرر أكثر من مرة في الفاتورة");
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -105,6 +108,9 @@ public sealed class InventoryService : IInventoryService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var duplicatePurchase = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicatePurchase != null)
+            return (false, $"الصنف رقم {duplicatePurchase.Key} مكرر أكثر من مرة في الفاتورة");
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -714,7 +720,8 @@ public sealed class InventoryService : IInventoryService
         if (invoice.CustomerId != saleReturn.CustomerId) return "الفاتورة الأصلية لا تخص هذا العميل";
 
         var alreadyReturned = await _db.SaleReturnItems
-            .Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturnId != saleReturn.Id)
+            .Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturnId != saleReturn.Id
+                && r.SaleReturn.Status == ReturnStatus.Posted)
             .ToListAsync();
 
         foreach (var line in valid)
@@ -742,7 +749,8 @@ public sealed class InventoryService : IInventoryService
         if (invoice.SupplierId != purchaseReturn.SupplierId) return "الفاتورة الأصلية لا تخص هذا المورد";
 
         var alreadyReturned = await _db.PurchaseReturnItems
-            .Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id)
+            .Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id
+                && r.PurchaseReturn.Status == ReturnStatus.Posted)
             .ToListAsync();
 
         foreach (var line in valid)
@@ -922,6 +930,9 @@ public sealed class InventoryService : IInventoryService
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var duplicateTransfer = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicateTransfer != null)
+            return (false, $"الصنف رقم {duplicateTransfer.Key} مكرر أكثر من مرة في التحويل");
         if (transfer.SourceWarehouseId == transfer.TargetWarehouseId)
             return (false, "لا يمكن التحويل من مستودع إلى نفسه");
 

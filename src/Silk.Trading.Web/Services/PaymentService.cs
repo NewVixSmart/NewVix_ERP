@@ -37,6 +37,8 @@ public sealed class PaymentService : IPaymentService
             return (false, "العملة غير موجودة", null);
 
         bool foreign = IsForeignPayment(payment, currency);
+        if (foreign && !payment.ExchangeRate.HasValue)
+            payment.ExchangeRate = 1m;
         payment.BaseAmount = foreign
             ? decimal.Round(payment.Amount * payment.ExchangeRate!.Value, 2)
             : payment.Amount;
@@ -46,6 +48,8 @@ public sealed class PaymentService : IPaymentService
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
+                payment.ReceiptNumber = await NextPaymentNumberAsync(_db.Payments.Select(p => p.ReceiptNumber));
+
                 if (await HasDuplicatePaymentAsync(payment))
                 {
                     await tx.RollbackAsync();
@@ -107,6 +111,7 @@ public sealed class PaymentService : IPaymentService
             {
                 await tx.RollbackAsync();
                 _db.ChangeTracker.Clear();
+                payment.Id = 0;
                 var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
                 payment.ReceiptNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
             }
@@ -132,6 +137,18 @@ public sealed class PaymentService : IPaymentService
 
     private Task<bool> IsPeriodClosedAsync(DateTime date)
         => _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed);
+
+    private async Task<string> NextPaymentNumberAsync(IQueryable<string> existing)
+    {
+        int next = await existing.CountAsync() + 1;
+        string num = $"PAY-{next:D5}";
+        while (await existing.AnyAsync(n => n == num))
+        {
+            next++;
+            num = $"PAY-{next:D5}";
+        }
+        return num;
+    }
 
     private async Task<(decimal Remaining, decimal PartyBaseReduction, decimal RemainingForeign)> ApplyInvoiceAllocationAsync(Payment payment, bool foreign)
     {
@@ -347,15 +364,14 @@ public sealed class PaymentService : IPaymentService
     }
 
     private static bool IsForeignPayment(Payment payment, Currency? currency)
-        => payment.CurrencyId.HasValue && currency != null && !currency.IsBase
-           && payment.ExchangeRate.HasValue && payment.ExchangeRate.Value > 0
-           && payment.ExchangeRate.Value != 1m;
+        => payment.CurrencyId.HasValue && currency != null && !currency.IsBase;
 
     private async Task<bool> HasDuplicatePaymentAsync(Payment payment)
     {
         var window = DateTime.UtcNow.AddMinutes(-2);
         var q = _db.Payments.AsNoTracking()
-            .Where(p => p.CreatedAt >= window && p.Amount == payment.Amount && p.Type == payment.Type);
+            .Where(p => p.CreatedAt >= window && p.Amount == payment.Amount && p.Type == payment.Type
+                && p.CurrencyId == payment.CurrencyId && p.ExchangeRate == payment.ExchangeRate);
         if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
             q = q.Where(p => p.CustomerId == payment.CustomerId);
         else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)

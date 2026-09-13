@@ -46,7 +46,6 @@ public class StockTransfersController : Controller
         transfer ??= new StockTransfer();
         items ??= new List<StockTransferItem>();
         items = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        ModelState.Clear();
 
         if (items.Count == 0)
         {
