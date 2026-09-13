@@ -20,7 +20,6 @@ public class FinancialReportService : IFinancialReportService
 
         var accounts = await _db.GLAccounts
             .AsNoTracking()
-            .Where(a => a.IsActive)
             .OrderBy(a => a.Code)
             .ToListAsync();
 
@@ -45,6 +44,8 @@ public class FinancialReportService : IFinancialReportService
             var debit = activity?.Debit ?? 0m;
             var credit = activity?.Credit ?? 0m;
             var signed = a.NormalBalance == NormalBalance.Debit ? debit - credit : credit - debit;
+
+            if (!a.IsActive && debit == 0m && credit == 0m) continue;
 
             rows.Add(new TrialBalanceRowViewModel
             {
@@ -125,24 +126,26 @@ public class FinancialReportService : IFinancialReportService
 
         foreach (var line in activity)
         {
-            var signed = line.NormalBalance == NormalBalance.Debit ? line.Debit - line.Credit : line.Credit - line.Debit;
-            if (signed <= 0) continue;
+            var amount = line.Type == GLAccountType.Asset
+                ? line.Debit - line.Credit
+                : line.Credit - line.Debit;
+            if (amount == 0) continue;
 
-            var item = new BalanceSheetLineViewModel { Code = line.Code, Name = line.Name, Amount = signed };
+            var item = new BalanceSheetLineViewModel { Code = line.Code, Name = line.Name, Amount = amount };
 
             switch (line.Type)
             {
                 case GLAccountType.Asset:
                     vm.Assets.Lines.Add(item);
-                    vm.Assets.Total += signed;
+                    vm.Assets.Total += amount;
                     break;
                 case GLAccountType.Liability:
                     vm.Liabilities.Lines.Add(item);
-                    vm.Liabilities.Total += signed;
+                    vm.Liabilities.Total += amount;
                     break;
                 case GLAccountType.Equity:
                     vm.Equity.Lines.Add(item);
-                    vm.Equity.Total += signed;
+                    vm.Equity.Total += amount;
                     break;
             }
         }
@@ -202,7 +205,7 @@ public class FinancialReportService : IFinancialReportService
 
         var accounts = await query.OrderBy(a => a.Code).ToListAsync();
 
-        var entryQuery = _db.JournalEntries.AsNoTracking().Where(j => j.IsPosted && j.Date <= to);
+        var entryQuery = _db.JournalEntries.AsNoTracking().Where(j => j.IsPosted && j.Source != JournalSource.YearEndClose && j.Date <= to);
         if (from is not null)
         {
             var fromDate = from.Value.Date;

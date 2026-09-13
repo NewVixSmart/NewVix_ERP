@@ -676,8 +676,16 @@ public class ReportService : IReportService
             .Where(s => s.PaidAmount < s.NetAmount)
             .ToListAsync();
 
+        var saleReturnTotals = await _db.SaleReturns
+            .AsNoTracking()
+            .Where(r => r.Status == ReturnStatus.Posted && r.SaleInvoiceId != null)
+            .GroupBy(r => r.SaleInvoiceId)
+            .Select(g => new { InvoiceId = g.Key!.Value, Total = g.Sum(r => (decimal?)r.TotalAmount) ?? 0m })
+            .ToListAsync();
+        var returnsBySaleInvoice = saleReturnTotals.ToDictionary(x => x.InvoiceId, x => x.Total);
+
         vm.Receivables = saleInvoices
-            .Select(s => new { Name = s.Customer?.Name ?? "—", Due = s.DueDate ?? s.InvoiceDate, Outstanding = s.NetAmount - s.PaidAmount })
+            .Select(s => new { Name = s.Customer?.Name ?? "—", Due = s.DueDate ?? s.InvoiceDate, Outstanding = s.NetAmount - s.PaidAmount - returnsBySaleInvoice.GetValueOrDefault(s.Id) })
             .Where(x => x.Outstanding > 0.005m)
             .GroupBy(x => x.Name)
             .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))
@@ -690,8 +698,16 @@ public class ReportService : IReportService
             .Where(p => p.PaidAmount < p.NetAmount)
             .ToListAsync();
 
+        var purchaseReturnTotals = await _db.PurchaseReturns
+            .AsNoTracking()
+            .Where(r => r.Status == ReturnStatus.Posted && r.PurchaseInvoiceId != null)
+            .GroupBy(r => r.PurchaseInvoiceId)
+            .Select(g => new { InvoiceId = g.Key!.Value, Total = g.Sum(r => (decimal?)r.TotalAmount) ?? 0m })
+            .ToListAsync();
+        var returnsByPurchaseInvoice = purchaseReturnTotals.ToDictionary(x => x.InvoiceId, x => x.Total);
+
         vm.Payables = purchaseInvoices
-            .Select(p => new { Name = p.Supplier?.Name ?? "—", Due = p.DueDate ?? p.InvoiceDate, Outstanding = p.NetAmount - p.PaidAmount })
+            .Select(p => new { Name = p.Supplier?.Name ?? "—", Due = p.DueDate ?? p.InvoiceDate, Outstanding = p.NetAmount - p.PaidAmount - returnsByPurchaseInvoice.GetValueOrDefault(p.Id) })
             .Where(x => x.Outstanding > 0.005m)
             .GroupBy(x => x.Name)
             .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))

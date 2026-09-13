@@ -97,8 +97,8 @@ public sealed class FiscalCloseTests : IDisposable
 
         var financial = new FinancialReportService(db);
         var income = await financial.IncomeStatementAsync(new DateTime(2026, 1, 1), new DateTime(2026, 12, 31));
-        Assert.Equal(0m, income.TotalRevenue);
-        Assert.Equal(0m, income.TotalExpenses);
+        Assert.Equal(100m, income.TotalRevenue);
+        Assert.Equal(40m, income.TotalExpenses);
 
         var tb = await financial.TrialBalanceAsync(new DateTime(2026, 12, 31));
         Assert.Equal(0m, tb.Rows.Single(r => r.Code == "4000").Balance);
