@@ -16,12 +16,13 @@ public class ReportExportService
         var invoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
+            .Include(s => s.Currency)
             .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
             .OrderByDescending(s => s.InvoiceDate)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الفاتورة,العميل,التاريخ,الإجمالي,الخصم,الضريبة,الصافي");
+        sb.AppendLine("الفاتورة,العميل,التاريخ,الإجمالي,الخصم,الضريبة,الصافي,العملة,سعر الصرف");
 
         foreach (var i in invoices)
         {
@@ -32,7 +33,9 @@ public class ReportExportService
                 CsvField(i.TotalAmount.ToString("N2")),
                 CsvField(i.Discount.ToString("N2")),
                 CsvField(i.Tax.ToString("N2")),
-                CsvField(i.NetAmount.ToString("N2"))));
+                CsvField(i.NetAmount.ToString("N2")),
+                CsvField(i.Currency?.Code ?? "—"),
+                CsvField(i.ExchangeRate?.ToString("N4") ?? "—")));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -44,12 +47,13 @@ public class ReportExportService
         var invoices = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
+            .Include(p => p.Currency)
             .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
             .OrderByDescending(p => p.InvoiceDate)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الفاتورة,المورد,التاريخ,الإجمالي,الخصم,الضريبة,الصافي");
+        sb.AppendLine("الفاتورة,المورد,التاريخ,الإجمالي,الخصم,الضريبة,الصافي,العملة,سعر الصرف");
 
         foreach (var i in invoices)
         {
@@ -60,7 +64,9 @@ public class ReportExportService
                 CsvField(i.TotalAmount.ToString("N2")),
                 CsvField(i.Discount.ToString("N2")),
                 CsvField(i.Tax.ToString("N2")),
-                CsvField(i.NetAmount.ToString("N2"))));
+                CsvField(i.NetAmount.ToString("N2")),
+                CsvField(i.Currency?.Code ?? "—"),
+                CsvField(i.ExchangeRate?.ToString("N4") ?? "—")));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -73,12 +79,13 @@ public class ReportExportService
             .AsNoTracking()
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
+            .Include(p => p.Currency)
             .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الإيصال,النوع,العميل/المورد,المبلغ,الطريقة,التاريخ");
+        sb.AppendLine("الإيصال,النوع,العميل/المورد,المبلغ,المبلغ بالأساس,العملة,سعر الصرف,الطريقة,التاريخ");
 
         foreach (var p in payments)
         {
@@ -91,6 +98,9 @@ public class ReportExportService
                 CsvField(typeLabel),
                 CsvField(partyName),
                 CsvField(p.Amount.ToString("N2")),
+                CsvField(p.BaseAmount.ToString("N2")),
+                CsvField(p.Currency?.Code ?? "—"),
+                CsvField(p.ExchangeRate?.ToString("N4") ?? "—"),
                 CsvField(methodLabel),
                 CsvField(p.PaymentDate.ToString("dd/MM/yyyy"))));
         }

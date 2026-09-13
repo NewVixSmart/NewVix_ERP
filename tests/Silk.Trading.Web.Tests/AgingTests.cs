@@ -30,8 +30,8 @@ public sealed class AgingTests : IDisposable
 
     private static async Task<(int customerId, int supplierId)> SeedPartiesAsync(AppDbContext db)
     {
-        var customer = new Customer { Name = "ط¹ظ…ظٹظ„ ط£" };
-        var supplier = new Supplier { Name = "ظ…ظˆط±ط¯ ط¨" };
+var customer = new Customer { Name = "عميل أ" };
+        var supplier = new Supplier { Name = "مورد ب" };
         db.Customers.Add(customer);
         db.Suppliers.Add(supplier);
         await db.SaveChangesAsync();
@@ -84,7 +84,7 @@ public sealed class AgingTests : IDisposable
         var vm = await svc.AgingAsync();
 
         var row = Assert.Single(vm.Receivables);
-        Assert.Equal("ط¹ظ…ظٹظ„ ط£", row.PartyName);
+        Assert.Equal("عميل أ", row.PartyName);
         Assert.Equal(100m, row.Current);
         Assert.Equal(200m, row.Days1To30);
         Assert.Equal(300m, row.Days31To60);
@@ -106,9 +106,9 @@ public sealed class AgingTests : IDisposable
         await db.SaveChangesAsync();
 
         var svc = new ReportService(db, new FinancialReportService(db));
-        var vm = await svc.AgingAsync();
+var vm = await svc.AgingAsync();
 
-var row = Assert.Single(vm.Receivables);
+        var row = Assert.Single(vm.Receivables);
         Assert.Equal(250m, row.Days90Plus);
     }
 
@@ -135,7 +135,7 @@ var row = Assert.Single(vm.Receivables);
 
         Assert.DoesNotContain(vm.Payables, r => r.Total == 700);
         var payable = Assert.Single(vm.Payables);
-        Assert.Equal("ظ…ظˆط±ط¯ ط¨", payable.PartyName);
+        Assert.Equal("مورد ب", payable.PartyName);
         Assert.Equal(900m, payable.Current);
         Assert.Equal(800m, payable.Days1To30);
         Assert.Equal(1700m, vm.ApTotal);

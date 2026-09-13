@@ -992,6 +992,8 @@ public sealed class InventoryService : IInventoryService
 
                     decimal sourceOldCount = product.CurrentCount;
                     decimal sourceOldQty = product.CurrentQuantity;
+                    decimal destOldCount = product.CurrentCount;
+                    decimal destOldQty = product.CurrentQuantity;
                     product.CurrentCount -= transferredCount;
                     product.CurrentQuantity -= transferredQty;
 
@@ -1011,9 +1013,6 @@ public sealed class InventoryService : IInventoryService
                         MovementDate = transfer.TransferDate,
                         CreatedBy = user
                     });
-
-                    decimal destOldCount = product.CurrentCount;
-                    decimal destOldQty = product.CurrentQuantity;
                     product.CurrentCount += transferredCount;
                     product.CurrentQuantity += transferredQty;
 

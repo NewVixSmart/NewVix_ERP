@@ -305,7 +305,7 @@ public sealed class BudgetAndAccountsTests : IDisposable
     }
 
     [Fact]
-    public async Task BudgetClosedYear_GuardCondition_BlocksEdit()
+    public async Task BudgetClosedYear_EditAllowedAtDbLevel_GuardIsInView()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);

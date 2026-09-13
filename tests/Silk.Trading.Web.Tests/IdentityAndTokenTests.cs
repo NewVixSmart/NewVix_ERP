@@ -7,10 +7,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Silk.Trading.Web.Api;
 using Silk.Trading.Web.Api.Dtos;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Infrastructure;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Xunit;
 
 namespace Silk.Trading.Web.Tests;
@@ -42,6 +46,8 @@ public sealed class IdentityAndTokenTests : IDisposable
     public void Dispose() => _connection.Dispose();
 
     private AppDbContext CreateContext() => new(_options);
+
+    private static SymmetricSecurityKey SigningKey() => new(Encoding.UTF8.GetBytes("silk-token-test-secret-key-0123456789ABCDEF"));
 
     private static UserManager<IdentityUser> CreateUserManager(AppDbContext db)
     {
@@ -116,5 +122,78 @@ public sealed class IdentityAndTokenTests : IDisposable
 
         var good = await controller.CreateToken(new TokenRequest("brutus", "Brut@123456"));
         Assert.IsAssignableFrom<UnauthorizedObjectResult>(good);
+    }
+
+    private Task<string> IssueTokenAsync(string username, string password)
+    {
+        using var db = CreateContext();
+        var um = CreateUserManager(db);
+        return IssueTokenCoreAsync(db, um, username, password);
+    }
+
+    private async Task<string> IssueTokenCoreAsync(AppDbContext db, UserManager<IdentityUser> um, string username, string password)
+    {
+        await um.CreateAsync(new IdentityUser { UserName = username }, password);
+        var controller = new TokensController(um, _config);
+        var result = await controller.CreateToken(new TokenRequest(username, password));
+        var ok = Assert.IsAssignableFrom<OkObjectResult>(result);
+        var response = Assert.IsAssignableFrom<TokenResponse>(ok.Value);
+        return response.Token;
+    }
+
+    private static ClaimsPrincipal ValidateToken(string token) =>
+        new JwtSecurityTokenHandler().ValidateToken(token, new TokenValidationParameters
+        {
+            ValidIssuer = "SilkTrading",
+            ValidAudience = "SilkTrading",
+            IssuerSigningKey = SigningKey(),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true
+        }, out _);
+
+    [Fact]
+    public async Task IssuedToken_Validates_WithSecurityStampClaim()
+    {
+        using var db = CreateContext();
+        var um = CreateUserManager(db);
+        var token = await IssueTokenCoreAsync(db, um, "stampuser", "Stamp@123456");
+
+        var principal = ValidateToken(token);
+        Assert.True(principal.Identity?.IsAuthenticated);
+        Assert.Contains(principal.Claims, c => c.Type == TokenStampChecks.StampClaimType && !string.IsNullOrEmpty(c.Value));
+        Assert.Contains(principal.Claims, c => c.Type == ClaimTypes.Name && c.Value == "stampuser");
+    }
+
+    [Fact]
+    public async Task TamperedToken_FailsSignatureValidation()
+    {
+        var token = await IssueTokenAsync("tamperuser", "Tamper@123456");
+
+        var lastDot = token.LastIndexOf('.');
+        var sig = token[(lastDot + 1)..];
+        var mutated = sig[0] == 'A' ? 'B' : 'A';
+        var tampered = token[..(lastDot + 1)] + mutated + sig[1..];
+
+        Assert.ThrowsAny<SecurityTokenException>(() => ValidateToken(tampered));
+    }
+
+    [Fact]
+    public async Task Token_WrongAudience_FailsValidation()
+    {
+        var token = await IssueTokenAsync("auduser", "Aud@123456");
+
+        var handler = new JwtSecurityTokenHandler();
+        var parameters = new TokenValidationParameters
+        {
+            ValidIssuer = "SilkTrading",
+            ValidAudience = "DifferentAudience",
+            IssuerSigningKey = SigningKey(),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true
+        };
+
+        Assert.Throws<SecurityTokenInvalidAudienceException>(() => handler.ValidateToken(token, parameters, out _));
     }
 }

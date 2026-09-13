@@ -44,7 +44,7 @@
                     <td>@i.Discount.ToString("N2")</td>
                     <td>@i.Tax.ToString("N2")</td>
                     <td class="fw-bold">@i.NetAmount.ToString("N2")</td>
-                    <td><a asp-action="PrintInvoice" asp-route-id="@i.Id" asp-route-type="sale" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i></a></td>
+                    <td><a asp-action="PrintInvoice" asp-route-id="@i.Id" asp-route-type="sale" class="btn btn-sm btn-outline-danger" aria-label="طباعة فاتورة PDF"><i class="bi bi-file-earmark-pdf"></i></a></td>
                 </tr>
             }
         </tbody>
