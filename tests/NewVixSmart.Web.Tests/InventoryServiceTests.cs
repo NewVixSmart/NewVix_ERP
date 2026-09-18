@@ -71,6 +71,18 @@ public sealed class InventoryServiceTests : IDisposable
         ItemId = itemId, Quantity = 0, Count = count, UnitPrice = price
     };
 
+    private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty, decimal? count = null)
+    {
+        var svc = new InventoryService(db);
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = count.HasValue ? 0 : qty, Count = count ?? 0 } };
+        var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, items, "test");
+        if (!ok) throw new InvalidOperationException(err);
+        var (dok, derr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        if (!dok) throw new InvalidOperationException(derr);
+        return delivery.Id;
+    }
+
     // ---------- CreateSaleAsync ----------
 
     [Fact]
@@ -90,11 +102,14 @@ public sealed class InventoryServiceTests : IDisposable
         var (ok, _) = await svc.CreateSaleAsync(invoice, lines, "test");
 
         Assert.True(ok);
-        Assert.Equal(90, db.Items.Single().CurrentQuantity);
+        Assert.Equal(100, db.Items.Single().CurrentQuantity); // invoice does not touch stock
         Assert.Equal(500, invoice.TotalAmount);
         Assert.True(invoice.IsPaid == false);
         Assert.Equal(0, invoice.PaidAmount);
         Assert.Equal("SI-", invoice.InvoiceNumber[..3]);
+
+        await DeliverAsync(db, invoice, itemId, 10);
+        Assert.Equal(90, db.Items.Single().CurrentQuantity);
     }
 
     [Fact]
@@ -109,10 +124,18 @@ public sealed class InventoryServiceTests : IDisposable
 
         var (ok, err) = await svc.CreateSaleAsync(invoice, lines, "test");
 
-        Assert.False(ok);
-        Assert.NotNull(err);
+        Assert.True(ok); // invoice creation no longer checks availability
         Assert.Equal(100, db.Items.Single().CurrentQuantity);
-        Assert.Equal(0, await db.SaleInvoices.CountAsync());
+        Assert.Single(await db.SaleInvoices.ToListAsync());
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (dOk, _) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 150, Count = 0 } }, "test");
+        Assert.True(dOk);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.False(dlvOk);
+        Assert.NotNull(dlvErr);
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        Assert.Equal(DeliveryOrderStatus.Draft, (await db.DeliveryOrders.SingleAsync()).Status);
     }
 
     [Fact]
@@ -162,6 +185,9 @@ public sealed class InventoryServiceTests : IDisposable
 
         Assert.True(ok);
         Assert.Equal(400, invoice.TotalAmount);
+        Assert.Equal(100, db.Items.Single().CurrentCount);
+
+        await DeliverAsync(db, invoice, itemId, 0, count: 4);
         Assert.Equal(96, db.Items.Single().CurrentCount);
     }
 
@@ -213,6 +239,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
+        await DeliverAsync(db, saleInv, itemId, 10);
 
         var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id };
         var retLines = new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 50 } };
@@ -234,6 +261,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
+        await DeliverAsync(db, saleInv, itemId, 10);
 
         var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id };
         var retLines = new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 11, Count = 0, UnitPrice = 50 } };
@@ -254,6 +282,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
+        await DeliverAsync(db, saleInv, itemId, 10);
 
         var ret1 = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id };
         await svc.CreateSaleReturnAsync(ret1, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 7, Count = 0, UnitPrice = 50 } }, "test");
@@ -274,6 +303,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { CountLine(itemId, 5, 100) }, "test");
+        await DeliverAsync(db, saleInv, itemId, 0, count: 5);
 
         var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id };
         var retLines = new List<SaleReturnItem> { new() { ItemId = itemId, Count = 6, Quantity = 0, UnitPrice = 100 } };
@@ -293,6 +323,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
+        await DeliverAsync(db, saleInv, itemId, 10);
 
         var otherCust = new Customer { Name = "عميل آخر" };
         db.Customers.Add(otherCust);
@@ -478,6 +509,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var sale = new SaleInvoice { CustomerId = (await SeedCustomer(db)) };
         await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 6, 100) }, "test");
+        await DeliverAsync(db, sale, itemId, 6);
 
         var layers = await db.StockLayers.OrderBy(l => l.DateReceived).ToListAsync();
         Assert.Equal(4, layers[0].RemainingQty);
@@ -500,6 +532,7 @@ public sealed class InventoryServiceTests : IDisposable
 
         var sale = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 12, 100) }, "test");
+        await DeliverAsync(db, sale, itemId, 12);
 
         var layers = await db.StockLayers.OrderBy(l => l.DateReceived).ToListAsync();
         Assert.Equal(0, layers[0].RemainingQty);

@@ -1,0 +1,87 @@
+@model NewVixSmart.Web.Models.Sales.SalesOrder
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Sales
+@{ ViewData["Title"] = $"أمر بيع {Model.OrderNumber}"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-eye text-primary"></i> أمر بيع: @Model.OrderNumber</h2>
+    <div class="d-flex gap-2">
+        @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status == SalesOrderStatus.Draft)
+        {
+            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="تتم فوترة أمر البيع المعتمد؟">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> اعتماد</button>
+            </form>
+        }
+        @if (await Perm.HasAsync("SalesOrders.Convert") && (Model.Status == SalesOrderStatus.Approved || Model.Status == SalesOrderStatus.PartiallyInvoiced))
+        {
+            <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إنشاء فاتورة بيع غير مسدّدة من كامل الكمية المتبقية؟">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> تحويل إلى فاتورة</button>
+            </form>
+        }
+        @if (await Perm.HasAsync("SalesOrders.Edit") && Model.Status == SalesOrderStatus.Draft)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> تعديل</a>
+        }
+        @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status != SalesOrderStatus.Cancelled && Model.Status != SalesOrderStatus.Invoiced)
+        {
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> إلغاء</button>
+            </form>
+        }
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> طباعة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div class="col-md-3"><strong>تاريخ الأمر:</strong> @Model.OrderDate.ToString("dd/MM/yyyy")</div>
+            <div class="col-md-3"><strong>المتوقع:</strong> @(Model.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</div>
+            <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@Model.Status.GetDisplayName()</span></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-3"><strong>العملة:</strong> @(Model.Currency?.Code ?? "—") @(Model.ExchangeRate.HasValue ? $"@{Model.ExchangeRate}" : "")</div>
+            <div class="col-md-3"><strong>عرض السعر المصدر:</strong>
+                @if (Model.SaleQuoteId.HasValue)
+                {
+                    <a asp-controller="SalesQuotes" asp-action="Details" asp-route-id="@Model.SaleQuoteId.Value">عرض #@Model.SaleQuoteId.Value</a>
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </div>
+            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div class="col-md-3"><strong>ملاحظات:</strong> @(Model.Notes ?? "—")</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container mb-4">
+    <table class="table mb-0">
+        <thead><tr><th scope="col">الصنف</th><th>العدد المطلوب</th><th>الكمية المطلوبة</th><th>سعر الوحدة</th><th>الإجمالي</th><th>المفوتر عدد</th><th>المفوتر كمية</th></tr></thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@item.Item.Name</td>
+                    <td>@item.Count</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.UnitPrice.ToString("N2")</td>
+                    <td class="fw-bold">@item.Total.ToString("N2")</td>
+                    <td>@item.InvoicedCount</td>
+                    <td>@item.InvoicedQty</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.Items.Sum(i => i.Total).ToString("N2")</h4></div></div></div>
+</div>

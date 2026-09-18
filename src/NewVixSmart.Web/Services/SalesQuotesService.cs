@@ -10,7 +10,7 @@ namespace NewVixSmart.Web.Services;
 public interface ISalesQuotesService
 {
     Task<(bool Success, string? Error, SaleQuote? Quote)> CreateAsync(SaleQuote quote, List<SaleQuoteItem> items, string? user, int? branchId = null);
-    Task<(bool Success, string? Error, SaleInvoice? Invoice)> ConvertToInvoiceAsync(int quoteId, string? user, int? branchId = null);
+    Task<(bool Success, string? Error, SalesOrder? Order)> ConvertToOrderAsync(int quoteId, string? user, int? branchId = null);
     Task<(bool Success, string? Error)> DeleteAsync(int quoteId);
     Task<(int Converted, int Failed, IReadOnlyList<(int Id, string Error)> Failures)> MassConvertAsync(IEnumerable<int> quoteIds, string? user, int? branchId = null);
 }
@@ -19,12 +19,12 @@ public sealed class SalesQuotesService : ISalesQuotesService
 {
     private const int MaxAttempts = 3;
     private readonly AppDbContext _db;
-    private readonly IInventoryService _inventory;
+    private readonly ISalesOrdersService _orders;
 
-    public SalesQuotesService(AppDbContext db, IInventoryService inventory)
+    public SalesQuotesService(AppDbContext db, ISalesOrdersService orders)
     {
         _db = db;
-        _inventory = inventory;
+        _orders = orders;
     }
 
     public async Task<(bool Success, string? Error, SaleQuote? Quote)> CreateAsync(SaleQuote quote, List<SaleQuoteItem> items, string? user, int? branchId = null)
@@ -58,7 +58,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
         return (false, "تعذر حفظ عرض السعر بسبب تعارض في البيانات، حاول مرة أخرى", null);
     }
 
-    public async Task<(bool Success, string? Error, SaleInvoice? Invoice)> ConvertToInvoiceAsync(int quoteId, string? user, int? branchId = null)
+    public async Task<(bool Success, string? Error, SalesOrder? Order)> ConvertToOrderAsync(int quoteId, string? user, int? branchId = null)
     {
         var quote = await _db.SaleQuotes.AsNoTracking().Include(q => q.Items)
             .FirstOrDefaultAsync(q => q.Id == quoteId);
@@ -72,23 +72,18 @@ public sealed class SalesQuotesService : ISalesQuotesService
             .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Draft)
             .ExecuteUpdateAsync(s => s.SetProperty(q => q.Status, SaleQuoteStatus.Converting));
         if (claimed == 0)
-            return (false, "عرض السعر محوّل إلى فاتورة بالفعل، أو جارٍ تحويله حالياً", null);
+            return (false, "عرض السعر محوّل إلى أمر بيع بالفعل، أو جارٍ تحويله حالياً", null);
 
-        var invoice = new SaleInvoice
+        var order = new SalesOrder
         {
-            InvoiceNumber = await NextInvoiceNumberAsync(),
             CustomerId = quote.CustomerId,
-            CurrencyId = quote.CurrencyId ?? await BaseCurrencyIdAsync(),
-            ExchangeRate = quote.ExchangeRate ?? 1m,
-            InvoiceDate = quote.QuoteDate,
-            PaymentTerms = InvoicePaymentTerms.OnReceipt,
+            CurrencyId = quote.CurrencyId,
+            ExchangeRate = quote.ExchangeRate,
+            OrderDate = quote.QuoteDate,
             Notes = quote.Notes,
-            TotalAmount = quote.TotalAmount,
-            Discount = quote.Discount,
-            Tax = quote.Tax,
-            NetAmount = quote.NetAmount
+            SaleQuoteId = quote.Id
         };
-        var itemList = valid.Select(l => new SaleInvoiceItem
+        var itemList = valid.Select(l => new SalesOrderItem
         {
             ItemId = l.ItemId,
             Count = l.Count,
@@ -96,7 +91,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
             UnitPrice = l.UnitPrice
         }).ToList();
 
-        var (ok, error) = await _inventory.CreateSaleAsync(invoice, itemList, user, branchId);
+        var (ok, error) = await _orders.CreateOrderAsync(order, itemList, user);
         if (!ok)
         {
             await RollbackConversionAsync(quoteId);
@@ -110,7 +105,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
                 .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Converting)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(q => q.Status, SaleQuoteStatus.Converted)
-                    .SetProperty(q => q.SaleInvoiceId, invoice.Id)
+                    .SetProperty(q => q.SalesOrderId, order.Id)
                     .SetProperty(q => q.ConvertedBy, user)
                     .SetProperty(q => q.ConvertedAt, convertedAt));
         }
@@ -123,12 +118,12 @@ public sealed class SalesQuotesService : ISalesQuotesService
         PatchTrackedQuote(quoteId, q =>
         {
             q.Status = SaleQuoteStatus.Converted;
-            q.SaleInvoiceId = invoice.Id;
+            q.SalesOrderId = order.Id;
             q.ConvertedBy = user;
             q.ConvertedAt = convertedAt;
         });
 
-        return (true, null, invoice);
+        return (true, null, order);
     }
 
     private async Task RollbackConversionAsync(int quoteId)
@@ -153,7 +148,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
     {
         var quote = await _db.SaleQuotes.AsNoTracking().FirstOrDefaultAsync(q => q.Id == quoteId);
         if (quote == null) return (false, "عرض السعر غير موجود");
-        if (quote.Status == SaleQuoteStatus.Converted) return (false, "لا يمكن حذف عرض تم تحويله إلى فاتورة");
+        if (quote.Status == SaleQuoteStatus.Converted) return (false, "لا يمكن حذف عرض تم تحويله إلى أمر بيع");
         if (quote.Status == SaleQuoteStatus.Cancelled) return (false, "لا يمكن حذف عرض سعر ملغي");
 
         await _db.SaleQuotes.Where(q => q.Id == quoteId).ExecuteDeleteAsync();
@@ -166,7 +161,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
         int converted = 0;
         foreach (var id in quoteIds.Distinct().ToList())
         {
-            var (ok, error, _) = await ConvertToInvoiceAsync(id, user, branchId);
+            var (ok, error, _) = await ConvertToOrderAsync(id, user, branchId);
             if (ok) { converted++; continue; }
             failures.Add((id, error ?? "تعذر تحويل عرض السعر"));
         }
@@ -216,16 +211,6 @@ public sealed class SalesQuotesService : ISalesQuotesService
         }
         return num;
     }
-
-    private async Task<string> NextInvoiceNumberAsync()
-    {
-        var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).FirstOrDefaultAsync();
-        return $"SI-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
-    }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 
     private void DetachAll()
     {

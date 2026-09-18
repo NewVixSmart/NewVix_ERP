@@ -81,7 +81,7 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, Discount = 10, Tax = 5 };
         var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
@@ -107,7 +107,7 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var empty = new SaleQuote { CustomerId = custId };
         var (ok, err, saved) = await quotes.CreateAsync(empty, new List<SaleQuoteItem>(), "test");
@@ -137,40 +137,34 @@ public sealed class SalesQuoteTests : IDisposable
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var quotes = new SalesQuotesService(db, new InventoryService(db, new AccountingService(db)));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 10), ValidUntil = new DateTime(2026, 4, 10), Discount = 10, Tax = 5 };
         var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok);
         Assert.Null(err);
 
-        var (convOk, convErr, invoice) = await quotes.ConvertToInvoiceAsync(saved!.Id, "user1");
+        var (convOk, convErr, order) = await quotes.ConvertToOrderAsync(saved!.Id, "user1");
         Assert.True(convOk);
         Assert.Null(convErr);
-        Assert.NotNull(invoice);
+        Assert.NotNull(order);
 
         var converted = await db.SaleQuotes.SingleAsync();
         Assert.Equal(SaleQuoteStatus.Converted, converted.Status);
-        Assert.Equal(invoice!.Id, converted.SaleInvoiceId);
+        Assert.Equal(order!.Id, converted.SalesOrderId);
         Assert.Equal("user1", converted.ConvertedBy);
         Assert.NotNull(converted.ConvertedAt);
 
-        var saleInvoice = await db.SaleInvoices.SingleAsync();
-        Assert.Equal(custId, saleInvoice.CustomerId);
-        Assert.Equal(320m, saleInvoice.TotalAmount);
-        Assert.Equal(315m, saleInvoice.NetAmount);
-        Assert.StartsWith("SI-", saleInvoice.InvoiceNumber);
+        var salesOrder = await db.SalesOrders.SingleAsync();
+        Assert.Equal(custId, salesOrder.CustomerId);
+        Assert.Equal(320m, salesOrder.Items.Sum(i => i.Total));
+        Assert.StartsWith("SO-", salesOrder.OrderNumber);
+        Assert.Equal(quote.Id, salesOrder.SaleQuoteId);
+        Assert.Equal(SalesOrderStatus.Draft, salesOrder.Status);
 
-        Assert.Equal(96, db.Items.Single().CurrentQuantity);
-        Assert.Equal(6, (await db.StockLayers.SingleAsync()).RemainingQty);
-        Assert.Single(await db.StockMovements.Where(m => m.DocumentType == DocumentType.SaleInvoice).ToListAsync());
-
-        var entries = await db.JournalEntries.ToListAsync();
-        Assert.Equal(2, entries.Count);
-        Assert.All(entries, e =>
-        {
-            Assert.Equal(db.JournalEntryLines.Where(l => l.JournalEntryId == e.Id).Sum(l => l.Debit),
-                db.JournalEntryLines.Where(l => l.JournalEntryId == e.Id).Sum(l => l.Credit));
-        });
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        Assert.Equal(10, (await db.StockLayers.SingleAsync()).RemainingQty);
+        Assert.Equal(0, await db.StockMovements.CountAsync());
+        Assert.Equal(0, await db.JournalEntries.CountAsync());
     }
 
     [Fact]
@@ -178,20 +172,20 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 11) };
         var (ok, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok);
 
-        var (first, _, _) = await quotes.ConvertToInvoiceAsync(saved!.Id, "user1");
+        var (first, _, _) = await quotes.ConvertToOrderAsync(saved!.Id, "user1");
         Assert.True(first);
 
-        var (second, err, _) = await quotes.ConvertToInvoiceAsync(saved!.Id, "user1");
+        var (second, err, _) = await quotes.ConvertToOrderAsync(saved!.Id, "user1");
         Assert.False(second);
         Assert.Contains("محوّل", err);
-        Assert.Single(await db.SaleInvoices.ToListAsync());
-        Assert.Single(await db.StockMovements.Where(m => m.DocumentType == DocumentType.SaleInvoice).ToListAsync());
+        Assert.Single(await db.SalesOrders.ToListAsync());
+        Assert.Equal(0, await db.StockMovements.CountAsync());
     }
 
     [Fact]
@@ -204,11 +198,11 @@ public sealed class SalesQuoteTests : IDisposable
         db.SaleQuotes.Add(quote);
         await db.SaveChangesAsync();
 
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
-        var (ok, err, _) = await quotes.ConvertToInvoiceAsync(quote.Id, "user1");
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+        var (ok, err, _) = await quotes.ConvertToOrderAsync(quote.Id, "user1");
         Assert.False(ok);
         Assert.Contains("ملغي", err);
-        Assert.Equal(0, await db.SaleInvoices.CountAsync());
+        Assert.Equal(0, await db.SalesOrders.CountAsync());
         Assert.Equal(100, db.Items.Single().CurrentQuantity);
     }
 
@@ -217,7 +211,7 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 15) };
         var (ok, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
@@ -227,10 +221,10 @@ public sealed class SalesQuoteTests : IDisposable
         locked.Status = SaleQuoteStatus.Converting;
         await db.SaveChangesAsync();
 
-        var (convOk, err, _) = await quotes.ConvertToInvoiceAsync(saved!.Id, "user1");
+        var (convOk, err, _) = await quotes.ConvertToOrderAsync(saved!.Id, "user1");
         Assert.False(convOk);
         Assert.Contains("جارٍ", err);
-        Assert.Equal(0, await db.SaleInvoices.CountAsync());
+        Assert.Equal(0, await db.SalesOrders.CountAsync());
         Assert.Equal(100, db.Items.Single().CurrentQuantity);
     }
 
@@ -239,7 +233,7 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 13) };
         var (ok, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 80 } }, "test");
@@ -257,18 +251,18 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 14) };
         var (ok, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok);
-        Assert.True((await quotes.ConvertToInvoiceAsync(saved!.Id, "user1")).Success);
+        Assert.True((await quotes.ConvertToOrderAsync(saved!.Id, "user1")).Success);
 
         var (delOk, delErr) = await quotes.DeleteAsync(saved!.Id);
         Assert.False(delOk);
         Assert.Contains("حذف", delErr);
         var kept = await db.SaleQuotes.SingleAsync();
         Assert.Equal(SaleQuoteStatus.Converted, kept.Status);
-        Assert.NotNull(kept.SaleInvoiceId);
+        Assert.NotNull(kept.SalesOrderId);
     }
 }

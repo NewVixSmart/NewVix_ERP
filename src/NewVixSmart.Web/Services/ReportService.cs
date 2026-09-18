@@ -871,14 +871,6 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
             .ToListAsync();
 
-        var onReceiptSales = (await _db.SaleInvoices
-            .AsNoTracking()
-            .Where(s => s.PaymentTerms == InvoicePaymentTerms.OnReceipt && s.PaidAmount > 0)
-            .Select(s => new { s.InvoiceDate, s.NetAmount, s.ExchangeRate })
-            .ToListAsync())
-            .Select(s => new { s.InvoiceDate, Base = decimal.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2) })
-            .ToList();
-
         var onReceiptPurchases = (await _db.PurchaseInvoices
             .AsNoTracking()
             .Where(p => p.PaymentTerms == InvoicePaymentTerms.OnReceipt && p.PaidAmount > 0)
@@ -895,13 +887,9 @@ public class ReportService : IReportService
             var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
             vm.OpeningBalance += p.Type == PaymentType.Receipt ? amount : -amount;
         }
-        foreach (var s in onReceiptSales)
+        foreach (var s in onReceiptPurchases)
         {
-            if (s.InvoiceDate < fromDate) vm.OpeningBalance += s.Base;
-        }
-        foreach (var p in onReceiptPurchases)
-        {
-            if (p.InvoiceDate < fromDate) vm.OpeningBalance -= p.Base;
+            if (s.InvoiceDate < fromDate) vm.OpeningBalance -= s.Base;
         }
 
         var period = payments.Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate).ToList();
@@ -911,10 +899,6 @@ public class ReportService : IReportService
             var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
             if (p.Type == PaymentType.Receipt) vm.TotalReceipts += amount;
             else vm.TotalDisbursements += amount;
-        }
-        foreach (var s in onReceiptSales)
-        {
-            if (s.InvoiceDate >= fromDate && s.InvoiceDate <= toDate) vm.TotalReceipts += s.Base;
         }
         foreach (var p in onReceiptPurchases)
         {
@@ -931,14 +915,12 @@ public class ReportService : IReportService
             })
             .ToList();
 
-        var periodSales = onReceiptSales.Where(s => s.InvoiceDate >= fromDate && s.InvoiceDate <= toDate).Sum(s => s.Base);
         var periodPurchases = onReceiptPurchases.Where(p => p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate).Sum(p => p.Base);
-        if (periodSales > 0 || periodPurchases > 0)
+        if (periodPurchases > 0)
         {
             var cashRow = byMethod.FirstOrDefault(m => m.Method == PaymentMethod.Cash);
             if (cashRow != null)
             {
-                cashRow.Receipts += periodSales;
                 cashRow.Disbursements += periodPurchases;
             }
             else
@@ -946,7 +928,7 @@ public class ReportService : IReportService
                 byMethod.Add(new CashFlowMethodTotal
                 {
                     Method = PaymentMethod.Cash,
-                    Receipts = periodSales,
+                    Receipts = 0m,
                     Disbursements = periodPurchases
                 });
             }

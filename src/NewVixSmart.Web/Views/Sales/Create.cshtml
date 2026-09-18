@@ -29,10 +29,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label d-block">&nbsp;</label>
-                    <div class="form-check form-switch">
-                        <input asp-for="Invoice.IsPaid" class="form-check-input" />
-                        <label asp-for="Invoice.IsPaid" class="form-check-label">مدفوعة</label>
-                    </div>
+                    <div class="alert alert-info py-1 px-2 mb-0 small">فاتورة غير مسدّدة؛ أذن التسليم هو ما يُرحّل المخزون والأستاذ</div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="currencySelect">العملة</label>
@@ -100,11 +97,12 @@
             <span asp-validation-for="Invoice.TotalAmount" class="text-danger small"></span></div>
         <div class="col-md-3"><label class="form-label" for="paymentTerms">شروط الدفع</label>
             <select asp-for="Invoice.PaymentTerms" class="form-select" id="paymentTerms">
-                <option value="0" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام</option>
+                <option value="0" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام (بدون تاريخ استحقاق)</option>
                 <option value="1" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net7)">7 أيام</option>
                 <option value="2" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net15)">15 يوم</option>
                 <option value="3" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net30)">30 يوم</option>
                 <option value="4" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net60)">60 يوم</option>
+                <option value="5" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OpenTerm)">آجل مفتوح (بدون تاريخ استحقاق)</option>
             </select></div>
         <div class="col-md-3"><label class="form-label" for="dueDate">تاريخ الاستحقاق</label><input asp-for="Invoice.DueDate" class="form-control" type="date" id="dueDate" /></div>
         <div class="col-md-3"><label class="form-label" for="netAmount">المبلغ الصافي</label><input asp-for="Invoice.NetAmount" class="form-control fw-bold" id="netAmount" readonly /></div>

@@ -1,0 +1,73 @@
+@model NewVixSmart.Web.Models.Sales.DeliveryOrder
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Sales
+@{ ViewData["Title"] = $"أذن تسليم {Model.DeliveryNumber}"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-truck text-primary"></i> أذن تسليم: @Model.DeliveryNumber</h2>
+    <div class="d-flex gap-2">
+        @if (await Perm.HasAsync("DeliveryOrders.Deliver") && Model.Status == DeliveryOrderStatus.Draft)
+        {
+            <form asp-action="Deliver" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="ترحيل أذن التسليم: خصم المخزون وتسجيل قيود البيع؟">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> ترحيل التسليم</button>
+            </form>
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إلغاء أذن التسليم؟">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> إلغاء</button>
+            </form>
+        }
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> طباعة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div class="col-md-3"><strong>تاريخ التسليم:</strong> @Model.DeliveryDate.ToString("dd/MM/yyyy")</div>
+            <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { DeliveryOrderStatus.Delivered => "bg-success", DeliveryOrderStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span></div>
+            <div class="col-md-3"><strong>فاتورة البيع:</strong>
+                @if (Model.SaleInvoice != null)
+                {
+                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.Id">@Model.SaleInvoice.InvoiceNumber</a>
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-3"><strong>الناقل:</strong> @(Model.Carrier ?? "—")</div>
+            <div class="col-md-3"><strong>رقم التتبع:</strong> @(Model.TrackingNumber ?? "—")</div>
+            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div class="col-md-3"><strong>رحّلها:</strong> @(Model.DeliveredBy ?? "—") @(Model.DeliveredAt.HasValue ? $"في {Model.DeliveredAt.Value:dd/MM/yyyy HH:mm}" : "")</div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="row mt-2"><div class="col-12"><strong>ملاحظات:</strong> @Model.Notes</div></div>
+        }
+    </div>
+</div>
+
+<div class="table-container mb-4">
+    <table class="table mb-0">
+        <thead><tr><th scope="col">الصنف</th><th>العدد المسلّم</th><th>الكمية المسلّمة</th></tr></thead>
+        <tbody>
+            @if (!Model.Items.Any())
+            {
+                <tr><td colspan="3" class="text-muted">لا توجد أصناف</td></tr>
+            }
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@(item.Item?.Name ?? "—")</td>
+                    <td>@item.Count</td>
+                    <td>@item.Quantity</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -7,6 +7,9 @@ namespace NewVixSmart.Web.Services;
 public interface IInventoryService
 {
     Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null);
+    Task<(bool Success, string? Error)> CreateDeliveryOrderAsync(DeliveryOrder delivery, List<DeliveryOrderItem> items, string? user);
+    Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null);
+    Task<(bool Success, string? Error)> CancelDeliveryOrderAsync(int deliveryId, string? user);
     Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null);
     Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user);
     Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user);

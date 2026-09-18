@@ -17,7 +17,9 @@ public enum InvoicePaymentTerms
     [Display(Name = "30 يوم")]
     Net30 = 3,
     [Display(Name = "60 يوم")]
-    Net60 = 4
+    Net60 = 4,
+    [Display(Name = "آجل مفتوح")]
+    OpenTerm = 5
 }
 
 public class Payment

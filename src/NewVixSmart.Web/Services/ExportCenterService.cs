@@ -43,7 +43,8 @@ public class ExportCenterService : IExportCenterService
             ["fiscal_periods"] = () => FiscalPeriodsXlsxAsync(),
             ["budgets"] = () => BudgetsXlsxAsync(),
             ["purchase_orders"] = () => PurchaseOrdersXlsxAsync(),
-            ["shipments"] = () => ShipmentsXlsxAsync()
+            ["sale_orders"] = () => SaleOrdersXlsxAsync(),
+            ["delivery_orders"] = () => DeliveryOrdersXlsxAsync()
         };
 
         _csv = new Dictionary<string, Func<Task<byte[]>>>(StringComparer.Ordinal)
@@ -71,7 +72,8 @@ public class ExportCenterService : IExportCenterService
             ["fiscal_periods"] = () => FiscalPeriodsCsvAsync(),
             ["budgets"] = () => BudgetsCsvAsync(),
             ["purchase_orders"] = () => PurchaseOrdersCsvAsync(),
-            ["shipments"] = () => ShipmentsCsvAsync()
+            ["sale_orders"] = () => SaleOrdersCsvAsync(),
+            ["delivery_orders"] = () => DeliveryOrdersCsvAsync()
         };
     }
 
@@ -100,7 +102,8 @@ public class ExportCenterService : IExportCenterService
         new("fiscal_periods", "السنوات المالية", "السنوات المالية وفتراتها", "bi-calendar2-range", true),
         new("budgets", "الميزانيات", "سنوات الميزانية وبنودها", "bi-pie-chart", true),
         new("purchase_orders", "أوامر الشراء", "أوامر الشراء وتفاصيل أصنافها", "bi-basket", true),
-        new("shipments", "الشحنات", "الشحنات وبياناتها المرتبطة", "bi-truck-flatbed", true)
+        new("sale_orders", "أوامر البيع", "أوامر البيع وتفاصيل أصنافها", "bi-clipboard2-check", true),
+        new("delivery_orders", "أذونات التسليم", "أذونات التسليم وبياناتها المرتبطة بالفاتورة", "bi-truck", true)
     };
 
     public IReadOnlyList<ExportOption> GetCatalog() => Catalog;
@@ -735,32 +738,79 @@ public class ExportCenterService : IExportCenterService
         return ms.ToArray();
     }
 
-    public async Task<byte[]> ShipmentsXlsxAsync()
+    public async Task<byte[]> SaleOrdersXlsxAsync()
     {
-        var shipments = await _db.Shipments
+        var orders = await _db.SalesOrders
             .AsNoTracking()
-            .Include(s => s.Customer)
-            .Include(s => s.Supplier)
-            .Include(s => s.SaleInvoice)
-            .Include(s => s.PurchaseInvoice)
-            .OrderByDescending(s => s.CreatedAt)
+            .Include(o => o.Customer)
+            .Include(o => o.Items)
+            .ThenInclude(i => i.Item)
+            .OrderByDescending(o => o.OrderDate)
+            .ThenBy(o => o.OrderNumber)
             .ToListAsync();
 
-        var rows = shipments.Select(s => new object?[]
-        {
-            s.ShipmentNumber,
-            s.InvoiceType == ShipmentInvoiceType.Sale ? "بيع" : "شراء",
-            s.SaleInvoice?.InvoiceNumber ?? s.PurchaseInvoice?.InvoiceNumber ?? "",
-            s.Customer?.Name ?? s.Supplier?.Name ?? "",
-            s.Carrier ?? "", s.TrackingNumber ?? "",
-            s.ShipDate?.ToString("dd/MM/yyyy") ?? "",
-            s.Status.GetDisplayName(), s.Notes ?? "", s.CreatedBy ?? "",
-            s.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
-        });
+        using var wb = new XLWorkbook();
 
-        return BuildWorkbook("الشحنات", $"تصدير الشحنات — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "رقم الشحنة", "النوع", "رقم الفاتورة", "العميل/المورد", "الناقل", "رقم التتبع", "تاريخ الشحن", "الحالة", "ملاحظات", "أنشئ بواسطة", "تاريخ الإنشاء" },
-            rows);
+        var orderRows = orders.Select(o => new object?[]
+        {
+            o.OrderNumber, o.Customer.Name, o.OrderDate.ToString("dd/MM/yyyy"),
+            o.ExpectedDate?.ToString("dd/MM/yyyy") ?? "", o.Status.GetDisplayName(),
+            o.SaleQuoteId?.ToString() ?? "", o.Notes ?? ""
+        });
+        WriteSheet(wb, "أوامر البيع", $"تصدير أوامر البيع — {DateTime.Today:dd/MM/yyyy}",
+            new List<string> { "رقم الأمر", "العميل", "التاريخ", "التاريخ المتوقع", "الحالة", "عرض السعر", "ملاحظات" },
+            orderRows);
+
+        var itemRows = orders.SelectMany(o => o.Items.Select(i => new object?[]
+        {
+            o.OrderNumber, i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitPrice,
+            (double)i.InvoicedQty, (double)i.InvoicedCount, (double)i.Total
+        }));
+        WriteSheet(wb, "أصناف الأوامر", $"تفاصيل أصناف أوامر البيع — {DateTime.Today:dd/MM/yyyy}",
+            new List<string> { "رقم الأمر", "الصنف", "الكمية المطلوبة", "العدد المطلوب", "سعر الوحدة", "الكمية المفوتَرة", "العدد المفوتَر", "الإجمالي" },
+            itemRows);
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public async Task<byte[]> DeliveryOrdersXlsxAsync()
+    {
+        var deliveries = await _db.DeliveryOrders
+            .AsNoTracking()
+            .Include(d => d.Customer)
+            .Include(d => d.SaleInvoice)
+            .Include(d => d.Items)
+            .ThenInclude(i => i.Item)
+            .OrderByDescending(d => d.DeliveryDate)
+            .ThenBy(d => d.DeliveryNumber)
+            .ToListAsync();
+
+        using var wb = new XLWorkbook();
+
+        var deliveryRows = deliveries.Select(d => new object?[]
+        {
+            d.DeliveryNumber, d.SaleInvoice?.InvoiceNumber ?? "", d.Customer?.Name ?? "",
+            d.DeliveryDate.ToString("dd/MM/yyyy"), d.Status.GetDisplayName(),
+            d.Carrier ?? "", d.TrackingNumber ?? "", d.Notes ?? "",
+            d.DeliveredBy ?? "", d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? ""
+        });
+        WriteSheet(wb, "أذونات التسليم", $"تصدير أذونات التسليم — {DateTime.Today:dd/MM/yyyy}",
+            new List<string> { "رقم الإذن", "فاتورة البيع", "العميل", "تاريخ التسليم", "الحالة", "الناقل", "رقم التتبع", "ملاحظات", "رحّلها", "تاريخ الترحيل" },
+            deliveryRows);
+
+        var itemRows = deliveries.SelectMany(d => d.Items.Select(i => new object?[]
+        {
+            d.DeliveryNumber, i.Item.Name, (double)i.Quantity, (double)i.Count
+        }));
+        WriteSheet(wb, "أصناف الإذونات", $"تفاصيل أصناف أذونات التسليم — {DateTime.Today:dd/MM/yyyy}",
+            new List<string> { "رقم الإذن", "الصنف", "الكمية المسلّمة", "العدد المسلّم" },
+            itemRows);
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
     }
 
     public async Task<byte[]> SuppliersCsvAsync()
@@ -1401,30 +1451,72 @@ public class ExportCenterService : IExportCenterService
         return CsvBytes(sb);
     }
 
-    public async Task<byte[]> ShipmentsCsvAsync()
+    public async Task<byte[]> SaleOrdersCsvAsync()
     {
-        var shipments = await _db.Shipments
+        var orders = await _db.SalesOrders
             .AsNoTracking()
-            .Include(s => s.Customer)
-            .Include(s => s.Supplier)
-            .Include(s => s.SaleInvoice)
-            .Include(s => s.PurchaseInvoice)
-            .OrderByDescending(s => s.CreatedAt)
+            .Include(o => o.Customer)
+            .Include(o => o.Items).ThenInclude(i => i.Item)
+            .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم الشحنة,النوع,رقم الفاتورة,العميل/المورد,الناقل,رقم التتبع,تاريخ الشحن,الحالة,ملاحظات,أنشئ بواسطة,تاريخ الإنشاء");
-        foreach (var s in shipments)
+        sb.AppendLine("رقم الأمر,العميل,التاريخ,التاريخ المتوقع,الحالة,عرض السعر,ملاحظات,الصنف,الكمية المطلوبة,العدد المطلوب,سعر الوحدة,الكمية المفوتَرة,العدد المفوتَر,الإجمالي");
+        foreach (var o in orders)
         {
-            sb.AppendLine(string.Join(",",
-                CsvField(s.ShipmentNumber),
-                CsvField(s.InvoiceType == ShipmentInvoiceType.Sale ? "بيع" : "شراء"),
-                CsvField(s.SaleInvoice?.InvoiceNumber ?? s.PurchaseInvoice?.InvoiceNumber ?? ""),
-                CsvField(s.Customer?.Name ?? s.Supplier?.Name ?? ""),
-                CsvField(s.Carrier ?? ""), CsvField(s.TrackingNumber ?? ""),
-                CsvField(s.ShipDate?.ToString("dd/MM/yyyy") ?? ""),
-                CsvField(s.Status.GetDisplayName()), CsvField(s.Notes ?? ""),
-                CsvField(s.CreatedBy ?? ""), CsvField(s.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy"))));
+            foreach (var i in o.Items)
+            {
+                sb.AppendLine(string.Join(",",
+                    CsvField(o.OrderNumber),
+                    CsvField(o.Customer?.Name ?? ""),
+                    CsvField(o.OrderDate.ToString("dd/MM/yyyy")),
+                    CsvField(o.ExpectedDate?.ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(o.Status.GetDisplayName()),
+                    o.SaleQuoteId?.ToString() ?? "",
+                    CsvField(o.Notes ?? ""),
+                    CsvField(i.Item?.Name ?? ""),
+                    i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
+                    i.Count.ToString("0.000", CultureInfo.InvariantCulture),
+                    i.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture),
+                    i.InvoicedQty.ToString("0.000", CultureInfo.InvariantCulture),
+                    i.InvoicedCount.ToString("0.000", CultureInfo.InvariantCulture),
+                    i.Total.ToString("0.00", CultureInfo.InvariantCulture)));
+            }
+        }
+        return CsvBytes(sb);
+    }
+
+    public async Task<byte[]> DeliveryOrdersCsvAsync()
+    {
+        var deliveries = await _db.DeliveryOrders
+            .AsNoTracking()
+            .Include(d => d.Customer)
+            .Include(d => d.SaleInvoice)
+            .Include(d => d.Items).ThenInclude(i => i.Item)
+            .OrderByDescending(d => d.DeliveryDate)
+            .ToListAsync();
+
+        var sb = new StringBuilder();
+        sb.AppendLine("رقم الإذن,فاتورة البيع,العميل,تاريخ التسليم,الحالة,الناقل,رقم التتبع,ملاحظات,رحّلها,تاريخ الترحيل,الصنف,الكمية المسلّمة,العدد المسلّم");
+        foreach (var d in deliveries)
+        {
+            foreach (var i in d.Items)
+            {
+                sb.AppendLine(string.Join(",",
+                    CsvField(d.DeliveryNumber),
+                    CsvField(d.SaleInvoice?.InvoiceNumber ?? ""),
+                    CsvField(d.Customer?.Name ?? ""),
+                    CsvField(d.DeliveryDate.ToString("dd/MM/yyyy")),
+                    CsvField(d.Status.GetDisplayName()),
+                    CsvField(d.Carrier ?? ""),
+                    CsvField(d.TrackingNumber ?? ""),
+                    CsvField(d.Notes ?? ""),
+                    CsvField(d.DeliveredBy ?? ""),
+                    CsvField(d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(i.Item?.Name ?? ""),
+                    i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
+                    i.Count.ToString("0.000", CultureInfo.InvariantCulture)));
+            }
         }
         return CsvBytes(sb);
     }

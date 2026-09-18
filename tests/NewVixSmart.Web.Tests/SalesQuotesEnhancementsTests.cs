@@ -89,7 +89,7 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 50, Count = 0, UnitCost = 40m, RemainingQty = 50, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var quotes = new SalesQuotesService(db, new InventoryService(db, new AccountingService(db)));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
         var (ok1, _, q1) = await quotes.CreateAsync(new SaleQuote { CustomerId = custId }, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 80 } }, "test");
         var (ok2, _, q2) = await quotes.CreateAsync(new SaleQuote { CustomerId = custId }, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
         var (ok3, _, q3) = await quotes.CreateAsync(new SaleQuote { CustomerId = custId }, new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 80 } }, "test");
@@ -112,7 +112,7 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
         Assert.Equal(SaleQuoteStatus.Converted, (await db.SaleQuotes.SingleAsync(q => q.Id == q1!.Id)).Status);
         Assert.Equal(SaleQuoteStatus.Converted, (await db.SaleQuotes.SingleAsync(q => q.Id == q2!.Id)).Status);
         Assert.Equal(SaleQuoteStatus.Converting, (await db.SaleQuotes.SingleAsync(q => q.Id == q3!.Id)).Status);
-        Assert.Equal(2, await db.SaleInvoices.CountAsync());
+        Assert.Equal(2, await db.SalesOrders.CountAsync());
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
         db.SupplierQuotes.Add(supplierQuote);
         await db.SaveChangesAsync();
 
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
         var (ok, err, saved) = await quotes.CreateAsync(
             new SaleQuote { CustomerId = custId, SupplierQuoteId = supplierQuote.Id },
             new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 80 } },
@@ -154,7 +154,7 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
         var (ok, _, saved) = await quotes.CreateAsync(
             new SaleQuote { CustomerId = custId, Discount = 5, Tax = 2, Notes = "ملاحظة الطباعة" },
             new List<SaleQuoteItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } },
@@ -176,7 +176,7 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var quotes = new SalesQuotesService(db, new InventoryService(db));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var (ok, _, draft) = await quotes.CreateAsync(
             new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 6, 1) },

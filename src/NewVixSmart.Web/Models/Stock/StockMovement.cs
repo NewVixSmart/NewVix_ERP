@@ -77,5 +77,7 @@ public enum DocumentType
     [Display(Name = "جرد")]
     Adjustment = 5,
     [Display(Name = "تحويل")]
-    Transfer = 6
+    Transfer = 6,
+    [Display(Name = "أذن تسليم بيع")]
+    SaleDeliveryOrder = 7
 }

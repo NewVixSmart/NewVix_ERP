@@ -13,6 +13,8 @@ public static class PermissionDefaults
             "Sales.View", "Sales.Create",
             "SaleReturns.View", "SaleReturns.Create", "SaleReturns.Post",
             "SalesQuotes.View", "SalesQuotes.Create", "SalesQuotes.Convert",
+            "SalesOrders.View", "SalesOrders.Create", "SalesOrders.Edit", "SalesOrders.Approve", "SalesOrders.Convert",
+            "DeliveryOrders.View", "DeliveryOrders.Create", "DeliveryOrders.Deliver",
             "PurchaseReturns.View", "PurchaseReturns.Create", "PurchaseReturns.Post",
             "Customers.View", "Customers.Create", "Customers.Edit", "Customers.Delete",
             "Suppliers.View", "Suppliers.Create", "Suppliers.Edit", "Suppliers.Delete",
@@ -22,7 +24,6 @@ public static class PermissionDefaults
             "Reports.View", "Reports.Dashboard", "Reports.Export",
             "AuditLedger.View", "AuditLedger.Export",
             "Aging.View", "Aging.Export",
-            "Shipments.View", "Shipments.Create", "Shipments.Edit",
             "Batch.SalesCreate", "Batch.AdjustmentCreate",
             "FiscalClose.Close",
             "ChartOfAccounts.View",
@@ -37,6 +38,8 @@ public static class PermissionDefaults
             "Sales.View", "Sales.Create",
             "SaleReturns.View", "SaleReturns.Create", "SaleReturns.Post",
             "SalesQuotes.View", "SalesQuotes.Create", "SalesQuotes.Convert",
+            "SalesOrders.View", "SalesOrders.Create", "SalesOrders.Edit", "SalesOrders.Approve", "SalesOrders.Convert",
+            "DeliveryOrders.View", "DeliveryOrders.Create", "DeliveryOrders.Deliver",
             "PurchaseReturns.View", "PurchaseReturns.Create", "PurchaseReturns.Post",
             "Customers.View", "Customers.Create", "Customers.Edit", "Customers.Delete",
             "Suppliers.View", "Suppliers.Create", "Suppliers.Edit", "Suppliers.Delete",
@@ -44,7 +47,6 @@ public static class PermissionDefaults
             "InventoryAdjustments.View", "InventoryAdjustments.Create",
             "Warehouses.View", "Warehouses.Create", "Warehouses.Edit",
             "StockTransfers.View", "StockTransfers.Create",
-            "Shipments.View", "Shipments.Create", "Shipments.Edit",
             "Batch.AdjustmentCreate"
         ],
         _ => []

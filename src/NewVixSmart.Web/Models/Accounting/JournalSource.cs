@@ -23,5 +23,7 @@ public enum JournalSource
     [Display(Name = "إقفال سنوي")]
     YearEndClose = 9,
     [Display(Name = "استيراد")]
-    Import = 10
+    Import = 10,
+    [Display(Name = "أذن تسليم بيع")]
+    SaleDeliveryOrder = 11
 }

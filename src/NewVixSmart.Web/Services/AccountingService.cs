@@ -34,6 +34,26 @@ public class AccountingService : IAccountingService
         await PostAsync(JournalSource.SaleInvoice, customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
     }
 
+    public async Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost,
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null)
+    {
+        var localValue = decimal.Round(value, 2);
+        var localCost = decimal.Round(cost, 2);
+        var lines = new List<JournalLine>();
+        if (localValue > 0)
+        {
+            lines.Add(new JournalLine("1200", localValue, 0));
+            lines.Add(new JournalLine("4000", 0, localValue));
+        }
+        if (localCost > 0)
+        {
+            lines.Add(new JournalLine("5000", localCost, 0));
+            lines.Add(new JournalLine("1300", 0, localCost));
+        }
+        if (lines.Count == 0) throw new InvalidOperationException("أذن التسليم بلا قيمة أو تكلفة");
+        await PostAsync(JournalSource.SaleDeliveryOrder, deliveryId ?? customerId, entryDate, "أذن تسليم بيع", lines.ToArray(), user, branchId);
+    }
+
     public async Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount,
         int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
     {

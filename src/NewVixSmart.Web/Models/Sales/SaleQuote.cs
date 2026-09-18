@@ -79,6 +79,12 @@ public class SaleQuote
     [BindNever]
     public SaleInvoice? SaleInvoice { get; set; }
 
+    [Display(Name = "أمر البيع")]
+    public int? SalesOrderId { get; set; }
+
+    [BindNever]
+    public SalesOrder? SalesOrder { get; set; }
+
     [Display(Name = "حُوّل بواسطة")]
     [BindNever]
     public string? ConvertedBy { get; set; }

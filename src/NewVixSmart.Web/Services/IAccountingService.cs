@@ -7,6 +7,7 @@ public readonly record struct JournalLine(string Code, decimal Debit, decimal Cr
 public interface IAccountingService
 {
     Task RecordSaleInvoiceAsync(DateTime entryDate, int customerId, decimal netAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null);
+    Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null);
     Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null);
     Task RecordReceiptAsync(DateTime entryDate, decimal amount, PaymentMethod method, int customerId, string? user, int? branchId = null);
     Task RecordDisbursementAsync(DateTime entryDate, decimal amount, PaymentMethod method, int supplierId, string? user, int? branchId = null);

@@ -30,9 +30,6 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null)
     {
-        if (await IsPeriodClosedAsync(invoice.InvoiceDate))
-            return (false, $"السنة المالية {invoice.InvoiceDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
-
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
         var duplicateSale = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
@@ -48,15 +45,6 @@ public sealed class InventoryService : IInventoryService
                     _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
                 invoice.BranchId = branchId;
 
-                var stockLines = ToStockLines(valid);
-                var stockError = await ApplyStockAsync(
-                    stockLines, sign: -1,
-                    docNumber: invoice.InvoiceNumber, docType: DocumentType.SaleInvoice, docId: null,
-                    movementDate: DateTime.UtcNow, user);
-                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
-
-                var (consumedQtyCost, consumedCountCost) = await ConsumeFifoLayersAsync(stockLines, DateTime.UtcNow);
-
                 invoice.TotalAmount = valid.Sum(i => i.Total);
                 invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
                 if (invoice.NetAmount < 0)
@@ -64,10 +52,13 @@ public sealed class InventoryService : IInventoryService
                     await tx.RollbackAsync(); DetachAll();
                     return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
                 }
-                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt && invoice.DueDate == null)
+                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
+                    && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
+                    && invoice.DueDate == null)
                     invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
-                invoice.PaidAmount = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt ? invoice.NetAmount : 0;
-                invoice.IsPaid = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt;
+
+                invoice.PaidAmount = 0m;
+                invoice.IsPaid = false;
                 invoice.CreatedBy = user;
                 invoice.CreatedAt = DateTime.UtcNow;
                 invoice.Items = valid;
@@ -75,17 +66,8 @@ public sealed class InventoryService : IInventoryService
                 _db.SaleInvoices.Add(invoice);
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && (invoice.NetAmount > 0 || consumedQtyCost + consumedCountCost > 0))
-                    await _accounting.RecordSaleInvoiceAsync(invoice.InvoiceDate, invoice.CustomerId, invoice.NetAmount,
-                        consumedQtyCost + consumedCountCost, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
-
-                if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
-                    await _accounting.RecordReceiptAsync(invoice.InvoiceDate,
-                        decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
-                        PaymentMethod.Cash, invoice.CustomerId, user, branchId);
-
                 await tx.CommitAsync();
-                _logger?.LogInformation("فُتحت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
+                _logger?.LogInformation("سُجّلت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId} — غير مسددة، بانتظار أذن التسليم",
                     user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
                 return (true, null);
             }
@@ -99,6 +81,144 @@ public sealed class InventoryService : IInventoryService
             }
         }
         return (false, "تعذر حفظ فاتورة البيع بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error)> CreateDeliveryOrderAsync(DeliveryOrder delivery, List<DeliveryOrderItem> items, string? user)
+    {
+        var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate != null)
+            return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم");
+        if (!delivery.SaleInvoiceId.HasValue) return (false, "يجب ربط أذن التسليم بفاتورة بيع");
+
+        var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
+        if (invoice == null) return (false, "فاتورة البيع غير موجودة");
+
+        var delivered = await _db.DeliveryOrders
+            .Where(d => d.SaleInvoiceId == invoice.Id && d.Status != DeliveryOrderStatus.Cancelled)
+            .SelectMany(d => d.Items)
+            .AsNoTracking()
+            .ToListAsync();
+
+        foreach (var line in valid)
+        {
+            var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
+            if (invLine == null) return (false, $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية");
+            decimal deliveredCount = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
+            decimal deliveredQty = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
+            if (line.Count + deliveredCount > invLine.Count || line.Quantity + deliveredQty > invLine.Quantity)
+                return (false, $"الكمية المسلّمة أكبر من المتبقي في فاتورة البيع للصنف رقم {line.ItemId}");
+        }
+
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                delivery.DeliveryNumber = await NextDeliveryNumberAsync();
+                delivery.CustomerId = invoice.CustomerId;
+                delivery.Status = DeliveryOrderStatus.Draft;
+                delivery.CreatedBy = user;
+                delivery.CreatedAt = DateTime.UtcNow;
+                delivery.Items = valid;
+
+                _db.DeliveryOrders.Add(delivery);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("أُنشئ أذن تسليم {Owner} رقم {Number} مرتبط بفاتورة {InvoiceId}",
+                    user, delivery.DeliveryNumber, invoice.Id);
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(); DetachAll(); ResetDeliveryKeys(delivery);
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync(); DetachAll(); ResetDeliveryKeys(delivery);
+            }
+        }
+        return (false, "تعذر حفظ أذن التسليم بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null)
+    {
+        var delivery = await _db.DeliveryOrders.Include(d => d.Items)
+            .FirstOrDefaultAsync(d => d.Id == deliveryId);
+        if (delivery == null) return (false, "أذن التسليم غير موجود");
+        if (delivery.Status != DeliveryOrderStatus.Draft) return (false, "أذن التسليم مرحّل أو ملغي بالفعل");
+        if (await IsPeriodClosedAsync(delivery.DeliveryDate))
+            return (false, $"السنة المالية {delivery.DeliveryDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
+
+        var invoice = await _db.SaleInvoices.Include(i => i.Items).Include(i => i.Customer).AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId);
+        if (invoice == null) return (false, "فاتورة البيع المرتبطة غير موجودة");
+
+        var valid = delivery.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        if (valid.Count == 0) return (false, "أذن التسليم لا يحتوي على أصناف صالحة للتسليم");
+
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var stockLines = ToStockLines(valid);
+                var stockError = await ApplyStockAsync(stockLines, sign: -1,
+                    docNumber: delivery.DeliveryNumber, docType: DocumentType.SaleDeliveryOrder, docId: delivery.Id,
+                    movementDate: delivery.DeliveryDate, user);
+                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
+
+                var (consumedQtyCost, consumedCountCost) = await ConsumeFifoLayersAsync(stockLines, delivery.DeliveryDate);
+                var costTotal = consumedQtyCost + consumedCountCost;
+
+                decimal value = 0m;
+                foreach (var item in valid)
+                {
+                    var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
+                    if (invLine == null) continue;
+                    decimal effective = item.Quantity > 0 ? item.Quantity : item.Count;
+                    value += effective * invLine.UnitPrice;
+                }
+                var localValue = decimal.Round(value * (invoice.ExchangeRate ?? 1m), 2);
+
+                if (_accounting != null && (localValue > 0 || costTotal > 0))
+                    await _accounting.RecordSaleDeliveryAsync(delivery.DeliveryDate, invoice.CustomerId,
+                        localValue, costTotal, invoice.CurrencyId, invoice.ExchangeRate, user, branchId, delivery.Id);
+
+                delivery.Status = DeliveryOrderStatus.Delivered;
+                delivery.DeliveredBy = user;
+                delivery.DeliveredAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("رحّل أذن تسليم {Owner} رقم {Number} بقيمة {Val:C} وكلفة {Cost:C} فخصم المخزون ورصيد العميل",
+                    user, delivery.DeliveryNumber, localValue, costTotal);
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(); DetachAll();
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync(); DetachAll();
+            }
+        }
+        return (false, "تعذر ترحيل أذن التسليم بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error)> CancelDeliveryOrderAsync(int deliveryId, string? user)
+    {
+        var delivery = await _db.DeliveryOrders.FirstOrDefaultAsync(d => d.Id == deliveryId);
+        if (delivery == null) return (false, "أذن التسليم غير موجود");
+        if (delivery.Status == DeliveryOrderStatus.Delivered) return (false, "لا يمكن إلغاء أذن تسليم تم ترحيله");
+        if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "أذن التسليم ملغي بالفعل");
+
+        delivery.Status = DeliveryOrderStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        _logger?.LogInformation("أُلغي أذن تسليم {Number}", delivery.DeliveryNumber);
+        return (true, null);
     }
 
     public async Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null)
@@ -144,7 +264,9 @@ public sealed class InventoryService : IInventoryService
                     await tx.RollbackAsync(); DetachAll();
                     return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
                 }
-                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt && invoice.DueDate == null)
+                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
+                    && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
+                    && invoice.DueDate == null)
                     invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
                 if (invoice.SupplierId > 0)
                 {
@@ -743,14 +865,22 @@ public sealed class InventoryService : IInventoryService
                 && r.SaleReturn.Status == ReturnStatus.Posted)
             .ToListAsync();
 
+        var deliveredItems = await _db.DeliveryOrders
+            .Where(d => d.SaleInvoiceId == invoice.Id && d.Status == DeliveryOrderStatus.Delivered)
+            .SelectMany(d => d.Items)
+            .AsNoTracking()
+            .ToListAsync();
+
         foreach (var line in valid)
         {
             var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
             if (invLine == null) return $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية";
             decimal returnedCount = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Count);
             decimal returnedQty = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Quantity);
-            if (line.Count + returnedCount > invLine.Count || line.Quantity + returnedQty > invLine.Quantity)
-                return $"الكمية المرتجعة أكبر من الكمية المباعة في الفاتورة الأصلية للصنف رقم {line.ItemId}";
+            decimal deliveredCount = deliveredItems.Where(d => d.ItemId == line.ItemId).Sum(d => d.Count);
+            decimal deliveredQty = deliveredItems.Where(d => d.ItemId == line.ItemId).Sum(d => d.Quantity);
+            if (line.Count + returnedCount > deliveredCount || line.Quantity + returnedQty > deliveredQty)
+                return $"الكمية المرتجعة أكبر من الكمية المسلّمة في أذونات التسليم للصنف رقم {line.ItemId}";
         }
         return null;
     }
@@ -846,6 +976,9 @@ public sealed class InventoryService : IInventoryService
     private static List<StockLine> ToStockLines(IEnumerable<PurchaseInvoiceItem> items) =>
         items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();
 
+    private static List<StockLine> ToStockLines(IEnumerable<DeliveryOrderItem> items) =>
+        items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();
+
     private static List<StockLine> ToReturnStockLines(IEnumerable<SaleReturnItem> items) =>
         items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();
 
@@ -886,6 +1019,28 @@ public sealed class InventoryService : IInventoryService
             num = $"{prefix}-{DateTime.Now:yyyyMMdd}-{next:D3}";
         }
         return num;
+    }
+
+    private async Task<string> NextDeliveryNumberAsync()
+    {
+        int next = await _db.DeliveryOrders.CountAsync() + 1;
+        string num = $"DLV-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        while (await _db.DeliveryOrders.AnyAsync(d => d.DeliveryNumber == num))
+        {
+            next++;
+            num = $"DLV-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        }
+        return num;
+    }
+
+    private static void ResetDeliveryKeys(DeliveryOrder delivery)
+    {
+        delivery.Id = 0;
+        foreach (var item in delivery.Items)
+        {
+            item.Id = 0;
+            item.DeliveryOrderId = 0;
+        }
     }
 
     private void DetachAll()

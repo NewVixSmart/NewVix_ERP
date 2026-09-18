@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.ViewModels.Dashboard;
 
 namespace NewVixSmart.Web.Services;
@@ -42,13 +43,32 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardViewModel> GetDashboardAsync()
     {
+        var delivered = await _db.DeliveryOrders
+            .AsNoTracking()
+            .Where(d => d.Status == DeliveryOrderStatus.Delivered)
+            .Include(d => d.SaleInvoice!.Items)
+            .Include(d => d.Items)
+            .ToListAsync();
+
+        var totalSale = 0m;
+        foreach (var d in delivered)
+        {
+            foreach (var di in d.Items)
+            {
+                var invLine = d.SaleInvoice!.Items.FirstOrDefault(i => i.ItemId == di.ItemId);
+                if (invLine == null) continue;
+                var qty = di.Quantity > 0 ? di.Quantity : di.Count;
+                totalSale += decimal.Round(qty * invLine.UnitPrice * (d.SaleInvoice.ExchangeRate ?? 1m), 2);
+            }
+        }
+
         var vm = new DashboardViewModel
         {
             TotalItems = await _db.Items.CountAsync(i => i.IsActive),
             TotalCustomers = await _db.Customers.CountAsync(c => c.IsActive),
             TotalSuppliers = await _db.Suppliers.CountAsync(s => s.IsActive),
             TotalPurchaseAmount = await _db.PurchaseInvoices.SumAsync(p => (decimal?)Math.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2)) ?? 0,
-            TotalSaleAmount = await _db.SaleInvoices.SumAsync(s => (decimal?)Math.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2)) ?? 0
+            TotalSaleAmount = totalSale
         };
 
         vm.LowStockItems = await GetLowStockItemsAsync();

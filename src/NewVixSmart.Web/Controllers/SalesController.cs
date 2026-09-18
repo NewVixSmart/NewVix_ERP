@@ -87,7 +87,8 @@ public class SalesController : Controller
     [RequirePerm("Sales.View")]
     public async Task<IActionResult> Details(int id)
     {
-        var invoice = await _db.SaleInvoices.Include(s => s.Customer).Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+        var invoice = await _db.SaleInvoices.Include(s => s.Customer).Include(s => s.SalesOrder)
+            .Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
         if (invoice == null) return NotFound();

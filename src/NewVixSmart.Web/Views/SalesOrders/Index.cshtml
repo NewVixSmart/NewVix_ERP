@@ -1,0 +1,64 @@
+@model IReadOnlyList<NewVixSmart.Web.Models.Sales.SalesOrder>
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Sales
+@{ ViewData["Title"] = "أوامر البيع"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-clipboard2-check text-primary"></i> أوامر البيع</h2>
+    <div class="d-flex gap-2">
+        @if (await Perm.HasAsync("SalesOrders.Create"))
+        {
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> أمر بيع جديد</a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+
+<ul class="nav nav-pills mb-3" aria-label="فلترة أوامر البيع">
+    <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
+    @foreach (var st in Enum.GetValues<SalesOrderStatus>())
+    {
+        <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter as SalesOrderStatus? == st ? "active" : "")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a></li>
+    }
+</ul>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">لا توجد أوامر بيع بعد.</div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover mb-0">
+            <thead><tr><th scope="col">رقم الأمر</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">المتوقع</th><th scope="col">الإجمالي</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <tbody>
+                @foreach (var o in Model)
+                {
+                    <tr>
+                        <td><code>@o.OrderNumber</code></td>
+                        <td><strong>@(o.Customer?.Name ?? "—")</strong></td>
+                        <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td>@(o.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="fw-bold">@o.Items.Sum(i => i.Total).ToString("N2")</td>
+                        <td><span class="badge @(o.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@o.Status.GetDisplayName()</span></td>
+                        <td class="text-center">
+                            <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-info" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye"></i></a>
+                            @if (o.Status == SalesOrderStatus.Draft && await Perm.HasAsync("SalesOrders.Edit"))
+                            {
+                                <a asp-action="Edit" asp-route-id="@o.Id" class="btn btn-sm btn-outline-secondary" aria-label="تعديل أمر البيع @o.OrderNumber"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

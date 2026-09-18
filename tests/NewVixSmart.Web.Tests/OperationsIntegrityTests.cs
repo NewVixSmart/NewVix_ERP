@@ -14,6 +14,7 @@ using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Accounting;
+using NewVixSmart.Web.ViewModels.Sales;
 using Xunit;
 using ApiPaymentsController = NewVixSmart.Web.Api.PaymentsController;
 
@@ -216,6 +217,17 @@ public sealed class OperationsIntegrityTests : IDisposable
         ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = price
     };
 
+    private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty)
+    {
+        var svc = new InventoryService(db);
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = qty, Count = 0 } }, "test");
+        if (!ok) throw new InvalidOperationException(err);
+        var (dok, derr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        if (!dok) throw new InvalidOperationException(derr);
+        return delivery.Id;
+    }
+
     private static HttpContext CreateHttpContext()
     {
         var ctx = new DefaultHttpContext();
@@ -294,6 +306,17 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         Assert.True(ok, err);
         Assert.Equal(1, await db.SaleInvoices.CountAsync());
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (dOk, dErr) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem>
+        {
+            new() { ItemId = item1Id, Quantity = 4, Count = 0 },
+            new() { ItemId = item2Id, Quantity = 6, Count = 0 }
+        }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
+
         Assert.Equal(96, (await db.Items.FindAsync(item1Id))!.CurrentQuantity);
         Assert.Equal(94, (await db.Items.FindAsync(item2Id))!.CurrentQuantity);
     }
@@ -332,6 +355,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
         Assert.True(okInv, errInv);
 
+        await DeliverAsync(db, invoice, itemId, 10);
+
         var (ok1, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
             SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today.AddDays(-1)
@@ -368,6 +393,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
         Assert.True(okInv, errInv);
+
+        await DeliverAsync(db, invoice, itemId, 10);
 
         var (ok1, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
@@ -408,6 +435,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
         Assert.True(okInv, errInv);
+
+        await DeliverAsync(db, invoice, itemId, 10);
 
         var (ok, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
@@ -627,62 +656,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     }
 
     [Fact]
-    public async Task ShipmentsController_SaleShipment_WrongCustomer_Rejected()
-    {
-        using var db = CreateContext();
-        var (itemId, custId, _) = await SeedAsync(db);
-        var otherCustId = await AddCustomerAsync(db, "عميل خاطئ");
-        var svc = new InventoryService(db);
-        var invoice = new SaleInvoice { CustomerId = custId };
-        var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
-        Assert.True(okInv, errInv);
-
-        var controller = new ShipmentsController(db);
-        WireController(controller, CreateHttpContext());
-        var vm = new ShipmentFormViewModel
-        {
-            Shipment = new Shipment { InvoiceType = ShipmentInvoiceType.Sale, SaleInvoiceId = invoice.Id, CustomerId = otherCustId, ShipDate = DateTime.Today }
-        };
-
-        var result = await controller.Create(vm);
-
-        Assert.IsType<ViewResult>(result);
-        Assert.False(controller.ModelState.IsValid);
-        Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("لا تخص العميل المحدد"));
-        Assert.Equal(0, await db.Shipments.CountAsync());
-    }
-
-    [Fact]
-    public async Task ShipmentsController_PurchaseShipment_WrongSupplier_Rejected()
-    {
-        using var db = CreateContext();
-        var (itemId, _, supId) = await SeedAsync(db);
-        var otherSupId = await AddSupplierAsync(db, "مورد خاطئ");
-        var svc = new InventoryService(db);
-        var invoice = new PurchaseInvoice { SupplierId = supId };
-        var (okInv, errInv) = await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
-        {
-            new() { ItemId = itemId, Quantity = 5, Count = 0, UnitPrice = 45 }
-        }, "test");
-        Assert.True(okInv, errInv);
-
-        var controller = new ShipmentsController(db);
-        WireController(controller, CreateHttpContext());
-        var vm = new ShipmentFormViewModel
-        {
-            Shipment = new Shipment { InvoiceType = ShipmentInvoiceType.Purchase, PurchaseInvoiceId = invoice.Id, SupplierId = otherSupId, ShipDate = DateTime.Today }
-        };
-
-        var result = await controller.Create(vm);
-
-        Assert.IsType<ViewResult>(result);
-        Assert.False(controller.ModelState.IsValid);
-        Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("لا تخص المورد المحدد"));
-        Assert.Equal(0, await db.Shipments.CountAsync());
-    }
-
-    [Fact]
-    public async Task ShipmentsController_MatchingPartyShipment_Succeeds()
+    public async Task DeliveryOrdersController_ItemsExceedingInvoice_Rejected()
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
@@ -691,19 +665,71 @@ public sealed class OperationsIntegrityTests : IDisposable
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
         Assert.True(okInv, errInv);
 
-        var controller = new ShipmentsController(db);
+        var controller = new DeliveryOrdersController(db, svc);
         WireController(controller, CreateHttpContext());
-        var vm = new ShipmentFormViewModel
+        var vm = new DeliveryOrderViewModel
         {
-            Shipment = new Shipment { InvoiceType = ShipmentInvoiceType.Sale, SaleInvoiceId = invoice.Id, CustomerId = custId, ShipDate = DateTime.Today }
+            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2, Count = 0 } }
+        };
+
+        var result = await controller.Create(vm);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("متبقي"));
+        Assert.Equal(0, await db.DeliveryOrders.CountAsync());
+    }
+
+    [Fact]
+    public async Task DeliveryOrdersController_NoItems_Rejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+        var invoice = new SaleInvoice { CustomerId = custId };
+        var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
+        Assert.True(okInv, errInv);
+
+        var controller = new DeliveryOrdersController(db, svc);
+        WireController(controller, CreateHttpContext());
+        var vm = new DeliveryOrderViewModel
+        {
+            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderItem>()
+        };
+
+        var result = await controller.Create(vm);
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("صنف"));
+        Assert.Equal(0, await db.DeliveryOrders.CountAsync());
+    }
+
+    [Fact]
+    public async Task DeliveryOrdersController_ValidCreate_Succeeds()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+        var invoice = new SaleInvoice { CustomerId = custId };
+        var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
+        Assert.True(okInv, errInv);
+
+        var controller = new DeliveryOrdersController(db, svc);
+        WireController(controller, CreateHttpContext());
+        var vm = new DeliveryOrderViewModel
+        {
+            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }
         };
 
         var result = await controller.Create(vm);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var shipment = await db.Shipments.SingleAsync();
-        Assert.StartsWith("SHP-", shipment.ShipmentNumber);
-        Assert.Equal(custId, shipment.CustomerId);
+        var delivery = await db.DeliveryOrders.SingleAsync();
+        Assert.StartsWith("DLV-", delivery.DeliveryNumber);
+        Assert.Equal(custId, delivery.CustomerId);
+        Assert.Equal(invoice.Id, delivery.SaleInvoiceId);
     }
 
     [Fact]

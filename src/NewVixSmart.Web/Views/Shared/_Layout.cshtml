@@ -57,7 +57,7 @@
                 <span class="nav-link-text">لوحة التحكم</span>
             </a>
 
-            @if (await Perm.HasAnyAsync("Sales.View", "SalesQuotes.View", "SaleReturns.View", "Shipments.View", "Batch.SalesCreate", "Customers.View"))
+            @if (await Perm.HasAnyAsync("Sales.View", "SalesQuotes.View", "SalesOrders.View", "DeliveryOrders.View", "SaleReturns.View", "Batch.SalesCreate", "Customers.View"))
             {
                 <div class="nav-group" data-group="sales">
                     <button type="button" class="nav-group-header" aria-expanded="true" aria-controls="nav-sales" aria-label="المبيعات" title="المبيعات">
@@ -88,18 +88,25 @@
                                     <span class="nav-link-text">عروض أسعار العملاء</span>
                                 </a>
                             }
+                            @if (await Perm.HasAsync("SalesOrders.View"))
+                            {
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "SalesOrders" ? "active" : "")" aria-label="أوامر البيع" asp-controller="SalesOrders" asp-action="Index">
+                                    <i class="bi bi-clipboard2-check" aria-hidden="true"></i>
+                                    <span class="nav-link-text">أوامر البيع</span>
+                                </a>
+                            }
+                            @if (await Perm.HasAsync("DeliveryOrders.View"))
+                            {
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "DeliveryOrders" ? "active" : "")" aria-label="أذونات التسليم" asp-controller="DeliveryOrders" asp-action="Index">
+                                    <i class="bi bi-truck" aria-hidden="true"></i>
+                                    <span class="nav-link-text">أذونات التسليم</span>
+                                </a>
+                            }
                             @if (await Perm.HasAsync("SaleReturns.View"))
                             {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "SaleReturns" ? "active" : "")" aria-label="مرتجعات البيع" asp-controller="SaleReturns" asp-action="Index">
                                     <i class="bi bi-arrow-return-left" aria-hidden="true"></i>
                                     <span class="nav-link-text">مرتجعات البيع</span>
-                                </a>
-                            }
-                            @if (await Perm.HasAsync("Shipments.View"))
-                            {
-                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Shipments" ? "active" : "")" aria-label="الشحنات" asp-controller="Shipments" asp-action="Index">
-                                    <i class="bi bi-truck" aria-hidden="true"></i>
-                                    <span class="nav-link-text">الشحنات</span>
                                 </a>
                             }
                             @if (await Perm.HasAsync("Batch.SalesCreate"))

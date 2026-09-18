@@ -1,0 +1,94 @@
+@model NewVixSmart.Web.ViewModels.Sales.DeliveryOrderViewModel
+@using NewVixSmart.Web.Models.Sales
+@{ ViewData["Title"] = "أذن تسليم جديد"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-truck text-primary"></i> أذن تسليم جديد</h2>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+}
+@if (ViewBag.InvoiceLabel != null)
+{
+    <div class="alert alert-info my-3">الفاتورة المختارة: <strong>@ViewBag.InvoiceLabel</strong> — تُشحن الكمية المتبقية دفعة واحدة أو جزء منها.</div>
+}
+
+<form asp-action="Create">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="invoiceSelect">فاتورة البيع</label>
+                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select" id="invoiceSelect" onchange="if(this.value) location.href='@Url.Action("Create", "DeliveryOrders")?invoiceId=' + this.value;">
+                        <option value="">-- اختر فاتورة بيع --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Delivery.DeliveryDate" class="form-label"></label>
+                    <input asp-for="Delivery.DeliveryDate" class="form-control" type="date" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Delivery.Carrier" class="form-label"></label>
+                    <input asp-for="Delivery.Carrier" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label asp-for="Delivery.TrackingNumber" class="form-label"></label>
+                    <input asp-for="Delivery.TrackingNumber" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Delivery.Notes" class="form-label"></label>
+                    <textarea asp-for="Delivery.Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-list-ul"></i> أصناف التسليم</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width:40%">الصنف</th>
+                            <th scope="col" style="width:20%">العدد المسلّم</th>
+                            <th scope="col" style="width:20%">الكمية المسلّمة</th>
+                            <th scope="col" style="width:20%" class="text-center">حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                        @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 0); idx++)
+                        {
+                            var line = Model.Items[idx];
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="items[@idx].ItemId" value="@line.ItemId" />
+                                    <strong>@(line.Item?.Name != null ? line.Item.Name : (Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}"))</strong>
+                                </td>
+                                <td><input name="items[@idx].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" /></td>
+                                <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" /></td>
+                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-muted small">الكمية المعروضة هي المتبقية غير المسلّمة من الفاتورة (تخصم منها أي أذونات سابقة). يمكنك إنقاصها لتسليم جزئي.</div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ أذن التسليم</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+<script nonce="@Context.GetCspNonce()">
+document.querySelectorAll('.remove-row').forEach(btn => {
+    btn.addEventListener('click', function() { this.closest('tr').remove(); });
+});
+</script>
+}

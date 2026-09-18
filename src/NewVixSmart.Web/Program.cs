@@ -203,6 +203,7 @@ builder.Services.AddScoped<ISalesQuotesService, SalesQuotesService>();
 builder.Services.AddScoped<IAccountingService, AccountingService>();
 builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddScoped<IProcurementService, ProcurementService>();
+    builder.Services.AddScoped<ISalesOrdersService, SalesOrdersService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ReportExportService>();

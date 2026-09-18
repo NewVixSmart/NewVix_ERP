@@ -41,7 +41,7 @@ public class SalesController : ControllerBase
             Discount3 = request.Discount3,
             Tax = request.Tax,
             Notes = request.Notes,
-            PaymentTerms = InvoicePaymentTerms.OnReceipt
+            PaymentTerms = InvoicePaymentTerms.OpenTerm
         };
 
         var items = request.Items.Select(i => new SaleInvoiceItem

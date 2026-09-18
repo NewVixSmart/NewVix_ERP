@@ -115,16 +115,30 @@ public sealed class BatchOperationsTests : IDisposable
         Assert.Equal(2, await db.SaleInvoices.CountAsync());
         var numbers = await db.SaleInvoices.Select(s => s.InvoiceNumber).ToListAsync();
         Assert.Equal(2, numbers.Distinct().Count());
+        Assert.All(await db.SaleInvoices.ToListAsync(), s => Assert.Equal(500m, s.TotalAmount));
+
+        // invoices alone neither touch stock nor post GL
+        Assert.Equal(100, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
+        Assert.Equal(0, await db.JournalEntries.CountAsync());
+        Assert.Equal(0, await db.StockMovements.CountAsync());
+
+        var posting = new InventoryService(db, new AccountingService(db));
+        foreach (var inv in await db.SaleInvoices.ToListAsync())
+        {
+            var delivery = new DeliveryOrder { SaleInvoiceId = inv.Id, DeliveryDate = request.InvoiceDate };
+            var (dOk, dErr) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = item1.Id, Quantity = 10, Count = 0 } }, "tester");
+            Assert.True(dOk, dErr);
+            var (dlvOk, dlvErr) = await posting.DeliverDeliveryOrderAsync(delivery.Id, "tester");
+            Assert.True(dlvOk, dlvErr);
+        }
 
         Assert.Equal(80, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
 
-        Assert.Equal(2, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.SaleInvoice));
-        Assert.Equal(2, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.Receipt));
+        Assert.Equal(2, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.SaleDeliveryOrder));
+        Assert.Equal(0, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.Receipt));
 
         Assert.Equal(2, await db.StockMovements.CountAsync());
-        Assert.All(await db.StockMovements.ToListAsync(), m => Assert.Equal(DocumentType.SaleInvoice, m.DocumentType));
-
-        Assert.All(await db.SaleInvoices.ToListAsync(), s => Assert.Equal(500m, s.TotalAmount));
+        Assert.All(await db.StockMovements.ToListAsync(), m => Assert.Equal(DocumentType.SaleDeliveryOrder, m.DocumentType));
     }
 
     [Fact]
@@ -147,17 +161,33 @@ public sealed class BatchOperationsTests : IDisposable
 
         var result = await svc.RunSalesBatchAsync(request, "tester");
 
-        Assert.Equal(1, result.SuccessCount);
-        Assert.Equal(1, result.FailCount);
-        Assert.False(result.Results[0].Success);
-        Assert.True(result.Results[1].Success);
-        Assert.NotNull(result.Results[0].Error);
+        // invoice creation never rejects for insufficient stock; the block triggers at delivery
+        Assert.Equal(2, result.SuccessCount);
+        Assert.Equal(0, result.FailCount);
+        Assert.Equal(2, await db.SaleInvoices.CountAsync());
+        Assert.Equal(100, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
 
-        Assert.Single(await db.SaleInvoices.ToListAsync());
+        var posting = new InventoryService(db, new AccountingService(db));
+        var invoices = await db.SaleInvoices.OrderBy(s => s.Id).ToListAsync();
+
+        var delivery1 = new DeliveryOrder { SaleInvoiceId = invoices[0].Id, DeliveryDate = DateTime.Today };
+        var (dOk, _) = await posting.CreateDeliveryOrderAsync(delivery1, new List<DeliveryOrderItem> { new() { ItemId = item1.Id, Quantity = 150, Count = 0 } }, "tester");
+        Assert.True(dOk);
+        var (dlvOk, dlvErr) = await posting.DeliverDeliveryOrderAsync(delivery1.Id, "tester");
+        Assert.False(dlvOk);
+        Assert.NotNull(dlvErr);
+
+        var delivery2 = new DeliveryOrder { SaleInvoiceId = invoices[1].Id, DeliveryDate = DateTime.Today };
+        var (dOk2, _) = await posting.CreateDeliveryOrderAsync(delivery2, new List<DeliveryOrderItem> { new() { ItemId = item1.Id, Quantity = 10, Count = 0 } }, "tester");
+        Assert.True(dOk2);
+        var (dlvOk2, _) = await posting.DeliverDeliveryOrderAsync(delivery2.Id, "tester");
+        Assert.True(dlvOk2);
+
         Assert.Equal(90, db.Items.Single(i => i.Id == item1.Id).CurrentQuantity);
-        Assert.Equal(10 * 50m, (await db.SaleInvoices.SingleAsync()).TotalAmount);
-        Assert.Equal(2, await db.JournalEntries.CountAsync());
+        Assert.Equal(10 * 50m, (await db.SaleInvoices.SingleAsync(i => i.Id == invoices[1].Id)).TotalAmount);
+        Assert.Single(await db.JournalEntries.ToListAsync());
         Assert.Single(await db.StockMovements.ToListAsync());
+        Assert.Equal(DocumentType.SaleDeliveryOrder, (await db.StockMovements.SingleAsync()).DocumentType);
     }
 
     // ---------- جرد جماعي ----------

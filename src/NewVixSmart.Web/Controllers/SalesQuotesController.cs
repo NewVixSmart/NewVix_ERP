@@ -77,13 +77,14 @@ public class SalesQuotesController : Controller
         return View(vm);
     }
 
-    [RequirePerm("SalesQuotes.View")]
+[RequirePerm("SalesQuotes.View")]
     public async Task<IActionResult> Details(int id)
     {
         var quote = await _db.SaleQuotes
             .Include(q => q.Customer)
             .Include(q => q.Currency)
             .Include(q => q.SaleInvoice)
+            .Include(q => q.SalesOrder)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
             .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
@@ -145,11 +146,11 @@ public class SalesQuotesController : Controller
             TempData["Error"] = "لم يتم تحديد أي عروض للتحويل";
             return RedirectToAction(nameof(MassConvert));
         }
-        int? branchId = HttpContext.Session.GetCurrentBranchId();
+int? branchId = HttpContext.Session.GetCurrentBranchId();
         var (converted, failed, failures) = await _quotes.MassConvertAsync(ids, User.Identity?.Name, branchId);
         if (converted > 0)
         {
-            TempData["Success"] = $"تم تحويل {converted} عرضاً بنجاح";
+            TempData["Success"] = $"تم تحويل {converted} عرضاً إلى أوامر بيع بنجاح";
         }
         if (failed > 0)
         {
@@ -158,18 +159,18 @@ public class SalesQuotesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+[HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("SalesQuotes.Convert")]
     public async Task<IActionResult> Convert(int id)
     {
         int? branchId = HttpContext.Session.GetCurrentBranchId();
-        var (ok, error, invoice) = await _quotes.ConvertToInvoiceAsync(id, User.Identity?.Name, branchId);
-        if (ok && invoice != null)
+        var (ok, error, order) = await _quotes.ConvertToOrderAsync(id, User.Identity?.Name, branchId);
+        if (ok && order != null)
         {
-            TempData["Success"] = "تم تحويل عرض السعر إلى فاتورة بيع وترحيل المخزون";
-            return RedirectToAction(nameof(Details), new { controller = "Sales", id = invoice.Id });
+            TempData["Success"] = "تم تحويل عرض السعر إلى أمر بيع (لا تزال الفاتورة والمخزون معلّقين)";
+            return RedirectToAction(nameof(Details), new { controller = "SalesOrders", id = order.Id });
         }
-        TempData["Error"] = error ?? "تعذر تحويل عرض السعر إلى فاتورة";
+        TempData["Error"] = error ?? "تعذر تحويل عرض السعر إلى أمر بيع";
         return RedirectToAction(nameof(Details), new { id });
     }
 

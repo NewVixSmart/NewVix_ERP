@@ -90,6 +90,16 @@ public class SaleInvoice
     [Display(Name = "ملاحظات")]
     public string? Notes { get; set; }
 
+    [Display(Name = "أمر البيع المرتبط")]
+    public int? SalesOrderId { get; set; }
+
+    [BindNever]
+    public SalesOrder? SalesOrder { get; set; }
+
+    [StringLength(50)]
+    [Display(Name = "مرجع الأمر")]
+    public string? OrderReference { get; set; }
+
     [Display(Name = "أنشئ بواسطة")]
     [BindNever]
     public string? CreatedBy { get; set; }

@@ -9,9 +9,9 @@
         <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf"></i> تحميل PDF</a>
         @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
         {
-            <form asp-action="Convert" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى فاتورة بيع وترحيل المخزون؟" data-confirm-ok="تحويل">
+            <form asp-action="Convert" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى أمر بيع؟ لن تُرحّل فاتورة أو مخزون الآن" data-confirm-ok="تحويل">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-arrow-repeat"></i> تحويل إلى فاتورة بيع</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-arrow-repeat"></i> تحويل إلى أمر بيع</button>
             </form>
         }
         <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
@@ -56,10 +56,10 @@
         </div>
         <div class="row mt-2">
             <div class="col-md-3"><strong>العملة:</strong> @(Model.Currency?.Code ?? "—") @(Model.ExchangeRate.HasValue ? $"@{Model.ExchangeRate}" : "")</div>
-            <div class="col-md-9"><strong>فاتورة البيع:</strong>
-                @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted && Model.SaleInvoice != null)
+            <div class="col-md-9"><strong>أمر البيع:</strong>
+                @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted && Model.SalesOrder != null)
                 {
-                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.Id">@Model.SaleInvoice.InvoiceNumber</a>
+                    <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.Id">@Model.SalesOrder.OrderNumber</a>
                 }
                 else
                 {

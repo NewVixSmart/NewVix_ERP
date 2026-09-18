@@ -220,18 +220,49 @@ public sealed class FiscalCloseTests : IDisposable
     }
 
     [Fact]
-    public async Task Guard_CreateSaleInClosedYear_ReturnsFalse()
+    public async Task Guard_DeliverSaleInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
         var inventory = new InventoryService(db);
 
+        var unit = new NewVixSmart.Web.Models.Core.Unit { Name = "قطعة" };
+        db.Units.Add(unit);
+        var cat = new NewVixSmart.Web.Models.Core.ItemCategory { Name = "تصنيف اختبار" };
+        var type = new NewVixSmart.Web.Models.Core.ItemType { Name = "نوع اختبار" };
+        db.ItemCategories.Add(cat);
+        db.ItemTypes.Add(type);
+        var item = new NewVixSmart.Web.Models.Core.Item
+        {
+            Name = "صنف اختبار",
+            Category = cat,
+            ItemType = type,
+            CountUnit = unit,
+            QuantityUnit = unit,
+            PurchasePrice = 10,
+            SalePrice = 20,
+            CurrentCount = 100,
+            CurrentQuantity = 100
+        };
+        db.Items.Add(item);
+        var customer = new NewVixSmart.Web.Models.Sales.Customer { Name = "عميل اختبار" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
         await CloseYearAsync(db);
 
-        var invoice = new NewVixSmart.Web.Models.Sales.SaleInvoice { CustomerId = 1, InvoiceDate = new DateTime(2026, 6, 1) };
-        var items = new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem> { new() { ItemId = 1, Quantity = 1, UnitPrice = 10 } };
+        var invoice = new NewVixSmart.Web.Models.Sales.SaleInvoice { CustomerId = customer.Id, InvoiceDate = new DateTime(2026, 6, 1) };
+        var items = new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem> { new() { ItemId = item.Id, Quantity = 1, UnitPrice = 10 } };
 
-        var (ok, error) = await inventory.CreateSaleAsync(invoice, items, "test");
-        Assert.False(ok);
+        var (ok, err) = await inventory.CreateSaleAsync(invoice, items, "test");
+        Assert.True(ok, err); // invoice creation is no longer period-guarded
+
+        var delivery = new NewVixSmart.Web.Models.Sales.DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = new DateTime(2026, 6, 1) };
+        var (dOk, _) = await inventory.CreateDeliveryOrderAsync(delivery,
+            new List<NewVixSmart.Web.Models.Sales.DeliveryOrderItem> { new() { ItemId = item.Id, Quantity = 1, Count = 0 } }, "test");
+        Assert.True(dOk);
+
+        var (dlvOk, error) = await inventory.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.False(dlvOk);
         Assert.Contains("مغلقة", error);
     }
 

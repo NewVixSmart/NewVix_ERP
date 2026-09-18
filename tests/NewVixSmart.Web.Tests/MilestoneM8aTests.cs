@@ -150,13 +150,13 @@ public sealed class MilestoneM8aTests : IDisposable
     // ---------- Branch + GL ----------
 
     [Fact]
-    public async Task Sale_WithBranch_PostsJournalEntry_WithBranchId()
+    public async Task Sale_WithBranch_PostsJournalEntry_AtDelivery_WithBranchId()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         var accounting = new AccountingService(db);
-        var svc = new InventoryService(db, accounting);
+        var svc = new InventoryService(db);
 
         var branch = new Branch { Code = "BR-T", Name = "فرع اختبار", IsActive = true, CreatedAt = DateTime.UtcNow };
         db.Branches.Add(branch);
@@ -167,35 +167,59 @@ public sealed class MilestoneM8aTests : IDisposable
 
         Assert.True(ok);
         Assert.Equal(branch.Id, (await db.SaleInvoices.SingleAsync()).BranchId);
+        Assert.Equal(0, await db.JournalEntries.CountAsync());
+
+        var posting = new InventoryService(db, accounting);
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = new DateTime(2026, 9, 1) };
+        var (dOk, dErr) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 3 } }, "test");
+        Assert.True(dOk);
+        Assert.Null(dErr);
+        Assert.StartsWith("DLV-", delivery.DeliveryNumber);
+
+        var (dlvOk, dlvErr) = await posting.DeliverDeliveryOrderAsync(delivery.Id, "test", branch.Id);
+        Assert.True(dlvOk);
+        Assert.Null(dlvErr);
+
         var entries = await db.JournalEntries.ToListAsync();
-        Assert.Equal(2, entries.Count);
-        Assert.All(entries, e => Assert.Equal(branch.Id, e.BranchId));
+        Assert.Single(entries);
+        Assert.Equal(JournalSource.SaleDeliveryOrder, entries[0].Source);
+        Assert.Equal(branch.Id, entries[0].BranchId);
         Assert.All(await db.JournalEntryLines.ToListAsync(), l => Assert.Equal(branch.Id, l.BranchId));
     }
 
     [Fact]
-    public async Task Sale_NoBranch_PostsJournalEntry_WithNullBranchId()
+    public async Task Sale_NoBranch_PostsJournalEntry_AtDelivery_WithNullBranchId()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         var accounting = new AccountingService(db);
-        var svc = new InventoryService(db, accounting);
+        var svc = new InventoryService(db);
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, _) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
 
         Assert.True(ok);
         Assert.Null((await db.SaleInvoices.SingleAsync()).BranchId);
+
+        var posting = new InventoryService(db, accounting);
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = new DateTime(2026, 9, 1) };
+        var (dOk, _) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2 } }, "test");
+        Assert.True(dOk);
+        var (dlvOk, _) = await posting.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk);
+
         var entries = await db.JournalEntries.ToListAsync();
-        Assert.Equal(2, entries.Count);
-        Assert.All(entries, e => Assert.Null(e.BranchId));
+        Assert.Single(entries);
+        Assert.Equal(JournalSource.SaleDeliveryOrder, entries[0].Source);
+        Assert.Null(entries[0].BranchId);
+        Assert.All(await db.JournalEntryLines.ToListAsync(), l => Assert.Null(l.BranchId));
     }
 
     // ---------- Branch CRUD ----------
 
     [Fact]
-    public async Task Sale_WithLayers_AndAccounting_PostsCogs_AtBaseCost()
+    public async Task Sale_WithLayers_AndAccounting_PostsCogs_AtDelivery_AtBaseCost()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
@@ -204,16 +228,26 @@ public sealed class MilestoneM8aTests : IDisposable
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var accounting = new AccountingService(db);
-        var svc = new InventoryService(db, accounting);
+        var svc = new InventoryService(db);
         var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
         var invoice = new SaleInvoice { CustomerId = custId, CurrencyId = usd.Id, ExchangeRate = 500m };
 
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 4, 80) }, "test");
         Assert.True(ok);
+        Assert.Equal(10, (await db.StockLayers.SingleAsync()).RemainingQty);
+        Assert.Equal(0, await db.JournalEntries.CountAsync());
+
+        var posting = new InventoryService(db, new AccountingService(db));
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = new DateTime(2026, 9, 2) };
+        var (dOk, _) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 4 } }, "test");
+        Assert.True(dOk);
+        var (dlvOk, _) = await posting.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk);
+
         Assert.Equal(6, (await db.StockLayers.SingleAsync()).RemainingQty);
 
-        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync(e => e.Source == JournalSource.SaleInvoice);
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync();
+        Assert.Equal(JournalSource.SaleDeliveryOrder, entry.Source);
         Assert.Equal(4, entry.Lines.Count);
         Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
         // value 4 × 80 = 320 USD @500 = 160,000 ; COGS 4 × 40 = 160 base cost (layers are base currency)
@@ -222,11 +256,9 @@ public sealed class MilestoneM8aTests : IDisposable
         Assert.Contains(entry.Lines, l => l.Account!.Code == "5000" && l.Debit == 160m);
         Assert.Contains(entry.Lines, l => l.Account!.Code == "1300" && l.Credit == 160m);
 
-        // OnReceipt auto-payment posts a cash receipt at the invoice's base value
-        var receiptEntry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync(e => e.Source == JournalSource.Receipt);
-        Assert.Equal(2, receiptEntry.Lines.Count);
-        Assert.Contains(receiptEntry.Lines, l => l.Account!.Code == "1000" && l.Debit == 160000m);
-        Assert.Contains(receiptEntry.Lines, l => l.Account!.Code == "1200" && l.Credit == 160000m);
+        // no auto-payment at invoice or delivery phase; the customer balance is settled via Payments
+        Assert.Equal(0, await db.JournalEntries.CountAsync(e => e.Source == JournalSource.Receipt));
+        Assert.Equal(0, await db.Payments.CountAsync());
     }
 
     [Fact]
@@ -272,49 +304,100 @@ public sealed class MilestoneM8aTests : IDisposable
         Assert.False((await db.Branches.SingleAsync()).IsActive);
     }
 
-    // ---------- Shipments ----------
+    // ---------- Delivery Orders ----------
 
     [Fact]
-    public async Task Shipment_CreateWithLinkedSale_AndEditStatus()
+    public async Task DeliveryOrder_CreateAndDeliver_WithLinkedSale()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        var (itemId, custId, supId) = await SeedSaleAsync(db);
+        db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 5, Count = 0, UnitCost = 40m, RemainingQty = 5, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var svc = new InventoryService(db);
+        var sale = new SaleInvoice { CustomerId = custId };
+        var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 50) }, "test");
+        Assert.True(ok);
+
+        var posting = new InventoryService(db, new AccountingService(db));
+        var delivery = new DeliveryOrder
+        {
+            SaleInvoiceId = sale.Id,
+            Carrier = "DHL",
+            TrackingNumber = "TRK123",
+            DeliveryDate = new DateTime(2026, 9, 3)
+        };
+        var (dOk, dErr) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1 } }, "test");
+        Assert.True(dOk);
+        Assert.Null(dErr);
+
+        var saved = await db.DeliveryOrders.Include(d => d.SaleInvoice).SingleAsync();
+        Assert.Equal(sale.Id, saved.SaleInvoiceId);
+        Assert.Equal(custId, saved.CustomerId);
+        Assert.Equal("DHL", saved.Carrier);
+        Assert.Equal(DeliveryOrderStatus.Draft, saved.Status);
+        Assert.StartsWith("DLV-", saved.DeliveryNumber);
+
+        var (dlvOk, dlvErr) = await posting.DeliverDeliveryOrderAsync(saved.Id, "test");
+        Assert.True(dlvOk);
+        Assert.Null(dlvErr);
+        Assert.Single(await db.StockMovements.Where(m => m.DocumentType == DocumentType.SaleDeliveryOrder).ToListAsync());
+
+        var updated = await db.DeliveryOrders.SingleAsync();
+        Assert.Equal(DeliveryOrderStatus.Delivered, updated.Status);
+        Assert.Equal("test", updated.DeliveredBy);
+        Assert.NotNull(updated.DeliveredAt);
+        Assert.Equal(4, (await db.StockLayers.SingleAsync()).RemainingQty);
+    }
+
+    [Fact]
+    public async Task DeliveryOrder_OverQuantity_IsRejected()
     {
         using var db = CreateContext();
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         var svc = new InventoryService(db);
         var sale = new SaleInvoice { CustomerId = custId };
-        await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 50) }, "test");
+        var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
+        Assert.True(ok);
 
-        var shipment = new Shipment
-        {
-            ShipmentNumber = "SHP-TEST-001",
-            InvoiceType = ShipmentInvoiceType.Sale,
-            SaleInvoiceId = sale.Id,
-            CustomerId = custId,
-            Carrier = "DHL",
-            TrackingNumber = "TRK123",
-            ShipDate = DateTime.Today,
-            Status = ShipmentStatus.Preparing,
-            CreatedBy = "test",
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Shipments.Add(shipment);
-        await db.SaveChangesAsync();
-
-        var saved = await db.Shipments.Include(s => s.SaleInvoice).SingleAsync(s => s.ShipmentNumber == "SHP-TEST-001");
-        Assert.Equal(ShipmentInvoiceType.Sale, saved.InvoiceType);
-        Assert.Equal(sale.Id, saved.SaleInvoiceId);
-        Assert.Equal("DHL", saved.Carrier);
-
-        saved.Status = ShipmentStatus.Delivered;
-        saved.TrackingNumber = "TRK456";
-        await db.SaveChangesAsync();
-
-        var updated = await db.Shipments.SingleAsync();
-        Assert.Equal(ShipmentStatus.Delivered, updated.Status);
-        Assert.Equal("TRK456", updated.TrackingNumber);
+        var posting = new InventoryService(db);
+        var delivery = new DeliveryOrder { SaleInvoiceId = sale.Id, DeliveryDate = DateTime.Today };
+        var (dOk, dErr) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 3 } }, "test");
+        Assert.False(dOk);
+        Assert.Contains("متبقي", dErr);
+        Assert.Equal(0, await db.DeliveryOrders.CountAsync());
     }
 
     [Fact]
-    public void Shipment_StatusEnum_DisplayNamesAreArabic()
+    public async Task DeliveryOrder_CancelDraft_ThenCreateAgainReusesRemaining()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, supId) = await SeedSaleAsync(db);
+        var svc = new InventoryService(db);
+        var sale = new SaleInvoice { CustomerId = custId };
+        var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
+        Assert.True(ok);
+
+        var posting = new InventoryService(db);
+        var delivery = new DeliveryOrder { SaleInvoiceId = sale.Id, DeliveryDate = DateTime.Today };
+        var (dOk, _) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2 } }, "test");
+        Assert.True(dOk);
+        Assert.Equal(DeliveryOrderStatus.Draft, (await db.DeliveryOrders.SingleAsync()).Status);
+
+        var (cOk, cErr) = await posting.CancelDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(cOk);
+        Assert.Null(cErr);
+        Assert.Equal(DeliveryOrderStatus.Cancelled, (await db.DeliveryOrders.SingleAsync()).Status);
+
+        var second = new DeliveryOrder { SaleInvoiceId = sale.Id, DeliveryDate = DateTime.Today };
+        var (sOk, sErr) = await posting.CreateDeliveryOrderAsync(second, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2 } }, "test");
+        Assert.True(sOk);
+        Assert.Null(sErr);
+    }
+
+    [Fact]
+    public void DeliveryOrder_StatusEnum_DisplayNamesAreArabic()
     {
         void HasDisplay<TEnum>(TEnum value, string expected)
         {
@@ -324,9 +407,8 @@ public sealed class MilestoneM8aTests : IDisposable
             Assert.Equal(expected, attr.Name);
         }
 
-        HasDisplay(ShipmentStatus.Preparing, "قيد التحضير");
-        HasDisplay(ShipmentStatus.Delivered, "تم التسليم");
-        HasDisplay(ShipmentInvoiceType.Sale, "بيع");
-        HasDisplay(ShipmentInvoiceType.Purchase, "شراء");
+        HasDisplay(DeliveryOrderStatus.Draft, "مسودة");
+        HasDisplay(DeliveryOrderStatus.Delivered, "تم التسليم");
+        HasDisplay(DeliveryOrderStatus.Cancelled, "ملغي");
     }
 }

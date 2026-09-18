@@ -116,6 +116,12 @@ public sealed class ReturnsFixtureTests : IDisposable
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
 
+        var delivery = new DeliveryOrder { SaleInvoiceId = saleInv.Id, DeliveryDate = new DateTime(2026, 3, 2) };
+        var (dOk, dErr) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 10, Count = 0 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
+
         var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id, ReturnDate = new DateTime(2026, 3, 2) };
         var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,
             new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
@@ -191,6 +197,12 @@ public sealed class ReturnsFixtureTests : IDisposable
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = saleInv.Id, DeliveryDate = new DateTime(2026, 3, 2) };
+        var (dOk, dErr) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 10, Count = 0 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
 
         var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id, ReturnDate = new DateTime(2026, 3, 2) };
         var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,

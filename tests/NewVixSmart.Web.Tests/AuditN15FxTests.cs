@@ -332,6 +332,13 @@ public sealed class AuditN15FxTests : IDisposable
         var (ok, err) = await inventory.CreateSaleAsync(new SaleInvoice { CustomerId = customer.Id, CurrencyId = usd.Id, ExchangeRate = 500m, InvoiceDate = invDate, PaymentTerms = InvoicePaymentTerms.Net30 },
             new List<SaleInvoiceItem> { new() { ItemId = item.Id, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok, err);
+        Assert.Equal(0, await db.JournalEntries.CountAsync()); // invoice alone posts nothing
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = (await db.SaleInvoices.SingleAsync()).Id, DeliveryDate = invDate };
+        var (dOk, dErr) = await inventory.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = item.Id, Quantity = 4, Count = 0 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await inventory.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
 
         var saleEntry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync();
         Assert.Equal(320m, (await db.SaleInvoices.SingleAsync()).NetAmount);
