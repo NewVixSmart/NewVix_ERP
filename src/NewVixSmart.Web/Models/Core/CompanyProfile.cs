@@ -9,11 +9,11 @@ public class CompanyProfile
     [Required(ErrorMessage = "اسم الشركة مطلوب")]
     [StringLength(200)]
     [Display(Name = "اسم الشركة")]
-    public string CompanyName { get; set; } = "New Vix Smart Solution Expert";
+    public string CompanyName { get; set; } = "NewVix";
 
     [StringLength(200)]
     [Display(Name = "الشعار النصي")]
-    public string? Tagline { get; set; } = "نظام إدارة التجارة الذكي";
+    public string? Tagline { get; set; } = "Smart Solutions";
 
     [StringLength(300)]
     [Display(Name = "العنوان")]

@@ -80,7 +80,7 @@ public static class PrintPdfBuilder
             {
             }
         }
-        return new CompanyProfile { CompanyName = "New Vix Smart Solution Expert" };
+        return new CompanyProfile { CompanyName = "NewVix" };
     }
 
     public static decimal Round2(decimal v, int decimals)

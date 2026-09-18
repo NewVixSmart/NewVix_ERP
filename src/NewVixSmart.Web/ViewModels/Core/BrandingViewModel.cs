@@ -8,7 +8,7 @@ public class BrandingViewModel
     [Required(ErrorMessage = "اسم الشركة مطلوب")]
     [StringLength(200)]
     [Display(Name = "اسم الشركة")]
-    public string CompanyName { get; set; } = "New Vix Smart Solution Expert";
+    public string CompanyName { get; set; } = "NewVix";
 
     [StringLength(200)]
     [Display(Name = "الشعار النصي")]

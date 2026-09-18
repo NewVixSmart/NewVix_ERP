@@ -1,5 +1,5 @@
 /* ============================================================
-   New Vix Smart Solution Expert — Light Theme
+   NewVix Smart Solutions — Light Theme
    White + Emerald · Modern SaaS (Stripe / Linear style)
    Token architecture: primitive → semantic → component
    ============================================================ */
@@ -125,7 +125,7 @@
     --color-stock-low-bg: #fef2f2;
     --color-stock-low-text: #dc2626;
     --color-stock-ok-bg: #f0fdf4;
-    --color-stock-ok-text: #16a34a;
+    --color-stock-ok-text: #166534;
 }
 
 /* ---------- 3. BOOTSTRAP REMAP (single source) ---------- */
@@ -1082,6 +1082,12 @@ input[type="checkbox"].form-check-input, input[type="radio"].form-check-input {
 .badge-stock-warn { background: var(--color-stock-warn-bg); color: var(--color-warning-text); }
 .badge-stock-low { background: var(--color-stock-low-bg); color: var(--color-stock-low-text); }
 .badge-stock-ok { background: var(--color-stock-ok-bg); color: var(--color-stock-ok-text); }
+
+/* Readable warning text on light surfaces (BC .text-warning is #ffc107 -> fails WCAG 1.4.3) */
+h1.text-warning, h2.text-warning, h3.text-warning, h4.text-warning,
+th.text-warning, small.text-warning, span.text-warning, .text-warning p {
+    color: var(--color-warning-text) !important;
+}
 
 .empty-state {
     padding: 3rem 1.5rem;

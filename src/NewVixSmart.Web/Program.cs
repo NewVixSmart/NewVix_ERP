@@ -169,7 +169,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "New Vix Smart Solution Expert API",
+        Title = "NewVix Smart Solutions API",
         Version = "v1"
     });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
