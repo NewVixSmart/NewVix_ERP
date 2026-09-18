@@ -1,4 +1,4 @@
-# خطة البناء الشاملة — ترقية Silk إلى منظومة محاسبية/تشغيلية عالمية المستوى
+# خطة البناء الشاملة — ترقية New Vix Smart إلى منظومة محاسبية/تشغيلية عالمية المستوى
 
 > التاريخ: 2026-09-03
 > النطاق: P0 (GL + FIFO) → P1 (مستودعات/نقل، RFQ→أمر شراء، API) → P2 (تقارير/باركود/تنبيهات، عملات/سيرك)
@@ -106,7 +106,7 @@
 
 ## P1-C — API عديمة الحالة (REST + JWT + OpenAPI)
 
-- إضافة مشروع `Silk.WebApi` منفصل (يشارك نماذج/خدمات) أو تحويل التطبيق الحالي ليواجه HTTP API منفصلًا.
+- إضافة مشروع `NewVixSmart.WebApi` منفصل (يشارك نماذج/خدمات) أو تحويل التطبيق الحالي ليواجه HTTP API منفصلًا.
 - توثيق JWT (بأذونات على أساس مفاتيح `Perm` الحالية) — نقاط لـ: الأصناف، المخزون (أرصدة/طبقات)، الفواتير، المدفوعات، القيود.
 - Swagger/OpenAPI. عدم كشف الأسرى؛ استخدام `appsettings` عبر User Secrets.
 
@@ -176,7 +176,7 @@
 | M8a | عملات `Currency` (SDG أساسي + USD) بعمولات/أسعار صرف + أفرع `Branch` (BR-001/002) تُطبع `BranchId` على GL والفواتير والمدفوعات + شحنات `Shipment`/التسليمات + هجرة `AddMultiCurrencyBranchesShipments` | **63 اختبارًا** |
 | M8b | Audit نهائي شامل عبر 35 صفحة عبر كل الوحدات (أصناف/مبيعات/مشتريات/مرتجعات/مدفوعات/مستودعات/نقل/مشتريات RFQ/شحنات/إعدادات/تقارير مالية وتشغيلية) + 3 قوالب تصدير | Smoke: **35/35 صفحات 200**؛ `CONSOLE_ERRORS: []`؛ build 0W/0E؛ `dotnet test` **63/63** |
 
-**النتيجة النهائية**: اكتمل النطاق P0→P2 بالكامل عبر سلسلة Agents مع بوابة تحقق بعد كل مرحلة. **التحقق النهائي**: build 0W/0E؛ **63/63 اختبارًا**؛ Audit شاملة 35/35 صفحة بلا أخطاء توافقية؛ هجرات `AddGeneralLedger` → `AddStockFifoLayers` → `AddWarehousesAndStockTransfer` → `AddProcurementFlow` → `AddItemMinStockAndBarcode` → `AddMultiCurrencyBranchesShipments` طبِّقت جميعها على `SilkTradingDb`.
+**النتيجة النهائية**: اكتمل النطاق P0→P2 بالكامل عبر سلسلة Agents مع بوابة تحقق بعد كل مرحلة. **التحقق النهائي**: build 0W/0E؛ **63/63 اختبارًا**؛ Audit شاملة 35/35 صفحة بلا أخطاء توافقية؛ هجرات `AddGeneralLedger` → `AddStockFifoLayers` → `AddWarehousesAndStockTransfer` → `AddProcurementFlow` → `AddItemMinStockAndBarcode` → `AddMultiCurrencyBranchesShipments` طبِّقت جميعها على `NewVixSmartDb`.
 
 **ملاحظات إرشادية**: العملة الأجنبية تُحفظ كلف بيانات وقتية إعلامية (مبلغ/سعر صرف مسجل لحظة الترحيل)، والدفتر GL يبقى بالعملة الأساسية كمصدر حقيقة وحيد. لاستخدام أمامي مُطبَّق: `admin/Admin@123`, `accountant/Accountant@123`, `warehouse/Warehouse@123`، والتطبيق على `http://localhost:5165`.
 
@@ -277,7 +277,7 @@
 
 **تغيير قسري في الكود بسب API:** لا يوجد — لم تُلمس `SeedData`/الخدمات/التحكمات/الآراء. التغيير الوحيد في `.csproj` (خاصية `TreatWarningsAsErrors`). لا حاجة لاختبارات انحدار جديدة لأن لا منطق تغيّر.
 
-**ملاحظة نظامية (system-level caveat):** عند بناء المشروعين **بالتوازي في نفس الأمر**، يظهر قفل ملف على `Silk.Trading.Web.dll` (اختبارات *تشير* إلى مشروع الويب) — يُحلّ بالبناء تسلسليًا أو بأمر واحد للـ solution. ليس خطأ كود.
+**ملاحظة نظامية (system-level caveat):** عند بناء المشروعين **بالتوازي في نفس الأمر**، يظهر قفل ملف على `NewVixSmart.Web.dll` (اختبارات *تشير* إلى مشروع الويب) — يُحلّ بالبناء تسلسليًا أو بأمر واحد للـ solution. ليس خطأ كود.
 
 **الحالة النهائية: P4e مكتمل — أداة/اعتماديات مُحتّمة، صفر CVEs، صفر تحذيرات، build 0W/0E، اختبارات 96/96.**
 
@@ -287,7 +287,7 @@
 
 | المرحلة | ما أُنفذ | التحقق |
 |---|---|---|
-| M-P4a | **إعادة هندسة المرتجعات إلى سير عمل Draft→Posted مع تكامل محاسبي كامل:** `ReturnStatus` (`Models/Accounting/ReturnStatus.cs`: Draft=0 «مسودة»/Posted=1 «مرحَّلة`)؛ حقول جديدة في `SaleReturn`/`PurchaseReturn` (`CurrencyId`/`Currency` FK تقييدي، `ExchangeRate decimal(18,6)`، `BranchId` FK تقييدي، `Status`، `PostedBy`، `PostedAt`)؛ هجرة `AddSalesReturnsAndPurchaseReturns` المطبَّقة | build 0W/0E؛ هجرة مطبَّقة على `SilkTradingDb` |
+| M-P4a | **إعادة هندسة المرتجعات إلى سير عمل Draft→Posted مع تكامل محاسبي كامل:** `ReturnStatus` (`Models/Accounting/ReturnStatus.cs`: Draft=0 «مسودة»/Posted=1 «مرحَّلة`)؛ حقول جديدة في `SaleReturn`/`PurchaseReturn` (`CurrencyId`/`Currency` FK تقييدي، `ExchangeRate decimal(18,6)`، `BranchId` FK تقييدي، `Status`، `PostedBy`، `PostedAt`)؛ هجرة `AddSalesReturnsAndPurchaseReturns` المطبَّقة | build 0W/0E؛ هجرة مطبَّقة على `NewVixSmartDb` |
 | M-P4a | **دورة الحياة في `InventoryService`:** `Create*ReturnDraftAsync` (تُنشئ المسودة بلا أي أثر مخزني/محاسبي) و`Post*ReturnAsync` (تُرحّل القيد والـ FIFO والحركة معًا في معاملة واحدة — سطر 228/331 يرفضان الترحيل في سنة مغلقة **قبل** أي أثر جانبي؛ المسودة مسموحة في السنة المغلقة؛ الترحيل المزدوج مرفوض «مرحَّل بالفعل»)؛ `RestoreSaleReturnLayersAsync` (سطر 556) تعيد طبقات FIFO **بسعر الشراء الأصلي `Item.PurchasePrice`** لا بسعر البيع (إصلاح خلل تكلفة حقيقي)؛ مرتجع الشراء يستهلك الطبقات بسعر التكلفة عبر `ConsumeFifoLayersAsync` ويُمرّر COGS للقيد | `ReturnsFixtureTests` — طبقة مُستعادة بتكلفة 30 (سعر شراء) رغم بيعها بـ 80؛ رفض الترحيل في سنة مغلقة؛ منع الترحيل المزدوج؛ شبكة FIFO للمرتجع الشرائي |
 | M-P4a | **تكامل GL في `AccountingService`:** حسابات العقد الجديدة **5101 «مرتجعات المبيعات» / 5102 «مرتجعات المشتريات»** (بذرة SeedData اصطلاحية قبل سطر الحراسة)؛ 4 أسطر متوازنة لمرتجع البيع (Dr 5101 V / Cr 1200 V / Dr 1300 C / Cr 5000 C) ومرتجع الشراء (Dr 2000 V / Cr 5102 V / Cr 1300 C / Dr 5000 C)؛ **تحويل العملة** `local = value × (exchangeRate ?? 1m)` مدوَّر 2 (سطر 71/86) بينما رجل التكلفة دائمًا محلي؛ طريقتا 2-سقر المتوافقتان مع الإصدار السابق (`RecordSaleReturnAsync`=5010/1200 و`RecordPurchaseReturnAsync`=2000/5102) | اختبار FX: 100×0.9→90 على 5101/1200 مع تكلفة 40 ثابتة محليًا |
 | M-P4a | **الواجهة والأذونات:** `SaleReturnsController`/`PurchaseReturnsController` — إنشاء مسودة على POST (زرا «حفظ كمسودة»/«ترحيل») + إجراء `Post(int id)` جديد بـ `[RequirePerm("SaleReturns.Post"|"PurchaseReturns.Post")]`؛ آراء Index/Details (شارة حالة «مسودة»/«مرحَّلة» + زر ترحيل للمسودات) وCreate (زرا الحفظ/الترحيل)؛ `PermissionCatalog` يضيف `Post` لوحدتى المرتجعات و`PermissionDefaults` يمنحها لـ Accountant و Warehouse | صفحات SaleReturns/PurchaseReturns (Index/Details/Create) 200 و`CONSOLE_ERRORS: []`؛ **تحقّق حي E2E** (مسودة عبر Form → شارة «مسودة» + زر ترحيل سطرًا بسطر → ترحيل → شارة «مرحّل» وتلاشي الزر): قيد GL متوازن Dr(5101=100 + 1300=85) == Cr(1200=100 + 5000=85) — رجل التكلفة استخدم سعر الشراء 85 لا سعر البيع 100 |
@@ -310,7 +310,7 @@
 
 | المرحلة | ما أُنفذ | التحقق |
 |---|---|---|
-| **النموذج** | **`BudgetYear`** (Id, Year فريدة, IsActive, CreatedBy/At) + **`BudgetLine`** (Id, BudgetYearId, AccountId, AnnualAmount) مع قيد فريد `(BudgetYearId, AccountId)` (السنوي فقط — لا توزيع شهري؛ الميزانية VS الفعلي على مستوى السنة)؛ هجرة **`AddBudgets`** المُطبَّقة على `SilkTradingDb` | build 0W/0E؛ هجرة مطبَّقة؛ `has-pending-model-changes` = لا تغييرات |
+| **النموذج** | **`BudgetYear`** (Id, Year فريدة, IsActive, CreatedBy/At) + **`BudgetLine`** (Id, BudgetYearId, AccountId, AnnualAmount) مع قيد فريد `(BudgetYearId, AccountId)` (السنوي فقط — لا توزيع شهري؛ الميزانية VS الفعلي على مستوى السنة)؛ هجرة **`AddBudgets`** المُطبَّقة على `NewVixSmartDb` | build 0W/0E؛ هجرة مطبَّقة؛ `has-pending-model-changes` = لا تغييرات |
 | **حسابات CRUD** | **`AccountsController`** + آراء Index (قائمة مع تصفية النوع/الحالة + رصيد تشغيلي لكل حساب عبر استعلام خام مجمّع) / Create / Edit؛ الحساب الأب `ParentAccountId` (النموذج موجود أصلاً — لا جدول جديد) ؛ صلاحية `ChartOfAccounts: [View, Create, Edit, Deactivate]` | صفحات `/Accounts`, `/Accounts/Create` 200 + `CONSOLE_ERRORS: []` |
 | **الحُرّاس** | خدمة **`AccountsService`** تُطبّق القواعد: (1) رمز الحساب الذي **له قيود مرحلة** أو **نظامي بذرة** لا يُغيَّر → «لا يمكن تغيير رمز حساب له قيود مرحلة» / «لا يمكن تغيير رمز حساب النظام»؛ (2) حذف مقيد للحساب المُرحِّل/النظامي → تعطيل بدل الحذف، والحذف الكامل لأصحاب الاستخدام الصفري فقط؛ (3) حساب نظامي (`1000..5100, 3001, 4400, 8400, 5101, 5102`) **لا يُعطَّل ولا يُحذف حتى لو غير مستخدم**؛ (4) رمز فريد حساسية-التجاهل | اختبارات إجبارية تغطي كل قاعدة |
 | **الميزانيات** | **`BudgetsController`** + آراء Index (قائمة السنوات + تفعيل) / Manage (سنة) (جدول حسابات P&L فقط — «الرمز 4000-5999» الإيرادات والمصاريف) بحفظ الدفعة الكاملة (POST يحدّث/يُضيف خطوطًا بلا تكرار عبر القيد الفريد)؛ صلاحية `Budgets: [View, Manage]`؛ **الإقفال المالي**: سنة مغلقة تُعرض ولا تُعدَّل («السنة المالية N مغلقة — لا يمكن تعديل ميزانيتها») والميزانية لا تُعطّل الإقفال | صفحات `/Budgets`, `/Budgets/Manage?year=YYYY` 200 + `CONSOLE_ERRORS: []` |
@@ -379,14 +379,14 @@
 
 | الوظيفة | الخطوات |
 |---|---|
-| `build-and-test` | `actions/checkout@v4` + `actions/setup-dotnet@v4` (10.0.x) → `dotnet restore Silk.Trading.slnx` → `dotnet build -c Release --no-restore` (0W/0E إجباري عبر `TreatWarningsAsErrors`) → `dotnet test` (117/117) → رفع تقرير TRX |
-| `package-vulnerability` | `dotnet list silk.trading.slnx package --vulnerable --include-transitive` — يفشل الـ job عند أي CVE |
-| `docker-image` | `docker build` لصورة الويب من `src/Silk.Trading.Web/Dockerfile` + `docker inspect` للـ exposed-ports والـ HEALTHCHECK (مُحاكي بوابة الصورة — لا push) |
+| `build-and-test` | `actions/checkout@v4` + `actions/setup-dotnet@v4` (10.0.x) → `dotnet restore NewVixSmart.slnx` → `dotnet build -c Release --no-restore` (0W/0E إجباري عبر `TreatWarningsAsErrors`) → `dotnet test` (117/117) → رفع تقرير TRX |
+| `package-vulnerability` | `dotnet list new-vix-smart.slnx package --vulnerable --include-transitive` — يفشل الـ job عند أي CVE |
+| `docker-image` | `docker build` لصورة الويب من `src/NewVixSmart.Web/Dockerfile` + `docker inspect` للـ exposed-ports والـ HEALTHCHECK (مُحاكي بوابة الصورة — لا push) |
 
-- **`Silk.Trading.slnx` حُدِّث**: أُضيف مشروع الاختبارات `tests/Silk.Trading.Web.Tests` إلى الصيغة (المسار الجديد `slnx` أصلاً بكناية src فقط) — الآن `dotnet test` و`dotnet build` من الـ slnx يشملان كلا المشروعين **عبر الأنظمة** (تأكيد محلي: build 0W/0E + **117/117 PASS** من الـ slnx مباشرة، الاختبارات Sqlite فلا حاجة لـ LocalDB في CI).
+- **`NewVixSmart.slnx` حُدِّث**: أُضيف مشروع الاختبارات `tests/NewVixSmart.Web.Tests` إلى الصيغة (المسار الجديد `slnx` أصلاً بكناية src فقط) — الآن `dotnet test` و`dotnet build` من الـ slnx يشملان كلا المشروعين **عبر الأنظمة** (تأكيد محلي: build 0W/0E + **117/117 PASS** من الـ slnx مباشرة، الاختبارات Sqlite فلا حاجة لـ LocalDB في CI).
 
 **Docker — التحصين وإعادة التحقق:**
-- `src/Silk.Trading.Web/Dockerfile` **مُراجعة مسبقًا سليمة**: مرحلتان (sdk:10.0 → aspnet:10.0)، restore في طبقة مستقلة، `ASPNETCORE_URLS=http://+:80`، HEALTHCHECK عبر curl، المستوى الصغير الحجم — بقي بلا تغيير.
+- `src/NewVixSmart.Web/Dockerfile` **مُراجعة مسبقًا سليمة**: مرحلتان (sdk:10.0 → aspnet:10.0)، restore في طبقة مستقلة، `ASPNETCORE_URLS=http://+:80`، HEALTHCHECK عبر curl، المستوى الصغير الحجم — بقي بلا تغيير.
 - **`.dockerignore`** جديد (يمنع `bin/obj/.git/.env/.github` من سياق البناء).
 - **`docker-compose.yml` حُصِّن**: كلمة مرور SA المفترضة المضمّنة **أُزيلت** — الآن `SA_PASSWORD: "${SQL_SA_PASSWORD:?required}"` يرفض الإقلاع دون ضبطها، healthcheck يستخدم `$${SA_PASSWORD}` داخل الخادم، وسلسلة الاتصال تُبني من `${SQL_SA_PASSWORD}` عند compose؛ **`.env.example`** موثق (مفسوخ من `.git`).
 
@@ -400,7 +400,7 @@
 | CI jobs | 3 وظائف (build/test, vuln scan, docker build) — ترجع فشلًا عند أي انحدار |
 | Dockerfile | مُراجَع سليم بمرحلتين + HEALTHCHECK (لا تغيير) |
 | compose | اعتمادات مُتغيِرة إجباريًا + `.env.example` |
-| الملفات الجديدة | `.gitignore`, `.dockerignore`, `.env.example`, `.github/workflows/ci.yml`, تحديث `Silk.Trading.slnx` |
+| الملفات الجديدة | `.gitignore`, `.dockerignore`, `.env.example`, `.github/workflows/ci.yml`, تحديث `NewVixSmart.slnx` |
 
 **الحالة النهائية: P4d مكتمل — Git + CI (build/test/vuln/docker) + Docker محصَّن؛ كل المراحل الخمس (P4e→P4a→P4b→P4c→P4d) منجزة → P4 مكتمل بالكامل.**
 
@@ -423,7 +423,7 @@
 Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPNETCORE_ENVIRONMENT=Production dotnet run --no-launch-profile
 ```
 
-**البيع (gateway):** build slnx (Debug+Release) **0W/0E**؛ `dotnet test` من الـ slnx **117/117 PASS**؛ التطبيق Dev يعمل على `http://localhost:5165` (`app41.log`). الملف المتغيّر: `src/Silk.Trading.Web/Program.cs` فقط (حارس JWT + سياسة CORS + `UseCors`).
+**البيع (gateway):** build slnx (Debug+Release) **0W/0E**؛ `dotnet test` من الـ slnx **117/117 PASS**؛ التطبيق Dev يعمل على `http://localhost:5165` (`app41.log`). الملف المتغيّر: `src/NewVixSmart.Web/Program.cs` فقط (حارس JWT + سياسة CORS + `UseCors`).
 
 **الحالة النهائية: P5a مكتمل — JWT رافض للـ placeholder في Prod، CORS مغلقة افتراضيًا بقائمة أصول، CSP/Rؤوس أمنية سليمة؛ بلا تغيير منطقي وبلا انحدار (117/117).**
 
@@ -445,7 +445,7 @@ Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPN
   - `Views/Reports/Aging.cshtml`: 4 بطاقات ملخص + جدولا A/R وA/P (scope/caption + aria-labelledby) + زر تصدير مُقيَّد بالصلاحية.
   - `PermissionCatalog`: وحدة `Aging` (View/Export) + إدخال قائمة جانبية «القائمة العمرية»؛ `PermissionDefaults`: إضافة إلى مدير الحسابات.
   - لوحة التحكم (`DashboardService` + `DashboardViewModel` + `Views/Home/Index.cshtml`): بطاقة «فواتير متأخرة أو تستحق خلال 7 أيام» لذمم العملاء والموردين (عدد + إجمالي) مع رابط للقائمة العمرية.
-- **التحقق:** `dotnet build Silk.Trading.slnx` = 0W/0E؛ اختبارات **122/122 PASS** (117 سابقة + 5 جديدة في `AgingTests`: التقسيم العمري حسب تاريخ الاستحقاق، فواتير OnReceipt، استبعاد المسدد بالكامل، التجميع الفارغ، صلاحبة ملف XLSX)؛ بوابة Playwright+axe `GATE: PASS` على `/Reports/Aging` و`/` و`/Reports` (200 + صفر انتهاكات Critical/Serious + صفر أخطاء console).
+- **التحقق:** `dotnet build NewVixSmart.slnx` = 0W/0E؛ اختبارات **122/122 PASS** (117 سابقة + 5 جديدة في `AgingTests`: التقسيم العمري حسب تاريخ الاستحقاق، فواتير OnReceipt، استبعاد المسدد بالكامل، التجميع الفارغ، صلاحبة ملف XLSX)؛ بوابة Playwright+axe `GATE: PASS` على `/Reports/Aging` و`/` و`/Reports` (200 + صفر انتهاكات Critical/Serious + صفر أخطاء console).
 
 ### P5d — كشف التدفق النقدي + كشوف حسابات قابلة للتصدير — مكتمل ومُتحقَّق (2026-09-10)
 
@@ -464,6 +464,6 @@ Jwt__Key="<64+ char random>" Cors__AllowedOrigins="https://app.example.com" ASPN
 
 - **إتاحة:** فحص axe شامل عبر **40 صفحة** (38 سابقة + `Reports/Aging` + `Reports/CashFlow`) = `GATE: PASS` (200 + صفر انتهاكات Critical/Serious + صفر أخطاء console).
 - **التصدير:** تحقق حي من **19 نقطة تصدير** بصيغة صحيحة — 13 XLSX (أصناف/مخزون/ميزان مراجعة/دخل/عمومية/سجل تدقيق/واريانس/أجينغ/تدفق نقدي/مبيعات/مشتريات/مدفوعات/كشفا عملاء وموردين) + 3 PDF (ميزان مراجعة/دخل/عمومية) + طباعة فاتورة بيع = الكل 200.
-- **الجودة:** `dotnet build Silk.Trading.slnx` = 0W/0E؛ `dotnet test` = **128/128 PASS**؛ `dotnet list package --vulnerable --include-transitive` على الويب والاختبارات = **صفر ثغرات** (0 CVEs).
+- **الجودة:** `dotnet build NewVixSmart.slnx` = 0W/0E؛ `dotnet test` = **128/128 PASS**؛ `dotnet list package --vulnerable --include-transitive` على الويب والاختبارات = **صفر ثغرات** (0 CVEs).
 - **التوثيق:** تحديث README من 117 → 128 اختبارًا وإضفاء صيغة الاكتمال على P5.
 - **النتيجة:** P6 مكتمل → مراحل P0–P6 منجزة بالكامل مع 128 اختبارًا أخضر وبوابة إتاحة مفعّلة.

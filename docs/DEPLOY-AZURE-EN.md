@@ -25,7 +25,7 @@ dotnet workload list
 ## 2. Run Locally
 
 ```bash
-dotnet run --project aspire/Silk.AppHost
+dotnet run --project aspire/Vix.AppHost
 ```
 
 This starts a local SQL Server container and the web app. The Aspire dashboard opens automatically.
@@ -35,7 +35,7 @@ This starts a local SQL Server container and the web app. The Aspire dashboard o
 ## 3. Build the Docker Image
 
 ```bash
-docker build -f src/Silk.Trading.Web/Dockerfile -t silk-trading-web .
+docker build -f src/NewVixSmart.Web/Dockerfile -t new-vix-smart-web .
 ```
 
 Run with docker-compose:
@@ -54,44 +54,44 @@ App: `http://localhost:8080`
 
 ```bash
 az login
-az group create --name silk-trading-rg --location eastus
-az acr create --resource-group silk-trading-rg --name silktradingacr --sku Basic
-az acr update -n silktradingacr --admin-enabled true
+az group create --name vix-trading-rg --location eastus
+az acr create --resource-group vix-trading-rg --name newvixsmartacr --sku Basic
+az acr update -n newvixsmartacr --admin-enabled true
 ```
 
 ### B. Push Image to ACR
 
 ```bash
-az acr build --registry silktradingacr --image silk-trading-web:v1 .
+az acr build --registry newvixsmartacr --image new-vix-smart-web:v1 .
 ```
 
 ### C. Create Azure SQL
 
 ```bash
-az sql server create --name silk-trading-sql \
-    --resource-group silk-trading-rg --location eastus \
+az sql server create --name vix-trading-sql \
+    --resource-group vix-trading-rg --location eastus \
     --admin-user sqladmin --admin-password "YourStr0ng!Password"
-az sql db create --name SilkTradingDb --server silk-trading-sql \
-    --resource-group silk-trading-rg --service-tier Basic
+az sql db create --name NewVixSmartDb --server vix-trading-sql \
+    --resource-group vix-trading-rg --service-tier Basic
 ```
 
 ### D. Deploy Container App
 
 ```bash
-az containerapp env create --name silk-trading-env \
-    --resource-group silk-trading-rg --location eastus
-ACR_PASSWORD=$(az acr credential show -n silktradingacr --query passwords[0].value -o tsv)
-az containerapp create --name silk-trading-web \
-    --resource-group silk-trading-rg --environment silk-trading-env \
-    --image silktradingacr.azurecr.io/silk-trading-web:v1 \
-    --registry-server silktradingacr.azurecr.io \
-    --registry-username silktradingacr --registry-password "$ACR_PASSWORD" \
+az containerapp env create --name vix-trading-env \
+    --resource-group vix-trading-rg --location eastus
+ACR_PASSWORD=$(az acr credential show -n newvixsmartacr --query passwords[0].value -o tsv)
+az containerapp create --name new-vix-smart-web \
+    --resource-group vix-trading-rg --environment vix-trading-env \
+    --image newvixsmartacr.azurecr.io/new-vix-smart-web:v1 \
+    --registry-server newvixsmartacr.azurecr.io \
+    --registry-username newvixsmartacr --registry-password "$ACR_PASSWORD" \
     --target-port 80 --ingress external \
     --min-replicas 1 --max-replicas 3 \
     --env-vars \
         ASPNETCORE_ENVIRONMENT="Production" \
         ASPNETCORE_URLS="http://+:80" \
-        ConnectionStrings__DefaultConnection="Server=silk-trading-sql.database.windows.net,1433;Database=SilkTradingDb;User Id=sqladmin;Password=YourStr0ng!Password;TrustServerCertificate=True"
+        ConnectionStrings__DefaultConnection="Server=vix-trading-sql.database.windows.net,1433;Database=NewVixSmartDb;User Id=sqladmin;Password=YourStr0ng!Password;TrustServerCertificate=True"
 ```
 
 ### E. Migrations
@@ -103,7 +103,7 @@ EF Core migrations run automatically on startup via `db.Database.Migrate()`.
 ## 5. Azure SQL Connection String
 
 ```
-Server=<server>.database.windows.net,1433;Database=SilkTradingDb;User Id=<user>;Password=<password>;TrustServerCertificate=True
+Server=<server>.database.windows.net,1433;Database=NewVixSmartDb;User Id=<user>;Password=<password>;TrustServerCertificate=True
 ```
 
 ---

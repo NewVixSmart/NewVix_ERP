@@ -2,8 +2,8 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE_URL || 'http://localhost:5165';
-const USER = process.env.SILK_USER || 'admin';
-const PASS = process.env.SILK_PASS || 'Admin@123';
+const USER = process.env.VIX_USER || 'admin';
+const PASS = process.env.VIX_PASS || 'Admin@123';
 
 const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 

@@ -1,0 +1,13 @@
+@model string
+@using NewVixSmart.Web.Services
+@{
+    var barcode = Code128Helper.GetBarcodeValue(Model);
+    var bars = Code128Helper.Encode(barcode);
+    var svgHtml = Code128Helper.ToSvgPattern(bars, 50, 2)
+        .Replace("<svg", "<svg role=\"img\" aria-label=\"رمز الباركود: " + System.Net.WebUtility.HtmlEncode(barcode) + "\"", StringComparison.OrdinalIgnoreCase);
+    var width = bars.Sum() * 2;
+}
+<div class="text-center" style="display:inline-block;">
+    @Html.Raw(svgHtml)
+    <div style="font-family: monospace; font-size: 11px; margin-top: 2px;">@barcode</div>
+</div>

@@ -1,4 +1,4 @@
-# Silk Trading — نظام إدارة تجاري عربي (دبل المحاسبة والمخزون)
+# New Vix Smart — نظام إدارة تجاري عربي (دبل المحاسبة والمخزون)
 
 نظام ويب متكامل لإدارة عمليات التداول التجاري باللغة العربية (RTL) على **ASP.NET Core 10 + Entity Framework Core + SQL Server** — يشمل إدارة الأصناف والمخزون (FIFO)، المبيعات والمشتريات، المرتجعات، الدفعات متعددة العملات، المحاسبة ذات القيد المزدوج، القوائم المالية، الإقفال السنوي، الميزانيات، العمليات الجماعية، API عديمة الحالة (JWT)، والجداول/الباركود والتصدير.
 
@@ -9,8 +9,8 @@
 ## البنية
 
 ```
-Silk.Trading.slnx
-├── src/Silk.Trading.Web          # تطبيق MVC (net10.0) + API (JWT) + خدمات
+NewVixSmart.slnx
+├── src/NewVixSmart.Web          # تطبيق MVC (net10.0) + API (JWT) + خدمات
 │   ├── Api/                      # REST endpoints (JWT أو Cookie)
 │   ├── Controllers/              # واجهات الواجهة (MVC)
 │   ├── Services/                 # محركات المحاسبة/المخزون/التقارير (Services)
@@ -18,7 +18,7 @@ Silk.Trading.slnx
 │   ├── Views/                    # Razor (RTL، إتاحة WCAG 2.2 AA)
 │   ├── Migrations/               # هجرات EF Core
 │   └── Dockerfile                # صورة إنتاج مرحلتين (net10.0)
-├── tests/Silk.Trading.Web.Tests  # xUnit (SQLite في الذاكرة — لا يتطلب LocalDB)
+├── tests/NewVixSmart.Web.Tests  # xUnit (SQLite في الذاكرة — لا يتطلب LocalDB)
 ├── aspire/                       # قوالب Aspire (AppHost / ServiceDefaults)
 ├── docs/                         # خطة البناء + سجلات الإكمال + نشر Azure
 └── .github/workflows/ci.yml      # بناء + اختبار + فحص CVE + بناء صورة Docker
@@ -38,15 +38,15 @@ Silk.Trading.slnx
 
 ```bash
 # البناء والاختبار (أوامر C# تُنفذ من حلّ المشروع)
-dotnet restore Silk.Trading.slnx
-dotnet build Silk.Trading.slnx -c Release        # 0W/0E (تحذيرات كأخطاء)
-dotnet test  Silk.Trading.slnx -c Release        # 201 اختبارًا (SQLite، لا DB خارجي)
+dotnet restore NewVixSmart.slnx
+dotnet build NewVixSmart.slnx -c Release        # 0W/0E (تحذيرات كأخطاء)
+dotnet test  NewVixSmart.slnx -c Release        # 201 اختبارًا (SQLite، لا DB خارجي)
 
 # تشغيل التطبيق (وضع التطوير — يستخدم launchSettings على :5165)
-dotnet run --project src/Silk.Trading.Web
+dotnet run --project src/NewVixSmart.Web
 ```
 
-افتح `http://localhost:5165`. قاعدة البيانات التلقائية: `(localdb)\mssqllocaldb`/`SilkTradingDb` — تُهيّأ وتـseeded عن الإقلاع (لا خطوات يدوية).
+افتح `http://localhost:5165`. قاعدة البيانات التلقائية: `(localdb)\mssqllocaldb`/`NewVixSmartDb` — تُهيّأ وتـseeded عن الإقلاع (لا خطوات يدوية).
 
 **الحسابات التجريبية** (تُنشأ عند الإقلاع):
 
@@ -73,9 +73,9 @@ docker compose up -d    # SQL Server 2022 + web على http://localhost:8080
 
 ```bash
 Jwt__Key="PUT-A-RANDOM-64+CHAR-SECRET" \
-ConnectionStrings__DefaultConnection="Server=sql;Database=SilkTradingDb;User Id=sa;Password=...;TrustServerCertificate=True" \
+ConnectionStrings__DefaultConnection="Server=sql;Database=NewVixSmartDb;User Id=sa;Password=...;TrustServerCertificate=True" \
 Cors__AllowedOrigins="https://app.example.com" \
-ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/Silk.Trading.Web --no-launch-profile
+ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/NewVixSmart.Web --no-launch-profile
 ```
 
 ## CI / بوابة الجودة

@@ -1,0 +1,64 @@
+@model NewVixSmart.Web.ViewModels.Stock.StockIndexViewModel
+@{ ViewData["Title"] = "حركة المخزون"; }
+
+<div class="page-header"><h2><i class="bi bi-boxes text-primary"></i> حركة المخزون</h2></div>
+
+<div class="card mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label" for="itemFilter">الصنف</label>
+            <select name="itemId" id="itemFilter" class="form-select">
+                <option value="">الكل</option>
+                @foreach (var item in Model.Items)
+                { <option value="@item.Id" selected="@(Model.ItemId?.ToString() == item.Id.ToString())">@item.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="typeFilter">النوع</label>
+            <select name="type" id="typeFilter" class="form-select">
+                <option value="">الكل</option>
+                <option value="1" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.In)">وارد (دخول)</option>
+                <option value="2" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.Out)">صادر (خروج)</option>
+            </select>
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> بحث</button></div>
+    </form>
+</div></div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead><tr><th scope="col">التاريخ</th><th scope="col">الصنف</th><th scope="col">النوع</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">الرصيد قبل (عدد/كمية)</th><th scope="col">الرصيد بعد (عدد/كمية)</th><th scope="col">المستند</th></tr></thead>
+        <tbody>
+            @foreach (var m in Model.Movements)
+            {
+                <tr>
+                    <td>@m.MovementDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><strong>@m.Item.Name</strong></td>
+                    <td>
+                        @if (m.Type == NewVixSmart.Web.Models.Stock.MovementType.In)
+                        { <span class="badge bg-success">وارد</span> }
+                        else
+                        { <span class="badge bg-danger">صادر</span> }
+                    </td>
+                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
+                        <span class="visually-hidden">@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Count.ToString("N2")
+                    </td>
+                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
+                        <span class="visually-hidden">@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Quantity.ToString("N2")
+                    </td>
+                    <td>@m.CountBefore.ToString("N2") / @m.BalanceBefore.ToString("N2")</td>
+                    <td>@m.CountAfter.ToString("N2") / @m.BalanceAfter.ToString("N2")</td>
+                    <td><code>@(m.DocumentNumber ?? "—")</code></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (!Model.Movements.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <p class="mt-2">لا توجد حركات مخزون</p>
+    </div>
+}

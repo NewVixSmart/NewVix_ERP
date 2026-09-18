@@ -1,0 +1,50 @@
+@model IReadOnlyList<NewVixSmart.Web.Models.Purchases.PurchaseOrder>
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Purchases
+@{ ViewData["Title"] = "أوامر الشراء"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-clipboard-check text-primary"></i> أوامر الشراء</h2>
+    @if (await Perm.HasAsync("PurchaseOrders.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> أمر شراء جديد</a>
+    }
+</div>
+
+<div class="mb-3">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+            <label class="visually-hidden" for="statusFilter">الحالة</label>
+            <select name="status" id="statusFilter" class="form-select" data-auto-submit>
+                <option value="">كل الحالات</option>
+                @foreach (var s in Enum.GetValues<PurchaseOrderStatus>())
+                {
+                    <option value="@((int)s)" selected="@(ViewBag.StatusFilter == s)">@s.GetDisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel"></i> تصفية</button></div>
+    </form>
+</div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead><tr><th scope="col">رقم الأمر</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">المتوقع</th><th scope="col">الحالة</th><th scope="col">المستلم</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+        <tbody>
+            @foreach (var order in Model)
+            {
+                <tr>
+                    <td><code>@order.OrderNumber</code></td>
+                    <td>@(order.Supplier?.Name ?? "—")</td>
+                    <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
+                    <td>@(order.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td><span class="badge @(order.Status switch { PurchaseOrderStatus.Approved => "bg-success", PurchaseOrderStatus.Received => "bg-info", PurchaseOrderStatus.PartiallyReceived => "bg-warning", PurchaseOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@order.Status.GetDisplayName()</span></td>
+                    <td>@(order.Items.Sum(i => i.ReceivedQty).ToString("N0") + " / " + order.Items.Sum(i => i.Quantity).ToString("N0"))</td>
+                    <td class="text-center">
+                        <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-info" aria-label="عرض أمر الشراء @order.OrderNumber"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,103 @@
+@model NewVixSmart.Web.ViewModels.Reports.BalanceSheetReportViewModel
+@{ ViewData["Title"] = "الميزانية العمومية"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-layers text-primary"></i> الميزانية العمومية</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label" for="asOfDate">حتى تاريخ</label>
+            <input type="date" name="asOf" value="@Model.AsOf.ToString("yyyy-MM-dd")" id="asOfDate" class="form-control" />
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> عرض</button></div>
+    </form>
+</div></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الأصول</div><h3 class="mb-0 text-primary">@Model.TotalAssets.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الخصوم + حقوق الملكية</div><h3 class="mb-0 text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
+        <div class="text-muted small">حالة التوازن</div>
+        @if (Model.IsBalanced)
+        { <h4 class="mb-0 text-success"><i class="bi bi-check-circle"></i> متوازنة</h4> }
+        else
+        { <h4 class="mb-0 text-danger"><i class="bi bi-x-circle"></i> غير متوازنة</h4> }
+    </div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card"><div class="card-header fw-bold">@Model.Assets.Title</div>
+            <div class="table-container">
+                <table class="table mb-0" data-table-plain>
+                    <caption class="visually-hidden">@Model.Assets.Title</caption>
+                    <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in Model.Assets.Lines)
+                        {
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                        }
+                    </tbody>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الأصول</th><td class="text-primary">@Model.Assets.Total.ToString("N2")</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mt-3"><div class="card-header fw-bold">@Model.Liabilities.Title</div>
+            <div class="table-container">
+                <table class="table mb-0" data-table-plain>
+                    <caption class="visually-hidden">@Model.Liabilities.Title</caption>
+                    <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in Model.Liabilities.Lines)
+                        {
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                        }
+                    </tbody>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الخصوم</th><td>@Model.Liabilities.Total.ToString("N2")</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-3"><div class="card-header fw-bold">@Model.Equity.Title</div>
+            <div class="table-container">
+                <table class="table mb-0" data-table-plain>
+                    <caption class="visually-hidden">@Model.Equity.Title</caption>
+                    <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in Model.Equity.Lines)
+                        {
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                        }
+                        <tr><td></td><td>صافي الدخل (الفترة)</td><td class="fw-bold @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</td></tr>
+                    </tbody>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي حقوق الملكية</th><td class="text-success">@((Model.Equity.Total + Model.NetIncome).ToString("N2"))</td></tr></tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="table-container mt-3">
+            <table class="table mb-0">
+                <tbody>
+                    <tr class="table-light fw-bold"><td>إجمالي الخصوم + حقوق الملكية</td><td class="text-end text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Assets.Lines.Any() && !Model.Liabilities.Lines.Any() && !Model.Equity.Lines.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <p class="mt-2">لا توجد حسابات في القائمة</p>
+    </div>
+}
+
+<div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
+    <a asp-action="ExportBalanceSheetPdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
+    <a asp-action="ExportBalanceSheetXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+</div>

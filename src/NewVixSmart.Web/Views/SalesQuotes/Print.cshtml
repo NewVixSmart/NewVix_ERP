@@ -1,0 +1,64 @@
+@model NewVixSmart.Web.Models.Sales.SaleQuote
+@using NewVixSmart.Web.ViewModels.Core
+@using NewVixSmart.Web.ViewModels.PrintStudio
+@inject IBrandingService BrandingService
+@inject IPrintSettingsService PrintSettingsService
+@{
+    Layout = null;
+    var _brand = await BrandingService.LoadAsync();
+    var _profile = _brand.Profile;
+    var _layout = await PrintSettingsService.GetLayoutAsync(PrintGroup.SalesQuote);
+    var _contactParts = new System.Collections.Generic.List<string>();
+    if (_layout.ShowCompanyContact)
+    {
+        if (!string.IsNullOrWhiteSpace(_profile.Address)) _contactParts.Add(_profile.Address);
+        if (!string.IsNullOrWhiteSpace(_profile.Phone)) _contactParts.Add(_profile.Phone);
+        if (!string.IsNullOrWhiteSpace(_profile.Email)) _contactParts.Add(_profile.Email);
+    }
+    var _doc = new PrintDocModel
+    {
+        Group = PrintGroup.SalesQuote,
+        Layout = _layout,
+        DocTitle = "عرض سعر",
+        DocNumber = Model.QuoteNumber,
+        DocDateLabel = "التاريخ",
+        DocDateValue = Model.QuoteDate.ToString("dd/MM/yyyy"),
+        SecondDateLabel = "صالح حتى",
+        SecondDateValue = Model.ValidUntil?.ToString("dd/MM/yyyy") ?? "—",
+        PartyTitle = "العميل",
+        PartyName = Model.Customer?.Name ?? "—",
+        PartyCode = Model.Customer?.Code,
+        LogoUri = _layout.ShowLogo ? _profile.LogoDataUri() : null,
+        CompanyName = _profile.CompanyName,
+        Tagline = _profile.Tagline ?? "",
+        CompanyContact = string.Join(" • ", _contactParts),
+        TaxNumber = _profile.TaxNumber ?? "",
+        CreatedBy = _layout.ShowCreatedBy ? Model.CreatedBy : null,
+        Note = Model.Notes,
+        Totals = new PrintDocTotals
+        {
+            Subtotal = Model.TotalAmount,
+            Discount = Model.Discount,
+            Tax = Model.Tax,
+            GrandTotal = Model.NetAmount,
+            IsPaid = false,
+            CurrencyCode = Model.Currency?.Code ?? ""
+        }
+    };
+    foreach (var item in Model.Items)
+    {
+        _doc.Lines.Add(new PrintDocLine
+        {
+            ItemCode = item.Item?.Code ?? "",
+            Barcode = item.Item?.Barcode,
+            Name = item.Item?.Name ?? "—",
+            Unit = (item.Item?.CountUnit?.Name ?? item.Item?.QuantityUnit?.Name) ?? "",
+            Count = item.Count,
+            Quantity = item.Quantity,
+            UnitPrice = item.UnitPrice,
+            Discount = 0m,
+            LineTotal = item.Total
+        });
+    }
+}
+<partial name="Print/PrintDocument" model="_doc" />

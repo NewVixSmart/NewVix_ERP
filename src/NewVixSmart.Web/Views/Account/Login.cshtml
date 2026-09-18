@@ -1,0 +1,107 @@
+@model NewVixSmart.Web.Controllers.LoginViewModel
+@inject NewVixSmart.Web.Services.IBrandingService Branding
+@{ Layout = null; ViewData["Title"] = "تسجيل الدخول"; var _brand = await Branding.LoadAsync(); }
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme-mode="system" data-theme="light" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>تسجيل الدخول - @_brand.Profile.CompanyName</title>
+    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+    <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
+    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+    <style nonce="@Context.GetCspNonce()">
+        @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
+    </style>
+    <script nonce="@Context.GetCspNonce()">
+        (function () {
+            var stored = null;
+            try { stored = localStorage.getItem('theme-mode'); } catch (e) { stored = null; }
+            var mode = (stored === 'light' || stored === 'dark') ? stored : 'system';
+            var resolved = mode === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : mode;
+            document.documentElement.setAttribute('data-theme-mode', mode);
+            document.documentElement.setAttribute('data-theme', resolved);
+            document.documentElement.setAttribute('data-bs-theme', resolved);
+        })();
+    </script>
+    <link href="~/css/dark-theme.css" rel="stylesheet" asp-append-version="true" />
+</head>
+<body>
+    <div class="login-stage">
+        <div class="auth-card">
+            <div class="d-flex justify-content-center mb-3">
+                <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
+                    <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
+                        <i class="bi bi-display" aria-hidden="true"></i>
+                        <span class="theme-mode-label">النظام</span>
+                    </button>
+                    <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
+                        <i class="bi bi-sun" aria-hidden="true"></i>
+                        <span class="theme-mode-label">فاتح</span>
+                    </button>
+                    <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
+                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                        <span class="theme-mode-label">داكن</span>
+                    </button>
+                </div>
+            </div>
+            @if (_brand.Profile.HasLogo)
+            {
+                <img class="login-logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
+            }
+            else
+            {
+                <div class="brand-monogram" aria-hidden="true"><i class="bi bi-shop"></i></div>
+            }
+            <h2>@_brand.Profile.CompanyName</h2>
+            <p class="subtitle">New Vix Smart Solution Expert — تسجيل الدخول</p>
+
+            @if (TempData["Success"] is string successMsg)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
+                    @successMsg
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            }
+            @if (TempData["Error"] is string errorMsg)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
+                    @errorMsg
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                </div>
+            }
+
+            <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="Username" class="form-label"></label>
+                    <input asp-for="Username" class="form-control" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label"></label>
+                    <div class="input-group">
+                        <input asp-for="Password" class="form-control" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
+                        <button type="button" class="btn btn-outline-secondary" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="mb-3 form-check">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> دخول
+                </button>
+            </form>
+        </div>
+    </div>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+@model NewVixSmart.Web.ViewModels.Reports.IncomeStatementReportViewModel
+@{ ViewData["Title"] = "قائمة الدخل"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-graph-up-arrow text-primary"></i> قائمة الدخل</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label" for="fromDate">من تاريخ</label>
+            <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" id="fromDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="toDate">إلى تاريخ</label>
+            <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" id="toDate" class="form-control" />
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> عرض</button></div>
+    </form>
+</div></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h3 class="mb-0 text-success">@Model.TotalRevenue.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h3 class="mb-0 text-danger">@Model.TotalExpenses.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h3 class="mb-0">@Model.NetRevenue.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h3 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h3></div></div>
+</div>
+
+<div class="table-container mb-4">
+    <table class="table table-hover mb-0" data-table-plain>
+        <caption class="visually-hidden">إيرادات الفترة</caption>
+        <thead><tr><th scope="col">الرمز</th><th scope="col">الإيرادات</th><th scope="col">المبلغ</th></tr></thead>
+        <tbody>
+            @foreach (var l in Model.RevenueLines)
+            {
+                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-success">@l.Amount.ToString("N2")</td></tr>
+            }
+            @foreach (var l in Model.ContraRevenueLines)
+            {
+                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge bg-danger ms-1">خصم</span></td><td class="text-danger">-@l.Amount.ToString("N2")</td></tr>
+            }
+        </tbody>
+        <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">صافي الإيرادات</th><td class="text-success">@Model.NetRevenue.ToString("N2")</td></tr></tfoot>
+    </table>
+</div>
+
+<div class="table-container mb-4">
+    <table class="table table-hover mb-0" data-table-plain>
+        <caption class="visually-hidden">مصاريف الفترة</caption>
+        <thead><tr><th scope="col">الرمز</th><th scope="col">المصروفات</th><th scope="col">المبلغ</th></tr></thead>
+        <tbody>
+            @foreach (var l in Model.ExpenseLines)
+            {
+                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-danger">@l.Amount.ToString("N2")</td></tr>
+            }
+            @foreach (var l in Model.ContraExpenseLines)
+            {
+                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge bg-success ms-1">خصم</span></td><td class="text-success">-@l.Amount.ToString("N2")</td></tr>
+            }
+        </tbody>
+        <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">صافي المصروفات</th><td class="text-danger">@Model.NetExpenses.ToString("N2")</td></tr></tfoot>
+    </table>
+</div>
+
+<div class="table-container">
+    <table class="table mb-0">
+        <tbody>
+            <tr><td><h4 class="mb-0">صافي الدخل</h4></td><td class="text-end"><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h4></td></tr>
+        </tbody>
+    </table>
+</div>
+
+@if (!Model.RevenueLines.Any() && !Model.ExpenseLines.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <p class="mt-2">لا توجد حركات إيرادات أو مصروفات في هذه الفترة</p>
+    </div>
+}
+
+<div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
+    <a asp-action="ExportIncomeStatementPdf" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
+    <a asp-action="ExportIncomeStatementXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+</div>

@@ -1,8 +1,8 @@
 {
-  "name": "silk-trading-e2e",
+  "name": "new-vix-smart-e2e",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright + axe accessibility gate for Silk Trading",
+  "description": "Playwright + axe accessibility gate for New Vix Smart",
   "scripts": {
     "a11y": "node a11y-gate.cjs"
   },

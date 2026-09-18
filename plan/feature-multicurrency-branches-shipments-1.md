@@ -1,5 +1,5 @@
 ---
-goal: M8a - Add multi-currency + branches + shipments to Silk Trading MVC
+goal: M8a - Add multi-currency + branches + shipments to New Vix Smart MVC
 version: 1.0
 date_created: 2026-09-03
 owner: Senior ERP Engineer
@@ -114,9 +114,9 @@ Add light-weight multi-currency and multi-branch support on top of the existing 
 
 ## 5. Files
 
-- **FILE-001**: `src/Silk.Trading.Web/Models/Accounting/Currency.cs` (new)
-- **FILE-002**: `src/Silk.Trading.Web/Models/Core/Branch.cs` (new)
-- **FILE-003**: `src/Silk.Trading.Web/Models/Accounting/Shipment.cs` + `ShipmentStatus.cs` (new)
+- **FILE-001**: `src/NewVixSmart.Web/Models/Accounting/Currency.cs` (new)
+- **FILE-002**: `src/NewVixSmart.Web/Models/Core/Branch.cs` (new)
+- **FILE-003**: `src/NewVixSmart.Web/Models/Accounting/Shipment.cs` + `ShipmentStatus.cs` (new)
 - **FILE-004**: Customer.cs, Supplier.cs, SaleInvoice.cs, PurchaseInvoice.cs, Payment.cs, GLAccount.cs, JournalEntry.cs, JournalEntryLine.cs, Item.cs (extended)
 - **FILE-005**: AppDbContext.cs, IAccountingService.cs, AccountingService.cs, InventoryService.cs, PaymentService.cs
 - **FILE-006**: PermissionCatalog.cs, PermissionDefaults.cs

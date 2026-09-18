@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NewVixSmart.Web/NewVixSmart.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NewVixSmart.Web.Tests/NewVixSmart.Web.Tests.csproj" />
+  </Folder>
+</Solution>

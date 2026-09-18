@@ -1,0 +1,82 @@
+@model NewVixSmart.Web.Models.Core.Item
+@using NewVixSmart.Web.ViewModels.Core
+@inject IBrandingService BrandingService
+@inject IPrintSettingsService PrintSettingsService
+@{
+    ViewData["Title"] = "طباعة ملصق الصنف";
+    Layout = null;
+    var _brand = await BrandingService.LoadAsync();
+    var _profile = _brand.Profile;
+    var _layout = await PrintSettingsService.GetLayoutAsync(PrintGroup.ItemLabel);
+    var _accent = _layout.AccentColor;
+    var _fontSize = (14.0 * _layout.FontScale).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "px";
+    var _logoHeight = Math.Max(1, 56 * _layout.LogoScalePercent / 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "px";
+    var _sizeName = _layout.PageSize == PrintPageSize.Letter ? "letter" : _layout.PageSize == PrintPageSize.A5 ? "A5" : "A4";
+    var _orient = _layout.Orientation == PrintOrientation.Landscape ? " landscape" : "";
+    var _margin = _layout.Orientation == PrintOrientation.Landscape ? "10mm" : _layout.Margin == PrintMarginSize.Narrow ? "6mm" : _layout.Margin == PrintMarginSize.Wide ? "20mm" : "12mm";
+    var _logoUri = _layout.ShowLogo ? _profile.LogoDataUri() : null;
+    var _barcodeValue = Model.Barcode ?? Model.Code ?? $"ITM{Model.Id:D8}";
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ملصق - @Model.Name</title>
+    <style>
+        * { font-family: 'Arial', 'Cairo', sans-serif; }
+        body { margin: 0; padding: 0; font-size: @_fontSize; }
+        .label { width: 100%; padding: 16px; border: 1px solid #ddd; }
+        .label-body { text-align: center; }
+        .label-title { font-size: 22px; font-weight: 700; color: @_accent; }
+        .label-item { font-size: 18px; font-weight: 600; color: @_accent; }
+        .label-meta { font-size: 14px; color: #475569; margin-top: 6px; }
+        .label-price { font-size: 20px; font-weight: 700; color: #161515; margin-top: 6px; }
+        .label-barcode { margin-top: 12px; }
+        .print-logo { max-height: @_logoHeight; max-width: 150px; object-fit: contain; margin-bottom: 6px; }
+        .label-footer { margin-top: 12px; text-align: center; font-size: 12px; color: #475569; }
+        .no-print { margin-top: 16px; text-align: center; }
+        .no-print button { min-height: 44px; min-width: 44px; padding: 10px 28px; border: none; border-radius: 6px; background: @_accent; color: #fff; font-size: 15px; font-family: inherit; cursor: pointer; }
+        @@media print {
+            .no-print { display: none !important; }
+            body { margin: 0; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @@page { size: @_sizeName@(_orient); margin: @_margin; }
+        }
+    </style>
+</head>
+<body>
+    <div class="label">
+        <div class="label-body">
+            @if (_logoUri != null)
+            {
+                <img src="@_logoUri" alt="@_profile.CompanyName" class="print-logo" />
+            }
+            @if (_layout.ShowCompanyName)
+            {
+                <div class="label-title">@_profile.CompanyName</div>
+            }
+            <div class="label-item">@Model.Name</div>
+            <div class="label-meta">الكود: @(Model.Code ?? "—")</div>
+            @if (_layout.ShowUnitPrice)
+            {
+                <div class="label-price">@Model.SalePrice.ToString("N2") @(Model.CountUnit?.Name ?? Model.QuantityUnit?.Name ?? "")</div>
+            }
+            @if (_layout.ShowBarcode)
+            {
+                <div class="label-barcode">
+                    <partial name="_Barcode" model="@_barcodeValue" />
+                </div>
+            }
+            @if (_layout.ShowFooter)
+            {
+                <div class="label-footer">@(string.IsNullOrWhiteSpace(_layout.FooterNoteText) ? "" : _layout.FooterNoteText + " — ")@(_layout.ShowCompanyName ? _profile.CompanyName : "")</div>
+            }
+        </div>
+    </div>
+    <div class="no-print">
+        <button type="button" data-auto-print>طباعة الملصق</button>
+    </div>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

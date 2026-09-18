@@ -1,0 +1,51 @@
+@model NewVixSmart.Web.Models.Purchases.SupplierQuote
+@{ ViewData["Title"] = "تسجيل عرض سعر"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-envelope-open text-primary"></i> تسجيل عرض سعر</h2>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+}
+
+<form asp-action="Create" method="post">
+    <div class="card">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="SupplierId" class="form-label"></label>
+                    <select asp-for="SupplierId" asp-items="@(ViewBag.Suppliers as IEnumerable<SelectListItem>)" class="form-select">
+                        <option value="">-- اختر المورد --</option>
+                    </select>
+                    <span asp-validation-for="SupplierId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ItemId" class="form-label"></label>
+                    <select asp-for="ItemId" asp-items="@(new SelectList(ViewBag.ItemsData as List<NewVixSmart.Web.Models.Core.Item>, "Id", "Name"))" class="form-select">
+                        <option value="">-- اختر الصنف --</option>
+                    </select>
+                    <span asp-validation-for="ItemId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-2">
+                    <label asp-for="UnitPrice" class="form-label"></label>
+                    <input asp-for="UnitPrice" class="form-control" type="number" step="0.01" />
+                    <span asp-validation-for="UnitPrice" class="text-danger small"></span>
+                </div>
+                <div class="col-md-2">
+                    <label asp-for="EffectiveDate" class="form-label"></label>
+                    <input asp-for="EffectiveDate" class="form-control" type="date" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+            </div>
+        </div>
+    </div>
+</form>

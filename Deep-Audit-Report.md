@@ -1,7 +1,7 @@
-# المراجعة العميقة الموسّعة — نظام Silk Trading
+# المراجعة العميقة الموسّعة — نظام New Vix Smart
 
 > التاريخ: 2026-08-31 (جولة ثانية)
-> النطاق: تطبيق Silk.Trading.Web + قاعدة البيانات `SilkTradingDb` + نظام الصلاحيات
+> النطاق: تطبيق NewVixSmart.Web + قاعدة البيانات `NewVixSmartDb` + نظام الصلاحيات
 > البناء النهائي: **0 تحذيرات / 0 أخطاء** — التطبيق يعمل على `http://localhost:5165`
 > المنهجية: قراءة وتدقيق يدوي لكل التحكمات والخدمات والنماذج + إثبات تجريبي عبر Playwright لبعض النتائج المتنازع عليها
 
@@ -201,7 +201,7 @@
 | 4 | بوليصة مطبوعة | ✅ | `Sales/Print` + `Purchases/Print` (Standalone، `@media print`) |
 | 5 | بلاغات انخفاض المخزون | ✅ | `GetLowStockItemsAsync` + `Stock/LowStock` + شارة dashboard + رابط قوائم LowStock |
 | 6 | Docker + نشر Azure (Aspire) | ✅ | `Dockerfile`، `docker-compose`، `aspire/AppHost`، `Deploy-Azure` توثيق (لا يُبنى محليًا) |
-| 7 | اختبار آلي xUnit | ✅ | `tests/Silk.Trading.Web.Tests` — **18 اختبارًا** (Inventory: بيع/شراء/مرتجع/تراكمي + ميزات جديدة) |
+| 7 | اختبار آلي xUnit | ✅ | `tests/NewVixSmart.Web.Tests` — **18 اختبارًا** (Inventory: بيع/شراء/مرتجع/تراكمي + ميزات جديدة) |
 | 8 | نسخ احتياطي للقاعدة | ✅ | `scripts/backup-db.ps1` + `setup-backup-task.ps1` + `docs/BACKUP` |
 | 9 | مراجعة أمنية ثالثة (علامة/بنك) | ✅ | أدناه — Audit نهائي 9 أبعاد |
 | 10 | بيانات تجريبية واقعية | ✅ | `SeedData` (16 صنفًا، أصناف/وحدات/عملاء/موردون) `IsSellable` |
@@ -275,11 +275,11 @@
 
 | # | الخطورة | الموقع | العنوان | التفصيل (مع الدليل) | التوصية |
 |---|---|---|---|---|---|
-| 1 | **عالية High** | `aspire/Silk.AppHost/Program.cs:3-8` مقابل `src/Silk.Trading.Web/Program.cs:15` | اسم اتصال غير متطابق بين Aspire والتطبيق | `AddSqlServer("sql").AddDatabase("silktrading")` بحقن `WithReference` يوفّر `ConnectionStrings__silktrading`، بينما يقرأ التطبيق حصريًا `GetConnectionString("DefaultConnection")` (Program.cs:15) وهو LocalDB ثابت في `appsettings.json:10`. تحت Aspire تُهجَر القيمة المحقونة ويحاول التطبيق `(localdb)` غير الموجود داخل الحاوية → تعذّر الاتصال في مسار النشر الموثَّق بـ `docs/DEPLOY-AZURE.md`. | أعد تسمية القاعدة إلى `AddDatabase("DefaultConnection")` أو أضف قراءة احتياطية للاسم المحقون، ثم تحقق من `dotnet run --project aspire/Silk.AppHost`. |
+| 1 | **عالية High** | `aspire/Vix.AppHost/Program.cs:3-8` مقابل `src/NewVixSmart.Web/Program.cs:15` | اسم اتصال غير متطابق بين Aspire والتطبيق | `AddSqlServer("sql").AddDatabase("newvixsmart")` بحقن `WithReference` يوفّر `ConnectionStrings__newvixsmart`، بينما يقرأ التطبيق حصريًا `GetConnectionString("DefaultConnection")` (Program.cs:15) وهو LocalDB ثابت في `appsettings.json:10`. تحت Aspire تُهجَر القيمة المحقونة ويحاول التطبيق `(localdb)` غير الموجود داخل الحاوية → تعذّر الاتصال في مسار النشر الموثَّق بـ `docs/DEPLOY-AZURE.md`. | أعد تسمية القاعدة إلى `AddDatabase("DefaultConnection")` أو أضف قراءة احتياطية للاسم المحقون، ثم تحقق من `dotnet run --project aspire/Vix.AppHost`. |
 | 2 | **متوسطة Medium** | `.github/workflows/ci.yml:29,36` | مسار تحميل نتائج الاختبارات لا يطابق موقع ملف TRX | مع `--logger "trx;LogFileName=test-results.trx"` يُكتب الملف في مجلد العمل الجاري وليس داخل `**/TestResults/`، والـ upload يطلب `**/TestResults/*.trx` → من المرجّح أن يكون artifact فارغًا (تفشل مراجعة النتائج بعد الالتزام). | أضف `--results-directory TestResults --logger "trx;LogFileName=test-results.trx"` أو أزل `LogFileName` ليعود الملف إلى المسار الافتراضي تحت `TestResults`. |
-| 3 | **متوسطة Medium** | `tests/Silk.Trading.Web.Tests/AgingTests.cs:33-34` (و87, 138) | تشفير عربي مخرَّب (Mojibake) في بيانات الاختبار | النصوص المكتوبة كـ CP1256 مفكوكة: «ط¹ظ…ظٹظ„ ط£» و«ظ…ظˆط±ط¯ ط¨» بدل «عميل أ»/«مورد ب». الاختبارات تمر لأن الثوابت مكررة حرفيًا في التوكيدات (87, 138)، لكن بيانات القاعدة المشبّعة مشوَّهة ولا تحاكي أسماء الإنتاج (بالمقابل `CashFlowTests.cs:147` يحمل عناوين عربية سليمة صرّح بأن الشذوذ محصور في هذا الملف). | أعِد كتابة النصوص بالعربية الصحيحة عبر محرر/حفظ UTF-8 ثم أعد تشغيل الاختبارات؛ تحقّق من عدم تكرار النمط في أي ملف آخر. |
-| 4 | **متوسطة Medium** | `tests/Silk.Trading.Web.Tests/AgingTests.cs:111` | مسافة بادئة شاذة | السطر `var row = ...` on مسافة واحدة بخلاف تنسيق الملف (تبويب). | أعد تنظيم الملف (format on save) للاتساق. |
-| 5 | **متوسطة Medium** | `src/Silk.Trading.Web/Dockerfile` (المرحلة النهائية) | الحاوية تعمل بصلاحيات الجذر | لا وجود لتوجيه `USER` في الصورة النهائية (رغم multiline الصحيح مع `ASPNETCORE_URLS=http://+:80` وHEALTHCHECK curl). في حاوية خدمة مالية تُنشر على Azure يسافر ذلك أثر الهجوم عند اختراق العملية. | أضف مستخدمًا غير جذر (`adduser ... appuser`) وتوجيه `USER appuser` بعد نسخ الملفات، وثبّت curl في مرحلة بناء مؤقتة أو استغنى عنه عبر منفذ/ping HTTP مدمج. |
+| 3 | **متوسطة Medium** | `tests/NewVixSmart.Web.Tests/AgingTests.cs:33-34` (و87, 138) | تشفير عربي مخرَّب (Mojibake) في بيانات الاختبار | النصوص المكتوبة كـ CP1256 مفكوكة: «ط¹ظ…ظٹظ„ ط£» و«ظ…ظˆط±ط¯ ط¨» بدل «عميل أ»/«مورد ب». الاختبارات تمر لأن الثوابت مكررة حرفيًا في التوكيدات (87, 138)، لكن بيانات القاعدة المشبّعة مشوَّهة ولا تحاكي أسماء الإنتاج (بالمقابل `CashFlowTests.cs:147` يحمل عناوين عربية سليمة صرّح بأن الشذوذ محصور في هذا الملف). | أعِد كتابة النصوص بالعربية الصحيحة عبر محرر/حفظ UTF-8 ثم أعد تشغيل الاختبارات؛ تحقّق من عدم تكرار النمط في أي ملف آخر. |
+| 4 | **متوسطة Medium** | `tests/NewVixSmart.Web.Tests/AgingTests.cs:111` | مسافة بادئة شاذة | السطر `var row = ...` on مسافة واحدة بخلاف تنسيق الملف (تبويب). | أعد تنظيم الملف (format on save) للاتساق. |
+| 5 | **متوسطة Medium** | `src/NewVixSmart.Web/Dockerfile` (المرحلة النهائية) | الحاوية تعمل بصلاحيات الجذر | لا وجود لتوجيه `USER` في الصورة النهائية (رغم multiline الصحيح مع `ASPNETCORE_URLS=http://+:80` وHEALTHCHECK curl). في حاوية خدمة مالية تُنشر على Azure يسافر ذلك أثر الهجوم عند اختراق العملية. | أضف مستخدمًا غير جذر (`adduser ... appuser`) وتوجيه `USER appuser` بعد نسخ الملفات، وثبّت curl في مرحلة بناء مؤقتة أو استغنى عنه عبر منفذ/ping HTTP مدمج. |
 | 6 | **متوسطة Medium** | غياب الملفات (أُثبت بالنقيض من `tests/…` و`MilestoneM9Tests.cs:342`) | تفويض الأمن بلا تغطية آلية | لا يوجد أي اختبار يمارس `[Authorize]`/`[RequirePerm]`/`RequirePermFilter` ولا تدفق JWT (`JwtBearer`) ولا `[ValidateAntiForgeryToken]`؛ `MilestoneM9Tests.cs:342` ينشئ وحدة التحكم مباشرة بـ `DefaultHttpContext` فيتخطّى الفلاتر، وفحص grep لم يجد `WebApplicationFactory|ClaimsPrincipal` في كامل مجلد الاختبارات. حماية هذه المسارات يدوية (Smoke/Playwright) وتنكشف مستقبلًا بلا حاجز. | أضف اختبارات تكامل عبر `WebApplicationFactory` + `UseAuthorization` أو بناء Claims يدويًا، تستدعي مسارات محمية بمفاتيح أمنية ولا/جاهزة مع JWT باطل. |
 | 7 | **متوسطة Medium** | `tests/…/BudgetAndAccountsTests.cs:267-287` | اسم اختبار منحل عن مدلوله | الاختبار `BudgetClosedYear_GuardCondition_BlocksEdit` يعدّل خط ميزانية لسنة مغلقة و**ينجح التعديل** (AnnualAmount 100→200) لأن الخارس الحقيقي موجود في الواجهة فقط — فالاسم يوحي بتغطية الحماية دون أن يقدّمها، وقد يُؤخذ ضمانة خاطئة. | سمِّه بما يفعل فعليًا (مثل `…_EditAllowedAtDbLevel_GuardInView`) وأضف اختبارًا للخارس نفسه (View/خدمة الحظر). |
 | 8 | **متوسطة Medium** | غياب التغطية لمسارات التزامن | مسارات RowVersion/التراجع غير مختبَرة | الإصلاحات الحرجة (المعاملة الواحدة للدفع+التوزيع، `RowVersion` على الفواتير، استرجاع `DbUpdateConcurrencyException`، `HasDuplicatePaymentAsync` نافذة 2 دقيقة) لا يغطيها أي اختبار؛ الغطاء الوحيد ممنطقي. | أضف اختبارات متوازية (Task.WhenAll) لدفعتين متزامنتين وإعادة تعارض تحديث لنفس الفاتورة، والتحقق من رفض الدفع المكرر المتطابق خلال النافذة. |
@@ -288,7 +288,7 @@
 | 11 | **منخفضة Low** | `plan/feature-multicurrency-branches-shipments-1.md` و `plan/feature-p4b-budgets-accounts-1.md` | حالة مخزن الخطط قديمة | الملفان يحملان `status: 'In progress'` بينما التنفيذ مكتمل (هجرات M8a/P4b موجودة + اختبارات `MilestoneM8a/M9` + BUILD-PLAN يذكر الإكمال). | حدّث الحالة إلى `done` مع إسناد الهجرة والاختبارات المنجزة. |
 | 12 | **منخفضة Low** | جذر الريبو: `test-out.txt`, `test-out2.txt`, `tests-result.txt` | ملفات أثر شاذّة | `test-out2.txt` يعرض «Passed 79» قديمة و`tests-result.txt` يعرض تحذيرات CS8602 قديمة (قبل إضافة `!`) و`test-out.txt` فارغ — متجاهَلة في `.gitignore:22-24` لكنها تلوّث مساحة العمل. | احذف الملفات الثلاثة من القرص (لا أثر لها في git). |
 | 13 | **منخفضة Low** | `ACCESSIBILITY.md` مقابل `.github/workflows/ci.yml` | بوابة WCAG غير مدمجة في CI | الوثيقة تفرض `GATE: PASS` على 38 صفحة (`p4cA11ySmoke.cjs`) وفحصًا شهريًا لـ 41 صفحة (`p4c_baseline.cjs`)، بينما سير العمل يغطي build/test/vuln/docker فقط ولا يشغّل البوابة الآلية ولا يرصد انحدارات الوصولية. | أضف job حسب الوثيقة (دوريًا + على push للواجهة) يشغّل `node p4cA11ySmoke.cjs` ويُفشل السير عند غياب `GATE: PASS`. |
-| 14 | **معلومات Info** | `src/Silk.Trading.Web/appsettings.json:13` + `Program.cs:32-39` | مفتاح JWT نائب محروس | `Jwt:Key` ثابت «REPLACE_WITH_LONG_SECRET_IN_PRODUCTION»، لكن `Program.cs:34-39` يرفض الإقلاع خارج بيئة التطوير إذا كان الطول <32 أو يحتوي `REPLACE_WITH` — الحارس سليم والمخاطرة معلّقة على عدم تخطّي الإعداد في App Service/الحاوية. | لا إجراء إلزامي؛ تأكد من تعيين `Jwt__Key` كسرّية Environment في بيئة النشر. |
+| 14 | **معلومات Info** | `src/NewVixSmart.Web/appsettings.json:13` + `Program.cs:32-39` | مفتاح JWT نائب محروس | `Jwt:Key` ثابت «REPLACE_WITH_LONG_SECRET_IN_PRODUCTION»، لكن `Program.cs:34-39` يرفض الإقلاع خارج بيئة التطوير إذا كان الطول <32 أو يحتوي `REPLACE_WITH` — الحارس سليم والمخاطرة معلّقة على عدم تخطّي الإعداد في App Service/الحاوية. | لا إجراء إلزامي؛ تأكد من تعيين `Jwt__Key` كسرّية Environment في بيئة النشر. |
 
 ---
 
@@ -299,7 +299,7 @@
 - **درع التحذيرات**: `TreatWarningsAsErrors=true` في مشروعَي الويب والاختبارات مع `--warnaserror` صريح في `ci.yml:26` → CI يُفشل على أي تحذير.
 - **هجرات إضافية سليمة**: فهارس فريدة (`IX_BudgetLines_BudgetYearId_AccountId`، `IX_BudgetYears_Year` في `AddBudgets.cs:57-72`، `IX_UserPermissions_UserId_PermissionKey`)؛ `AddFxSettlement` يضيف `BaseAmount NOT NULL` بقيمة افتراضية (بلا فقدان بيانات)؛ أعمدة work/currency قابلة للفراغ؛ `RowVersion` على الفواتير؛ FKs تاريخية بإلغاء Restrict.
 - **أمن النشر**: `SQL_SA_PASSWORD` مطلوب بصرامة (`:?` في compose و`.env.example` نائب فقط)؛ JWT مقفل بالإقلاع؛ CSP/HSTS/nosniff/frame-ancestors في Middleware؛ كل POST مغطى بـ `[ValidateAntiForgeryToken]`؛ قفل 5/5 دقائق.
-- **سكربتات نسخ موثّقة**: `scripts/backup-db.ps1` + `setup-backup-task.ps1` + `docs/BACKUP.md` (كشف 14 يوم، مهمة `SilkTradingDailyBackup`، استعادة RESTORE) متسقة معًا.
+- **سكربتات نسخ موثّقة**: `scripts/backup-db.ps1` + `setup-backup-task.ps1` + `docs/BACKUP.md` (كشف 14 يوم، مهمة `NewVixSmartDailyBackup`، استعادة RESTORE) متسقة معًا.
 
 ## ملاحظات طفيفة (بدون إجراء مطلوب)
 

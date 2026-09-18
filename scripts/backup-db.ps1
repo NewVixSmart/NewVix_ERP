@@ -17,7 +17,7 @@
     SQL Server instance to back up from. Default: (localdb)\MSSQLLocalDB
 
 .PARAMETER Database
-    Database name to back up. Default: SilkTradingDb
+    Database name to back up. Default: NewVixSmartDb
 
 .PARAMETER BackupDir
     Folder where backups are written. Default: "<RepoRoot>\backups"
@@ -29,7 +29,7 @@
     .\scripts\backup-db.ps1
 
 .EXAMPLE
-    .\scripts\backup-db.ps1 -Database SilkTradingDb -BackupDir C:\Backups -RetainDays 7
+    .\scripts\backup-db.ps1 -Database NewVixSmartDb -BackupDir C:\Backups -RetainDays 7
 #>
 
 [CmdletBinding()]
@@ -38,7 +38,7 @@ param(
     [string]$Instance = '(localdb)\MSSQLLocalDB',
 
     [Parameter(Position = 1)]
-    [string]$Database = 'SilkTradingDb',
+    [string]$Database = 'NewVixSmartDb',
 
     [string]$BackupDir,
 

@@ -71,7 +71,7 @@ H-1 (بذرة مخزون بلا قيد افتتاحي ولا طبقات، `SeedD
 | N-14 | **متوسط** | `InventoryService.cs:835-930` | تكرار نفس الصنف في أسطر التحويل يستهلك رصيدًا مزدوجًا ضمن معاملة واحدة (لا إزالة تكرارات) |
 | N-15 | **متوسط (اختبارات FX)** | `MilestoneM9Tests.cs:185-256` + `MilestoneM8aTests.cs:129` | اختبارات FX تمر بتصادف رقمي (2×500=1000) وتكرّس التخزين بلا تحويل؛ **لا يوجد اختبار يربط إنشاء الفاتورة الأجنبية بتسويتها** |
 | N-16 | **منخفض** | `JournalSource.cs:22` + `AccountingService.cs:100-101` | تسويات الجرد تُرحَّل بمصدر `OpeningStock=7` لا `InventoryAdjustment=8` + بتاريخ `UtcNow` لا AdjustmentDate |
-| N-17 | **معلومة** | `aspire/Silk.AppHost` | `Silk.ServiceDefaults` مُجمَّع لكن **غير مستخدم** من Web (بلا AddServiceDefaults) — كود ميت ولا تلقائي للـ connection string |
+| N-17 | **معلومة** | `aspire/Vix.AppHost` | `Vix.ServiceDefaults` مُجمَّع لكن **غير مستخدم** من Web (بلا AddServiceDefaults) — كود ميت ولا تلقائي للـ connection string |
 | N-18 | **معلومة** | `PaymentService.cs:258-261` | `IsForeignPayment` يعامل `ExchangeRate==1` كعملة محلية — يخفي أخطاء السعر الافتراضي (متمم M-12) |
 | N-19 | **معلومة** | `AuditLedger` النهائي | الاقتراح الجديد: إغلاق فرعي عبر `JournalSource.InventoryAdjustment` بدل OpeningStock؛ وفحص `IsBase` قبل حفظ العملات |
 | N-20 | **معلومة** | `Program.cs:47-59` | لا `SecurityStamp` للـ JWT؛ تغيير أدوار المستخدم لا يُسحَب حتى انتهاء الرمز (الأثر محدود لغياب واجهة تغيير أدوار MVC) — يبقى خطرًا للـ API |

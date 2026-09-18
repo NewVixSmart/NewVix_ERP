@@ -1,0 +1,96 @@
+@model IEnumerable<NewVixSmart.Web.Models.Accounting.GLAccount>
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "مخطط الحسابات"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-journal-code text-primary"></i> مخطط الحسابات</h2>
+    @if (await Perm.HasAsync("ChartOfAccounts.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> حساب جديد</a>
+    }
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <label class="visually-hidden" for="accTypeFilter">النوع</label>
+        <select name="type" id="accTypeFilter" class="form-select" data-auto-submit>
+            <option value="">كل الأنواع</option>
+            @foreach (var t in Enum.GetValues<NewVixSmart.Web.Models.Accounting.GLAccountType>())
+            {
+                <option value="@((int)t)" selected="@(ViewBag.TypeFilter == t)">@t.ToString()</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="visually-hidden" for="accActiveFilter">الحالة</label>
+        <select name="active" id="accActiveFilter" class="form-select" data-auto-submit>
+            <option value="">الكل</option>
+            <option value="true" selected="@(ViewBag.ActiveFilter == true)">نشط</option>
+            <option value="false" selected="@(ViewBag.ActiveFilter == false)">معطّل</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-funnel"></i> تصفية</button>
+    </div>
+</form>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th scope="col">الرمز</th>
+                <th scope="col">الاسم</th>
+                <th scope="col">النوع</th>
+                <th scope="col">الطبيعة</th>
+                <th scope="col" class="text-start">الرصيد (مدين/دائن)</th>
+                <th scope="col">الحالة</th>
+                <th scope="col" class="text-center">إجراءات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var balancesMap = ViewBag.Balances as Dictionary<int, (decimal Debit, decimal Credit)> ?? new Dictionary<int, (decimal Debit, decimal Credit)>();
+            }
+            @foreach (var a in Model)
+            {
+                var bal = balancesMap.GetValueOrDefault(a.Id);
+                <tr>
+                    <td><code>@a.Code</code></td>
+                    <td><strong>@a.Name</strong></td>
+                    <td>@a.Type.ToString()</td>
+                    <td>@(a.NormalBalance == NewVixSmart.Web.Models.Accounting.NormalBalance.Debit ? "مدين" : "دائن")</td>
+                    <td class="text-start">@bal.Debit.ToString("N2") / @bal.Credit.ToString("N2")</td>
+                    <td>
+                        @if (a.IsActive)
+                        { <span class="badge-stock-ok px-2 py-1 rounded">نشط</span> }
+                        else
+                        { <span class="badge-stock-low px-2 py-1 rounded">معطّل</span> }
+                    </td>
+                    <td class="text-center d-flex gap-1 justify-content-center">
+                        @if (await Perm.HasAsync("ChartOfAccounts.Edit"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل حساب @a.Code"><i class="bi bi-pencil"></i></a>
+                        }
+                        @if (await Perm.HasAsync("ChartOfAccounts.Deactivate"))
+                        {
+                            <form asp-action="Deactivate" asp-route-id="@a.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm @(a.IsActive ? "btn-outline-warning" : "btn-outline-success")" aria-label="@(a.IsActive ? "تعطيل حساب " + a.Code : "تنشيط حساب " + a.Code)">
+                                    <i class="bi @(a.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                </button>
+                            </form>
+                            <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" data-confirm="حذف هذا الحساب نهائيًا؟" data-confirm-ok="حذف">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف حساب @a.Code"><i class="bi bi-trash"></i></button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">لا توجد حسابات بعد</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -66,7 +66,7 @@
 | H-11 | ✓ | `ReportsController.cs:53-55,94-96` | المرتجعات المسودة (Draft) تُحسب نهائية | تقارير المبيعات/المشتريات وكشوف الأطراف تجمّع كل المرتجعات بلا `Status==Posted` | فلترة `ReturnStatus.Posted` في كل التجميعات |
 | H-12 | ✓ | `Api/TokensController.cs:27-31` + `Program.cs:43-59` | إصدار JWT بتجاوز القفل (lockout) وبلا فحص حالة المستخدم | `CheckPasswordAsync` مباشرة بلا lockout/rate-limit → brute-force مفتوح على `/api/auth/token`؛ ولا `OnTokenValidated` فتوكن مقفول/محذوف يبقى صالحًا ساعة | `SignInManager.PasswordSignInAsync(lockoutOnFailure:true)` أو فحص مانوي + حدث `OnTokenValidated` |
 | H-13 | — | `Data/SeedData.cs:32,36-37` | بذر كلمات مرور ثابتة معلنة (`Admin@123/Accountant@123/Warehouse@123`) | أي نشر يتركها = اختراق فوري؛ `EmailConfirmed=true` أيضًا | توليد عشوائي/تغيير إجباري عند أول دخول/تغذية من أسرار |
-| H-14 | ✓ | `aspire/Silk.AppHost/Program.cs:3-8` مقابل `Program.cs:15` | اسم اتصال Aspire لا يطابق التطبيق | `AddDatabase("silktrading")` بينما التطبيق يقرأ `DefaultConnection` (LocalDB) → Aspire يفشل | `AddDatabase("DefaultConnection")` أو قراءة احتياطية |
+| H-14 | ✓ | `aspire/Vix.AppHost/Program.cs:3-8` مقابل `Program.cs:15` | اسم اتصال Aspire لا يطابق التطبيق | `AddDatabase("newvixsmart")` بينما التطبيق يقرأ `DefaultConnection` (LocalDB) → Aspire يفشل | `AddDatabase("DefaultConnection")` أو قراءة احتياطية |
 
 ---
 
@@ -113,8 +113,8 @@
 | M-28 | `Program.cs` + `appsettings.json` | غياب HSTS وكوكيز/جلسة دون `SecurePolicy=Always` | `UseHsts` (خارج Dev) + `CookieSecurePolicy.Always` |
 | M-29 | `Controllers/SettingsController.cs:43` + `Models/Accounting/Currency.cs:30` | ربط `IsBase` و`Id` في `AddCurrency` يتجاوز `SetBaseCurrency` | VM/DTO أو `[Bind]` + `currency.Id=0` (نمط AddUnit) |
 | M-30 | `.github/workflows/ci.yml:29,36` | مسار رفع TRX لا يطابق موقع الملف → artifact فارغ | `--results-directory TestResults` |
-| M-31 | `tests/Silk.Trading.Web.Tests/AgingTests.cs:33-34,87,138,111` | تشفير عربي مخرَّب (Mojibake) + مسافة بادئة شاذة | إعادة حفظ UTF-8 + format |
-| M-32 | `src/Silk.Trading.Web/Dockerfile` | الحاوية تعمل root وcurl غير مربوط | مستخدم غير جذر + healthcheck مضمن |
+| M-31 | `tests/NewVixSmart.Web.Tests/AgingTests.cs:33-34,87,138,111` | تشفير عربي مخرَّب (Mojibake) + مسافة بادئة شاذة | إعادة حفظ UTF-8 + format |
+| M-32 | `src/NewVixSmart.Web/Dockerfile` | الحاوية تعمل root وcurl غير مربوط | مستخدم غير جذر + healthcheck مضمن |
 | M-33 | غياب | لا اختبارات آلية للتفويض/JWT/CSRF (WebApplicationFactory) | إضافة Illuminate/pain لطبقة Authorize |
 | M-34 | `BudgetAndAccountsTests.cs:267-287` | اختبار «الميزانية المغلقة تُمنع» ينحل عن مدلوله (الخارس في الواجهة لا DB) | إعادة تسمية + اختبار خارس فعلي |
 | M-35 | غياب | مسارات التزامن (دفعتان متزامنتان/تعارض RowVersion/مكرر الدفع) بلا تغطية | اختبارات Task.WhenAll |
@@ -181,8 +181,8 @@ C-1 (قيد COGS)، C-2 (إصلاح تخصيص FX) + اختبارات FX، C-3 (
 
 | الأداة | النتيجة |
 |---|---|
-| `dotnet build Silk.Trading.slnx -c Debug` | 0W/0E |
-| `dotnet build Silk.Trading.slnx -c Release` | 0W/0E |
+| `dotnet build NewVixSmart.slnx -c Debug` | 0W/0E |
+| `dotnet build NewVixSmart.slnx -c Release` | 0W/0E |
 | `dotnet test -c Debug --no-build` | 128/128 PASS |
 | `dotnet test -c Release --no-build` | 128/128 PASS |
 | `dotnet list package --vulnerable --include-transitive` | صفر ثغرات (Web + Tests) |

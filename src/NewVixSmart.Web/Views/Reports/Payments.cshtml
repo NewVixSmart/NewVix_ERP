@@ -1,0 +1,67 @@
+@model NewVixSmart.Web.ViewModels.Reports.PaymentReportViewModel
+@using NewVixSmart.Web.Models.Accounting
+@{ ViewData["Title"] = "تقرير المدفوعات"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-wallet2 text-primary"></i> تقرير المدفوعات</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label" for="from">من تاريخ</label>
+            <input type="date" name="from" id="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="to">إلى تاريخ</label>
+            <input type="date" name="to" id="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+        </div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> عرض</button></div>
+        <div class="col-md-2">
+            <a asp-action="ExportPaymentsXlsx" asp-route-from="@ViewBag.From" asp-route-to="@ViewBag.To" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+        </div>
+    </form>
+</div></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات (من عملاء)</div><h3 class="mb-0 text-success">@Model.TotalReceipts.ToString("N2")</h3><small class="text-muted">@Model.ReceiptCount عملية</small></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات (لموردين)</div><h3 class="mb-0 text-danger">@Model.TotalDisbursements.ToString("N2")</h3><small class="text-muted">@Model.DisbursementCount عملية</small></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">الصافي</div><h3 class="mb-0 @(Model.Balance >= 0 ? "text-success" : "text-danger")">@Model.Balance.ToString("N2")</h3></div></div>
+</div>
+
+<div class="table-container">
+    <table class="table table-hover mb-0">
+        <thead><tr><th scope="col">الإيصال</th><th>النوع</th><th>العميل/المورد</th><th>المبلغ</th><th>الطريقة</th><th>التاريخ</th></tr></thead>
+        <tbody>
+            @foreach (var p in Model.Payments)
+            {
+                <tr>
+                    <td><code>@p.ReceiptNumber</code></td>
+                    <td>
+                        @if (p.Type == PaymentType.Receipt)
+                        { <span class="badge bg-success">قبض</span> }
+                        else
+                        { <span class="badge bg-danger">صرف</span> }
+                    </td>
+                    <td>@(p.Customer?.Name ?? p.Supplier?.Name ?? "—")</td>
+                    <td class="fw-bold @(p.Type == PaymentType.Receipt ? "text-success" : "text-danger")">@p.Amount.ToString("N2") ج.م</td>
+                    <td>@p.Method.GetDisplayName()</td>
+                    <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (!Model.Payments.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <p class="mt-2">لا توجد مدفوعات في هذه الفترة</p>
+    </div>
+}
+
+<div class="mt-4 d-print-none">
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
+</div>

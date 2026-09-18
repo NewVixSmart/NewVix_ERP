@@ -1,0 +1,389 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model NewVixSmart.Web.Models.Core.Item
+@{
+    ViewData["Title"] = "تعديل الصنف";
+}
+
+<div class="page-header">
+    <h2><i class="bi bi-pencil text-primary"></i> تعديل الصنف: @Model.Name</h2>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedAt" />
+            <input type="hidden" asp-for="RowVersion" />
+
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle"></i> البيانات الأساسية</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="Code" class="form-label"></label>
+                    <input asp-for="Code" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="itemTypeSelect">نوع الصنف</label>
+                    <div class="input-group">
+                        <select asp-for="ItemTypeId" asp-items="@(ViewBag.ItemTypes as SelectList)" class="form-select" id="itemTypeSelect">
+                            <option value="">-- اختر نوع الصنف --</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" id="manageItemTypesBtn" title="إدارة أنواع الأصناف" aria-label="إدارة أنواع الأصناف">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="IsSellable" class="form-label"></label>
+                    <select asp-for="IsSellable" class="form-select">
+                        <option value="true">نعم — قابل للبيع</option>
+                        <option value="false">لا — خاص بالإنتاج فقط</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="categorySelect">التصنيف الرئيسي</label>
+                    <div class="input-group">
+                        <select asp-for="CategoryId" asp-items="@(ViewBag.Categories as SelectList)" class="form-select" id="categorySelect">
+                            <option value="">-- اختر المجموعة / العائلة --</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" id="manageCategoriesBtn" title="إدارة التصنيفات" aria-label="إدارة التصنيفات">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-rulers"></i> وحدات العدد والكمية</h6>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="CountUnitId" class="form-label"></label>
+                    <select asp-for="CountUnitId" asp-items="@(ViewBag.CountUnits as SelectList)" class="form-select">
+                        <option value="">-- وحدة العدد --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="QuantityUnitId" class="form-label"></label>
+                    <select asp-for="QuantityUnitId" asp-items="@(ViewBag.QuantityUnits as SelectList)" class="form-select">
+                        <option value="">-- وحدة الكمية --</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-box-seam"></i> الأسعار والحد الأدنى للمخزون</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="PurchasePrice" class="form-label"></label>
+                    <input asp-for="PurchasePrice" class="form-control" type="number" step="0.01" min="0" readonly="@(!ViewBag.IsAdmin)" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="SalePrice" class="form-label"></label>
+                    <input asp-for="SalePrice" class="form-control" type="number" step="0.01" min="0" readonly="@(!ViewBag.IsAdmin)" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="MinCount" class="form-label"></label>
+                    <input asp-for="MinCount" class="form-control" type="number" step="0.01" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="MinQuantity" class="form-label"></label>
+                    <input asp-for="MinQuantity" class="form-control" type="number" step="0.01" />
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-boxes"></i> الرصيد الحالي</h6>
+            <div class="alert alert-info py-2 small">
+                <i class="bi bi-info-circle"></i> يتم تعديل الرصيد من خلال "تسوية جرد" فقط لضمان توثيق الحركات
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="CurrentCount" class="form-label"></label>
+                    <input asp-for="CurrentCount" class="form-control" readonly />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CurrentQuantity" class="form-label"></label>
+                    <input asp-for="CurrentQuantity" class="form-control" readonly />
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">نشط</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ التعديلات</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tags text-primary"></i> إدارة التصنيفات الرئيسية</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" id="newCatName" class="form-control" placeholder="اسم تصنيف جديد..." aria-label="اسم تصنيف جديد" />
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success w-100" id="addCatBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th scope="col">الاسم</th><th>الحالة</th><th class="text-center" style="width:110px">إجراءات</th></tr></thead>
+                        <tbody id="catTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="catMsg" class="small text-danger mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="itemTypesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-grid text-primary"></i> إدارة أنواع الأصناف</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" id="newTypeName" class="form-control" placeholder="اسم نوع جديد..." aria-label="اسم نوع صنف جديد" />
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success w-100" id="addTypeBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th scope="col">الاسم</th><th>الحالة</th><th class="text-center" style="width:110px">إجراءات</th></tr></thead>
+                        <tbody id="typeTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="typeMsg" class="small text-danger mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script nonce="@Context.GetCspNonce()">
+    let catToken = '';
+
+    function getAntiForgeryToken() {
+        const inp = document.querySelector('form input[name="__RequestVerificationToken"]');
+        return inp ? inp.value : '';
+    }
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function post(url, data) {
+        const body = new URLSearchParams(data);
+        body.append('__RequestVerificationToken', catToken);
+        return fetch(url, { method: 'POST', body: body, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } });
+    }
+
+    async function fetchOptions(url) {
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await res.text();
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        const tbody = container.querySelector('tbody');
+        const rows = tbody ? tbody.rows : [];
+        return Array.from(rows).map(r => {
+            const nameTd = r.cells[0];
+            const activeTd = r.cells[1];
+            const btn = r.querySelector('[data-id]');
+            return { id: btn ? parseInt(btn.dataset.id) : 0, name: nameTd ? nameTd.textContent.trim() : '', active: activeTd ? activeTd.textContent.includes('نشط') : true };
+        });
+    }
+
+    async function loadCategories() {
+        try {
+            window.originalCategories = await fetchOptions('/Categories/Index');
+            renderCatTable();
+        } catch (e) { document.getElementById('catMsg').textContent = 'تعذر تحميل التصنيفات'; }
+    }
+
+    function renderCatTable() {
+        const tbody = document.getElementById('catTableBody');
+        tbody.innerHTML = '';
+        (window.originalCategories || []).forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td><input type="text" class="form-control form-control-sm cat-name" value="' + escapeHtml(c.name) + '" data-id="' + c.id + '" aria-label="اسم التصنيف" /></td>' +
+                '<td><select class="form-select form-select-sm cat-active" data-id="' + c.id + '" aria-label="حالة التصنيف">' +
+                '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
+                '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
+                '<td class="text-center"><button class="btn btn-sm btn-outline-primary cat-save" data-id="' + c.id + '" title="حفظ"><i class="bi bi-check-lg"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger cat-del" data-id="' + c.id + '" title="حذف"><i class="bi bi-trash"></i></button></td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function refreshCategoryDropdown(selectedId) {
+        const items = await fetchOptions('/Categories/Index');
+        let opts = '<option value="">-- اختر المجموعة / العائلة --</option>';
+        items.forEach(c => {
+            opts += '<option value="' + c.id + '"' + (String(c.id) === String(selectedId) ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+        });
+        document.getElementById('categorySelect').innerHTML = opts;
+    }
+
+    document.getElementById('manageCategoriesBtn').addEventListener('click', async function() {
+        catToken = getAntiForgeryToken();
+        document.getElementById('catMsg').textContent = '';
+        await loadCategories();
+        new bootstrap.Modal(document.getElementById('categoriesModal')).show();
+    });
+
+    document.getElementById('addCatBtn').addEventListener('click', async function() {
+        const name = document.getElementById('newCatName').value.trim();
+        if (!name) { document.getElementById('catMsg').textContent = 'أدخل اسم التصنيف'; return; }
+        const res = await post('/Categories/Create', { Name: name });
+        if (res.ok) {
+            document.getElementById('newCatName').value = '';
+            document.getElementById('catMsg').textContent = '';
+            const savedId = (await res.json()).id;
+            await loadCategories();
+            await refreshCategoryDropdown(savedId);
+        } else { document.getElementById('catMsg').textContent = (await res.text()); }
+    });
+
+    document.getElementById('catTableBody').addEventListener('click', async function(e) {
+        const saveBtn = e.target.closest('.cat-save');
+        const delBtn = e.target.closest('.cat-del');
+        if (saveBtn) {
+            const id = saveBtn.dataset.id;
+            const tr = saveBtn.closest('tr');
+            const name = tr.querySelector('.cat-name').value.trim();
+            const active = tr.querySelector('.cat-active').value === 'true';
+            if (!name) { document.getElementById('catMsg').textContent = 'لا يمكن ترك الاسم فارغاً'; return; }
+            const res = await post('/Categories/Edit', { Id: id, Name: name, IsActive: active });
+            if (res.ok) {
+                document.getElementById('catMsg').textContent = '';
+                await loadCategories();
+                await refreshCategoryDropdown(id);
+            } else { document.getElementById('catMsg').textContent = (await res.text()); }
+        }
+        if (delBtn) {
+            const id = delBtn.dataset.id;
+            window.confirmAction('حذف هذا التصنيف؟', async function () {
+                const res = await post('/Categories/Delete', { id: id });
+                if (res.ok) {
+                    document.getElementById('catMsg').textContent = '';
+                    await loadCategories();
+                    await refreshCategoryDropdown('');
+                } else { document.getElementById('catMsg').textContent = (await res.text()); }
+            }, 'حذف');
+        }
+    });
+
+    async function loadItemTypes() {
+        try {
+            window.originalItemTypes = await fetchOptions('/ItemTypes/Index');
+            renderTypeTable();
+        } catch (e) { document.getElementById('typeMsg').textContent = 'تعذر تحميل أنواع الأصناف'; }
+    }
+
+    function renderTypeTable() {
+        const tbody = document.getElementById('typeTableBody');
+        tbody.innerHTML = '';
+        (window.originalItemTypes || []).forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td><input type="text" class="form-control form-control-sm type-name" value="' + escapeHtml(c.name) + '" data-id="' + c.id + '" aria-label="اسم نوع الصنف" /></td>' +
+                '<td><select class="form-select form-select-sm type-active" data-id="' + c.id + '" aria-label="حالة نوع الصنف">' +
+                '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
+                '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
+                '<td class="text-center"><button class="btn btn-sm btn-outline-primary type-save" data-id="' + c.id + '" title="حفظ"><i class="bi bi-check-lg"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger type-del" data-id="' + c.id + '" title="حذف"><i class="bi bi-trash"></i></button></td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function refreshItemTypeDropdown(selectedId) {
+        const items = await fetchOptions('/ItemTypes/Index');
+        let opts = '<option value="">-- اختر نوع الصنف --</option>';
+        items.forEach(c => {
+            opts += '<option value="' + c.id + '"' + (String(c.id) === String(selectedId) ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+        });
+        document.getElementById('itemTypeSelect').innerHTML = opts;
+    }
+
+    document.getElementById('manageItemTypesBtn').addEventListener('click', async function() {
+        catToken = getAntiForgeryToken();
+        document.getElementById('typeMsg').textContent = '';
+        await loadItemTypes();
+        new bootstrap.Modal(document.getElementById('itemTypesModal')).show();
+    });
+
+    document.getElementById('addTypeBtn').addEventListener('click', async function() {
+        const name = document.getElementById('newTypeName').value.trim();
+        if (!name) { document.getElementById('typeMsg').textContent = 'أدخل اسم النوع'; return; }
+        const res = await post('/ItemTypes/Create', { Name: name });
+        if (res.ok) {
+            document.getElementById('newTypeName').value = '';
+            document.getElementById('typeMsg').textContent = '';
+            const savedId = (await res.json()).id;
+            await loadItemTypes();
+            await refreshItemTypeDropdown(savedId);
+        } else { document.getElementById('typeMsg').textContent = (await res.text()); }
+    });
+
+    document.getElementById('typeTableBody').addEventListener('click', async function(e) {
+        const saveBtn = e.target.closest('.type-save');
+        const delBtn = e.target.closest('.type-del');
+        if (saveBtn) {
+            const id = saveBtn.dataset.id;
+            const tr = saveBtn.closest('tr');
+            const name = tr.querySelector('.type-name').value.trim();
+            const active = tr.querySelector('.type-active').value === 'true';
+            if (!name) { document.getElementById('typeMsg').textContent = 'لا يمكن ترك الاسم فارغاً'; return; }
+            const res = await post('/ItemTypes/Edit', { Id: id, Name: name, IsActive: active });
+            if (res.ok) {
+                document.getElementById('typeMsg').textContent = '';
+                await loadItemTypes();
+                await refreshItemTypeDropdown(id);
+            } else { document.getElementById('typeMsg').textContent = (await res.text()); }
+        }
+        if (delBtn) {
+            const id = delBtn.dataset.id;
+            window.confirmAction('حذف هذا النوع؟', async function () {
+                const res = await post('/ItemTypes/Delete', { id: id });
+                if (res.ok) {
+                    document.getElementById('typeMsg').textContent = '';
+                    await loadItemTypes();
+                    await refreshItemTypeDropdown('');
+                } else { document.getElementById('typeMsg').textContent = (await res.text()); }
+            }, 'حذف');
+        }
+    });
+</script>
+}

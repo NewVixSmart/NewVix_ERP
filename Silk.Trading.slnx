@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/Silk.Trading.Web/Silk.Trading.Web.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/Silk.Trading.Web.Tests/Silk.Trading.Web.Tests.csproj" />
-  </Folder>
-</Solution>

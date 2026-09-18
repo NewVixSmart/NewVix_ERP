@@ -33,7 +33,7 @@ You should see `aspire` in the workload list.
 ## 2. تشغيل المشروع محلياً
 
 ```bash
-dotnet run --project aspire/Silk.AppHost
+dotnet run --project aspire/Vix.AppHost
 ```
 
 This will:
@@ -49,7 +49,7 @@ The Aspire dashboard provides real-time telemetry, logs, and resource status.
 ## 3. بناء صورة Docker
 
 ```bash
-docker build -f src/Silk.Trading.Web/Dockerfile -t silk-trading-web .
+docker build -f src/NewVixSmart.Web/Dockerfile -t new-vix-smart-web .
 ```
 
 To run with docker-compose (includes SQL Server):
@@ -71,42 +71,42 @@ The app will be available at `http://localhost:8080`.
 az login
 
 # Create a resource group
-az group create --name silk-trading-rg --location eastus
+az group create --name vix-trading-rg --location eastus
 
 # Create an Azure Container Registry (ACR)
-az acr create --resource-group silk-trading-rg \
-    --name silktradingacr \
+az acr create --resource-group vix-trading-rg \
+    --name newvixsmartacr \
     --sku Basic
 
 # Enable admin user on ACR (for quick testing; use managed identity for production)
-az acr update -n silktradingacr --admin-enabled true
+az acr update -n newvixsmartacr --admin-enabled true
 ```
 
 ### Step B: Push the Image to ACR
 
 ```bash
 # Build and tag
-az acr build --registry silktradingacr --image silk-trading-web:v1 .
+az acr build --registry newvixsmartacr --image new-vix-smart-web:v1 .
 
 # OR if using local Docker:
-docker tag silk-trading-web silktradingacr.azurecr.io/silk-trading-web:v1
-docker push silktradingacr.azurecr.io/silk-trading-web:v1
+docker tag new-vix-smart-web newvixsmartacr.azurecr.io/new-vix-smart-web:v1
+docker push newvixsmartacr.azurecr.io/new-vix-smart-web:v1
 ```
 
 ### Step C: Create Azure SQL Database
 
 ```bash
 # Create SQL Server
-az sql server create --name silk-trading-sql \
-    --resource-group silk-trading-rg \
+az sql server create --name vix-trading-sql \
+    --resource-group vix-trading-rg \
     --location eastus \
     --admin-user sqladmin \
     --admin-password "YourStr0ng!Password"
 
 # Create the database
-az sql db create --name SilkTradingDb \
-    --server silk-trading-sql \
-    --resource-group silk-trading-rg \
+az sql db create --name NewVixSmartDb \
+    --server vix-trading-sql \
+    --resource-group vix-trading-rg \
     --service-tier Basic
 ```
 
@@ -115,21 +115,21 @@ az sql db create --name SilkTradingDb \
 ```bash
 # Create Container Apps environment
 az containerapp env create \
-    --name silk-trading-env \
-    --resource-group silk-trading-rg \
+    --name vix-trading-env \
+    --resource-group vix-trading-rg \
     --location eastus
 
 # Get ACR credentials
-ACR_PASSWORD=$(az acr credential show -n silktradingacr --query passwords[0].value -o tsv)
+ACR_PASSWORD=$(az acr credential show -n newvixsmartacr --query passwords[0].value -o tsv)
 
 # Deploy the container app
 az containerapp create \
-    --name silk-trading-web \
-    --resource-group silk-trading-rg \
-    --environment silk-trading-env \
-    --image silktradingacr.azurecr.io/silk-trading-web:v1 \
-    --registry-server silktradingacr.azurecr.io \
-    --registry-username silktradingacr \
+    --name new-vix-smart-web \
+    --resource-group vix-trading-rg \
+    --environment vix-trading-env \
+    --image newvixsmartacr.azurecr.io/new-vix-smart-web:v1 \
+    --registry-server newvixsmartacr.azurecr.io \
+    --registry-username newvixsmartacr \
     --registry-password "$ACR_PASSWORD" \
     --target-port 80 \
     --ingress external \
@@ -138,7 +138,7 @@ az containerapp create \
     --env-vars \
         ASPNETCORE_ENVIRONMENT="Production" \
         ASPNETCORE_URLS="http://+:80" \
-        ConnectionStrings__DefaultConnection="Server=silk-trading-sql.database.windows.net,1433;Database=SilkTradingDb;User Id=sqladmin;Password=YourStr0ng!Password;TrustServerCertificate=True"
+        ConnectionStrings__DefaultConnection="Server=vix-trading-sql.database.windows.net,1433;Database=NewVixSmartDb;User Id=sqladmin;Password=YourStr0ng!Password;TrustServerCertificate=True"
 ```
 
 ### Step E: Apply EF Core Migrations on Azure SQL
@@ -153,15 +153,15 @@ Ensure the web app's service identity has `db_owner` permissions on the Azure SQ
 Replace the `ConnectionStrings__DefaultConnection` environment variable with your Azure SQL connection string:
 
 ```
-Server=<your-server>.database.windows.net,1433;Database=SilkTradingDb;User Id=<admin-user>;Password=<admin-password>;TrustServerCertificate=True
+Server=<your-server>.database.windows.net,1433;Database=NewVixSmartDb;User Id=<admin-user>;Password=<admin-password>;TrustServerCertificate=True
 ```
 
 For production, use **Managed Identity** instead of SQL authentication:
 
 ```bash
 az sql server auth-policy update \
-    --name silk-trading-sql \
-    --resource-group silk-trading-rg \
+    --name vix-trading-sql \
+    --resource-group vix-trading-rg \
     --enable-admin-only-login false
 ```
 
@@ -176,7 +176,7 @@ The `docker-compose.yml` at the repository root provides a local development env
 | Service | Image | Port |
 |---------|-------|------|
 | `db` | `mcr.microsoft.com/mssql/server:2022-latest` | 1433 |
-| `web` | Built from `src/Silk.Trading.Web/Dockerfile` | 8080 |
+| `web` | Built from `src/NewVixSmart.Web/Dockerfile` | 8080 |
 
 **Important:** Change the `SA_PASSWORD` value in `docker-compose.yml` before any non-local deployment.
 
@@ -189,7 +189,7 @@ The `docker-compose.yml` at the repository root provides a local development env
 - احفظ متغيرات الاتصال في Azure Key Vault واربطها بالـ Container App:
 
 ```bash
-az keyvault secret set --vault-name silk-trading-kv \
+az keyvault secret set --vault-name vix-trading-kv \
     --name ConnectionStrings__DefaultConnection \
     --value "Server=..."
 ```

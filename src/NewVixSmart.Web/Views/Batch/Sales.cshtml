@@ -1,0 +1,333 @@
+@model NewVixSmart.Web.ViewModels.Batch.BatchSalesViewModel
+@using NewVixSmart.Web.Models.Accounting
+@{
+    ViewData["Title"] = "المبيعات الجماعية";
+    var itemsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.ItemsData.Select(i => new { i.Id, i.Name, i.SalePrice, i.CurrentCount, i.CurrentQuantity }),
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+}
+
+<div class="page-header"><h2><i class="bi bi-collection text-primary"></i> المبيعات الجماعية</h2></div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+}
+
+<form asp-action="Sales" id="batchSalesForm">
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-receipt"></i> بيانات مشتركة لكل الفواتير</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="CustomerId" class="form-label"></label>
+                    <select asp-for="CustomerId" asp-items="@Model.Customers" class="form-select">
+                        <option value="">-- اختر العميل --</option>
+                    </select>
+                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="InvoiceDate" class="form-label"></label>
+                    <input asp-for="InvoiceDate" class="form-control" type="date" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="PaymentTerms" class="form-label"></label>
+                    <select asp-for="PaymentTerms" class="form-select">
+                        <option value="0" selected="@(Model.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام</option>
+                        <option value="1" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net7)">7 أيام</option>
+                        <option value="2" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net15)">15 يوم</option>
+                        <option value="3" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net30)">30 يوم</option>
+                        <option value="4" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net60)">60 يوم</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="CurrencyId" class="form-label"></label>
+                    <select asp-for="CurrencyId" asp-items="@Model.Currencies" class="form-select">
+                        <option value="">-- العملة --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ExchangeRate" class="form-label"></label>
+                    <input asp-for="ExchangeRate" class="form-control" type="number" step="any" />
+                    <small class="text-muted">للعرض فقط؛ حسابات الأستاذ بالعملة الأساسية</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="discount">الخصم</label>
+                    <input asp-for="Discount" class="form-control" type="number" step="0.01" id="discount" value="@Model.Discount" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="discount2">خصم إضافي 2</label>
+                    <input asp-for="Discount2" class="form-control" type="number" step="0.01" id="discount2" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="discount3">خصم إضافي 3</label>
+                    <input asp-for="Discount3" class="form-control" type="number" step="0.01" id="discount3" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="tax">الضريبة</label>
+                    <input asp-for="Tax" class="form-control" type="number" step="0.01" id="tax" value="@Model.Tax" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="invoicesContainer">
+        @for (var i = 0; i < Model.Invoices.Count; i++)
+        {
+            var blockItems = Model.Invoices[i].Items ?? new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem>();
+            <div class="card invoice-block mb-3" data-invoice="@i" data-rows="@(Math.Max(1, blockItems.Count))">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-receipt"></i> فاتورة @(i + 1)</span>
+                    <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width:30%">الصنف</th>
+                                <th scope="col" style="width:12%">العدد</th>
+                                <th scope="col" style="width:12%">الكمية</th>
+                                <th scope="col" style="width:14%">سعر الوحدة</th>
+                                <th scope="col" style="width:14%">خصم الصنف</th>
+                                <th scope="col" style="width:13%">الإجمالي</th>
+                                <th scope="col" style="width:5%" class="text-center">حذف</th>
+                            </tr>
+                        </thead>
+                        <tbody class="block-rows">
+                            @for (var j = 0; j < (blockItems.Any() ? blockItems.Count : 1); j++)
+                            {
+                                var line = j < blockItems.Count ? blockItems[j] : null;
+                                <tr>
+                                    <td>
+                                        <select name="Invoices[@i].Items[@j].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                                            <option value="">اختر صنف</option>
+                                            @foreach (var item in Model.ItemsData)
+                                            {
+                                                <option value="@item.Id" data-price="@item.SalePrice" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" selected="@(line?.ItemId == item.Id)">@item.Name</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td><input name="Invoices[@i].Items[@j].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 1)" aria-label="الكمية" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="@(line?.Discount ?? 0)" aria-label="خصم الصنف" /></td>
+                                    <td><span class="total fw-bold">0.00</span></td>
+                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex gap-2 justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus"></i> إضافة صنف</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x"></i> حذف الفاتورة</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <button type="button" class="btn btn-outline-primary" id="addInvoice"><i class="bi bi-plus-lg"></i> إضافة فاتورة أخرى</button>
+    </div>
+
+    <div class="mt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> ترحيل الفواتير دفعة واحدة</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+<script nonce="@Context.GetCspNonce()">
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+const items = @Html.Raw(itemsJson);
+let invoiceIndex = @Model.Invoices.Count;
+let itemsOptions = '<option value="">اختر صنف</option>';
+items.forEach(i => {
+    itemsOptions += `<option value="${i.id}" data-price="${i.salePrice}" data-count="${i.currentCount}" data-qty="${i.currentQuantity}">${escapeHtml(i.name)}</option>`;
+});
+
+function lineRow(invIdx, rowIdx) {
+    return `<tr>
+        <td><select name="Invoices[${invIdx}].Items[${rowIdx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="1" aria-label="الكمية" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="0" aria-label="خصم الصنف" /></td>
+        <td><span class="total fw-bold">0.00</span></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+    </tr>`;
+}
+
+function newInvoiceBlock(invIdx) {
+    const div = document.createElement('div');
+    div.className = 'card invoice-block mb-3';
+    div.dataset.invoice = invIdx;
+    div.dataset.rows = 1;
+    div.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-receipt"></i> فاتورة ${invIdx + 1}</span>
+            <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col" style="width:30%">الصنف</th>
+                        <th scope="col" style="width:12%">العدد</th>
+                        <th scope="col" style="width:12%">الكمية</th>
+                        <th scope="col" style="width:14%">سعر الوحدة</th>
+                        <th scope="col" style="width:14%">خصم الصنف</th>
+                        <th scope="col" style="width:13%">الإجمالي</th>
+                        <th scope="col" style="width:5%" class="text-center">حذف</th>
+                    </tr>
+                </thead>
+                <tbody class="block-rows">${lineRow(invIdx, 0)}</tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex gap-2 justify-content-between">
+            <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus"></i> إضافة صنف</button>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x"></i> حذف الفاتورة</button>
+        </div>`;
+    document.getElementById('invoicesContainer').appendChild(div);
+    bindBlock(div);
+    updateRemoveButtons();
+    recalcAll();
+}
+
+function bindBlock(block) {
+    const addBtn = block.querySelector('.add-row');
+    if (!addBtn.dataset.boundAdd) {
+        addBtn.dataset.boundAdd = 'true';
+        addBtn.addEventListener('click', function() {
+            const invIdx = block.dataset.invoice;
+            const rows = parseInt(block.dataset.rows);
+            block.querySelector('.block-rows').insertAdjacentHTML('beforeend', lineRow(invIdx, rows));
+            block.dataset.rows = rows + 1;
+            bindBlock(block);
+            recalcAll();
+        });
+    }
+    const remBtn = block.querySelector('.remove-block');
+    if (!remBtn.dataset.boundBlock) {
+        remBtn.dataset.boundBlock = 'true';
+        remBtn.addEventListener('click', function() {
+            block.remove();
+            updateRemoveButtons();
+            requeueBlockIndexes();
+            recalcAll();
+        });
+    }
+    block.querySelectorAll('.remove-row').forEach(btn => {
+        if (btn.dataset.boundRow) return;
+        btn.dataset.boundRow = 'true';
+        btn.addEventListener('click', function() {
+            this.closest('tr').remove();
+            recalcAll();
+        });
+    });
+    block.querySelectorAll('.item-select').forEach(sel => {
+        if (sel.dataset.boundItem) return;
+        sel.dataset.boundItem = 'true';
+        sel.addEventListener('change', function() {
+            const price = this.options[this.selectedIndex].dataset.price || 0;
+            this.closest('tr').querySelector('.price').value = parseFloat(price).toFixed(2);
+            recalcAll();
+        });
+    });
+    block.querySelectorAll('.qty, .count, .price, .line-discount').forEach(inp => {
+        if (inp.dataset.boundCalc) return;
+        inp.dataset.boundCalc = 'true';
+        inp.addEventListener('input', recalcAll);
+    });
+}
+
+function requeueBlockIndexes() {
+    const blocks = document.querySelectorAll('#invoicesContainer .invoice-block');
+    blocks.forEach((block, idx) => {
+        block.dataset.invoice = idx;
+        block.querySelector('.card-header span').textContent = `فاتورة ${idx + 1}`;
+        const rows = block.querySelectorAll('.block-rows tr');
+        rows.forEach((row, rowIdx) => {
+            row.querySelectorAll('select, input').forEach(inp => {
+                const name = inp.name.replace(/Invoices\[\d+\]/, `Invoices[${idx}]`);
+                inp.name = name.replace(/Items\[\d+\]/, `Items[${rowIdx}]`);
+            });
+        });
+    });
+}
+
+function updateRemoveButtons() {
+    const blocks = document.querySelectorAll('#invoicesContainer .invoice-block');
+    blocks.forEach(block => {
+        const btn = block.querySelector('.remove-block');
+        if (btn) btn.style.display = blocks.length <= 1 ? 'none' : '';
+    });
+    invoiceIndex = blocks.length;
+}
+
+function recalcAll() {
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    const discount2 = parseFloat(document.getElementById('discount2').value) || 0;
+    const discount3 = parseFloat(document.getElementById('discount3').value) || 0;
+    const tax = parseFloat(document.getElementById('tax').value) || 0;
+
+    document.querySelectorAll('#invoicesContainer .invoice-block').forEach(block => {
+        let total = 0;
+        block.querySelectorAll('.block-rows tr').forEach(tr => {
+            const qty = parseFloat(tr.querySelector('.qty')?.value) || 0;
+            const count = parseFloat(tr.querySelector('.count')?.value) || 0;
+            const price = parseFloat(tr.querySelector('.price')?.value) || 0;
+            const lineDiscount = parseFloat(tr.querySelector('.line-discount')?.value) || 0;
+            const lineTotal = (qty > 0 ? qty : count) * price - lineDiscount;
+            tr.querySelector('.total').textContent = lineTotal.toFixed(2);
+            total += lineTotal;
+
+            const sel = tr.querySelector('.item-select');
+            if (sel && sel.selectedIndex > 0) {
+                const opt = sel.options[sel.selectedIndex];
+                const availCount = parseFloat(opt.dataset.count) || 0;
+                const availQty = parseFloat(opt.dataset.qty) || 0;
+                let warn = '';
+                if (count > availCount) warn = ' ⚠ العدد المطلوب أكبر من المخزون (' + availCount + ')';
+                if (qty > availQty) warn += (warn ? ' و' : ' ⚠') + ' الكمية المطلوبة أكبر من المخزون (' + availQty + ')';
+                tr.querySelector('.qty').title = warn || '';
+            }
+        });
+        block.querySelector('.block-total').textContent = total.toFixed(2);
+        block.querySelector('.block-net').textContent = (total - discount - discount2 - discount3 + tax).toFixed(2);
+    });
+}
+
+document.getElementById('addInvoice').addEventListener('click', () => {
+    newInvoiceBlock(invoiceIndex);
+    invoiceIndex++;
+});
+
+document.querySelectorAll('#invoicesContainer .invoice-block').forEach(b => {
+    bindBlock(b);
+});
+updateRemoveButtons();
+
+document.getElementById('discount').addEventListener('input', recalcAll);
+document.getElementById('discount2').addEventListener('input', recalcAll);
+document.getElementById('discount3').addEventListener('input', recalcAll);
+document.getElementById('tax').addEventListener('input', recalcAll);
+recalcAll();
+
+document.getElementById('batchSalesForm').addEventListener('submit', function(e) {
+    document.querySelectorAll('#invoicesContainer .block-rows tr').forEach(tr => {
+        const sel = tr.querySelector('.item-select');
+        if (sel && !sel.value) tr.remove();
+    });
+});
+</script>
+}

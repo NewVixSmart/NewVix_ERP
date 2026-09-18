@@ -1,0 +1,90 @@
+@model NewVixSmart.Web.ViewModels.Batch.BatchIndexViewModel
+@{
+    ViewData["Title"] = "العمليات الجماعية";
+}
+
+<div class="page-header"><h2><i class="bi bi-collection text-primary"></i> العمليات الجماعية</h2></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="bi bi-receipt text-primary"></i> مبيعات جماعية</h5>
+                <p class="text-muted small">أنشئ عدة فواتير بيع في طلب واحد — لكل فاتورة نصف دفع، نفس شروط الدفع والعملة.</p>
+                <a asp-action="Sales" class="btn btn-primary">فاتورة بيع جماعية جديدة</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="bi bi-clipboard-check text-success"></i> جرد جماعي</h5>
+                <p class="text-muted small">جرد عدة أصناف دفعة واحدة — أدخل العدد والكمية الجديدة واعرض الفرق قبل الحفظ.</p>
+                <a asp-action="Adjustment" class="btn btn-success">جرد جماعي جديد</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-receipt"></i> آخر فواتير البيع</div>
+            <div class="card-body p-0">
+                @if (Model.RecentSales.Any())
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr><th scope="col">الرقم</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col" class="text-start">الصافي</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.RecentSales)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@s.InvoiceNumber</td>
+                                    <td>@(s.Customer?.Name ?? "—")</td>
+                                    <td class="small">@s.InvoiceDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-start">@s.NetAmount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted small p-3 mb-0"><i class="bi bi-info-circle"></i> لا توجد فواتير بيع بعد.</p>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clipboard-data"></i> آخر حركات الجرد</div>
+            <div class="card-body p-0">
+                @if (Model.RecentAdjustments.Any())
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr><th scope="col">المرجع</th><th scope="col">الصنف</th><th scope="col">التاريخ</th><th scope="col" class="text-start">عدد / كمية</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.RecentAdjustments)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@a.ReferenceNumber</td>
+                                    <td>@(a.Item?.Name ?? "—")</td>
+                                    <td class="small">@a.AdjustmentDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-start">@a.NewCount.ToString("N2") / @a.NewQuantity.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted small p-3 mb-0"><i class="bi bi-info-circle"></i> لا توجد حركات جرد بعد.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

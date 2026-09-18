@@ -1,0 +1,113 @@
+@model NewVixSmart.Web.Models.Sales.SaleQuote
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = $"تفاصيل عرض سعر {Model.QuoteNumber}"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-receipt-cutoff text-primary"></i> عرض سعر: @Model.QuoteNumber</h2>
+    <div class="d-flex gap-2">
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> نسخة للعميل / طباعة</a>
+        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf"></i> تحميل PDF</a>
+        @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
+        {
+            <form asp-action="Convert" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى فاتورة بيع وترحيل المخزون؟" data-confirm-ok="تحويل">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success"><i class="bi bi-arrow-repeat"></i> تحويل إلى فاتورة بيع</button>
+            </form>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-2"><strong>الحالة:</strong>
+                @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted)
+                {
+                    <span class="badge bg-success">محوّل</span>
+                    <small class="text-muted d-block">@Model.ConvertedBy — @Model.ConvertedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                }
+                else if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Cancelled)
+                {
+                    <span class="badge bg-secondary">ملغي</span>
+                }
+                else if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converting)
+                {
+                    <span class="badge bg-warning text-dark">جارٍ التحويل</span>
+                }
+                else
+                {
+                    <span class="badge bg-warning text-dark">مسودة</span>
+                }
+            </div>
+            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div class="col-md-2"><strong>تاريخ العرض:</strong> @Model.QuoteDate.ToString("dd/MM/yyyy")</div>
+            <div class="col-md-2"><strong>صالح حتى:</strong> @(Model.ValidUntil?.ToString("dd/MM/yyyy") ?? "—")</div>
+            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-3"><strong>العملة:</strong> @(Model.Currency?.Code ?? "—") @(Model.ExchangeRate.HasValue ? $"@{Model.ExchangeRate}" : "")</div>
+            <div class="col-md-9"><strong>فاتورة البيع:</strong>
+                @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted && Model.SaleInvoice != null)
+                {
+                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.Id">@Model.SaleInvoice.InvoiceNumber</a>
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12"><strong>عرض المورد المرجعي:</strong>
+                @if (Model.SupplierQuote != null)
+                {
+                    <text>مرتبط بعرض المورد #@Model.SupplierQuote.Id</text> <span>— @(Model.SupplierQuote.Supplier?.Name ?? "—")</span>
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container mb-4">
+    <table class="table mb-0">
+        <thead><tr><th scope="col">الصنف</th><th>العدد</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@(item.Item?.Name ?? "—")</td>
+                    <td>@item.Count</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.UnitPrice.ToString("N2")</td>
+                    <td class="fw-bold">@item.Total.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.TotalAmount.ToString("N2")</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الخصم</div><h4 class="text-danger">@Model.Discount.ToString("N2")</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الضريبة</div><h4>@Model.Tax.ToString("N2")</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center bg-success text-white"><div class="card-body"><div class="small">الصافي</div><h4>@Model.NetAmount.ToString("N2") ج.م</h4></div></div></div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Notes))
+{
+    <div class="card mt-3"><div class="card-body"><strong>ملاحظات:</strong> @Model.Notes</div></div>
+}

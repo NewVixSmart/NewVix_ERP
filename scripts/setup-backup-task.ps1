@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
     Registers (or unregisters) a Windows Scheduled Task that runs the daily
-    SilkTradingDb backup script.
+    NewVixSmartDb backup script.
 
 .DESCRIPTION
-    Creates a scheduled task named "SilkTradingDailyBackup" that runs
+    Creates a scheduled task named "NewVixSmartDailyBackup" that runs
     scripts\backup-db.ps1 daily at the given time as the current user.
 
     Use -Unregister to remove the task.
@@ -18,7 +18,7 @@
     user is logged on.
 
 .PARAMETER Unregister
-    Removes the "SilkTradingDailyBackup" task if it exists.
+    Removes the "NewVixSmartDailyBackup" task if it exists.
 
 .EXAMPLE
     .\scripts\setup-backup-task.ps1
@@ -44,7 +44,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$TaskName = 'SilkTradingDailyBackup'
+$TaskName = 'NewVixSmartDailyBackup'
 
 # Repo root = the folder two levels up from this script (scripts\ -> repo root).
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -113,7 +113,7 @@ try {
         -Action $action `
         -Trigger $trigger `
         -Principal $principal `
-        -Description "Daily backup of SilkTradingDb via scripts\backup-db.ps1" `
+        -Description "Daily backup of NewVixSmartDb via scripts\backup-db.ps1" `
         -Force | Out-Null
 
     Write-Host "[  OK ] Scheduled task '$TaskName' registered." -ForegroundColor Green
