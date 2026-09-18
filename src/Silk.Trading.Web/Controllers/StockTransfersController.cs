@@ -20,16 +20,11 @@ public class StockTransfersController : Controller
         _inventory = inventory;
     }
 
-    [RequirePerm("StockTransfers.View")]
-    public async Task<IActionResult> Index(int page = 1)
+[RequirePerm("StockTransfers.View")]
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
         var list = await _inventory.GetTransfersAsync();
-        var total = list.Count;
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        return View(list.Skip((page - 1) * pageSize).Take(pageSize));
+        return View(list);
     }
 
     [RequirePerm("StockTransfers.Create")]
@@ -64,6 +59,35 @@ public class StockTransfersController : Controller
         ModelState.AddModelError("", error ?? "تعذر حفظ التحويل");
         await PopulateDropdowns();
         return View(transfer);
+    }
+
+    [RequirePerm("StockTransfers.View")]
+    public async Task<IActionResult> Print(int id)
+    {
+        var transfer = await _db.StockTransfers
+            .Include(t => t.SourceWarehouse)
+            .Include(t => t.TargetWarehouse)
+            .Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id);
+        if (transfer == null) return NotFound();
+        return View(transfer);
+    }
+
+    [RequirePerm("StockTransfers.View")]
+    public async Task<IActionResult> Pdf(int id)
+    {
+        var transfer = await _db.StockTransfers
+            .Include(t => t.SourceWarehouse)
+            .Include(t => t.TargetWarehouse)
+            .Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id);
+        if (transfer == null) return NotFound();
+        var bytes = PrintPdfBuilder.RenderStockTransferPdf(transfer);
+        return File(bytes, "application/pdf", $"stock-transfer-{transfer.TransferNumber}.pdf");
     }
 
     private async Task PopulateDropdowns()

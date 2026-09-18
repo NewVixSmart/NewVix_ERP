@@ -21,19 +21,12 @@ public class InventoryAdjustmentsController : Controller
     }
 
     [RequirePerm("InventoryAdjustments.View")]
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
         var query = _db.InventoryAdjustments.Include(a => a.Item).AsNoTracking();
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
 
         var list = await query
             .OrderByDescending(a => a.AdjustmentDate)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ToListAsync();
         return View(list);
     }

@@ -18,7 +18,9 @@ using Silk.Trading.Web.Infrastructure;
 using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Core;
 using Silk.Trading.Web.Models.Sales;
+using Silk.Trading.Web.Services;
 using Silk.Trading.Web.ViewModels.Users;
+using Silk.Trading.Web.ViewModels.Core;
 using System.IdentityModel.Tokens.Jwt;
 using Xunit;
 
@@ -144,7 +146,7 @@ public sealed class SecurityHardeningTests : IDisposable
         await db.SaveChangesAsync();
 
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
-        var controller = new SettingsController(db, http);
+        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService());
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
 
         var result = await controller.SetCurrentBranch(9999);
@@ -157,7 +159,7 @@ public sealed class SecurityHardeningTests : IDisposable
     {
         using var db = CreateContext();
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
-        var controller = new SettingsController(db, http);
+        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService());
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
 
         var request = new AddCurrencyRequest { Code = "EUR", Name = "يورو", Symbol = "€", ExchangeRate = 1.1m, IsActive = true };
@@ -222,5 +224,38 @@ public sealed class SecurityHardeningTests : IDisposable
             foreach (var kv in values)
                 _data[kv.Key] = kv.Value;
         }
+    }
+
+    private sealed class FakeBrandingService : IBrandingService
+    {
+        public PalettePreset[] Presets => [];
+        public Task<BrandingData> LoadAsync() => Task.FromResult(new BrandingData());
+        public Task<CompanyProfile> GetProfileAsync() => Task.FromResult(new CompanyProfile());
+        public Task<BrandingTheme> GetThemeAsync() => Task.FromResult(new BrandingTheme());
+        public string RenderThemeCss(BrandingTheme theme) => string.Empty;
+        public void Invalidate() { }
+    }
+
+    private sealed class FakePrintSettingsService : IPrintSettingsService
+    {
+        public Task<PrintSettingsViewModel> LoadAsync() => Task.FromResult(new PrintSettingsViewModel());
+        public bool ShowLogo(PrintGroup group) => true;
+        public bool ShowCompanyName(PrintGroup group) => true;
+        public bool ShowTagline(PrintGroup group) => true;
+        public bool ShowCompanyContact(PrintGroup group) => true;
+        public bool ShowFooter(PrintGroup group) => true;
+        public bool ShowBarcode(PrintGroup group) => true;
+        public bool ShowUnitPrice(PrintGroup group) => true;
+        public bool ShowDiscountColumn(PrintGroup group) => true;
+        public double FontScale(PrintGroup group) => 1.0;
+        public string PaperMargin(PrintGroup group) => "normal";
+        public Task<PrintLayoutOptions> GetLayoutAsync(PrintGroup group) => Task.FromResult(new PrintLayoutOptions());
+        public Task SaveLayoutAsync(PrintGroup group, PrintLayoutOptions options) => Task.CompletedTask;
+        public Task<PrintLayoutOptions> GetPreviewLayoutAsync(PrintGroup group, string? state)
+        {
+            if (PrintSettingsService.DecodeState(state) is { } layout) return Task.FromResult(layout);
+            return Task.FromResult(new PrintLayoutOptions());
+        }
+        public void Invalidate() { }
     }
 }

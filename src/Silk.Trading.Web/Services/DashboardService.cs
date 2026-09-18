@@ -47,8 +47,8 @@ public class DashboardService : IDashboardService
             TotalItems = await _db.Items.CountAsync(i => i.IsActive),
             TotalCustomers = await _db.Customers.CountAsync(c => c.IsActive),
             TotalSuppliers = await _db.Suppliers.CountAsync(s => s.IsActive),
-            TotalPurchaseAmount = await _db.PurchaseInvoices.SumAsync(p => (decimal?)p.NetAmount) ?? 0,
-            TotalSaleAmount = await _db.SaleInvoices.SumAsync(s => (decimal?)s.NetAmount) ?? 0
+            TotalPurchaseAmount = await _db.PurchaseInvoices.SumAsync(p => (decimal?)Math.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2)) ?? 0,
+            TotalSaleAmount = await _db.SaleInvoices.SumAsync(s => (decimal?)Math.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2)) ?? 0
         };
 
         vm.LowStockItems = await GetLowStockItemsAsync();

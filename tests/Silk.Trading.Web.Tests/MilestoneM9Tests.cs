@@ -295,6 +295,80 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Equal(1040m, lines.Sum(l => l.Credit));
     }
 
+    // (c2) Foreign receipt at a LOWER rate realizes a loss (Dr 4400).
+    [Fact]
+    public async Task Receipt_LowerRate_PostsFxLoss4400()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var cust = await SeedCustomerAsync(db);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        var invoice = await SeedForeignSaleAsync(db, cust, usd.Id, 500m, 1000m);
+        var svc = await NewPaymentServiceAsync(db);
+
+        var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-R-5", Type = PaymentType.Receipt, CustomerId = cust,
+            Amount = 2m, CurrencyId = usd.Id, ExchangeRate = 480m,
+            Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+
+        Assert.True(ok, error);
+        Assert.Equal(960m, payment!.BaseAmount);
+
+        var allocation = await db.PaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        Assert.Equal(0m, allocation.FxGain);
+        Assert.Equal(38.40m, allocation.FxLoss);
+
+        var lines = await db.JournalEntryLines.Include(l => l.Account).ToListAsync();
+        Assert.Equal(2, lines.Count);
+        var receiptCashLine = lines.Single(l => l.Account!.Code == "1000");
+        Assert.Equal(960m, receiptCashLine.Debit);
+        var receiptArLine = lines.Single(l => l.Account!.Code == "1200");
+        Assert.Equal(960m, receiptArLine.Credit);
+        Assert.Equal(960m, lines.Sum(l => l.Debit));
+        Assert.Equal(960m, lines.Sum(l => l.Credit));
+    }
+
+    // (d2) Foreign disbursement at a LOWER rate realizes a gain (Cr 8400).
+    [Fact]
+    public async Task Disbursement_LowerRate_PostsFxGain8400()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedCurrenciesAsync(db);
+        var sup = await SeedSupplierAsync(db);
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        var invoice = await SeedForeignPurchaseAsync(db, sup, usd.Id, 500m, 1000m);
+        var svc = await NewPaymentServiceAsync(db);
+
+        var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-P-2", Type = PaymentType.Disbursement, SupplierId = sup,
+            Amount = 2m, CurrencyId = usd.Id, ExchangeRate = 480m,
+            Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
+
+        Assert.True(ok, error);
+        Assert.Equal(960m, payment!.BaseAmount);
+
+        var allocation = await db.PaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        Assert.Equal(38.40m, allocation.FxGain);
+        Assert.Equal(0m, allocation.FxLoss);
+
+        var lines = await db.JournalEntryLines.Include(l => l.Account).ToListAsync();
+        Assert.Equal(2, lines.Count);
+        var disbursementApLine = lines.Single(l => l.Account!.Code == "2000");
+        Assert.Equal(960m, disbursementApLine.Debit);
+        var disbursementCashLine = lines.Single(l => l.Account!.Code == "1000");
+        Assert.Equal(960m, disbursementCashLine.Credit);
+        Assert.Equal(960m, lines.Sum(l => l.Debit));
+        Assert.Equal(960m, lines.Sum(l => l.Credit));
+    }
+
     // (e) Payment allocations are retrievable through the payment navigation.
     [Fact]
     public async Task Payment_IncludesPaymentAllocations_OnLoad()
@@ -337,9 +411,10 @@ public sealed class MilestoneM9Tests : IDisposable
         await SeedForeignSaleAsync(db, cust, usd.Id, 500m, 1000m);
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var controller = new Api.PaymentsController(svc)
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var controller = new Api.PaymentsController(svc, http)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new ControllerContext { HttpContext = http.HttpContext! }
         };
 
         var actionResult = await controller.CreatePayment(new CreatePaymentRequest

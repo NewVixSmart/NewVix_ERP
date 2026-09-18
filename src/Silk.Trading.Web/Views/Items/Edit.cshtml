@@ -295,13 +295,14 @@
         }
         if (delBtn) {
             const id = delBtn.dataset.id;
-            if (!confirm('حذف هذا التصنيف؟')) return;
-            const res = await post('/Categories/Delete', { id: id });
-            if (res.ok) {
-                document.getElementById('catMsg').textContent = '';
-                await loadCategories();
-                await refreshCategoryDropdown('');
-            } else { document.getElementById('catMsg').textContent = (await res.text()); }
+            window.confirmAction('حذف هذا التصنيف؟', async function () {
+                const res = await post('/Categories/Delete', { id: id });
+                if (res.ok) {
+                    document.getElementById('catMsg').textContent = '';
+                    await loadCategories();
+                    await refreshCategoryDropdown('');
+                } else { document.getElementById('catMsg').textContent = (await res.text()); }
+            }, 'حذف');
         }
     });
 
@@ -374,13 +375,14 @@
         }
         if (delBtn) {
             const id = delBtn.dataset.id;
-            if (!confirm('حذف هذا النوع؟')) return;
-            const res = await post('/ItemTypes/Delete', { id: id });
-            if (res.ok) {
-                document.getElementById('typeMsg').textContent = '';
-                await loadItemTypes();
-                await refreshItemTypeDropdown('');
-            } else { document.getElementById('typeMsg').textContent = (await res.text()); }
+            window.confirmAction('حذف هذا النوع؟', async function () {
+                const res = await post('/ItemTypes/Delete', { id: id });
+                if (res.ok) {
+                    document.getElementById('typeMsg').textContent = '';
+                    await loadItemTypes();
+                    await refreshItemTypeDropdown('');
+                } else { document.getElementById('typeMsg').textContent = (await res.text()); }
+            }, 'حذف');
         }
     });
 </script>

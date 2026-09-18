@@ -21,22 +21,12 @@ public class CustomersController : Controller
     }
 
     [RequirePerm("Customers.View")]
-    public async Task<IActionResult> Index(string? search, int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        search = search?.Trim();
-        if (search?.Length > 100) search = search[..100];
         var query = _db.Customers.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(c => c.Name.Contains(search) || (c.Code != null && c.Code.Contains(search)));
         query = query.Where(c => c.IsActive).OrderBy(c => c.Name);
 
-        const int pageSize = 50;
-        var total = await query.CountAsync();
-        ViewBag.Search = search;
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        return View(await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync());
+        return View(await query.ToListAsync());
     }
 
     [RequirePerm("Customers.Create")]
@@ -157,5 +147,29 @@ public class CustomersController : Controller
         var bytes = await _report.ExportCustomerStatementXlsxAsync(id);
         if (bytes.Length == 0) return NotFound();
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"customer-statement-{id}.xlsx");
+    }
+
+    [RequirePerm("Customers.View")]
+    public async Task<IActionResult> LedgerPdf(int id)
+    {
+        var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+        if (customer == null) return NotFound();
+
+        var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var receipts = await _db.Payments.AsNoTracking()
+            .Where(p => p.CustomerId == id && p.Type == Models.Accounting.PaymentType.Receipt)
+            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+
+        var lines = new List<StatementLine>();
+        foreach (var inv in invoices) lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", inv.NetAmount, 0));
+        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, r.TotalAmount));
+        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.Amount));
+
+        var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;
+        var to = lines.Count > 0 ? lines.Max(l => l.Date) : DateTime.Today;
+        var closing = customer.OpeningBalance + lines.Sum(l => l.Debit - l.Credit);
+        var bytes = PrintPdfBuilder.RenderCustomerStatementPdf(customer.Name, from, to, customer.OpeningBalance, lines, closing);
+        return File(bytes, "application/pdf", $"customer-statement-{id}.pdf");
     }
 }

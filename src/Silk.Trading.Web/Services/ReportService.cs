@@ -1,11 +1,11 @@
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Models.Accounting;
+using Silk.Trading.Web.ViewModels.Core;
 using Silk.Trading.Web.ViewModels.Reports;
 
 namespace Silk.Trading.Web.Services;
@@ -19,7 +19,6 @@ public class ReportService : IReportService
     {
         _db = db;
         _financial = financial;
-        QuestPDF.Settings.License = LicenseType.Community;
     }
 
     // ---------- IReportService ----------
@@ -474,7 +473,8 @@ public class ReportService : IReportService
     public async Task<byte[]> ExportTrialBalancePdfAsync(DateTime asOf)
     {
         var vm = await TrialBalanceAsync(asOf);
-        return BuildFinancialPdf($"ميزان المراجعة — حتى {asOf:dd/MM/yyyy}", doc =>
+        var layout = PrintPdfBuilder.ResolveLayout(PrintGroup.FinancialReports);
+        return BuildFinancialPdf($"ميزان المراجعة — حتى {asOf:dd/MM/yyyy}", layout, doc =>
         {
             doc.Column(c =>
             {
@@ -483,22 +483,22 @@ public class ReportService : IReportService
                     t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); cd.ConstantColumn(90); });
                     t.Header(hd =>
                     {
-                        hd.Cell().Element(BoldHeader).Text("الرمز");
-                        hd.Cell().Element(BoldHeader).Text("الحساب");
-                        hd.Cell().Element(BoldHeader).Text("مدين");
-                        hd.Cell().Element(BoldHeader).Text("دائن");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("الرمز");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("الحساب");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("مدين");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("دائن");
                     });
                     foreach (var r in vm.Rows)
                     {
                         t.Cell().Text(r.Code);
                         t.Cell().Text(r.Name);
-                        t.Cell().AlignRight().Text(r.Debit.ToString("N2"));
-                        t.Cell().AlignRight().Text(r.Credit.ToString("N2"));
+                        t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(r.Debit, layout.Decimals));
+                        t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(r.Credit, layout.Decimals));
                     }
-                    t.Cell().Element(BoldFooter).Text("الإجمالي");
-                    t.Cell().Element(BoldFooter).Text("");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalDebit.ToString("N2"));
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalCredit.ToString("N2"));
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("الإجمالي");
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.TotalDebit, layout.Decimals));
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.TotalCredit, layout.Decimals));
                 });
             });
         });
@@ -507,7 +507,8 @@ public class ReportService : IReportService
     public async Task<byte[]> ExportIncomeStatementPdfAsync(DateTime from, DateTime to)
     {
         var vm = await IncomeStatementAsync(from, to);
-        return BuildFinancialPdf($"قائمة الدخل — من {from:dd/MM/yyyy} إلى {to:dd/MM/yyyy}", doc =>
+        var layout = PrintPdfBuilder.ResolveLayout(PrintGroup.FinancialReports);
+        return BuildFinancialPdf($"قائمة الدخل — من {from:dd/MM/yyyy} إلى {to:dd/MM/yyyy}", layout, doc =>
         {
             doc.Column(c =>
             {
@@ -517,15 +518,15 @@ public class ReportService : IReportService
                     t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
                     t.Header(hd =>
                     {
-                        hd.Cell().Element(BoldHeader).Text("الرمز");
-                        hd.Cell().Element(BoldHeader).Text("البند");
-                        hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("الرمز");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("البند");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).AlignRight().Text("المبلغ");
                     });
-                    foreach (var l in vm.RevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(l.Amount.ToString("N2")); }
-                    foreach (var l in vm.ContraRevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text((-l.Amount).ToString("N2")); }
-                    t.Cell().Element(BoldFooter).Text("");
-                    t.Cell().Element(BoldFooter).Text("صافي الإيرادات");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetRevenue.ToString("N2"));
+                    foreach (var l in vm.RevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(l.Amount, layout.Decimals)); }
+                    foreach (var l in vm.ContraRevenueLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(-l.Amount, layout.Decimals)); }
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("");
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("صافي الإيرادات");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.NetRevenue, layout.Decimals));
                 });
                 c.Item().PaddingTop(12).Text("المصروفات").FontSize(12).SemiBold();
                 c.Item().Table(t =>
@@ -533,21 +534,21 @@ public class ReportService : IReportService
                     t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
                     t.Header(hd =>
                     {
-                        hd.Cell().Element(BoldHeader).Text("الرمز");
-                        hd.Cell().Element(BoldHeader).Text("البند");
-                        hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("الرمز");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).Text("البند");
+                        hd.Cell().Element(x => BoldHeader(x, layout)).AlignRight().Text("المبلغ");
                     });
-                    foreach (var l in vm.ExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(l.Amount.ToString("N2")); }
-                    foreach (var l in vm.ContraExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text((-l.Amount).ToString("N2")); }
-                    t.Cell().Element(BoldFooter).Text("");
-                    t.Cell().Element(BoldFooter).Text("صافي المصروفات");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetExpenses.ToString("N2"));
+                    foreach (var l in vm.ExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name); t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(l.Amount, layout.Decimals)); }
+                    foreach (var l in vm.ContraExpenseLines) { t.Cell().Text(l.Code); t.Cell().Text(l.Name + " (خصم)"); t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(-l.Amount, layout.Decimals)); }
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("");
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("صافي المصروفات");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.NetExpenses, layout.Decimals));
                 });
                 c.Item().PaddingTop(12).Table(t =>
                 {
                     t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
-                    t.Cell().Element(BoldFooter).Text("صافي الدخل");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetIncome.ToString("N2"));
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("صافي الدخل");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.NetIncome, layout.Decimals));
                 });
             });
         });
@@ -556,75 +557,61 @@ public class ReportService : IReportService
     public async Task<byte[]> ExportBalanceSheetPdfAsync(DateTime asOf)
     {
         var vm = await BalanceSheetAsync(asOf);
-        return BuildFinancialPdf($"الميزانية العمومية — حتى {asOf:dd/MM/yyyy}", doc =>
+        var layout = PrintPdfBuilder.ResolveLayout(PrintGroup.FinancialReports);
+        return BuildFinancialPdf($"الميزانية العمومية — حتى {asOf:dd/MM/yyyy}", layout, doc =>
         {
             doc.Column(c =>
             {
                 c.Item().Text("الأصول").FontSize(12).SemiBold();
-                c.Item().Table(t => BalanceSheetSection(t, vm.Assets, vm.Assets.Total));
+                c.Item().Table(t => BalanceSheetSection(t, layout, vm.Assets, vm.Assets.Total));
                 c.Item().PaddingTop(12).Text("الخصوم").FontSize(12).SemiBold();
-                c.Item().Table(t => BalanceSheetSection(t, vm.Liabilities, vm.Liabilities.Total));
+                c.Item().Table(t => BalanceSheetSection(t, layout, vm.Liabilities, vm.Liabilities.Total));
                 c.Item().PaddingTop(12).Text("حقوق الملكية").FontSize(12).SemiBold();
-                c.Item().Table(t => BalanceSheetSection(t, vm.Equity, vm.Equity.Total));
+                c.Item().Table(t => BalanceSheetSection(t, layout, vm.Equity, vm.Equity.Total));
                 c.Item().PaddingTop(12).Table(t =>
                 {
                     t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
-                    t.Cell().Element(BoldFooter).Text("صافي الدخل (الفترة)");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.NetIncome.ToString("N2"));
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("صافي الدخل (الفترة)");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.NetIncome, layout.Decimals));
                 });
                 c.Item().PaddingTop(6).Table(t =>
                 {
                     t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(90); });
-                    t.Cell().Element(BoldFooter).Text("إجمالي الخصوم + حقوق الملكية");
-                    t.Cell().Element(BoldFooter).AlignRight().Text(vm.TotalLiabilitiesEquity.ToString("N2"));
+                    t.Cell().Element(x => BoldFooter(x, layout)).Text("إجمالي الخصوم + حقوق الملكية");
+                    t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(vm.TotalLiabilitiesEquity, layout.Decimals));
                 });
             });
         });
     }
 
-    private static void BalanceSheetSection(TableDescriptor t, BalanceSheetSectionViewModel section, decimal total)
+    private static void BalanceSheetSection(TableDescriptor t, PrintLayoutOptions layout, BalanceSheetSectionViewModel section, decimal total)
     {
         t.ColumnsDefinition(cd => { cd.ConstantColumn(70); cd.RelativeColumn(2); cd.ConstantColumn(90); });
         t.Header(hd =>
         {
-            hd.Cell().Element(BoldHeader).Text("الرمز");
-            hd.Cell().Element(BoldHeader).Text("الحساب");
-            hd.Cell().Element(BoldHeader).AlignRight().Text("المبلغ");
+            hd.Cell().Element(x => BoldHeader(x, layout)).Text("الرمز");
+            hd.Cell().Element(x => BoldHeader(x, layout)).Text("الحساب");
+            hd.Cell().Element(x => BoldHeader(x, layout)).AlignRight().Text("المبلغ");
         });
         foreach (var l in section.Lines)
         {
             t.Cell().Text(l.Code);
             t.Cell().Text(l.Name);
-            t.Cell().AlignRight().Text(l.Amount.ToString("N2"));
+            t.Cell().AlignRight().Text(PrintPdfBuilder.Fmt(l.Amount, layout.Decimals));
         }
-        t.Cell().Element(BoldFooter).Text("");
-        t.Cell().Element(BoldFooter).Text("الإجمالي");
-        t.Cell().Element(BoldFooter).AlignRight().Text(total.ToString("N2"));
+        t.Cell().Element(x => BoldFooter(x, layout)).Text("");
+        t.Cell().Element(x => BoldFooter(x, layout)).Text("الإجمالي");
+        t.Cell().Element(x => BoldFooter(x, layout)).AlignRight().Text(PrintPdfBuilder.Fmt(total, layout.Decimals));
     }
 
-    private byte[] BuildFinancialPdf(string title, Action<IContainer> content)
+    private byte[] BuildFinancialPdf(string title, PrintLayoutOptions layout, Action<IContainer> content)
     {
-        return QuestPDF.Fluent.Document.Create(doc =>
-        {
-            doc.Page(page =>
-            {
-                page.Size(PageSizes.A4);
-                page.Margin(30);
-                page.DefaultTextStyle(x => x.FontSize(10));
-                page.Header().Column(col =>
-                {
-                    col.Item().AlignCenter().Text("سلك للتجارة").FontSize(18).Bold();
-                    col.Item().AlignCenter().Text(title).FontSize(13).SemiBold();
-                    col.Item().PaddingTop(6).LineHorizontal(1);
-                });
-                page.Content().PaddingTop(10).Element(content);
-                page.Footer().AlignCenter().Text(x => { x.Span("صفحة "); x.CurrentPageNumber(); x.Span(" من "); x.TotalPages(); });
-            });
-        }).GeneratePdf();
+        return PrintPdfBuilder.Render(PrintGroup.FinancialReports, layout, title, page =>
+            page.Content().PaddingTop(10).Element(content));
     }
 
-    private static IContainer BoldHeader(IContainer c) => c.Background(Colors.Grey.Lighten3).BorderBottom(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
-    private static IContainer BoldFooter(IContainer c) => c.Background(Colors.Grey.Lighten2).BorderTop(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
+    private static IContainer BoldHeader(IContainer c, PrintLayoutOptions layout) => PrintPdfBuilder.HeaderCell(c, layout);
+    private static IContainer BoldFooter(IContainer c, PrintLayoutOptions layout) => PrintPdfBuilder.FooterCell(c, layout);
 
     private static void WriteReportHeading(IXLWorksheet ws, int row, string title)
     {
@@ -676,19 +663,51 @@ public class ReportService : IReportService
             .Where(s => s.PaidAmount < s.NetAmount)
             .ToListAsync();
 
-        var saleReturnTotals = await _db.SaleReturns
+        var saleReturns = await _db.SaleReturns
             .AsNoTracking()
-            .Where(r => r.Status == ReturnStatus.Posted && r.SaleInvoiceId != null)
-            .GroupBy(r => r.SaleInvoiceId)
-            .Select(g => new { InvoiceId = g.Key!.Value, Total = g.Sum(r => (decimal?)r.TotalAmount) ?? 0m })
+            .Where(r => r.Status == ReturnStatus.Posted)
+            .Select(r => new { r.SaleInvoiceId, r.TotalAmount, r.ExchangeRate })
             .ToListAsync();
-        var returnsBySaleInvoice = saleReturnTotals.ToDictionary(x => x.InvoiceId, x => x.Total);
+        var returnsBySaleInvoice = saleReturns
+            .Where(r => r.SaleInvoiceId.HasValue)
+            .GroupBy(r => r.SaleInvoiceId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
 
-        vm.Receivables = saleInvoices
-            .Select(s => new { Name = s.Customer?.Name ?? "—", Due = s.DueDate ?? s.InvoiceDate, Outstanding = s.NetAmount - s.PaidAmount - returnsBySaleInvoice.GetValueOrDefault(s.Id) })
-            .Where(x => x.Outstanding > 0.005m)
+        var saleAllocations = await _db.PaymentAllocations
+            .AsNoTracking()
+            .Where(a => a.InvoiceType == PaymentAllocationInvoiceType.Sales)
+            .Select(a => new { a.InvoiceId, a.AllocatedBaseAmount })
+            .ToListAsync();
+        var allocatedBySale = saleAllocations
+            .GroupBy(a => a.InvoiceId)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
+
+        var receivableLines = new List<(string Name, DateTime Due, decimal Amount)>();
+        foreach (var s in saleInvoices)
+        {
+            var rate = s.ExchangeRate ?? 1m;
+            var paidBase = allocatedBySale.GetValueOrDefault(s.Id);
+            if (paidBase <= 0m && s.PaidAmount > 0m)
+                paidBase = decimal.Round(s.PaidAmount * rate, 2);
+            var outstanding = decimal.Round(s.NetAmount * rate, 2)
+                - paidBase
+                - returnsBySaleInvoice.GetValueOrDefault(s.Id);
+            if (outstanding > 0.005m)
+                receivableLines.Add((s.Customer?.Name ?? "—", s.DueDate ?? s.InvoiceDate, outstanding));
+        }
+
+        var standaloneSaleReturns = await _db.SaleReturns
+            .AsNoTracking()
+            .Include(r => r.Customer)
+            .Where(r => r.Status == ReturnStatus.Posted && r.SaleInvoiceId == null)
+            .ToListAsync();
+        receivableLines.AddRange(standaloneSaleReturns.Select(r =>
+            (r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+
+        vm.Receivables = receivableLines
             .GroupBy(x => x.Name)
-            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))
+            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Amount)), today))
+            .Where(r => r.Total > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
 
@@ -698,19 +717,51 @@ public class ReportService : IReportService
             .Where(p => p.PaidAmount < p.NetAmount)
             .ToListAsync();
 
-        var purchaseReturnTotals = await _db.PurchaseReturns
+        var purchaseReturns = await _db.PurchaseReturns
             .AsNoTracking()
-            .Where(r => r.Status == ReturnStatus.Posted && r.PurchaseInvoiceId != null)
-            .GroupBy(r => r.PurchaseInvoiceId)
-            .Select(g => new { InvoiceId = g.Key!.Value, Total = g.Sum(r => (decimal?)r.TotalAmount) ?? 0m })
+            .Where(r => r.Status == ReturnStatus.Posted)
+            .Select(r => new { r.PurchaseInvoiceId, r.TotalAmount, r.ExchangeRate })
             .ToListAsync();
-        var returnsByPurchaseInvoice = purchaseReturnTotals.ToDictionary(x => x.InvoiceId, x => x.Total);
+        var returnsByPurchaseInvoice = purchaseReturns
+            .Where(r => r.PurchaseInvoiceId.HasValue)
+            .GroupBy(r => r.PurchaseInvoiceId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
 
-        vm.Payables = purchaseInvoices
-            .Select(p => new { Name = p.Supplier?.Name ?? "—", Due = p.DueDate ?? p.InvoiceDate, Outstanding = p.NetAmount - p.PaidAmount - returnsByPurchaseInvoice.GetValueOrDefault(p.Id) })
-            .Where(x => x.Outstanding > 0.005m)
+        var purchaseAllocations = await _db.PaymentAllocations
+            .AsNoTracking()
+            .Where(a => a.InvoiceType == PaymentAllocationInvoiceType.Purchases)
+            .Select(a => new { a.InvoiceId, a.AllocatedBaseAmount })
+            .ToListAsync();
+        var allocatedByPurchase = purchaseAllocations
+            .GroupBy(a => a.InvoiceId)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
+
+        var payableLines = new List<(string Name, DateTime Due, decimal Amount)>();
+        foreach (var p in purchaseInvoices)
+        {
+            var rate = p.ExchangeRate ?? 1m;
+            var paidBase = allocatedByPurchase.GetValueOrDefault(p.Id);
+            if (paidBase <= 0m && p.PaidAmount > 0m)
+                paidBase = decimal.Round(p.PaidAmount * rate, 2);
+            var outstanding = decimal.Round(p.NetAmount * rate, 2)
+                - paidBase
+                - returnsByPurchaseInvoice.GetValueOrDefault(p.Id);
+            if (outstanding > 0.005m)
+                payableLines.Add((p.Supplier?.Name ?? "—", p.DueDate ?? p.InvoiceDate, outstanding));
+        }
+
+        var standalonePurchaseReturns = await _db.PurchaseReturns
+            .AsNoTracking()
+            .Include(r => r.Supplier)
+            .Where(r => r.Status == ReturnStatus.Posted && r.PurchaseInvoiceId == null)
+            .ToListAsync();
+        payableLines.AddRange(standalonePurchaseReturns.Select(r =>
+            (r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+
+        vm.Payables = payableLines
             .GroupBy(x => x.Name)
-            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Outstanding)), today))
+            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Amount)), today))
+            .Where(r => r.Total > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
 
@@ -820,6 +871,22 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id)
             .ToListAsync();
 
+        var onReceiptSales = (await _db.SaleInvoices
+            .AsNoTracking()
+            .Where(s => s.PaymentTerms == InvoicePaymentTerms.OnReceipt && s.PaidAmount > 0)
+            .Select(s => new { s.InvoiceDate, s.NetAmount, s.ExchangeRate })
+            .ToListAsync())
+            .Select(s => new { s.InvoiceDate, Base = decimal.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2) })
+            .ToList();
+
+        var onReceiptPurchases = (await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Where(p => p.PaymentTerms == InvoicePaymentTerms.OnReceipt && p.PaidAmount > 0)
+            .Select(p => new { p.InvoiceDate, p.NetAmount, p.ExchangeRate })
+            .ToListAsync())
+            .Select(p => new { p.InvoiceDate, Base = decimal.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2) })
+            .ToList();
+
         var vm = new CashFlowReportViewModel { From = fromDate, To = toDate };
 
         foreach (var p in payments)
@@ -827,6 +894,14 @@ public class ReportService : IReportService
             if (p.PaymentDate >= fromDate) break;
             var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
             vm.OpeningBalance += p.Type == PaymentType.Receipt ? amount : -amount;
+        }
+        foreach (var s in onReceiptSales)
+        {
+            if (s.InvoiceDate < fromDate) vm.OpeningBalance += s.Base;
+        }
+        foreach (var p in onReceiptPurchases)
+        {
+            if (p.InvoiceDate < fromDate) vm.OpeningBalance -= p.Base;
         }
 
         var period = payments.Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate).ToList();
@@ -837,8 +912,16 @@ public class ReportService : IReportService
             if (p.Type == PaymentType.Receipt) vm.TotalReceipts += amount;
             else vm.TotalDisbursements += amount;
         }
+        foreach (var s in onReceiptSales)
+        {
+            if (s.InvoiceDate >= fromDate && s.InvoiceDate <= toDate) vm.TotalReceipts += s.Base;
+        }
+        foreach (var p in onReceiptPurchases)
+        {
+            if (p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate) vm.TotalDisbursements += p.Base;
+        }
 
-        vm.ByMethod = period
+        var byMethod = period
             .GroupBy(p => p.Method)
             .Select(g => new CashFlowMethodTotal
             {
@@ -846,9 +929,31 @@ public class ReportService : IReportService
                 Receipts = g.Where(p => p.Type == PaymentType.Receipt).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount),
                 Disbursements = g.Where(p => p.Type == PaymentType.Disbursement).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount)
             })
-            .OrderBy(m => m.Method)
             .ToList();
 
+        var periodSales = onReceiptSales.Where(s => s.InvoiceDate >= fromDate && s.InvoiceDate <= toDate).Sum(s => s.Base);
+        var periodPurchases = onReceiptPurchases.Where(p => p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate).Sum(p => p.Base);
+        if (periodSales > 0 || periodPurchases > 0)
+        {
+            var cashRow = byMethod.FirstOrDefault(m => m.Method == PaymentMethod.Cash);
+            if (cashRow != null)
+            {
+                cashRow.Receipts += periodSales;
+                cashRow.Disbursements += periodPurchases;
+            }
+            else
+            {
+                byMethod.Add(new CashFlowMethodTotal
+                {
+                    Method = PaymentMethod.Cash,
+                    Receipts = periodSales,
+                    Disbursements = periodPurchases
+                });
+            }
+        }
+        byMethod = byMethod.OrderBy(m => m.Method).ToList();
+
+        vm.ByMethod = byMethod;
         return vm;
     }
 
@@ -928,9 +1033,9 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
 
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
-        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, inv.NetAmount, 0));
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, r.TotalAmount));
-        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.Amount));
+        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
+        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
 
         return BuildStatementWorkbook($"كشف حساب — {customer.Name}", customer.OpeningBalance, lines);
     }
@@ -947,9 +1052,9 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
 
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
-        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, inv.NetAmount, 0));
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, r.TotalAmount));
-        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.Amount));
+        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
+        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.BaseAmount > 0 ? d.BaseAmount : d.Amount));
 
         return BuildStatementWorkbook($"كشف حساب — {supplier.Name}", supplier.OpeningBalance, lines);
     }

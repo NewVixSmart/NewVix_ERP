@@ -1,137 +1,62 @@
 @model Silk.Trading.Web.Models.Purchases.PurchaseInvoice
-@{ Layout = null; }
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="utf-8" />
-    <title>بوليصة شراء - @Model.InvoiceNumber</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        html { font-family: Tahoma, 'Segoe UI', Arial, sans-serif; font-size: 14px; direction: rtl; }
-        body { margin: 0; padding: 20px; color: #1e293b; }
-
-        .no-print { margin-bottom: 16px; }
-        .no-print button { background: #2563eb; color: #fff; border: none; padding: 8px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: inherit; }
-        .no-print button:hover { background: #1d4ed8; }
-
-        .invoice-box { border: 2px solid #1e293b; border-radius: 8px; padding: 24px; }
-
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; }
-        .header-right h2 { margin: 0 0 4px 0; font-size: 20px; color: #1e293b; }
-        .header-right p { margin: 0; color: #64748b; font-size: 13px; }
-        .header-left { text-align: left; }
-        .header-left .inv-number { font-size: 18px; font-weight: 700; color: #2563eb; }
-        .header-left .inv-date { color: #64748b; font-size: 13px; }
-
-        .info-row { display: flex; gap: 32px; margin-bottom: 16px; font-size: 13px; }
-        .info-row .label { color: #64748b; }
-        .info-row .value { font-weight: 600; }
-
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        thead th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 13px; font-weight: 600; text-align: right; }
-        tbody td { border: 1px solid #e2e8f0; padding: 8px 10px; font-size: 13px; }
-        tbody tr:nth-child(even) { background: #f8fafc; }
-        .text-center { text-align: center; }
-
-        .totals { display: flex; justify-content: flex-end; gap: 24px; margin-bottom: 16px; }
-        .totals .total-item { text-align: center; padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 6px; min-width: 120px; }
-        .totals .total-item .lbl { font-size: 12px; color: #64748b; }
-        .totals .total-item .val { font-size: 16px; font-weight: 700; margin-top: 2px; }
-        .totals .total-item.net { background: #2563eb; color: #fff; border-color: #2563eb; }
-        .totals .total-item.net .lbl { color: #bfdbfe; }
-
-        .notes { border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 13px; color: #64748b; }
-        .notes strong { color: #1e293b; }
-
-        .footer { margin-top: 24px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
-
-        @@media print {
-            html, body { font-size: 12px; padding: 0; margin: 0; }
-            .no-print { display: none !important; }
-            .invoice-box { border: 1.5px solid #000; }
-            thead th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .totals .total-item.net { background: #2563eb !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .footer { color: #666; }
-        }
-    </style>
-</head>
-<body>
-    <div class="no-print">
-        <button onclick="window.print()"><i class="bi bi-printer"></i> طباعة الفاتورة</button>
-    </div>
-
-    <div class="invoice-box">
-        <div class="header">
-            <div class="header-right">
-                <h2>بوليصة شراء</h2>
-                <p>سلك للتجارة</p>
-            </div>
-            <div class="header-left">
-                <div class="inv-number">رقم الفاتورة: @Model.InvoiceNumber</div>
-                <div class="inv-date">التاريخ: @Model.InvoiceDate.ToString("dd/MM/yyyy")</div>
-            </div>
-        </div>
-
-        <div class="info-row">
-            <div><span class="label">المورد:</span> <span class="value">@(Model.Supplier?.Name ?? "—")</span></div>
-            <div><span class="label">الحالة:</span> <span class="value">@(Model.IsPaid ? "مدفوعة" : "غير مدفوعة")</span></div>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>الصنف</th>
-                    <th class="text-center">العدد</th>
-                    <th class="text-center">الكمية</th>
-                    <th class="text-center">سعر الوحدة</th>
-                    <th class="text-center">الخصم</th>
-                    <th class="text-center">الإجمالي</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{ var rowNo = 0; }
-                @foreach (var item in Model.Items)
-                {
-                    rowNo++;
-                    <tr>
-                        <td class="text-center">@rowNo</td>
-                        <td>@item.Item.Name</td>
-                        <td class="text-center">@item.Count</td>
-                        <td class="text-center">@item.Quantity</td>
-                        <td class="text-center">@item.UnitPrice.ToString("N2")</td>
-                        <td class="text-center">@item.Discount.ToString("N2")</td>
-                        <td class="text-center fw-bold">@item.Total.ToString("N2")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="totals">
-            <div class="total-item">
-                <div class="lbl">الإجمالي</div>
-                <div class="val">@Model.TotalAmount.ToString("N2")</div>
-            </div>
-            <div class="total-item">
-                <div class="lbl">الخصم</div>
-                <div class="val" style="color:#dc2626;">@Model.Discount.ToString("N2")</div>
-            </div>
-            <div class="total-item">
-                <div class="lbl">الضريبة</div>
-                <div class="val">@Model.Tax.ToString("N2")</div>
-            </div>
-            <div class="total-item net">
-                <div class="lbl">الصافي</div>
-                <div class="val">@Model.NetAmount.ToString("N2") ج.م</div>
-            </div>
-        </div>
-
-        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+@using Silk.Trading.Web.ViewModels.Core
+@using Silk.Trading.Web.ViewModels.PrintStudio
+@inject IBrandingService BrandingService
+@inject IPrintSettingsService PrintSettingsService
+@{
+    Layout = null;
+    var _brand = await BrandingService.LoadAsync();
+    var _profile = _brand.Profile;
+    var _layout = await PrintSettingsService.GetLayoutAsync(PrintGroup.PurchaseInvoice);
+    var _contactParts = new System.Collections.Generic.List<string>();
+    if (_layout.ShowCompanyContact)
+    {
+        if (!string.IsNullOrWhiteSpace(_profile.Address)) _contactParts.Add(_profile.Address);
+        if (!string.IsNullOrWhiteSpace(_profile.Phone)) _contactParts.Add(_profile.Phone);
+        if (!string.IsNullOrWhiteSpace(_profile.Email)) _contactParts.Add(_profile.Email);
+    }
+    var _doc = new PrintDocModel
+    {
+        Group = PrintGroup.PurchaseInvoice,
+        Layout = _layout,
+        DocTitle = "فاتورة شراء",
+        DocNumber = Model.InvoiceNumber,
+        DocDateLabel = "التاريخ",
+        DocDateValue = Model.InvoiceDate.ToString("dd/MM/yyyy"),
+        PartyTitle = "المورد",
+        PartyName = Model.Supplier?.Name ?? "—",
+        PartyCode = Model.Supplier?.Code,
+        LogoUri = _layout.ShowLogo ? _profile.LogoDataUri() : null,
+        CompanyName = _profile.CompanyName,
+        Tagline = _profile.Tagline ?? "",
+        CompanyContact = string.Join(" • ", _contactParts),
+        TaxNumber = _profile.TaxNumber ?? "",
+        CreatedBy = _layout.ShowCreatedBy ? Model.CreatedBy : null,
+        Note = Model.Notes,
+        Totals = new PrintDocTotals
         {
-            <div class="notes"><strong>ملاحظات:</strong> @Model.Notes</div>
+            Subtotal = Model.TotalAmount,
+            Discount = Model.Discount,
+            Tax = Model.Tax,
+            GrandTotal = Model.NetAmount,
+            IsPaid = Model.IsPaid,
+            CurrencyCode = Model.Currency?.Code ?? ""
         }
-
-        <div class="footer">سلك للتجارة - نظام إدارة المخزون والحسابات</div>
-    </div>
-</body>
-</html>
+    };
+    foreach (var item in Model.Items)
+    {
+        _doc.Lines.Add(new PrintDocLine
+        {
+            ItemCode = item.Item?.Code ?? "",
+            Barcode = item.Item?.Barcode,
+            Name = item.Item?.Name ?? "—",
+            Unit = (item.Item?.CountUnit?.Name ?? item.Item?.QuantityUnit?.Name) ?? "",
+            Count = item.Count,
+            Quantity = item.Quantity,
+            UnitPrice = item.UnitPrice,
+            Discount = item.Discount,
+            LineTotal = item.Total
+        });
+    }
+}
+<partial name="Print/PrintDocument" model="_doc" />

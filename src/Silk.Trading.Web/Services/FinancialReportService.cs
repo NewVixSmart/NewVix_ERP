@@ -150,13 +150,49 @@ public class FinancialReportService : IFinancialReportService
             }
         }
 
-        // الأرباح المحتجزة عن الفترة (حتى تاريخ القائمة) تُضاف إلى حقوق الملكية حفاظًا على توازن الميزانية
-        vm.NetIncome = await NetIncomeAsOfAsync(asOfDate);
+        // الأرباح المحتجزة المرحّلة من إقفالات السنوات السابقة تُعرض ضمن حقوق الملكية،
+        // ويُقصر بند "صافي الدخل (الفترة)" على الفترات المفتوحة فقط حفاظًا على توازن الميزانية.
+        var closedRetained = await ClosedRetainedEarningsAsync(asOfDate);
+        if (closedRetained != 0m)
+        {
+            var retainedLine = vm.Equity.Lines.FirstOrDefault(l => l.Code == "3001");
+            if (retainedLine is null)
+            {
+                vm.Equity.Lines.Add(new BalanceSheetLineViewModel { Code = "3001", Name = "الأرباح المحتجزة", Amount = closedRetained });
+                vm.Equity.Lines.Sort((a, b) => string.CompareOrdinal(a.Code, b.Code));
+            }
+            else
+            {
+                retainedLine.Amount += closedRetained;
+            }
+            vm.Equity.Total += closedRetained;
+        }
+
+        vm.NetIncome = await NetIncomeAsOfAsync(asOfDate, closedRetained);
 
         return vm;
     }
 
-    private async Task<decimal> NetIncomeAsOfAsync(DateTime asOfDate)
+    private async Task<decimal> ClosedRetainedEarningsAsync(DateTime asOfDate)
+    {
+        var retained = await _db.JournalEntryLines
+            .AsNoTracking()
+            .Where(l => l.JournalEntry!.IsPosted
+                && l.JournalEntry.Source == JournalSource.YearEndClose
+                && l.JournalEntry.Date <= asOfDate
+                && l.Account!.Code == "3001")
+            .GroupBy(l => 1)
+            .Select(g => new
+            {
+                Debit = g.Sum(l => (decimal?)l.Debit) ?? 0m,
+                Credit = g.Sum(l => (decimal?)l.Credit) ?? 0m
+            })
+            .FirstOrDefaultAsync();
+
+        return retained is null ? 0m : retained.Credit - retained.Debit;
+    }
+
+    private async Task<decimal> NetIncomeAsOfAsync(DateTime asOfDate, decimal closedRetained = 0m)
     {
         var activity = await GetAccountActivityAsync(null, asOfDate, GLAccountType.Revenue, GLAccountType.Expense);
         decimal revenue = 0, expense = 0;
@@ -168,7 +204,7 @@ public class FinancialReportService : IFinancialReportService
             else expense += signed;
         }
 
-        return revenue - expense;
+        return revenue - expense - closedRetained;
     }
 
     public async Task<IReadOnlyList<PlAccountActivity>> GetYearlyPlActivityAsync(int year)
@@ -184,7 +220,7 @@ public class FinancialReportService : IFinancialReportService
 
         var entryIds = _db.JournalEntries
             .AsNoTracking()
-            .Where(j => j.IsPosted && j.Date >= fromDate && j.Date <= toDate)
+            .Where(j => j.IsPosted && j.Source != JournalSource.YearEndClose && j.Date >= fromDate && j.Date <= toDate)
             .Select(j => j.Id);
 
         var result = await _db.JournalEntryLines

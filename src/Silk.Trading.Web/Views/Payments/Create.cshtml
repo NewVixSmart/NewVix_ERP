@@ -20,7 +20,8 @@
             </div>
             <div class="col-md-4">
                 <label asp-for="Payment.Amount" class="form-label"></label>
-                <input asp-for="Payment.Amount" class="form-control" type="number" step="0.01" />
+                <input asp-for="Payment.Amount" class="form-control" type="number" step="0.01" aria-describedby="Payment_Amount-error" />
+                <span asp-validation-for="Payment.Amount" class="text-danger small" id="Payment_Amount-error"></span>
             </div>
             @if (Model.Payment.Type == Silk.Trading.Web.Models.Accounting.PaymentType.Receipt)
             {
@@ -51,8 +52,9 @@
             </div>
             <div class="col-md-4">
                 <label asp-for="Payment.ExchangeRate" class="form-label"></label>
-                <input asp-for="Payment.ExchangeRate" class="form-control" type="number" step="any" id="exchangeRate" />
-                <small class="text-muted">وحدات العملة الأساسية لكل وحدة من العملة المختارة</small>
+                <input asp-for="Payment.ExchangeRate" class="form-control" type="number" step="any" id="exchangeRate" aria-describedby="exchangeRate-help Payment_ExchangeRate-error" />
+                <small class="text-muted" id="exchangeRate-help">وحدات العملة الأساسية لكل وحدة من العملة المختارة</small>
+                <span asp-validation-for="Payment.ExchangeRate" class="text-danger small" id="Payment_ExchangeRate-error"></span>
             </div>
             <div class="col-md-4">
                 <label asp-for="Payment.BaseAmount" class="form-label"></label>
@@ -61,12 +63,13 @@
             </div>
             <div class="col-md-4">
                 <label asp-for="Payment.Method" class="form-label"></label>
-                <select asp-for="Payment.Method" class="form-select">
+                <select asp-for="Payment.Method" class="form-select" aria-describedby="Payment_Method-error">
                     <option value="1">نقداً</option>
                     <option value="2">شيك</option>
                     <option value="3">تحويل بنكي</option>
                     <option value="4">بطاقة ائتمان</option>
                 </select>
+                <span asp-validation-for="Payment.Method" class="text-danger small" id="Payment_Method-error"></span>
             </div>
             <div class="col-md-4">
                 <label asp-for="Payment.ReferenceNumber" class="form-label"></label>
@@ -87,7 +90,7 @@
 <script nonce="@Context.GetCspNonce()">
 const currencyOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
     Model.CurrencyOptions?.Select(c => new { c.Id, c.ExchangeRate, c.IsBase }) ?? [],
-    new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default }));
+    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default }));
 
 function refreshBaseAmount() {
     var id = document.getElementById('currencySelect').value;

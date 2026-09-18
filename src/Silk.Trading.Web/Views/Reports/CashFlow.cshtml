@@ -29,10 +29,10 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد افتتاحي</div><h4 class="mb-0">@Model.OpeningBalance.ToString("N2")</h4></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات</div><h4 class="mb-0 text-success">@Model.TotalReceipts.ToString("N2")</h4></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات</div><h4 class="mb-0 text-danger">@Model.TotalDisbursements.ToString("N2")</h4></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد ختامي</div><h4 class="mb-0 fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger")">@Model.ClosingBalance.ToString("N2")</h4></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد افتتاحي</div><h3 class="mb-0">@Model.OpeningBalance.ToString("N2")</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات</div><h3 class="mb-0 text-success">@Model.TotalReceipts.ToString("N2")</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات</div><h3 class="mb-0 text-danger">@Model.TotalDisbursements.ToString("N2")</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد ختامي</div><h3 class="mb-0 fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger")">@Model.ClosingBalance.ToString("N2")</h3></div></div>
 </div>
 
 <div class="card mb-4">

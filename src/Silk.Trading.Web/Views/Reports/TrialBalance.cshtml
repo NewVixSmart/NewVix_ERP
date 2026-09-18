@@ -17,8 +17,8 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h4 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h4></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h4 class="mb-0 text-primary">@Model.TotalCredit.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-primary">@Model.TotalCredit.ToString("N2")</h3></div></div>
     <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
@@ -29,8 +29,7 @@
 </div>
 
 <div class="table-container">
-    <table class="table table-hover mb-0">
-        <caption class="visually-hidden">ميزان المراجعة</caption>
+    <table class="table table-hover mb-0" data-table-plain>
         <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">الرصيد</th></tr></thead>
         <tbody>
             @foreach (var r in Model.Rows)
@@ -64,7 +63,7 @@
 }
 
 <div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="bi bi-printer"></i> طباعة</button>
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
     <a asp-action="ExportTrialBalancePdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
     <a asp-action="ExportTrialBalanceXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
 </div>

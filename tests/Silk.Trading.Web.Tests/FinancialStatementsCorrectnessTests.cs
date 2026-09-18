@@ -112,9 +112,39 @@ public sealed class FinancialStatementsCorrectnessTests : IDisposable
 
         var bs = await svc.BalanceSheetAsync(new DateTime(2026, 12, 31));
         Assert.Equal(1000m, bs.TotalAssets);
-        Assert.Equal(600m, bs.Equity.Total);
-        Assert.Equal(400m, bs.NetIncome);
+        Assert.Equal(1000m, bs.Equity.Total);
+        Assert.Equal(0m, bs.NetIncome);
+        Assert.Contains(bs.Equity.Lines, l => l.Code == "3001" && l.Amount == 400m);
         Assert.Equal(1000m, bs.TotalLiabilitiesEquity);
+        Assert.True(bs.IsBalanced);
+    }
+
+    [Fact]
+    public async Task BalanceSheet_AfterClose_ShowsClosedIncomeInRetainedEarnings_AndOnlyOpenYearInNetIncome()
+    {
+        using var db = CreateContext();
+        SeedChart(db);
+
+        AddEntry(db, JournalSource.SaleInvoice, new DateTime(2026, 1, 5),
+            ("1000", 1600, 0), ("4000", 0, 1000), ("3000", 0, 600));
+        AddEntry(db, JournalSource.PurchaseInvoice, new DateTime(2026, 6, 30),
+            ("5000", 600, 0), ("1000", 0, 600));
+        AddEntry(db, JournalSource.YearEndClose, new DateTime(2026, 12, 31),
+            ("4000", 1000, 0), ("3001", 0, 1000));
+        AddEntry(db, JournalSource.YearEndClose, new DateTime(2026, 12, 31),
+            ("3001", 600, 0), ("5000", 0, 600));
+        AddEntry(db, JournalSource.SaleInvoice, new DateTime(2027, 3, 15),
+            ("1000", 500, 0), ("4000", 0, 500));
+        await db.SaveChangesAsync();
+
+        var svc = new FinancialReportService(db);
+        var bs = await svc.BalanceSheetAsync(new DateTime(2027, 6, 30));
+
+        Assert.Equal(1500m, bs.TotalAssets);
+        Assert.Equal(1000m, bs.Equity.Total);
+        Assert.Equal(500m, bs.NetIncome);
+        Assert.Contains(bs.Equity.Lines, l => l.Code == "3001" && l.Amount == 400m);
+        Assert.Equal(1500m, bs.TotalLiabilitiesEquity);
         Assert.True(bs.IsBalanced);
     }
 

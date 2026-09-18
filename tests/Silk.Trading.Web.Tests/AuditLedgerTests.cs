@@ -54,9 +54,9 @@ public sealed class AuditLedgerTests : IDisposable
     private static async Task SeedEntriesAsync(AppDbContext db)
     {
         var accounting = new AccountingService(db);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, 0m, null, null, "auditor");
-        await accounting.RecordReceiptAsync(new DateTime(2026, 1, 7), 300m, PaymentMethod.Cash, 1, "auditor");
-        await accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 9), 2, 200m, null, null, "auditor");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, 0m, null, null, "auditor", 1);
+        await accounting.RecordReceiptAsync(new DateTime(2026, 1, 7), 300m, PaymentMethod.Cash, 1, "auditor", 1);
+        await accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 9), 2, 200m, null, null, "auditor", 1);
     }
 
     private static (DateTime from, DateTime to) FullYear => (new DateTime(2026, 1, 1), new DateTime(2026, 12, 31));
@@ -139,13 +139,25 @@ public sealed class AuditLedgerTests : IDisposable
         Assert.Equal(0x50, bytes[0]); // 'P'
         Assert.Equal(0x4B, bytes[1]); // 'K'
 
-        // 3 posted entries, 2 lines each → title(1) + header(3) + 6 data rows = last row 9.
         using var ms = new MemoryStream(bytes, writable: false);
         using var wb = new ClosedXML.Excel.XLWorkbook(ms);
         var ws = wb.Worksheets.First();
         Assert.Equal("سجل التدقيق", ws.Name);
-        Assert.Equal("رقم القيد", ws.Cell(3, 1).Value.ToString());
-        Assert.Equal(9, ws.LastRowUsed()!.RowNumber());
-        Assert.True(ws.Cell(4, 8).GetDouble() > 0.0); // first line debit present
+
+        var headerRow = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .FirstOrDefault(n => ws.Cell(n, 1).GetString().Trim() == "رقم القيد");
+        Assert.True(headerRow > 0, "Header row 'رقم القيد' not found");
+
+        var debitColumn = ws.Row(headerRow).CellsUsed()
+            .FirstOrDefault(c => c.GetString().Trim() == "مدين")?.Address.ColumnNumber ?? 0;
+        Assert.True(debitColumn > 0, "Column 'مدين' not found");
+
+        var dataRows = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .Where(n => n > headerRow && !string.IsNullOrWhiteSpace(ws.Cell(n, 1).GetString()))
+            .ToList();
+        Assert.Equal(6, dataRows.Count);
+        Assert.True(ws.Cell(dataRows[0], debitColumn).GetDouble() > 0.0);
     }
 }

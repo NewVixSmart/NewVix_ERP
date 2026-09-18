@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using Silk.ServiceDefaults;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Services;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -16,6 +18,10 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+var hostingAllowedHosts = builder.Configuration["Hosting:AllowedHosts"];
+if (!string.IsNullOrWhiteSpace(hostingAllowedHosts))
+    builder.Configuration["AllowedHosts"] = hostingAllowedHosts;
 
 var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!builder.Environment.IsDevelopment()
@@ -120,6 +126,16 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+    options.AddPolicy("login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 builder.Services.AddControllersWithViews(options =>
@@ -194,11 +210,25 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IBatchService, BatchService>();
 builder.Services.AddScoped<IFiscalService, FiscalService>();
 builder.Services.AddScoped<AccountsService>();
+builder.Services.AddScoped<IBrandingService, BrandingService>();
+builder.Services.AddScoped<IExportCenterService, ExportCenterService>();
+builder.Services.AddScoped<IImportCenterService, ImportCenterService>();
+builder.Services.AddScoped<IPrintSettingsService, PrintSettingsService>();
+builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession();
+builder.Services.AddMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    if (!builder.Environment.IsDevelopment())
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
 
 var app = builder.Build();
+
+PdfInvoiceService.ConfigureServices(app.Services);
 
 app.Use(async (context, next) =>
 {
@@ -237,7 +267,7 @@ app.Use(async (context, next) =>
     context.SetCspNonce();
     var nonce = context.GetCspNonce();
     context.Response.Headers["Content-Security-Policy"] =
-        $"default-src 'self'; script-src 'self' 'nonce-{nonce}'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+        $"default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline'; " +
         "font-src 'self' data:; img-src 'self' data:; base-uri 'self'; object-src 'none'; " +
         "frame-ancestors 'none'; form-action 'self'";
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -246,15 +276,28 @@ app.Use(async (context, next) =>
     await next();
 });
 
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+foreach (var proxy in (app.Configuration["ForwardedHeaders:KnownProxies"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    forwardedOptions.KnownProxies.Add(IPAddress.Parse(proxy));
+foreach (var network in (app.Configuration["ForwardedHeaders:KnownNetworks"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+if (forwardedOptions.KnownProxies.Count > 0 || forwardedOptions.KnownIPNetworks.Count > 0)
+    app.UseForwardedHeaders(forwardedOptions);
+
 app.UseRouting();
 
 app.UseRateLimiter();
 
 app.UseCors("ApiCors");
 
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseSession();
 
 app.MapControllerRoute(
     name: "default",
@@ -262,6 +305,18 @@ app.MapControllerRoute(
     .WithStaticAssets();
 
 app.MapHealthChecks("/healthz");
+
+if (!app.Environment.IsDevelopment())
+{
+    var adminSeedPassword = app.Configuration["Seed:AdminPassword"];
+    string[] insecureSeedDefaults = ["Admin@123", "Acc@12345", "War@12345"];
+    if (string.IsNullOrWhiteSpace(adminSeedPassword)
+        || insecureSeedDefaults.Contains(adminSeedPassword, StringComparer.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "Insecure or missing default admin seed password in production. Set the Seed__AdminPassword environment variable to a strong password and remove the shipped defaults from appsettings.json. لن يُشغَّل النظام في بيئة الإنتاج بكلمة مرور مدير افتراضية غير آمنة؛ عيّن متغير البيئة Seed__AdminPassword.");
+    }
+}
 
 using (var scope = app.Services.CreateScope())
 {

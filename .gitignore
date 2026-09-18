@@ -33,6 +33,8 @@ coverage*.json
 node_modules/
 package-lock.json
 package.json
+!e2e/package.json
+!e2e/package-lock.json
 
 # ============================================
 # Secrets / local config (never commit real credentials)

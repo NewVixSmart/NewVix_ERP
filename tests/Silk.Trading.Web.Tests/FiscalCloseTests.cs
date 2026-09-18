@@ -395,4 +395,25 @@ public sealed class FiscalCloseTests : IDisposable
         Assert.True(await fiscal.IsClosedAsync(new DateTime(2026, 6, 1)));
         Assert.False(await fiscal.IsClosedAsync(new DateTime(2027, 6, 1)));
     }
+
+    [Fact]
+    public async Task ValidateBudgetWriteAsync_ClosedYear_Throws()
+    {
+        using var db = CreateContext();
+        await CloseYearAsync(db);
+        var fiscal = CreateFiscalService(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => fiscal.ValidateBudgetWriteAsync(2026));
+        Assert.Contains("مغلقة", ex.Message);
+    }
+
+    [Fact]
+    public async Task ValidateBudgetWriteAsync_OpenYear_DoesNotThrow()
+    {
+        using var db = CreateContext();
+        var fiscal = CreateFiscalService(db);
+        await fiscal.EnsurePeriodAsync(2026);
+
+        await fiscal.ValidateBudgetWriteAsync(2026);
+    }
 }

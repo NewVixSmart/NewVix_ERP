@@ -4,7 +4,7 @@
     ViewData["Title"] = "المبيعات الجماعية";
     var itemsJson = System.Text.Json.JsonSerializer.Serialize(
         Model.ItemsData.Select(i => new { i.Id, i.Name, i.SalePrice, i.CurrentCount, i.CurrentQuantity }),
-        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
 <div class="page-header"><h2><i class="bi bi-collection text-primary"></i> المبيعات الجماعية</h2></div>
@@ -204,34 +204,50 @@ function newInvoiceBlock(invIdx) {
 }
 
 function bindBlock(block) {
-    block.querySelector('.add-row').onclick = function() {
-        const invIdx = block.dataset.invoice;
-        const rows = parseInt(block.dataset.rows);
-        block.querySelector('.block-rows').insertAdjacentHTML('beforeend', lineRow(invIdx, rows));
-        block.dataset.rows = rows + 1;
-        bindBlock(block);
-        recalcAll();
-    };
+    const addBtn = block.querySelector('.add-row');
+    if (!addBtn.dataset.boundAdd) {
+        addBtn.dataset.boundAdd = 'true';
+        addBtn.addEventListener('click', function() {
+            const invIdx = block.dataset.invoice;
+            const rows = parseInt(block.dataset.rows);
+            block.querySelector('.block-rows').insertAdjacentHTML('beforeend', lineRow(invIdx, rows));
+            block.dataset.rows = rows + 1;
+            bindBlock(block);
+            recalcAll();
+        });
+    }
+    const remBtn = block.querySelector('.remove-block');
+    if (!remBtn.dataset.boundBlock) {
+        remBtn.dataset.boundBlock = 'true';
+        remBtn.addEventListener('click', function() {
+            block.remove();
+            updateRemoveButtons();
+            requeueBlockIndexes();
+            recalcAll();
+        });
+    }
     block.querySelectorAll('.remove-row').forEach(btn => {
-        btn.onclick = function() {
+        if (btn.dataset.boundRow) return;
+        btn.dataset.boundRow = 'true';
+        btn.addEventListener('click', function() {
             this.closest('tr').remove();
             recalcAll();
-        };
+        });
     });
-    block.querySelector('.remove-block').onclick = function() {
-        block.remove();
-        updateRemoveButtons();
-        requeueBlockIndexes();
-        recalcAll();
-    };
     block.querySelectorAll('.item-select').forEach(sel => {
-        sel.onchange = function() {
+        if (sel.dataset.boundItem) return;
+        sel.dataset.boundItem = 'true';
+        sel.addEventListener('change', function() {
             const price = this.options[this.selectedIndex].dataset.price || 0;
             this.closest('tr').querySelector('.price').value = parseFloat(price).toFixed(2);
             recalcAll();
-        };
+        });
     });
-    block.querySelectorAll('.qty, .count, .price, .line-discount').forEach(inp => inp.oninput = recalcAll);
+    block.querySelectorAll('.qty, .count, .price, .line-discount').forEach(inp => {
+        if (inp.dataset.boundCalc) return;
+        inp.dataset.boundCalc = 'true';
+        inp.addEventListener('input', recalcAll);
+    });
 }
 
 function requeueBlockIndexes() {
@@ -301,10 +317,10 @@ document.querySelectorAll('#invoicesContainer .invoice-block').forEach(b => {
 });
 updateRemoveButtons();
 
-document.getElementById('discount').oninput = recalcAll;
-document.getElementById('discount2').oninput = recalcAll;
-document.getElementById('discount3').oninput = recalcAll;
-document.getElementById('tax').oninput = recalcAll;
+document.getElementById('discount').addEventListener('input', recalcAll);
+document.getElementById('discount2').addEventListener('input', recalcAll);
+document.getElementById('discount3').addEventListener('input', recalcAll);
+document.getElementById('tax').addEventListener('input', recalcAll);
 recalcAll();
 
 document.getElementById('batchSalesForm').addEventListener('submit', function(e) {

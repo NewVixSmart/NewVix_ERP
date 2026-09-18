@@ -1,73 +1,64 @@
 @model Silk.Trading.Web.Models.Sales.SaleQuote
-@{ ViewData["Title"] = $"طباعة عرض سعر {Model.QuoteNumber}"; }
-
-<div class="print-toolbar no-print d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> طباعة / نسخة للعميل</button>
-        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf"></i> تحميل PDF</a>
-    </div>
-    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
-</div>
-
-<article class="print-doc card">
-    <div class="card-body p-4">
-        <header class="text-center border-bottom pb-3 mb-3">
-            <h2 class="h3 mb-1">سلك للتجارة</h2>
-            <p class="mb-0 text-muted">عرض سعر — @Model.QuoteNumber</p>
-        </header>
-
-        <div class="row mb-3">
-            <div class="col-md-6"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
-            <div class="col-md-3"><strong>التاريخ:</strong> @Model.QuoteDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>صالح حتى:</strong> @(Model.ValidUntil?.ToString("dd/MM/yyyy") ?? "—")</div>
-        </div>
-
-        @if (Model.SupplierQuote != null)
+@using Silk.Trading.Web.ViewModels.Core
+@using Silk.Trading.Web.ViewModels.PrintStudio
+@inject IBrandingService BrandingService
+@inject IPrintSettingsService PrintSettingsService
+@{
+    Layout = null;
+    var _brand = await BrandingService.LoadAsync();
+    var _profile = _brand.Profile;
+    var _layout = await PrintSettingsService.GetLayoutAsync(PrintGroup.SalesQuote);
+    var _contactParts = new System.Collections.Generic.List<string>();
+    if (_layout.ShowCompanyContact)
+    {
+        if (!string.IsNullOrWhiteSpace(_profile.Address)) _contactParts.Add(_profile.Address);
+        if (!string.IsNullOrWhiteSpace(_profile.Phone)) _contactParts.Add(_profile.Phone);
+        if (!string.IsNullOrWhiteSpace(_profile.Email)) _contactParts.Add(_profile.Email);
+    }
+    var _doc = new PrintDocModel
+    {
+        Group = PrintGroup.SalesQuote,
+        Layout = _layout,
+        DocTitle = "عرض سعر",
+        DocNumber = Model.QuoteNumber,
+        DocDateLabel = "التاريخ",
+        DocDateValue = Model.QuoteDate.ToString("dd/MM/yyyy"),
+        SecondDateLabel = "صالح حتى",
+        SecondDateValue = Model.ValidUntil?.ToString("dd/MM/yyyy") ?? "—",
+        PartyTitle = "العميل",
+        PartyName = Model.Customer?.Name ?? "—",
+        PartyCode = Model.Customer?.Code,
+        LogoUri = _layout.ShowLogo ? _profile.LogoDataUri() : null,
+        CompanyName = _profile.CompanyName,
+        Tagline = _profile.Tagline ?? "",
+        CompanyContact = string.Join(" • ", _contactParts),
+        TaxNumber = _profile.TaxNumber ?? "",
+        CreatedBy = _layout.ShowCreatedBy ? Model.CreatedBy : null,
+        Note = Model.Notes,
+        Totals = new PrintDocTotals
         {
-            <div class="row mb-3">
-                <div class="col-12"><strong>عرض المورد المرجعي:</strong> مرتبط بعرض المورد #@Model.SupplierQuote.Id <span>— @(Model.SupplierQuote.Supplier?.Name ?? "—")</span></div>
-            </div>
+            Subtotal = Model.TotalAmount,
+            Discount = Model.Discount,
+            Tax = Model.Tax,
+            GrandTotal = Model.NetAmount,
+            IsPaid = false,
+            CurrencyCode = Model.Currency?.Code ?? ""
         }
-
-        <table class="table table-bordered mb-3">
-            <caption class="visually-hidden">أصناف عرض السعر @Model.QuoteNumber</caption>
-            <thead>
-                <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">الصنف</th>
-                    <th scope="col">العدد</th>
-                    <th scope="col">الكمية</th>
-                    <th scope="col">سعر الوحدة</th>
-                    <th scope="col">الإجمالي</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{ var row = 1; }
-                @foreach (var item in Model.Items)
-                {
-                    <tr>
-                        <td>@row</td>
-                        <td>@(item.Item?.Name ?? "—")</td>
-                        <td>@item.Count</td>
-                        <td>@item.Quantity</td>
-                        <td>@item.UnitPrice.ToString("N2")</td>
-                        <td class="fw-bold">@item.Total.ToString("N2")</td>
-                    </tr>
-                    row++;
-                }
-            </tbody>
-        </table>
-
-        <div class="row g-3">
-            <div class="col-md-3"><div class="text-muted small">الإجمالي</div><div class="fw-bold">@Model.TotalAmount.ToString("N2")</div></div>
-            <div class="col-md-3"><div class="text-muted small">الخصم</div><div class="fw-bold">@Model.Discount.ToString("N2")</div></div>
-            <div class="col-md-3"><div class="text-muted small">الضريبة</div><div class="fw-bold">@Model.Tax.ToString("N2")</div></div>
-            <div class="col-md-3"><div class="text-muted small">الصافي</div><div class="fw-bold h4">@Model.NetAmount.ToString("N2") ج.م</div></div>
-        </div>
-
-        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    };
+    foreach (var item in Model.Items)
+    {
+        _doc.Lines.Add(new PrintDocLine
         {
-            <div class="mt-3"><strong>ملاحظات:</strong> @Model.Notes</div>
-        }
-    </div>
-</article>
+            ItemCode = item.Item?.Code ?? "",
+            Barcode = item.Item?.Barcode,
+            Name = item.Item?.Name ?? "—",
+            Unit = (item.Item?.CountUnit?.Name ?? item.Item?.QuantityUnit?.Name) ?? "",
+            Count = item.Count,
+            Quantity = item.Quantity,
+            UnitPrice = item.UnitPrice,
+            Discount = 0m,
+            LineTotal = item.Total
+        });
+    }
+}
+<partial name="Print/PrintDocument" model="_doc" />

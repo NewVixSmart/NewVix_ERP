@@ -23,19 +23,14 @@ public class PaymentsController : Controller
     }
 
     [RequirePerm("Payments.View")]
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
         var query = _db.Payments
             .Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
             .AsNoTracking()
             .OrderByDescending(p => p.PaymentDate);
 
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        var payments = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var payments = await query.ToListAsync();
         return View(payments);
     }
 
@@ -69,15 +64,29 @@ public class PaymentsController : Controller
         var payment = vm.Payment;
         payment.Type = vm.Type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt;
 
+        var baseCurrencyId = await BaseCurrencyIdAsync();
+        if (payment.CurrencyId.HasValue && payment.CurrencyId.Value != baseCurrencyId
+            && (!payment.ExchangeRate.HasValue || payment.ExchangeRate.Value <= 0))
+        {
+            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للدفعات بالعملة الأجنبية");
+        }
+
         if (ModelState.IsValid)
         {
-            var (ok, error, _) = await _payment.CreatePaymentAsync(payment, User.Identity?.Name);
-            if (ok)
+            try
             {
-                TempData["Success"] = "تم حفظ الدفعة بنجاح";
-                return RedirectToAction(nameof(Index));
+                var (ok, error, _) = await _payment.CreatePaymentAsync(payment, User.Identity?.Name);
+                if (ok)
+                {
+                    TempData["Success"] = "تم حفظ الدفعة بنجاح";
+                    return RedirectToAction(nameof(Index));
+                }
+                ModelState.AddModelError("", error ?? "تعذر حفظ الدفعة");
             }
-            ModelState.AddModelError("", error ?? "تعذر حفظ الدفعة");
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError("", ex.Message);
+            }
         }
 
         var currencies = await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync();

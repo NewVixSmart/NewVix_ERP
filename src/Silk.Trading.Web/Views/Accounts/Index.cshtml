@@ -13,7 +13,7 @@
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <label class="visually-hidden" for="accTypeFilter">النوع</label>
-        <select name="type" id="accTypeFilter" class="form-select" onchange="this.form.submit()">
+        <select name="type" id="accTypeFilter" class="form-select" data-auto-submit>
             <option value="">كل الأنواع</option>
             @foreach (var t in Enum.GetValues<Silk.Trading.Web.Models.Accounting.GLAccountType>())
             {
@@ -23,7 +23,7 @@
     </div>
     <div class="col-auto">
         <label class="visually-hidden" for="accActiveFilter">الحالة</label>
-        <select name="active" id="accActiveFilter" class="form-select" onchange="this.form.submit()">
+        <select name="active" id="accActiveFilter" class="form-select" data-auto-submit>
             <option value="">الكل</option>
             <option value="true" selected="@(ViewBag.ActiveFilter == true)">نشط</option>
             <option value="false" selected="@(ViewBag.ActiveFilter == false)">معطّل</option>
@@ -79,7 +79,7 @@
                                     <i class="bi @(a.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
                                 </button>
                             </form>
-                            <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذا الحساب نهائيًا؟')">
+                            <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" data-confirm="حذف هذا الحساب نهائيًا؟" data-confirm-ok="حذف">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف حساب @a.Code"><i class="bi bi-trash"></i></button>
                             </form>

@@ -337,8 +337,8 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Equal(320m, (await db.SaleInvoices.SingleAsync()).NetAmount);
         Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1200" && l.Debit == 160000m);
         Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "4000" && l.Credit == 160000m);
-        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "5000" && l.Debit == 80000m);
-        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1300" && l.Credit == 80000m);
+        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "5000" && l.Debit == 160m);
+        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1300" && l.Credit == 160m);
 
         var paySvc = new PaymentService(db, accounting);
         var (ok2, err2, payment) = await paySvc.CreatePaymentAsync(new Payment

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Extensions;
 using Silk.Trading.Web.Models.Accounting;
+using Silk.Trading.Web.Services;
 
 namespace Silk.Trading.Web.Controllers;
 
@@ -12,10 +13,12 @@ namespace Silk.Trading.Web.Controllers;
 public class BudgetsController : Controller
 {
     private readonly AppDbContext _db;
+    private readonly IFiscalService _fiscal;
 
-    public BudgetsController(AppDbContext db)
+    public BudgetsController(AppDbContext db, IFiscalService fiscal)
     {
         _db = db;
+        _fiscal = fiscal;
     }
 
     public async Task<IActionResult> Index()
@@ -46,6 +49,12 @@ public class BudgetsController : Controller
             TempData["Error"] = $"توجد ميزانية لسنة {year} بالفعل";
             return RedirectToAction(nameof(Index));
         }
+        try { await _fiscal.ValidateBudgetWriteAsync(year); }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
         _db.BudgetYears.Add(new BudgetYear { Year = year, IsActive = true, CreatedBy = User.Identity?.Name });
         await _db.SaveChangesAsync();
         TempData["Success"] = $"أُنشئت ميزانية سنة {year} بنجاح";
@@ -59,6 +68,12 @@ public class BudgetsController : Controller
     {
         var budget = await _db.BudgetYears.FindAsync(id);
         if (budget == null) return NotFound();
+        try { await _fiscal.ValidateBudgetWriteAsync(budget.Year); }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
         budget.IsActive = !budget.IsActive;
         await _db.SaveChangesAsync();
         TempData["Success"] = budget.IsActive ? "نُشّطت الميزانية بنجاح" : "أُلغيت الميزانية بنجاح";
@@ -113,9 +128,10 @@ public class BudgetsController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (await _db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == year && p.IsClosed))
+        try { await _fiscal.ValidateBudgetWriteAsync(year); }
+        catch (InvalidOperationException ex)
         {
-            TempData["Error"] = $"السنة المالية {year} مغلقة — لا يمكن تعديل ميزانيتها";
+            TempData["Error"] = ex.Message;
             return RedirectToAction(nameof(Manage), new { year });
         }
 

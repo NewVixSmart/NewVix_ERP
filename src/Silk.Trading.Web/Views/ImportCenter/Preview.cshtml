@@ -1,0 +1,117 @@
+@model Silk.Trading.Web.ViewModels.Import.ImportPreviewViewModel
+@{
+    ViewData["Title"] = "معاينة الاستيراد";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-eye text-primary"></i> معاينة استيراد @Model.EntityNameAr</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i> العودة لمركز الاستيراد</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.FatalError))
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-x-octagon" aria-hidden="true"></i>
+        <span>@Model.FatalError</span>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-secondary">إجمالي الصفوف: @Model.TotalCount</span>
+        <span class="badge text-bg-success">مقبولة: @Model.ValidCount</span>
+        <span class="badge text-bg-danger">بها أخطاء: @Model.ErrorCount</span>
+        @if (Model.DuplicateCount > 0)
+        {
+            <span class="badge text-bg-warning">مكررة في الملف: @Model.DuplicateCount</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Warning))
+    {
+        <div class="alert alert-warning d-flex align-items-center gap-2" role="note">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <span>@Model.Warning</span>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body table-responsive">
+            @if (Model.Rows.Count == 0)
+            {
+                <p class="mb-0">لا توجد صفوف بيانات لعرضها.</p>
+            }
+            else
+            {
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            @foreach (var header in Model.Headers)
+                            {
+                                <th scope="col">@header</th>
+                            }
+                            <th scope="col">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>@row.RowNumber</td>
+                                @foreach (var value in row.Values)
+                                {
+                                    <td>@value</td>
+                                }
+                                <td>
+                                    @if (row.Errors.Count > 0)
+                                    {
+                                        <span class="small text-danger d-block">@string.Join(" - ", row.Errors)</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(row.Notice))
+                                    {
+                                        <span class="small @(row.IsDuplicate ? "text-warning" : "text-success") d-block">@row.Notice</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @if (Model.HasValidRows)
+    {
+        <form asp-action="Apply" method="post" id="applyForm"
+              class="d-flex align-items-center gap-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="key" value="@Model.EntityKey" />
+            <input type="hidden" name="payload" value="@Model.Payload" />
+            <input type="hidden" name="applyToken" value="@Model.ApplyToken" />
+            <button type="submit" id="applyButton" class="btn btn-primary"><i class="bi bi-check-lg"></i> اعتماد الاستيراد</button>
+            <span class="text-muted small">السجلات المقبولة فقط ستدخل، والصفوف التي بها أخطاء تتجاهل.</span>
+        </form>
+    }
+}
+
+@if (Model.HasValidRows)
+{
+    <script nonce="@Context.GetCspNonce()">
+        (function () {
+            var form = document.getElementById('applyForm');
+            var btn = document.getElementById('applyButton');
+            if (!form || !btn) return;
+            form.addEventListener('submit', function (e) {
+                if (typeof window.confirmAction !== 'function') return;
+                e.preventDefault();
+                if (btn.disabled) return;
+                window.confirmAction('سيتم اعتماد استيراد @Model.ValidCount مسجل وتحفظ مباشرة في قاعدة البيانات. هل أنت متأكد؟', function () {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> جارٍ الاعتماد...';
+                    form.submit();
+                }, 'اعتماد الاستيراد');
+            });
+        })();
+    </script>
+}

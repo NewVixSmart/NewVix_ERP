@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -22,19 +22,12 @@ public class PurchaseReturnsController : Controller
     }
 
 [RequirePerm("PurchaseReturns.View")]
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
-        var total = await _db.PurchaseReturns.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         var list = await _db.PurchaseReturns
             .Include(r => r.Supplier)
             .AsNoTracking()
             .OrderByDescending(r => r.ReturnDate)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ToListAsync();
         return View(list);
     }
@@ -55,9 +48,23 @@ public class PurchaseReturnsController : Controller
     {
         items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<PurchaseReturnItem>();
         ModelState.IgnoreEmptyLineItemRows();
-        if (items.Count == 0)
+if (items.Count == 0)
         {
             ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
+        }
+
+        var baseCurrencyId = await BaseCurrencyIdAsync();
+        if (!purchaseReturn.CurrencyId.HasValue)
+        {
+            purchaseReturn.CurrencyId = baseCurrencyId;
+            purchaseReturn.ExchangeRate = baseCurrencyId == null ? null : 1m;
+            ModelState.Remove("CurrencyId");
+            ModelState.Remove("ExchangeRate");
+        }
+        if (purchaseReturn.CurrencyId.HasValue && purchaseReturn.CurrencyId.Value != baseCurrencyId
+            && (!purchaseReturn.ExchangeRate.HasValue || purchaseReturn.ExchangeRate.Value <= 0))
+        {
+            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للمرتجعات بالعملة الأجنبية");
         }
 
         if (purchaseReturn.PurchaseInvoiceId != null)
@@ -68,12 +75,19 @@ public class PurchaseReturnsController : Controller
             {
                 ModelState.AddModelError("PurchaseInvoiceId", "الفاتورة الأصلية غير موجودة");
             }
-            else if (invoice.SupplierId != purchaseReturn.SupplierId)
+else if (invoice.SupplierId != purchaseReturn.SupplierId)
             {
                 ModelState.AddModelError("PurchaseInvoiceId", "الفاتورة الأصلية لا تخص هذا المورد");
             }
             else
             {
+                if (invoice.CurrencyId.HasValue && purchaseReturn.PurchaseInvoiceId != null)
+                {
+                    purchaseReturn.CurrencyId = invoice.CurrencyId;
+                    purchaseReturn.ExchangeRate = invoice.ExchangeRate ?? 1m;
+                    ModelState.Remove("CurrencyId");
+                    ModelState.Remove("ExchangeRate");
+                }
                 var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id && r.PurchaseReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
@@ -141,17 +155,51 @@ if (ModelState.IsValid)
         var purchaseReturn = await _db.PurchaseReturns
             .Include(r => r.Supplier)
             .Include(r => r.PurchaseInvoice)
-            .Include(r => r.Items).ThenInclude(i => i.Item)
+            .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id);
+if (purchaseReturn == null) return NotFound();
+        return View(purchaseReturn);
+    }
+
+    [RequirePerm("PurchaseReturns.View")]
+    public async Task<IActionResult> Print(int id)
+    {
+        var purchaseReturn = await _db.PurchaseReturns
+            .Include(r => r.Supplier)
+            .Include(r => r.PurchaseInvoice)
+            .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id);
         if (purchaseReturn == null) return NotFound();
         return View(purchaseReturn);
     }
 
+    [RequirePerm("PurchaseReturns.View")]
+    public async Task<IActionResult> Pdf(int id)
+    {
+        var purchaseReturn = await _db.PurchaseReturns
+            .Include(r => r.Supplier)
+            .Include(r => r.PurchaseInvoice)
+            .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id);
+        if (purchaseReturn == null) return NotFound();
+        var bytes = PrintPdfBuilder.RenderPurchaseReturnPdf(purchaseReturn);
+        return File(bytes, "application/pdf", $"purchase-return-{purchaseReturn.ReturnNumber}.pdf");
+    }
+
     private async Task PopulateDropdowns()
     {
         ViewBag.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
-        ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
+ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
     }
+
+    private async Task<int?> BaseCurrencyIdAsync()
+        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
+            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

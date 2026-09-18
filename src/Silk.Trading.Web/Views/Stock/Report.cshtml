@@ -13,10 +13,6 @@
 
 <div class="card mb-4"><div class="card-body">
     <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label" for="searchInput">بحث</label>
-            <input type="text" name="search" value="@Model.Search" class="form-control" id="searchInput" placeholder="اسم الصنف أو الكود..." />
-        </div>
         <div class="col-md-3">
             <label class="form-label" for="categoryFilter">التصنيف</label>
             <select name="categoryId" id="categoryFilter" class="form-select">
@@ -36,10 +32,10 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">عدد الأصناف</div><h4 class="mb-0">@Model.TotalItems</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">أصناف منخفضة</div><h4 class="mb-0 text-danger">@Model.LowItems</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الكمية</div><h4 class="mb-0">@Model.TotalQuantity.ToString("N2")</h4></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">قيمة المخزون (بسعر الشراء)</div><h4 class="mb-0 text-success">@Model.TotalValue.ToString("N2")</h4></div></div>
+    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">عدد الأصناف</div><h3 class="mb-0">@Model.TotalItems</h3></div></div>
+    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">أصناف منخفضة</div><h3 class="mb-0 text-danger">@Model.LowItems</h3></div></div>
+    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الكمية</div><h3 class="mb-0">@Model.TotalQuantity.ToString("N2")</h3></div></div>
+    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">قيمة المخزون (بسعر الشراء)</div><h3 class="mb-0 text-success">@Model.TotalValue.ToString("N2")</h3></div></div>
 </div>
 
 <div class="table-container">
@@ -84,5 +80,3 @@
         <p class="mt-2">لا توجد أصناف مطابقة</p>
     </div>
 }
-
-<partial name="_Pager" />

@@ -3,7 +3,10 @@
 @{ ViewData["Title"] = "لوحة التحكم"; }
 
 <div class="page-header">
-    <h2><i class="bi bi-speedometer2 text-primary"></i> لوحة التحكم</h2>
+    <div>
+        <h2><i class="bi bi-speedometer2 text-primary"></i> لوحة التحكم</h2>
+        <p class="text-muted mb-0 mt-1"><span data-greeting>مرحباً</span>، @User.Identity?.Name</p>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -12,7 +15,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">إجمالي الأصناف</div>
-                    <h3 class="mb-0 mt-1">@Model.TotalItems</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalItems" data-decimals="0" data-count-formatted="@Model.TotalItems.ToString("N0")">@Model.TotalItems.ToString("N0")</h3>
                 </div>
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-box-seam"></i></div>
             </div>
@@ -23,7 +26,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">العملاء</div>
-                    <h3 class="mb-0 mt-1">@Model.TotalCustomers</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalCustomers" data-decimals="0" data-count-formatted="@Model.TotalCustomers.ToString("N0")">@Model.TotalCustomers.ToString("N0")</h3>
                 </div>
                 <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-people"></i></div>
             </div>
@@ -36,7 +39,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">إجمالي المشتريات</div>
-                    <h3 class="mb-0 mt-1">@Model.TotalPurchaseAmount.ToString("N0")</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalPurchaseAmount" data-decimals="0" data-count-formatted="@Model.TotalPurchaseAmount.ToString("N0")">@Model.TotalPurchaseAmount.ToString("N0")</h3>
                 </div>
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-cart-dash"></i></div>
             </div>
@@ -50,9 +53,9 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">إجمالي المبيعات</div>
-                    <h3 class="mb-0 mt-1">@Model.TotalSaleAmount.ToString("N0")</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalSaleAmount" data-decimals="0" data-count-formatted="@Model.TotalSaleAmount.ToString("N0")">@Model.TotalSaleAmount.ToString("N0")</h3>
                 </div>
-                <div class="stat-icon bg-info bg-opacity-10 text-info"><i class="bi bi-cart-check"></i></div>
+                <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-cart-check"></i></div>
             </div>
         </div>
     </div>
@@ -125,6 +128,20 @@
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+}
+
+@if (!(Model.OverdueReceivableCount > 0 || Model.OverduePayableCount > 0 || Model.DueSoonReceivableCount > 0 || Model.DueSoonPayableCount > 0) && !Model.LowStockItems.Any())
+{
+    <div class="all-clear mb-4" role="region" aria-label="حالة الأعمال">
+        <svg class="check-burst" viewBox="0 0 80 80" aria-hidden="true">
+            <circle class="burst-ring" cx="40" cy="40" r="36"></circle>
+            <path class="burst-check" d="M26 42 l10 10 l20 -22"></path>
+        </svg>
+        <div>
+            <h4><i class="bi bi-emoji-smile" aria-hidden="true"></i> كل شيء منضبط</h4>
+            <p>لا توجد ذمم متأخرة ولا أصناف منخفضة المخزون — أعمالك تسير بسلاسة.</p>
         </div>
     </div>
 }

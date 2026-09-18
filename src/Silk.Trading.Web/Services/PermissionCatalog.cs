@@ -45,6 +45,8 @@ public static class PermissionCatalog
         ["FiscalClose"] = ["Close", "Reopen"],
         ["ChartOfAccounts"] = [View, Create, Edit, "Deactivate"],
         ["Budgets"] = [View, "Manage"],
+        ["ExportCenter"] = [View],
+        ["ImportCenter"] = [View, "Import"],
         ["Settings"] = [View, Edit]
     };
 
@@ -75,6 +77,8 @@ public static class PermissionCatalog
         new("FiscalClose", "الإقفال السنوي", "bi-lock", "Fiscal", "Index", "admin"),
         new("ChartOfAccounts", "مخطط الحسابات", "bi-journal-code", "Accounts", "Index", "admin"),
         new("Budgets", "الميزانيات", "bi-calendar3", "Budgets", "Index", "admin"),
+        new("ExportCenter", "مركز التصدير", "bi-box-arrow-up", "ExportCenter", "Index", "admin"),
+        new("ImportCenter", "مركز الاستيراد", "bi-box-arrow-in-down", "ImportCenter", "Index", "admin"),
         new("Settings", "الإعدادات", "bi-gear", "Settings", "Index", "admin")
     ];
 

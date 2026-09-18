@@ -6,7 +6,7 @@
     <div class="d-flex gap-2">
         <form method="get" class="d-flex gap-2">
             <label class="visually-hidden" for="yearFilter">السنة</label>
-            <select name="year" id="yearFilter" class="form-select" onchange="this.form.submit()">
+            <select name="year" id="yearFilter" class="form-select" data-auto-submit>
                 @foreach (var y in Model.Revenues)
                 {
                     <option value="@y" selected="@(y == Model.Year)">@y</option>

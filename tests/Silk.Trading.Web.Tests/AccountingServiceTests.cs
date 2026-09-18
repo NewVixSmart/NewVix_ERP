@@ -206,8 +206,8 @@ public sealed class AccountingServiceTests : IDisposable
         Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
         Assert.Contains(lines, l => l.Account!.Code == "1200" && l.Debit == 50000m);
         Assert.Contains(lines, l => l.Account!.Code == "4000" && l.Credit == 50000m);
-        Assert.Contains(lines, l => l.Account!.Code == "5000" && l.Debit == 20000m);
-        Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Credit == 20000m);
+        Assert.Contains(lines, l => l.Account!.Code == "5000" && l.Debit == 40m);
+        Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Credit == 40m);
     }
 
     [Fact]

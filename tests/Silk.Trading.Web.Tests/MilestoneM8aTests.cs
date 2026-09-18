@@ -216,11 +216,11 @@ public sealed class MilestoneM8aTests : IDisposable
         var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync(e => e.Source == JournalSource.SaleInvoice);
         Assert.Equal(4, entry.Lines.Count);
         Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
-        // value 4 × 80 = 320 USD @500 = 160,000 ; COGS 4 × 40 = 160 @500 = 80,000
+        // value 4 × 80 = 320 USD @500 = 160,000 ; COGS 4 × 40 = 160 base cost (layers are base currency)
         Assert.Contains(entry.Lines, l => l.Account!.Code == "1200" && l.Debit == 160000m);
         Assert.Contains(entry.Lines, l => l.Account!.Code == "4000" && l.Credit == 160000m);
-        Assert.Contains(entry.Lines, l => l.Account!.Code == "5000" && l.Debit == 80000m);
-        Assert.Contains(entry.Lines, l => l.Account!.Code == "1300" && l.Credit == 80000m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "5000" && l.Debit == 160m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "1300" && l.Credit == 160m);
 
         // OnReceipt auto-payment posts a cash receipt at the invoice's base value
         var receiptEntry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync(e => e.Source == JournalSource.Receipt);

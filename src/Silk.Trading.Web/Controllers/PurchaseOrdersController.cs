@@ -140,6 +140,23 @@ public class PurchaseOrdersController : Controller
         return View(order);
     }
 
+    [RequirePerm("PurchaseOrders.View")]
+    public async Task<IActionResult> Print(int id)
+    {
+        var order = await _procurement.GetOrderAsync(id);
+        if (order == null) return NotFound();
+        return View(order);
+    }
+
+    [RequirePerm("PurchaseOrders.View")]
+    public async Task<IActionResult> Pdf(int id)
+    {
+        var order = await _procurement.GetOrderAsync(id);
+        if (order == null) return NotFound();
+        var bytes = PrintPdfBuilder.RenderPurchaseOrderPdf(order);
+        return File(bytes, "application/pdf", $"purchase-order-{order.OrderNumber}.pdf");
+    }
+
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("PurchaseOrders.Approve")]
     public async Task<IActionResult> Approve(int id)

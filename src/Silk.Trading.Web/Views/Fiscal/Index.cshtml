@@ -70,7 +70,7 @@
                                 @if (await Perm.HasAsync("FiscalClose.Reopen"))
                                 {
                                     <form asp-action="Reopen" asp-route-year="@row.Year" method="post" class="d-inline"
-                                          onsubmit="return confirm('إعادة فتح سنة @row.Year ستحذف قيود الإقفال السنوي وتُعيد أرصدة الأرباح/الخسائر كما كانت، ما قد يُبطل التقارير السابقة. متابعة؟')">
+                                          data-confirm="إعادة فتح سنة @row.Year ستحذف قيود الإقفال السنوي وتُعيد أرصدة الأرباح/الخسائر كما كانت، ما قد يُبطل التقارير السابقة. متابعة؟" data-confirm-ok="متابعة">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-unlock"></i> إعادة فتح</button>
                                     </form>

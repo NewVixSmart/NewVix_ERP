@@ -20,6 +20,7 @@
                 <th scope="col">التاريخ</th>
                 <th scope="col">عدد الأصناف</th>
                 <th scope="col">بواسطة</th>
+                <th scope="col"><span class="visually-hidden">إجراءات</span></th>
             </tr>
         </thead>
         <tbody>
@@ -32,10 +33,12 @@
                     <td>@t.TransferDate.ToString("dd/MM/yyyy")</td>
                     <td>@t.Items.Count</td>
                     <td>@(t.CreatedBy ?? "—")</td>
+                    <td class="text-nowrap">
+                        <a asp-action="Print" asp-route-id="@t.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" aria-label="طباعة تحويل @t.TransferNumber"><i class="bi bi-printer"></i></a>
+                        <a asp-action="Pdf" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary" aria-label="تحميل PDF لتحويل @t.TransferNumber"><i class="bi bi-filetype-pdf"></i></a>
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
-
-<partial name="_Pager" />

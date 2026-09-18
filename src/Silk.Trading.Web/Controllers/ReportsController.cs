@@ -28,9 +28,8 @@ public class ReportsController : Controller
 
     public IActionResult Index() => View();
 
-    public async Task<IActionResult> Sales(DateTime? from, DateTime? to, int page = 1)
+    public async Task<IActionResult> Sales(DateTime? from, DateTime? to)
     {
-        page = Math.Max(1, page);
         var now = DateTime.Today;
         from ??= new DateTime(now.Year, now.Month, 1);
         to ??= now;
@@ -43,10 +42,7 @@ public class ReportsController : Controller
             .Include(s => s.Customer)
             .Where(s => s.InvoiceDate >= fromDate && s.InvoiceDate <= toDate);
 
-        const int pageSize = 50;
         var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         ViewBag.From = fromDate.ToString("yyyy-MM-dd");
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
 
@@ -58,7 +54,7 @@ public class ReportsController : Controller
         {
             From = fromDate,
             To = toDate,
-            Invoices = await query.OrderByDescending(s => s.InvoiceDate).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Invoices = await query.OrderByDescending(s => s.InvoiceDate).ToListAsync(),
             InvoiceCount = total,
             TotalSales = await query.SumAsync(s => (decimal?)s.TotalAmount) ?? 0,
             TotalDiscounts = await query.SumAsync(s => (decimal?)s.Discount + (s.Discount2 ?? 0) + (s.Discount3 ?? 0)) ?? 0,
@@ -69,9 +65,8 @@ public class ReportsController : Controller
         return View(vm);
     }
 
-    public async Task<IActionResult> Purchases(DateTime? from, DateTime? to, int page = 1)
+    public async Task<IActionResult> Purchases(DateTime? from, DateTime? to)
     {
-        page = Math.Max(1, page);
         var now = DateTime.Today;
         from ??= new DateTime(now.Year, now.Month, 1);
         to ??= now;
@@ -84,10 +79,7 @@ public class ReportsController : Controller
             .Include(p => p.Supplier)
             .Where(p => p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate);
 
-        const int pageSize = 50;
         var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         ViewBag.From = fromDate.ToString("yyyy-MM-dd");
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
 
@@ -99,7 +91,7 @@ public class ReportsController : Controller
         {
             From = fromDate,
             To = toDate,
-            Invoices = await query.OrderByDescending(p => p.InvoiceDate).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Invoices = await query.OrderByDescending(p => p.InvoiceDate).ToListAsync(),
             InvoiceCount = total,
             TotalPurchases = await query.SumAsync(p => (decimal?)p.TotalAmount) ?? 0,
             TotalDiscounts = await query.SumAsync(p => (decimal?)p.Discount + (p.Discount2 ?? 0) + (p.Discount3 ?? 0)) ?? 0,
@@ -110,9 +102,8 @@ public class ReportsController : Controller
         return View(vm);
     }
 
-    public async Task<IActionResult> Payments(DateTime? from, DateTime? to, int page = 1)
+    public async Task<IActionResult> Payments(DateTime? from, DateTime? to)
     {
-        page = Math.Max(1, page);
         var now = DateTime.Today;
         from ??= new DateTime(now.Year, now.Month, 1);
         to ??= now;
@@ -126,10 +117,6 @@ public class ReportsController : Controller
             .Include(p => p.Supplier)
             .Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate);
 
-        const int pageSize = 50;
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         ViewBag.From = fromDate.ToString("yyyy-MM-dd");
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
 
@@ -140,7 +127,7 @@ public class ReportsController : Controller
         {
             From = fromDate,
             To = toDate,
-            Payments = await query.OrderByDescending(p => p.PaymentDate).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Payments = await query.OrderByDescending(p => p.PaymentDate).ToListAsync(),
             ReceiptCount = await receipts.CountAsync(),
             DisbursementCount = await disbursements.CountAsync(),
             TotalReceipts = await receipts.SumAsync(p => (decimal?)p.Amount) ?? 0,
@@ -181,6 +168,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.Export")]
     public async Task<IActionResult> ExportSalesCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -194,6 +182,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.Export")]
     public async Task<IActionResult> ExportPurchasesCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -207,6 +196,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.Export")]
     public async Task<IActionResult> ExportPaymentsCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -229,9 +219,8 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("AuditLedger.View")]
-    public async Task<IActionResult> AuditLedger(DateTime? from, DateTime? to, int? accountId, JournalSource? source, int page = 1)
+    public async Task<IActionResult> AuditLedger(DateTime? from, DateTime? to, int? accountId, JournalSource? source, int? branchId = null)
     {
-        page = Math.Max(1, page);
         var now = DateTime.Today;
         from ??= new DateTime(now.Year, now.Month, 1);
         to ??= now;
@@ -246,15 +235,15 @@ public class ReportsController : Controller
             query = query.Where(j => j.Source == source);
         if (accountId is not null)
             query = query.Where(j => j.Lines.Any(l => l.AccountId == accountId));
+        if (branchId is not null)
+            query = query.Where(j => j.BranchId == branchId);
 
-        const int pageSize = 50;
         var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         ViewBag.From = fromDate.ToString("yyyy-MM-dd");
         ViewBag.To = toDate.ToString("yyyy-MM-dd");
         ViewBag.AccountId = accountId;
         ViewBag.Source = source?.ToString();
+        ViewBag.BranchId = branchId;
 
         ViewBag.Accounts = new SelectList(
             await _db.GLAccounts.AsNoTracking().OrderBy(a => a.Code).Select(a => new { a.Id, Display = a.Code + " — " + a.Name }).ToListAsync(),
@@ -270,7 +259,7 @@ public class ReportsController : Controller
             .Where(l => filteredEntryIds.Contains(l.JournalEntryId))
             .SumAsync(l => (decimal?)l.Credit) ?? 0;
 
-        var entriesRaw = await query.OrderBy(j => j.EntryNumber).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var entriesRaw = await query.OrderBy(j => j.EntryNumber).ToListAsync();
         var pageEntryIds = entriesRaw.Select(e => e.Id).ToArray();
         var pageLines = await _db.JournalEntryLines
             .AsNoTracking()

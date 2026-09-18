@@ -17,31 +17,19 @@ public class ItemsController : Controller
     public ItemsController(AppDbContext db) => _db = db;
 
     [RequirePerm("Items.View")]
-    public async Task<IActionResult> Index(string? search, int? categoryId, int page = 1)
+    public async Task<IActionResult> Index(int? categoryId)
     {
-        page = Math.Max(1, page);
-        search = search?.Trim();
-        if (search?.Length > 100) search = search[..100];
         var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType).AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(i => i.Name.Contains(search) || (i.Code != null && i.Code.Contains(search)));
 
         if (categoryId.HasValue)
             query = query.Where(i => i.CategoryId == categoryId.Value);
 
-        const int pageSize = 50;
-        var total = await query.Where(i => i.IsActive).CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        ViewBag.Search = search;
         ViewBag.CategoryId = categoryId;
 
         var vm = new ItemListViewModel
         {
-            Items = await query.Where(i => i.IsActive).OrderBy(i => i.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Items = await query.Where(i => i.IsActive).OrderBy(i => i.Name).ToListAsync(),
             Categories = await _db.ItemCategories.Where(c => c.IsActive).AsNoTracking().ToListAsync(),
-            Search = search,
             CategoryId = categoryId
         };
         return View(vm);

@@ -86,6 +86,8 @@ public sealed class PaymentService : IPaymentService
                         var economicGain = payment.Type == PaymentType.Receipt ? netFx : -netFx;
                         var fxGain = economicGain > 0.01m ? economicGain : 0m;
                         var fxLoss = economicGain < -0.01m ? -economicGain : 0m;
+                        if (fxGain == 0m && fxLoss == 0m)
+                            partyBaseReduction = payment.BaseAmount;
                         var source = payment.Type == PaymentType.Receipt
                             ? JournalSource.Receipt : JournalSource.Disbursement;
                         var sourceId = payment.Type == PaymentType.Receipt
@@ -106,6 +108,9 @@ public sealed class PaymentService : IPaymentService
             {
                 await tx.RollbackAsync();
                 _db.ChangeTracker.Clear();
+                payment.Id = 0;
+                var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
+                payment.ReceiptNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
             }
             catch (DbUpdateException)
             {

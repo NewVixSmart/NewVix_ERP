@@ -23,25 +23,20 @@ public class StockController : Controller
     }
 
     [RequirePerm("Stock.View")]
-    public async Task<IActionResult> Index(int? itemId, MovementType? type, int page = 1)
+    public async Task<IActionResult> Index(int? itemId, MovementType? type)
     {
-        page = Math.Max(1, page);
         var query = _db.StockMovements.Include(s => s.Item).AsNoTracking().AsQueryable();
 
         if (itemId.HasValue) query = query.Where(s => s.ItemId == itemId.Value);
         if (type.HasValue && Enum.IsDefined(typeof(MovementType), type.Value))
             query = query.Where(s => s.Type == type.Value);
 
-        const int pageSize = 50;
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
         ViewBag.ItemId = itemId;
         ViewBag.Type = type?.ToString();
 
         var vm = new StockIndexViewModel
         {
-            Movements = await query.OrderByDescending(s => s.MovementDate).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Movements = await query.OrderByDescending(s => s.MovementDate).ToListAsync(),
             Items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync(),
             ItemId = itemId,
             Type = type
@@ -50,16 +45,10 @@ public class StockController : Controller
     }
 
     [RequirePerm("StockReport.View")]
-    public async Task<IActionResult> Report(string? search, int? categoryId, bool lowOnly, int page = 1)
+    public async Task<IActionResult> Report(int? categoryId, bool lowOnly)
     {
-        page = Math.Max(1, page);
-        search = search?.Trim();
-        if (search?.Length > 100) search = search[..100];
         var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType)
             .Where(i => i.IsActive).AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(i => i.Name.Contains(search) || (i.Code != null && i.Code.Contains(search)));
 
         if (categoryId.HasValue)
             query = query.Where(i => i.CategoryId == categoryId.Value);
@@ -67,19 +56,14 @@ public class StockController : Controller
         if (lowOnly)
             query = query.Where(i => (i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount < i.MinCount) || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity < i.MinQuantity));
 
-        const int pageSize = 100;
         var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        ViewBag.Search = search;
         ViewBag.CategoryId = categoryId;
         ViewBag.LowOnly = lowOnly;
 
         var vm = new StockReportViewModel
         {
-            Items = await query.OrderBy(i => i.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(),
+            Items = await query.OrderBy(i => i.Name).ToListAsync(),
             Categories = await _db.ItemCategories.Where(c => c.IsActive).AsNoTracking().ToListAsync(),
-            Search = search,
             CategoryId = categoryId,
             LowOnly = lowOnly,
             TotalItems = total,

@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Models.Accounting;
 using Silk.Trading.Web.Models.Sales;
+using Silk.Trading.Web.ViewModels.Core;
 
 namespace Silk.Trading.Web.Services;
 
@@ -176,70 +175,35 @@ public sealed class SalesQuotesService : ISalesQuotesService
 
     public static byte[] RenderQuotePdf(SaleQuote quote)
     {
-        QuestPDF.Settings.License = LicenseType.Community;
-        return Document.Create(doc =>
-        {
-            doc.Page(page =>
+        var layout = PrintPdfBuilder.ResolveLayout(PrintGroup.SalesQuote);
+        return PrintPdfBuilder.Render(PrintGroup.SalesQuote, layout, $"عرض سعر — {quote.QuoteNumber}", page =>
+            PrintPdfBuilder.DocumentBody(page, layout, col =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(30);
-                page.DefaultTextStyle(x => x.FontSize(10));
-                page.Header().Column(col =>
+                PrintPdfBuilder.InfoRow(col, new[]
                 {
-                    col.Item().AlignCenter().Text("سلك للتجارة").FontSize(18).Bold();
-                    col.Item().AlignCenter().Text($"عرض سعر — {quote.QuoteNumber}").FontSize(13).SemiBold();
-                    col.Item().PaddingTop(6).LineHorizontal(1);
+                    $"العميل: {quote.Customer?.Name ?? "—"}",
+                    $"التاريخ: {quote.QuoteDate:dd/MM/yyyy}",
+                    quote.ValidUntil.HasValue ? $"صالح حتى: {quote.ValidUntil:dd/MM/yyyy}" : "صالح حتى: —"
                 });
-                page.Content().PaddingTop(10).Column(col =>
+                if (quote.SupplierQuote != null)
                 {
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Text($"العميل: {quote.Customer?.Name ?? "—"}");
-                        row.RelativeItem().AlignLeft().Text($"التاريخ: {quote.QuoteDate:dd/MM/yyyy}");
-                        row.RelativeItem().AlignLeft().Text(quote.ValidUntil.HasValue ? $"صالح حتى: {quote.ValidUntil:dd/MM/yyyy}" : "صالح حتى: —");
-                    });
-                    if (quote.SupplierQuote != null)
-                    {
-                        col.Item().PaddingTop(4).Text($"عرض المورد المرجعي: مرتبط بعرض المورد #{quote.SupplierQuote.Id} — {quote.SupplierQuote.Supplier?.Name ?? "—"}");
-                    }
-                    col.Item().PaddingTop(10).Table(t =>
-                    {
-                        t.ColumnsDefinition(cd => { cd.RelativeColumn(2); cd.ConstantColumn(70); cd.ConstantColumn(70); cd.ConstantColumn(80); cd.ConstantColumn(80); });
-                        t.Header(hd =>
-                        {
-                            hd.Cell().Element(BoldHeader).Text("الصنف");
-                            hd.Cell().Element(BoldHeader).Text("العدد");
-                            hd.Cell().Element(BoldHeader).Text("الكمية");
-                            hd.Cell().Element(BoldHeader).AlignRight().Text("سعر الوحدة");
-                            hd.Cell().Element(BoldHeader).AlignRight().Text("الإجمالي");
-                        });
-                        foreach (var line in quote.Items)
-                        {
-                            t.Cell().Text(line.Item?.Name ?? "—");
-                            t.Cell().Text(line.Count.ToString("N0"));
-                            t.Cell().Text(line.Quantity.ToString("N0"));
-                            t.Cell().AlignRight().Text(line.UnitPrice.ToString("N2"));
-                            t.Cell().AlignRight().Text(line.Total.ToString("N2"));
-                        }
-                        t.Cell().Element(BoldFooter).Text("");
-                        t.Cell().Element(BoldFooter).Text("");
-                        t.Cell().Element(BoldFooter).Text("");
-                        t.Cell().Element(BoldFooter).Text("الصافي");
-                        t.Cell().Element(BoldFooter).AlignRight().Text(quote.NetAmount.ToString("N2"));
-                    });
-                    col.Item().PaddingTop(10).Text($"الإجمالي: {quote.TotalAmount.ToString("N2")} — الخصم: {quote.Discount.ToString("N2")} — الضريبة: {quote.Tax.ToString("N2")}");
-                    if (!string.IsNullOrWhiteSpace(quote.Notes))
-                    {
-                        col.Item().PaddingTop(6).Text($"ملاحظات: {quote.Notes}");
-                    }
-                });
-                page.Footer().AlignCenter().Text(x => { x.Span("صفحة "); x.CurrentPageNumber(); x.Span(" من "); x.TotalPages(); });
-            });
-        }).GeneratePdf();
+                    col.Item().PaddingTop(4).Text($"عرض المورد المرجعي: مرتبط بعرض المورد #{quote.SupplierQuote.Id} — {quote.SupplierQuote.Supplier?.Name ?? "—"}");
+                }
+                var rows = quote.Items
+                    .Select(l => PrintPdfBuilder.LineRow(layout, l.Item?.Name ?? "—", l.Item?.Code, l.Item?.Barcode, l.Count, l.Quantity, l.UnitPrice, 0m, l.Total))
+                    .ToList();
+                PrintPdfBuilder.LineTable(col, layout, PrintPdfBuilder.InvoiceColumns(layout, true), rows);
+                PrintPdfBuilder.DrawTotals(col, layout, new PdfTotals(
+                    PrintPdfBuilder.Fmt(quote.TotalAmount, layout.Decimals),
+                    PrintPdfBuilder.Fmt(quote.Discount, layout.Decimals),
+                    PrintPdfBuilder.Fmt(quote.Tax, layout.Decimals),
+                    PrintPdfBuilder.Fmt(quote.NetAmount, layout.Decimals),
+                    null, null,
+                    quote.CreatedBy,
+                    quote.Notes,
+                    layout.ShowAmountInWords ? PrintPdfBuilder.AmountInWords(quote.NetAmount) : null));
+            }));
     }
-
-    private static IContainer BoldHeader(IContainer c) => c.Background(Colors.Grey.Lighten3).BorderBottom(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
-    private static IContainer BoldFooter(IContainer c) => c.Background(Colors.Grey.Lighten2).BorderTop(1).Padding(4).DefaultTextStyle(x => x.SemiBold());
 
     private async Task<string> NextQuoteNumberAsync()
     {

@@ -588,9 +588,10 @@ public sealed class OperationsIntegrityTests : IDisposable
         await SeedSaleInvoiceAsync(db, custId, 500m);
         var svc = new PaymentService(db);
 
-        var controller = new ApiPaymentsController(svc)
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var controller = new ApiPaymentsController(svc, http)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new ControllerContext { HttpContext = http.HttpContext! }
         };
 
         var actionResult = await controller.CreatePayment(new CreatePaymentRequest

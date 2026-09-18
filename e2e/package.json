@@ -1,0 +1,13 @@
+{
+  "name": "silk-trading-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright + axe accessibility gate for Silk Trading",
+  "scripts": {
+    "a11y": "node a11y-gate.cjs"
+  },
+  "dependencies": {
+    "axe-core": "^4.13.0",
+    "playwright": "^1.63.0"
+  }
+}

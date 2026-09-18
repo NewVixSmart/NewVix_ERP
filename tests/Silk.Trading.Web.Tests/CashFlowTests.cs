@@ -146,7 +146,11 @@ public sealed class CashFlowTests : IDisposable
         using var wb = new XLWorkbook(new MemoryStream(bytes));
         var ws = wb.Worksheet(1);
         Assert.Equal("كشف حساب — عميل كشف", ws.Cell(1, 1).GetString());
-        Assert.Equal((double)630m, ws.Cell(8, 5).GetDouble());
+        var closingRow = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .FirstOrDefault(n => ws.Cell(n, 1).GetString().Trim() == "الرصيد الختامي");
+        Assert.True(closingRow > 0, "Closing balance row not found");
+        Assert.Equal((double)630m, ws.Cell(closingRow, 5).GetDouble());
     }
 
     [Fact]
@@ -185,7 +189,11 @@ public sealed class CashFlowTests : IDisposable
         using var wb = new XLWorkbook(new MemoryStream(bytes));
         var ws = wb.Worksheet(1);
         Assert.Equal("كشف حساب — مورد كشف", ws.Cell(1, 1).GetString());
-        Assert.Equal((double)300m, ws.Cell(8, 5).GetDouble());
+        var closingRow = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .FirstOrDefault(n => ws.Cell(n, 1).GetString().Trim() == "الرصيد الختامي");
+        Assert.True(closingRow > 0, "Closing balance row not found");
+        Assert.Equal((double)300m, ws.Cell(closingRow, 5).GetDouble());
     }
 
     [Fact]

@@ -11,6 +11,7 @@ public interface IFiscalService
     Task<FiscalPeriod?> GetPeriodAsync(int year);
     Task EnsurePeriodAsync(int year);
     Task<bool> IsClosedAsync(DateTime date);
+    Task ValidateBudgetWriteAsync(int year);
     Task<FiscalCloseSummary> CloseYearAsync(int year, string? user);
     Task<FiscalReopenSummary> ReopenYearAsync(int year, string? user);
 }

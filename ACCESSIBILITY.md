@@ -13,19 +13,19 @@
 **لا تدمج تغييرًا للواجهة (Views/CSS/JS) بدون تشغيل البوابة التالية والنزول على PASS:**
 
 ```powershell
-cd $env:TEMP\opencode\pw
-node p4cA11ySmoke.cjs
+cd e2e
+npm install
+$env:BASE_URL = "http://localhost:5165"
+node a11y-gate.cjs
 ```
 
-**نتيجة النجاح**: `GATE: PASS` — تعني أن كل صفحة من الصفحات الـ38 المتضمنة: ترجع 200، لا أخطاء console، و**صفر انتهاكات Critical/Serious** من axe.
+تُشغَّل البوابة أيضًا تلقائيًا في CI ضمن خطوة `Accessibility gate (axe-core, critical/serious)` في مهمة `docker-image` على كل push/PR.
 
-**الفشل**: البوابة تخرج بـ `process.exit(1)` وتطبع قائمة الصفحات المخالفة (الحالة، الانتهاكات، أخطاء console). أصلح انتهاكات **Critical/Serious** قبل الدمج. الانتهاكات Moderate/Minor تُعالَج في نفس الدفعة أو تُوثَّق هنا.
+**نتيجة النجاح**: `GATE: PASS` — تعني أن كل صفحة من الصفحات المتضمَّنة: ترجع 200، و**صفر انتهاكات Critical/Serious** من axe (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`).
 
-مرة واحدة شهريًا (أو بعد أي تغيير جوهري في الواجهة): أعد مسح الـ41 صفحة كاملًا:
+**الفشل**: البوابة تخرج بـ `process.exit(1)` وتطبع قائمة الصفحات المخالفة (الحالة، الانتهاكات). أصلح انتهاكات **Critical/Serious** قبل الدمج. الانتهاكات Moderate/Minor تُعالَج في نفس الدفعة أو تُوثَّق هنا.
 
-```powershell
-node p4c_baseline.cjs   # 41 صفحة → توقّع 0 انتهاك
-```
+مرة واحدة شهريًا (أو بعد أي تغيير جوهري في الواجهة): أعد المسح على كامل صفحات التطبيق (وليس القائمة المختصرة) عبر توسيع `routes` في `e2e/a11y-gate.cjs`، واشترط `GATE: PASS`.
 
 ## اعتبارات إضافية للفرق
 

@@ -14,18 +14,13 @@ public class ItemTypesController : Controller
     public ItemTypesController(AppDbContext db) => _db = db;
 
     [RequirePerm("Items.View")]
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
         var query = _db.ItemTypes.OrderBy(t => t.Name).AsQueryable();
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
             return PartialView(await query.ToListAsync());
 
-        const int pageSize = 50;
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        var model = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var model = await query.ToListAsync();
         return View(model);
     }
 

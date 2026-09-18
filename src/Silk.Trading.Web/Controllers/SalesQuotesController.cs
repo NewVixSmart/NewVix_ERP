@@ -22,16 +22,11 @@ public class SalesQuotesController : Controller
         _quotes = quotes;
     }
 
-    [RequirePerm("SalesQuotes.View")]
-    public async Task<IActionResult> Index(int page = 1)
+[RequirePerm("SalesQuotes.View")]
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
         var query = _db.SaleQuotes.Include(q => q.Customer).AsNoTracking().OrderByDescending(q => q.QuoteDate);
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        var list = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var list = await query.ToListAsync();
         return View(list);
     }
 
@@ -90,7 +85,8 @@ public class SalesQuotesController : Controller
             .Include(q => q.Currency)
             .Include(q => q.SaleInvoice)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
-            .Include(q => q.Items).ThenInclude(i => i.Item)
+            .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
         if (quote == null) return NotFound();
@@ -104,7 +100,8 @@ public class SalesQuotesController : Controller
             .Include(q => q.Customer)
             .Include(q => q.Currency)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
-            .Include(q => q.Items).ThenInclude(i => i.Item)
+            .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
         if (quote == null) return NotFound();
@@ -118,7 +115,8 @@ public class SalesQuotesController : Controller
             .Include(q => q.Customer)
             .Include(q => q.Currency)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
-            .Include(q => q.Items).ThenInclude(i => i.Item)
+            .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
         if (quote == null) return NotFound();

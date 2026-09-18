@@ -17,8 +17,8 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الأصول</div><h4 class="mb-0 text-primary">@Model.TotalAssets.ToString("N2")</h4></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الخصوم + حقوق الملكية</div><h4 class="mb-0 text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الأصول</div><h3 class="mb-0 text-primary">@Model.TotalAssets.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الخصوم + حقوق الملكية</div><h3 class="mb-0 text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</h3></div></div>
     <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
@@ -32,7 +32,7 @@
     <div class="col-md-6">
         <div class="card"><div class="card-header fw-bold">@Model.Assets.Title</div>
             <div class="table-container">
-                <table class="table mb-0">
+                <table class="table mb-0" data-table-plain>
                     <caption class="visually-hidden">@Model.Assets.Title</caption>
                     <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
                     <tbody>
@@ -49,7 +49,7 @@
     <div class="col-md-6">
         <div class="card mt-3"><div class="card-header fw-bold">@Model.Liabilities.Title</div>
             <div class="table-container">
-                <table class="table mb-0">
+                <table class="table mb-0" data-table-plain>
                     <caption class="visually-hidden">@Model.Liabilities.Title</caption>
                     <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
                     <tbody>
@@ -64,7 +64,7 @@
         </div>
         <div class="card mt-3"><div class="card-header fw-bold">@Model.Equity.Title</div>
             <div class="table-container">
-                <table class="table mb-0">
+                <table class="table mb-0" data-table-plain>
                     <caption class="visually-hidden">@Model.Equity.Title</caption>
                     <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">المبلغ</th></tr></thead>
                     <tbody>
@@ -97,7 +97,7 @@
 }
 
 <div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="bi bi-printer"></i> طباعة</button>
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
     <a asp-action="ExportBalanceSheetPdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
     <a asp-action="ExportBalanceSheetXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
 </div>

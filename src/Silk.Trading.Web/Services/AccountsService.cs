@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Silk.Trading.Web.Data;
 using Silk.Trading.Web.Models.Accounting;
+using System.Text;
 
 namespace Silk.Trading.Web.Services;
 
@@ -27,6 +28,26 @@ public class AccountsService
     public AccountsService(AppDbContext db)
     {
         _db = db;
+    }
+
+    public static string NormKey(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var sb = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (ch is '\u064B' or '\u064C' or '\u064D' or '\u064E' or '\u064F'
+                or '\u0650' or '\u0651' or '\u0652' or '\u0653' or '\u0654' or '\u0655'
+                or '\u200C' or '\u200D') continue;
+            sb.Append(ch switch
+            {
+                '\u0622' or '\u0623' or '\u0625' => '\u0627',
+                '\u0629' => '\u0647',
+                '\u0649' => '\u064A',
+                _ => ch
+            });
+        }
+        return sb.ToString().Trim().ToUpperInvariant();
     }
 
     public bool IsSystemAccount(string code) => SystemSeedCodes.Contains(code.Trim());

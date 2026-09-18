@@ -32,6 +32,12 @@ public class FiscalService : IFiscalService
     public Task<bool> IsClosedAsync(DateTime date)
         => _db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == date.Year && p.IsClosed);
 
+    public async Task ValidateBudgetWriteAsync(int year)
+    {
+        if (await _db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == year && p.IsClosed))
+            throw new InvalidOperationException($"السنة المالية {year} مغلقة — لا يمكن إنشاء أو تعديل ميزانيتها");
+    }
+
     public async Task<FiscalCloseSummary> CloseYearAsync(int year, string? user)
     {
         var period = await _db.FiscalPeriods.FirstOrDefaultAsync(p => p.Year == year);
@@ -105,6 +111,10 @@ public class FiscalService : IFiscalService
             throw new InvalidOperationException($"السنة المالية {year} غير موجودة");
         if (!period.IsClosed)
             throw new InvalidOperationException($"السنة المالية {year} غير مغلقة — يمكن إعادة فتح سنة مغلقة فقط");
+
+        var latestYear = await _db.FiscalPeriods.MaxAsync(p => p.Year);
+        if (year < latestYear)
+            throw new InvalidOperationException($"لا يمكن إعادة فتح سنة {year} لأن سنة {latestYear} أحدث — أعد فتح الأحدث أولاً");
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try

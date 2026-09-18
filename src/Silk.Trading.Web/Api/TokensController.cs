@@ -28,6 +28,9 @@ public class TokensController : ControllerBase
     [EnableRateLimiting("token")]
     public async Task<IActionResult> CreateToken([FromBody] TokenRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { error = "اسم المستخدم وكلمة المرور مطلوبان" });
+
         var user = await _userManager.FindByNameAsync(request.Username);
         if (user == null)
             return Unauthorized(new { message = "Invalid credentials" });

@@ -21,22 +21,12 @@ public class SuppliersController : Controller
     }
 
     [RequirePerm("Suppliers.View")]
-    public async Task<IActionResult> Index(string? search, int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        search = search?.Trim();
-        if (search?.Length > 100) search = search[..100];
         var query = _db.Suppliers.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrEmpty(search))
-            query = query.Where(s => s.Name.Contains(search) || (s.Code != null && s.Code.Contains(search)));
         query = query.Where(s => s.IsActive).OrderBy(s => s.Name);
 
-        const int pageSize = 50;
-        var total = await query.CountAsync();
-        ViewBag.Search = search;
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        return View(await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync());
+        return View(await query.ToListAsync());
     }
 
     [RequirePerm("Suppliers.Create")]
@@ -157,6 +147,30 @@ public class SuppliersController : Controller
         var bytes = await _report.ExportSupplierStatementXlsxAsync(id);
         if (bytes.Length == 0) return NotFound();
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"supplier-statement-{id}.xlsx");
+    }
+
+    [RequirePerm("Suppliers.View")]
+    public async Task<IActionResult> LedgerPdf(int id)
+    {
+        var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        if (supplier == null) return NotFound();
+
+        var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var disbursements = await _db.Payments.AsNoTracking()
+            .Where(p => p.SupplierId == id && p.Type == Models.Accounting.PaymentType.Disbursement)
+            .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+
+        var lines = new List<StatementLine>();
+        foreach (var inv in invoices) lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة شراء {inv.InvoiceNumber}", inv.NetAmount, 0));
+        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع شراء {r.ReturnNumber}", 0, r.TotalAmount));
+        foreach (var d in disbursements) lines.Add(new StatementLine(d.PaymentDate, $"سند صرف {d.ReceiptNumber}", 0, d.Amount));
+
+        var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;
+        var to = lines.Count > 0 ? lines.Max(l => l.Date) : DateTime.Today;
+        var closing = supplier.OpeningBalance + lines.Sum(l => l.Debit - l.Credit);
+        var bytes = PrintPdfBuilder.RenderSupplierStatementPdf(supplier.Name, from, to, supplier.OpeningBalance, lines, closing);
+        return File(bytes, "application/pdf", $"supplier-statement-{id}.pdf");
     }
 
     [RequirePerm("Suppliers.View")]

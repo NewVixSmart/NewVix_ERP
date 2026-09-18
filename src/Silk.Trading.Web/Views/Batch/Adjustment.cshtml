@@ -3,7 +3,7 @@
     ViewData["Title"] = "الجرد الجماعي";
     var itemsJson = System.Text.Json.JsonSerializer.Serialize(
         Model.ItemsData.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }),
-        new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
 <div class="page-header"><h2><i class="bi bi-clipboard-check text-primary"></i> الجرد الجماعي — جرد عدة أصناف دفعة واحدة</h2></div>
@@ -108,7 +108,7 @@ function rowHtml(idx) {
 function bindRow(tr) {
     const sel = tr.querySelector('.item-select');
     sel.addEventListener('change', function() {
-        const it = items.find(i => i.Id == sel.value);
+        const it = items.find(i => i.id == sel.value);
         const stock = tr.querySelector('.stock-info');
         if (!it) { stock.textContent = '—'; tr.querySelector('.diff-info').textContent = '—'; return; }
         stock.innerHTML = '<strong>' + it.currentCount + '</strong> ' + escapeHtml(it.countUnit || '') +
@@ -125,7 +125,7 @@ function bindRow(tr) {
 }
 
 function recomputeDiff(tr) {
-    const it = items.find(i => i.Id == tr.querySelector('.item-select').value);
+    const it = items.find(i => i.id == tr.querySelector('.item-select').value);
     if (!it) { tr.querySelector('.diff-info').textContent = '—'; return; }
     const count = parseFloat(tr.querySelector('.new-count').value) || 0;
     const qty = parseFloat(tr.querySelector('.new-qty').value) || 0;

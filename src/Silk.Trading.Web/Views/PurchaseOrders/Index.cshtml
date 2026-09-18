@@ -15,7 +15,7 @@
     <form method="get" class="row g-2 align-items-center">
         <div class="col-auto">
             <label class="visually-hidden" for="statusFilter">الحالة</label>
-            <select name="status" id="statusFilter" class="form-select" onchange="this.form.submit()">
+            <select name="status" id="statusFilter" class="form-select" data-auto-submit>
                 <option value="">كل الحالات</option>
                 @foreach (var s in Enum.GetValues<PurchaseOrderStatus>())
                 {

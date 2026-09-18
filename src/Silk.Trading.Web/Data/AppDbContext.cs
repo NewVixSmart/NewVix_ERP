@@ -49,6 +49,8 @@ public class AppDbContext : IdentityDbContext
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
     public DbSet<BudgetLine> BudgetLines => Set<BudgetLine>();
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -296,6 +298,17 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(b => new { b.BudgetYearId, b.AccountId }).IsUnique();
             e.HasOne(b => b.BudgetYear).WithMany(y => y.Lines).HasForeignKey(b => b.BudgetYearId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(b => b.Account).WithMany().HasForeignKey(b => b.AccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CompanyProfile>(e =>
+        {
+            e.Property(p => p.LogoData);
+            e.Property(p => p.FaviconData);
+        });
+
+        builder.Entity<SystemSetting>(e =>
+        {
+            e.Property(s => s.Key).HasMaxLength(100);
         });
     }
 }

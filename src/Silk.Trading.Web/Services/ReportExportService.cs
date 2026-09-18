@@ -30,12 +30,12 @@ public class ReportExportService
                 CsvField(i.InvoiceNumber),
                 CsvField(i.Customer?.Name ?? "—"),
                 CsvField(i.InvoiceDate.ToString("dd/MM/yyyy")),
-                CsvField(i.TotalAmount.ToString("N2")),
-                CsvField(i.Discount.ToString("N2")),
-                CsvField(i.Tax.ToString("N2")),
-                CsvField(i.NetAmount.ToString("N2")),
+                CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Currency?.Code ?? "—"),
-                CsvField(i.ExchangeRate?.ToString("N4") ?? "—")));
+                CsvField(i.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—")));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -61,12 +61,12 @@ public class ReportExportService
                 CsvField(i.InvoiceNumber),
                 CsvField(i.Supplier?.Name ?? "—"),
                 CsvField(i.InvoiceDate.ToString("dd/MM/yyyy")),
-                CsvField(i.TotalAmount.ToString("N2")),
-                CsvField(i.Discount.ToString("N2")),
-                CsvField(i.Tax.ToString("N2")),
-                CsvField(i.NetAmount.ToString("N2")),
+                CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Currency?.Code ?? "—"),
-                CsvField(i.ExchangeRate?.ToString("N4") ?? "—")));
+                CsvField(i.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—")));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -97,10 +97,10 @@ public class ReportExportService
                 CsvField(p.ReceiptNumber),
                 CsvField(typeLabel),
                 CsvField(partyName),
-                CsvField(p.Amount.ToString("N2")),
-                CsvField(p.BaseAmount.ToString("N2")),
+                CsvField(p.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                CsvField(p.BaseAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(p.Currency?.Code ?? "—"),
-                CsvField(p.ExchangeRate?.ToString("N4") ?? "—"),
+                CsvField(p.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—"),
                 CsvField(methodLabel),
                 CsvField(p.PaymentDate.ToString("dd/MM/yyyy"))));
         }

@@ -21,5 +21,7 @@ public enum JournalSource
     [Display(Name = "تسوية مخزون")]
     InventoryAdjustment = 8,
     [Display(Name = "إقفال سنوي")]
-    YearEndClose = 9
+    YearEndClose = 9,
+    [Display(Name = "استيراد")]
+    Import = 10
 }

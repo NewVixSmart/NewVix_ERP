@@ -3,6 +3,10 @@
 
 <div class="page-header d-flex justify-content-between align-items-center">
     <h2><i class="bi bi-gear text-primary"></i> الإعدادات</h2>
+    <div class="d-flex gap-2">
+        <a asp-action="Printing" class="btn btn-outline-primary btn-sm"><i class="bi bi-printer" aria-hidden="true"></i> إعدادات الطباعة</a>
+        <a asp-action="Branding" class="btn btn-outline-primary btn-sm"><i class="bi bi-palette" aria-hidden="true"></i> العلامة التجارية والمظهر</a>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -33,7 +37,7 @@
                                 </td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil"></i></button>
-                                    <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذه الوحدة؟')">
+                                    <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="d-inline" data-confirm="حذف هذه الوحدة؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash"></i></button>
                                     </form>
@@ -120,12 +124,12 @@
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-currency" data-id="@c.Id" data-code="@c.Code" data-name="@c.Name" data-symbol="@c.Symbol" data-rate="@c.ExchangeRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-active="@c.IsActive.ToString().ToLower()" aria-label="تعديل عملة @c.Code"><i class="bi bi-pencil"></i></button>
                                     @if (!c.IsBase)
                                     {
-                                        <form asp-action="SetBaseCurrency" asp-route-id="@c.Id" method="post" class="d-inline" onsubmit="return confirm('جعل @c.Name العملة الأساسية؟')">
+                                        <form asp-action="SetBaseCurrency" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="جعل @c.Name العملة الأساسية؟" data-confirm-ok="تعيين">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تعيين @c.Name كعملة أساسية"><i class="bi bi-star"></i></button>
                                         </form>
                                     }
-                                    <form asp-action="DeleteCurrency" asp-route-id="@c.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذه العملة؟')">
+                                    <form asp-action="DeleteCurrency" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="حذف هذه العملة؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عملة @c.Code"><i class="bi bi-trash"></i></button>
                                     </form>
@@ -163,13 +167,13 @@
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-branch" data-id="@b.Id" data-code="@b.Code" data-name="@b.Name" data-address="@b.Address" data-phone="@b.Phone" data-active="@b.IsActive.ToString().ToLower()" aria-label="تعديل فرع @b.Code"><i class="bi bi-pencil"></i></button>
                                     @if (Model.CurrentBranchId != b.Id)
                                     {
-                                        <form asp-action="SetCurrentBranch" method="post" class="d-inline" onsubmit="return confirm('التعامل مع @b.Name كفرع حالي؟')">
+                                        <form asp-action="SetCurrentBranch" method="post" class="d-inline" data-confirm="التعامل مع @b.Name كفرع حالي؟" data-confirm-ok="تعيين">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="branchId" value="@b.Id" />
                                             <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تعيين @b.Name كفرع حالي"><i class="bi bi-check2"></i></button>
                                         </form>
                                     }
-                                    <form asp-action="DeleteBranch" asp-route-id="@b.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذا الفرع؟')">
+                                    <form asp-action="DeleteBranch" asp-route-id="@b.Id" method="post" class="d-inline" data-confirm="حذف هذا الفرع؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف فرع @b.Code"><i class="bi bi-trash"></i></button>
                                     </form>

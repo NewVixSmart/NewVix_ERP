@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Silk.Trading.Web.Extensions;
 
@@ -18,11 +19,12 @@ public static class CurrentBranchExtensions
     }
 
     public static int? GetCurrentBranchId(this IHttpContextAccessor http) =>
-        http.HttpContext?.Session.GetCurrentBranchId();
+        http.HttpContext?.Features.Get<ISessionFeature>()?.Session.GetCurrentBranchId();
 
     public static void SetCurrentBranchId(this IHttpContextAccessor http, int? branchId)
     {
-        if (http.HttpContext?.Session != null)
-            http.HttpContext.Session.SetCurrentBranchId(branchId);
+        var session = http.HttpContext?.Features.Get<ISessionFeature>()?.Session;
+        if (session != null)
+            session.SetCurrentBranchId(branchId);
     }
 }

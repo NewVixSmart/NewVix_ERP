@@ -27,7 +27,7 @@
                     <td class="text-center">
                         @if (await Perm.HasAsync("InventoryAdjustments.Delete"))
                         {
-                        <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" onsubmit="return confirm('حذف سجل الجرد وحركته المرتبطة؟')">
+                        <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" data-confirm="حذف سجل الجرد وحركته المرتبطة؟" data-confirm-ok="حذف">
                             <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف سجل الجرد @a.ReferenceNumber"><i class="bi bi-trash"></i></button>
                         </form>
                         }
@@ -37,5 +37,3 @@
         </tbody>
     </table>
 </div>
-
-<partial name="_Pager" />

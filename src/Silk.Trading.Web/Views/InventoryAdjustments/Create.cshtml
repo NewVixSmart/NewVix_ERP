@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "جرد / تعديل مخزون";
     var items = (List<Silk.Trading.Web.Models.Core.Item>)ViewBag.ItemsData;
-    var itemsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }), new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
+    var itemsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
 <div class="page-header"><h2><i class="bi bi-clipboard-data text-primary"></i> جرد / تعديل مخزون يدوي</h2></div>
@@ -77,7 +77,7 @@
     const stockBox = document.getElementById('currentStockBox');
 
     function selectedItem() {
-        return items.find(i => i.Id == itemSelect.value);
+        return items.find(i => i.id == itemSelect.value);
     }
 
     itemSelect.addEventListener('change', function() {

@@ -19,7 +19,8 @@ public sealed class ProcurementService : IProcurementService
     {
         var query = _db.PurchaseOrders
             .Include(o => o.Supplier)
-            .Include(o => o.Items).ThenInclude(i => i.Item)
+            .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .AsQueryable();
 
@@ -33,7 +34,8 @@ public sealed class ProcurementService : IProcurementService
     {
         return await _db.PurchaseOrders
             .Include(o => o.Supplier)
-            .Include(o => o.Items).ThenInclude(i => i.Item)
+            .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id);
     }
@@ -175,7 +177,8 @@ public sealed class ProcurementService : IProcurementService
     public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
         var order = await _db.PurchaseOrders
-            .Include(o => o.Items).ThenInclude(i => i.Item)
+            .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .FirstOrDefaultAsync(o => o.Id == orderId);
         if (order == null) return (false, "أمر الشراء غير موجود");
         if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.PartiallyReceived)

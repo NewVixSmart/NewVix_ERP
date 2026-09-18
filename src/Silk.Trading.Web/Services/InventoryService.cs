@@ -126,7 +126,8 @@ public sealed class InventoryService : IInventoryService
                     var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == group.Key);
                     if (item == null) continue;
                     var priceLine = group.LastOrDefault(l => l.Quantity > 0);
-                    if (priceLine != null) item.PurchasePrice = priceLine.UnitPrice;
+                    if (priceLine != null)
+                        item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
                 }
 
                 var stockLines = ToStockLines(valid);
@@ -162,7 +163,7 @@ public sealed class InventoryService : IInventoryService
                 _db.PurchaseInvoices.Add(invoice);
                 await _db.SaveChangesAsync();
 
-                await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate);
+                await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate, invoice.ExchangeRate);
 
                 if (_accounting != null && invoice.NetAmount > 0)
                     await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
@@ -269,7 +270,9 @@ public sealed class InventoryService : IInventoryService
                     movementDate: saleReturn.ReturnDate, user);
                 if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
 
-                var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate);
+                var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate, saleReturn.ExchangeRate);
+
+                await _db.SaveChangesAsync();
 
                 if (_accounting != null && saleReturn.TotalAmount > 0)
                     await _accounting.RecordSaleReturnWithCostAsync(
@@ -381,6 +384,8 @@ public sealed class InventoryService : IInventoryService
                 var consumed = await ConsumeFifoLayersAsync(ToReturnStockLines(valid), purchaseReturn.ReturnDate);
                 var costTotal = consumed.CountCost + consumed.QtyCost;
 
+                await _db.SaveChangesAsync();
+
                 if (_accounting != null && purchaseReturn.TotalAmount > 0)
                     await _accounting.RecordPurchaseReturnWithCostAsync(
                         purchaseReturn.ReturnDate, purchaseReturn.Id, purchaseReturn.SupplierId,
@@ -461,17 +466,21 @@ public sealed class InventoryService : IInventoryService
                 }
                 else if (addedQty < 0 || addedCount < 0)
                 {
-                    await ConsumeAdjustmentLayersAsync(adjustment.ItemId, -addedQty, -addedCount);
+                    var consumed = await ConsumeAdjustmentLayersAsync(adjustment.ItemId, -addedQty, -addedCount);
                     await _db.SaveChangesAsync();
+                    if (_accounting != null)
+                    {
+                        var writtenQty = Math.Max(-addedQty, 0);
+                        var writtenCount = Math.Max(-addedCount, 0);
+                        if (consumed.QtyCost > 0 || consumed.CountCost > 0)
+                            await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user);
+                        else if (writtenQty > 0 || writtenCount > 0)
+                            await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user);
+                    }
                 }
 
-                if (_accounting != null)
-                {
-                    if (addedQty > 0 || addedCount > 0)
-                        await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user);
-                    else if (addedQty < 0 || addedCount < 0)
-                        await _accounting.RecordStockWriteDownAsync(item.Id, Math.Max(-addedQty, 0), Math.Max(-addedCount, 0), item.PurchasePrice, user);
-                }
+                if (_accounting != null && (addedQty > 0 || addedCount > 0))
+                    await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user);
 
                 await tx.CommitAsync();
                 return (true, null);
@@ -578,9 +587,11 @@ public sealed class InventoryService : IInventoryService
         return new ConsumedCostResult(qtyCost, countCost);
     }
 
-    private async Task ConsumeAdjustmentLayersAsync(int itemId, decimal qtyToRemove, decimal countToRemove)
+    private async Task<ConsumedCostResult> ConsumeAdjustmentLayersAsync(int itemId, decimal qtyToRemove, decimal countToRemove)
     {
-        if (qtyToRemove <= 0 && countToRemove <= 0) return;
+        var qtyCost = 0m;
+        var countCost = 0m;
+        if (qtyToRemove <= 0 && countToRemove <= 0) return new ConsumedCostResult(0, 0);
 
         var layers = await _db.StockLayers
             .Where(sl => sl.ItemId == itemId && (sl.RemainingQty > 0 || sl.RemainingCount > 0))
@@ -594,31 +605,37 @@ public sealed class InventoryService : IInventoryService
             if (q > 0 && layer.RemainingQty > 0)
             {
                 var takeQty = Math.Min(q, layer.RemainingQty);
+                qtyCost += takeQty * layer.UnitCost;
                 layer.RemainingQty -= takeQty;
                 q -= takeQty;
             }
             if (c > 0 && layer.RemainingCount > 0)
             {
                 var takeCount = Math.Min(c, layer.RemainingCount);
+                countCost += takeCount * layer.CountCost;
                 layer.RemainingCount -= takeCount;
                 c -= takeCount;
             }
             if (q <= 0 && c <= 0) break;
         }
+
+        return new ConsumedCostResult(qtyCost, countCost);
     }
 
-    private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived)
+    private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived, decimal? exchangeRate)
     {
+        var rate = exchangeRate ?? 1m;
         foreach (var line in lines)
         {
             if (line.Quantity <= 0 && line.Count <= 0) continue;
+            var baseUnitCost = decimal.Round(line.UnitPrice * rate, 2);
             CreateOrTopUpLayer(line.ItemId, line.Quantity, line.Count,
-                line.UnitPrice, line.UnitPrice, dateReceived);
+                baseUnitCost, baseUnitCost, dateReceived);
         }
         await _db.SaveChangesAsync();
     }
 
-    private async Task<decimal> RestoreSaleReturnLayersAsync(List<SaleReturnItem> items, DateTime returnDate)
+    private async Task<decimal> RestoreSaleReturnLayersAsync(List<SaleReturnItem> items, DateTime returnDate, decimal? exchangeRate)
     {
         var totalCost = 0m;
         var itemsById = (await _db.Items.AsNoTracking().ToListAsync()).ToDictionary(i => i.Id);
@@ -664,7 +681,9 @@ public sealed class InventoryService : IInventoryService
 
             if (remainingQty > 0 || remainingCount > 0)
             {
-                var price = itemsById.TryGetValue(item.ItemId, out var it) ? it.PurchasePrice : item.UnitPrice;
+                var price = itemsById.TryGetValue(item.ItemId, out var it)
+                    ? it.PurchasePrice
+                    : decimal.Round(item.UnitPrice * (exchangeRate ?? 1m), 2);
                 totalCost += remainingQty * price + remainingCount * price;
                 CreateOrTopUpLayer(item.ItemId, remainingQty, remainingCount, price, price, returnDate);
             }

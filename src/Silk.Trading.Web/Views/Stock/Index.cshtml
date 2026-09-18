@@ -41,10 +41,10 @@
                         { <span class="badge bg-danger">صادر</span> }
                     </td>
                     <td class="@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
-                        @(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Count.ToString("N2")
+                        <span class="visually-hidden">@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Count.ToString("N2")
                     </td>
                     <td class="@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
-                        @(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Quantity.ToString("N2")
+                        <span class="visually-hidden">@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == Silk.Trading.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Quantity.ToString("N2")
                     </td>
                     <td>@m.CountBefore.ToString("N2") / @m.BalanceBefore.ToString("N2")</td>
                     <td>@m.CountAfter.ToString("N2") / @m.BalanceAfter.ToString("N2")</td>
@@ -62,5 +62,3 @@
         <p class="mt-2">لا توجد حركات مخزون</p>
     </div>
 }
-
-<partial name="_Pager" />

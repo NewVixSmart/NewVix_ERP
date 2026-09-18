@@ -1,22 +1,59 @@
-@{ Layout = null; ViewData["Title"] = "غير مصرح"; }
+@inject Silk.Trading.Web.Services.IBrandingService Branding
+@{ Layout = null; ViewData["Title"] = "غير مصرح"; var _brand = await Branding.LoadAsync(); }
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme-mode="system" data-theme="light" data-bs-theme="light">
 <head>
     <meta charset="utf-8" />
-    <title>غير مصرح - سلك</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>غير مصرح - @_brand.Profile.CompanyName</title>
     <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
     <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
     <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+    <style nonce="@Context.GetCspNonce()">
+        @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
+    </style>
+    <script nonce="@Context.GetCspNonce()">
+        (function () {
+            var stored = null;
+            try { stored = localStorage.getItem('theme-mode'); } catch (e) { stored = null; }
+            var mode = (stored === 'light' || stored === 'dark') ? stored : 'system';
+            var resolved = mode === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : mode;
+            document.documentElement.setAttribute('data-theme-mode', mode);
+            document.documentElement.setAttribute('data-theme', resolved);
+            document.documentElement.setAttribute('data-bs-theme', resolved);
+        })();
+    </script>
+    <link href="~/css/dark-theme.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
     <div class="login-stage">
         <div class="auth-card text-center">
+            <div class="d-flex justify-content-center mb-3">
+                <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
+                    <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
+                        <i class="bi bi-display" aria-hidden="true"></i>
+                        <span class="theme-mode-label">النظام</span>
+                    </button>
+                    <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
+                        <i class="bi bi-sun" aria-hidden="true"></i>
+                        <span class="theme-mode-label">فاتح</span>
+                    </button>
+                    <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
+                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                        <span class="theme-mode-label">داكن</span>
+                    </button>
+                </div>
+            </div>
             <div class="brand-monogram" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
             <h2>غير مصرح</h2>
             <p class="subtitle">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
             <a href="/" class="btn btn-primary w-100"><i class="bi bi-house-door" aria-hidden="true"></i> العودة للرئيسية</a>
         </div>
     </div>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 </body>
 </html>

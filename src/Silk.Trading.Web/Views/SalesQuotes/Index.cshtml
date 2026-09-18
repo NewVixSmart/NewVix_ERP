@@ -66,14 +66,14 @@ else
                             <a asp-action="Print" asp-route-id="@q.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" aria-label="طباعة عرض السعر @q.QuoteNumber"><i class="bi bi-printer"></i></a>
                             @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
                             {
-                                <form asp-action="Convert" asp-route-id="@q.Id" method="post" class="d-inline" onclick="return confirm('هل تريد تحويل هذا العرض إلى فاتورة بيع؟')">
+                                <form asp-action="Convert" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى فاتورة بيع؟" data-confirm-ok="تحويل">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تحويل عرض السعر @q.QuoteNumber"><i class="bi bi-arrow-repeat"></i></button>
                                 </form>
                             }
                             @if (q.Status == Silk.Trading.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Delete"))
                             {
-                                <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline" onclick="return confirm('هل تريد حذف عرض السعر هذا؟')">
+                                <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm="هل تريد حذف عرض السعر هذا؟" data-confirm-ok="حذف">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.QuoteNumber"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -83,6 +83,5 @@ else
                 }
             </tbody>
         </table>
-        <partial name="_Pager" />
     </div>
 }

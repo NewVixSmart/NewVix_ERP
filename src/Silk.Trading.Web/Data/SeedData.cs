@@ -31,6 +31,7 @@ public static class SeedData
         }
 
         var adminUser = await userManager.FindByNameAsync("admin");
+        bool isFirstRun = adminUser == null;
         if (adminUser == null)
         {
             var configuredAdminPwd = config["Seed:AdminPassword"];
@@ -52,44 +53,47 @@ public static class SeedData
             }
         }
 
-        await EnsureUserAsync(userManager, config, logger, "accountant", "Seed:AccountantPassword", "accountant@silk.com", "Accountant");
-        await EnsureUserAsync(userManager, config, logger, "warehouse", "Seed:WarehousePassword", "warehouse@silk.com", "Warehouse");
-
-        var db = serviceProvider.GetRequiredService<AppDbContext>();
-        if (!db.ItemCategories.Any())
+        if (isFirstRun)
         {
-            db.ItemCategories.AddRange(
-                new ItemCategory { Name = "إلكترونيات", IsActive = true },
-                new ItemCategory { Name = "ملابس", IsActive = true },
-                new ItemCategory { Name = "أغذية", IsActive = true },
-                new ItemCategory { Name = "مواد بناء", IsActive = true }
-            );
-            await db.SaveChangesAsync();
+            await EnsureUserAsync(userManager, config, logger, "accountant", "Seed:AccountantPassword", "accountant@silk.com", "Accountant");
+            await EnsureUserAsync(userManager, config, logger, "warehouse", "Seed:WarehousePassword", "warehouse@silk.com", "Warehouse");
+
+            var db = serviceProvider.GetRequiredService<AppDbContext>();
+            if (!db.ItemCategories.Any())
+            {
+                db.ItemCategories.AddRange(
+                    new ItemCategory { Name = "إلكترونيات", IsActive = true },
+                    new ItemCategory { Name = "ملابس", IsActive = true },
+                    new ItemCategory { Name = "أغذية", IsActive = true },
+                    new ItemCategory { Name = "مواد بناء", IsActive = true }
+                );
+                await db.SaveChangesAsync();
+            }
+
+            if (!db.ItemTypes.Any())
+            {
+                db.ItemTypes.AddRange(
+                    new ItemType { Name = "منتج تام", IsActive = true },
+                    new ItemType { Name = "مواد خام", IsActive = true }
+                );
+                await db.SaveChangesAsync();
+            }
+
+            if (!db.Units.Any())
+            {
+                db.Units.AddRange(
+                    new Unit { Name = "قطعة", ShortName = "قط" },
+                    new Unit { Name = "كيلوجرام", ShortName = "كجم" },
+                    new Unit { Name = "متر", ShortName = "م" },
+                    new Unit { Name = "صندوق", ShortName = "صن" }
+                );
+                await db.SaveChangesAsync();
+            }
+
+            await EnsureDefaultPermissionsAsync(serviceProvider);
+
+            await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<Silk.Trading.Web.Services.IAccountingService>());
         }
-
-        if (!db.ItemTypes.Any())
-        {
-            db.ItemTypes.AddRange(
-                new ItemType { Name = "منتج تام", IsActive = true },
-                new ItemType { Name = "مواد خام", IsActive = true }
-            );
-            await db.SaveChangesAsync();
-        }
-
-        if (!db.Units.Any())
-        {
-            db.Units.AddRange(
-                new Unit { Name = "قطعة", ShortName = "قط" },
-                new Unit { Name = "كيلوجرام", ShortName = "كجم" },
-                new Unit { Name = "متر", ShortName = "م" },
-                new Unit { Name = "صندوق", ShortName = "صن" }
-            );
-            await db.SaveChangesAsync();
-        }
-
-        await EnsureDefaultPermissionsAsync(serviceProvider);
-
-        await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<Silk.Trading.Web.Services.IAccountingService>());
     }
 
     private static async Task EnsureDemoDataAsync(AppDbContext db, Silk.Trading.Web.Services.IAccountingService accounting)

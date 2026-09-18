@@ -21,14 +21,14 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h4 class="mb-0 text-success">@Model.TotalRevenue.ToString("N2")</h4></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h4 class="mb-0 text-danger">@Model.TotalExpenses.ToString("N2")</h4></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h4 class="mb-0">@Model.NetRevenue.ToString("N2")</h4></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h4></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h3 class="mb-0 text-success">@Model.TotalRevenue.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h3 class="mb-0 text-danger">@Model.TotalExpenses.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h3 class="mb-0">@Model.NetRevenue.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h3 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h3></div></div>
 </div>
 
 <div class="table-container mb-4">
-    <table class="table table-hover mb-0">
+    <table class="table table-hover mb-0" data-table-plain>
         <caption class="visually-hidden">إيرادات الفترة</caption>
         <thead><tr><th scope="col">الرمز</th><th scope="col">الإيرادات</th><th scope="col">المبلغ</th></tr></thead>
         <tbody>
@@ -46,7 +46,7 @@
 </div>
 
 <div class="table-container mb-4">
-    <table class="table table-hover mb-0">
+    <table class="table table-hover mb-0" data-table-plain>
         <caption class="visually-hidden">مصاريف الفترة</caption>
         <thead><tr><th scope="col">الرمز</th><th scope="col">المصروفات</th><th scope="col">المبلغ</th></tr></thead>
         <tbody>
@@ -66,7 +66,7 @@
 <div class="table-container">
     <table class="table mb-0">
         <tbody>
-            <tr><td><h5 class="mb-0">صافي الدخل</h5></td><td class="text-end"><h5 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h5></td></tr>
+            <tr><td><h4 class="mb-0">صافي الدخل</h4></td><td class="text-end"><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</h4></td></tr>
         </tbody>
     </table>
 </div>
@@ -80,7 +80,7 @@
 }
 
 <div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="bi bi-printer"></i> طباعة</button>
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
     <a asp-action="ExportIncomeStatementPdf" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
     <a asp-action="ExportIncomeStatementXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
 </div>

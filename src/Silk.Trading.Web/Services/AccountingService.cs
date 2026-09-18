@@ -18,7 +18,7 @@ public class AccountingService : IAccountingService
         int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
     {
         var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
-        var localCost = decimal.Round(costAmount * (exchangeRate ?? 1m), 2);
+        var localCost = decimal.Round(costAmount, 2);
         var lines = new List<JournalLine>();
         if (localValue > 0)
         {

@@ -88,6 +88,7 @@ jobs:
             --add-host host.docker.internal:host-gateway \
             -e ASPNETCORE_ENVIRONMENT=Production \
             -e Jwt__Key="Silk-CI-Smoke-JwtSecret-0123456789-abcdefghijklmnop" \
+            -e Seed__AdminPassword="Silk-CiAdmin-Passw0rd-2026!" \
             -e ConnectionStrings__DefaultConnection="Server=host.docker.internal,1433;Database=SilkTradingDb;User Id=sa;Password=Silk-CI-Smoke-Passw0rd-2026!;TrustServerCertificate=True" \
             silk-trading-web:ci
 
@@ -113,3 +114,24 @@ jobs:
       - name: Verify HTTP health endpoint responds
         run: |
           curl -fsS --retry 10 --retry-delay 5 --retry-all-errors http://localhost:8080/healthz
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install accessibility gate dependencies
+        working-directory: e2e
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium for Playwright
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility gate (axe-core, critical/serious)
+        working-directory: e2e
+        env:
+          BASE_URL: http://localhost:8080
+          SILK_USER: admin
+          SILK_PASS: Silk-CiAdmin-Passw0rd-2026!
+        run: node a11y-gate.cjs

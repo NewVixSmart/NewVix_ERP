@@ -41,7 +41,7 @@
                         }
                         @if (await Perm.HasAsync("Warehouses.Delete"))
                         {
-                            <form asp-action="Delete" asp-route-id="@w.Id" method="post" class="d-inline" onsubmit="return confirm('حذف هذا المستودع؟')">
+                            <form asp-action="Delete" asp-route-id="@w.Id" method="post" class="d-inline" data-confirm="حذف هذا المستودع؟" data-confirm-ok="حذف">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
                             </form>
                         }

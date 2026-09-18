@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -22,15 +22,10 @@ public class PurchasesController : Controller
     }
 
 [RequirePerm("Purchases.View")]
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index()
     {
-        page = Math.Max(1, page);
-        const int pageSize = 50;
         var query = _db.PurchaseInvoices.Include(p => p.Supplier).AsNoTracking().OrderByDescending(p => p.InvoiceDate);
-        var total = await query.CountAsync();
-        ViewBag.Page = page;
-        ViewBag.TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
-        var invoices = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var invoices = await query.ToListAsync();
         return View(invoices);
     }
 
@@ -64,6 +59,13 @@ public class PurchasesController : Controller
         var items = vm.Items ?? new List<PurchaseInvoiceItem>();
         ModelState.IgnoreEmptyLineItemRows();
 
+        var baseCurrencyId = await BaseCurrencyIdAsync();
+        if (vm.Invoice.CurrencyId.HasValue && vm.Invoice.CurrencyId.Value != baseCurrencyId
+            && (!vm.Invoice.ExchangeRate.HasValue || vm.Invoice.ExchangeRate.Value <= 0))
+        {
+            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للفواتير بالعملة الأجنبية");
+        }
+
         if (ModelState.IsValid && items.Any(i => i.ItemId > 0))
         {
             int? branchId = HttpContext.Session.GetCurrentBranchId();
@@ -85,7 +87,8 @@ public class PurchasesController : Controller
     [RequirePerm("Purchases.View")]
     public async Task<IActionResult> Details(int id)
     {
-        var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item)
+        var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (invoice == null) return NotFound();
         return View(invoice);
@@ -94,7 +97,8 @@ public class PurchasesController : Controller
     [RequirePerm("Purchases.View")]
     public async Task<IActionResult> Print(int id)
     {
-        var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item)
+        var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (invoice == null) return NotFound();
         return View(invoice);
