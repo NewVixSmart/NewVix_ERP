@@ -531,7 +531,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .sidebar-nav .nav-link-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
-/* Emerald active pill — premium gradient with glow + start indicator */
+/* Active pill — premium gradient with glow + start indicator */
 .sidebar-nav .nav-link.active {
     background: linear-gradient(135deg, rgba(46, 111, 216, 0.1) 0%, rgba(46, 111, 216, 0.06) 100%);
     color: var(--em-800);
@@ -704,7 +704,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     .sidebar.is-rail .sidebar-profile .btn { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-color: var(--color-border); }
     .sidebar.is-rail .sidebar-footer { padding: 0.45rem 0.35rem 0.65rem; }
 
-    /* Rail active state — soft emerald ring/tile */
+    /* Rail active state — soft cyan ring/tile */
     .sidebar.is-rail .sidebar-nav .nav-link.active {
         background: rgba(46, 111, 216, 0.1);
         border-color: rgba(46, 111, 216, 0.2);
@@ -1050,7 +1050,7 @@ input[type="checkbox"].form-check-input, input[type="radio"].form-check-input {
 }
 .table table, .table { font-variant-numeric: tabular-nums; }
 
-/* Zebra rows — subtle emerald tint */
+/* Zebra rows — subtle navy tint */
 .table-striped > tbody > tr:nth-of-type(odd) > * { --bs-table-color-state: var(--n-800); --bs-table-bg-state: var(--color-zebra); color: var(--bs-table-color-state, var(--n-800)); background-color: var(--bs-table-bg-state); }
 
 /* Hover tint */
@@ -1329,14 +1329,14 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { background: rgba(26, 58,
     padding: 0.8rem 1rem 0.9rem;
     border-radius: var(--r-md);
     box-shadow: var(--sh-md);
-    background: var(--n-900);
-    color: #fff;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
     font-size: 0.88rem;
     font-weight: 600;
     animation: toastIn 0.22s var(--ease);
 }
-.app-toast.success { background: #166534; }
-.app-toast.error { background: #991b1b; }
+.app-toast.success { background: #166534; color: #fff; }
+.app-toast.error { background: #991b1b; color: #fff; }
 .app-toast i { font-size: 1.05rem; }
 .app-toast .toast-progress {
     position: absolute;

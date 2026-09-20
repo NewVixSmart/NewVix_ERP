@@ -153,6 +153,13 @@ html[data-theme="dark"] .btn-outline-danger:disabled,
 html[data-theme="dark"] .btn-outline-danger:disabled:hover,
 html[data-theme="dark"] .btn-outline-danger:disabled:focus-visible { color: #fca5a5 !important; }
 
+html[data-theme="dark"] .btn-outline-dark { color: #d3d9e3 !important; border-color: #d3d9e3 !important; background-color: transparent !important; }
+html[data-theme="dark"] .btn-outline-dark:hover,
+html[data-theme="dark"] .btn-outline-dark:focus-visible { background-color: #d3d9e3 !important; color: #041424 !important; border-color: #d3d9e3 !important; }
+html[data-theme="dark"] .btn-outline-dark:disabled,
+html[data-theme="dark"] .btn-outline-dark:disabled:hover,
+html[data-theme="dark"] .btn-outline-dark:disabled:focus-visible { color: #d3d9e3 !important; }
+
 html[data-theme="dark"] .badge-stock-low { background: #2c1216; color: #fca5a5; }
 html[data-theme="dark"] .badge-stock-ok { background: #0f2a1c; color: #86efac; }
 

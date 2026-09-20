@@ -92,7 +92,7 @@ public static class PrintPdfBuilder
     public static string Fmt(decimal v, int decimals)
         => Round2(v, Math.Clamp(decimals, 0, 6)).ToString("N" + Math.Clamp(decimals, 0, 6).ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
 
-    public static string AccentColor(PrintLayoutOptions layout) => NormalizeHex(layout.AccentColor, "#2563eb");
+    public static string AccentColor(PrintLayoutOptions layout) => NormalizeHex(layout.AccentColor, "#2e6fd8");
 
     public static string TableHeaderBg(PrintLayoutOptions layout) => NormalizeHex(layout.TableHeaderBg, "#eef2f7");
 

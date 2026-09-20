@@ -20,7 +20,7 @@ public sealed class PrintLayoutOptions
     public bool ShowCompanyContact { get; set; } = true;
     public bool ShowTaxNumber { get; set; } = true;
     public bool ShowDocTitle { get; set; } = true;
-    public string AccentColor { get; set; } = "#2563eb";
+    public string AccentColor { get; set; } = "#2e6fd8";
     public string TableHeaderBg { get; set; } = "#eef2f7";
     public string TableHeaderText { get; set; } = "#1e293b";
     public bool ShowItemCode { get; set; } = true;
