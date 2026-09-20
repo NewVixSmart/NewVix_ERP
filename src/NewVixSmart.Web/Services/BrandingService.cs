@@ -9,20 +9,20 @@ public sealed record PalettePreset(string Id, string NameAr, string Primary, str
 
 public sealed class BrandingTheme
 {
-    public string Primary { get; set; } = "#0b7a54";
-    public string PrimaryDark { get; set; } = "#096b49";
-    public string PrimaryDarker { get; set; } = "#075636";
-    public string PrimaryFocus { get; set; } = "rgba(11, 122, 84, 0.22)";
-    public string Accent { get; set; } = "#b98b12";
-    public string AccentStrong { get; set; } = "#8f6b08";
-    public string AccentBright { get; set; } = "#e8b83a";
-    public string SidebarBg { get; set; } = "#ffffff";
-    public string SidebarText { get; set; } = "#22302c";
-    public string SidebarSection { get; set; } = "#55625e";
-    public string PageBg { get; set; } = "#f5f8f6";
-    public string BsPrimaryBgSubtle { get; set; } = "#e6f4ee";
-    public string BsPrimaryBorderSubtle { get; set; } = "#cbeae0";
-    public string BsPrimaryText { get; set; } = "#075636";
+    public string Primary { get; set; } = "#1a3a6b";
+    public string PrimaryDark { get; set; } = "#14305c";
+    public string PrimaryDarker { get; set; } = "#0e2244";
+    public string PrimaryFocus { get; set; } = "rgba(46, 111, 216, 0.22)";
+    public string Accent { get; set; } = "#2e6fd8";
+    public string AccentStrong { get; set; } = "#14305c";
+    public string AccentBright { get; set; } = "#4a9ee8";
+    public string SidebarBg { get; set; } = "#f8f8fa";
+    public string SidebarText { get; set; } = "#041424";
+    public string SidebarSection { get; set; } = "#64748b";
+    public string PageBg { get; set; } = "#f8f8fa";
+    public string BsPrimaryBgSubtle { get; set; } = "#e3ebf7";
+    public string BsPrimaryBorderSubtle { get; set; } = "#c3d3ec";
+    public string BsPrimaryText { get; set; } = "#0e2244";
 }
 
 public sealed class BrandingData
@@ -46,7 +46,7 @@ public class BrandingService : IBrandingService
     private const string CacheKey = "branding.v1";
     private static readonly Dictionary<string, PalettePreset> PresetMap = new()
     {
-        ["modern"] = new("modern", "أبيض زمردي — عصري", "#0b7a54", "#b98b12", "#ffffff", "#f5f8f6"),
+        ["modern"] = new("modern", "كحلي أورورا — زجاجي", "#1a3a6b", "#2e6fd8", "#f8f8fa", "#f8f8fa"),
         ["evergreen"] = new("evergreen", "زمردي ذهبي", "#0f766e", "#a8842c", "#0b2e26", "#f5f4ef"),
         ["indigo"] = new("indigo", "ملكي نيلي", "#4338ca", "#b45309", "#1e1b4b", "#f6f6fb"),
         ["crimson"] = new("crimson", "قرمزي عتيق", "#b91c1c", "#b45309", "#450a0a", "#faf6f3"),
@@ -99,10 +99,10 @@ public class BrandingService : IBrandingService
         if (presetId != null && PresetMap.TryGetValue(presetId, out var preset))
             return FromPreset(preset);
 
-        var primary = FirstValid(Get("Theme.Primary"), "#0b7a54");
-        var accent = FirstValid(Get("Theme.Accent"), "#b98b12");
-        var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#ffffff");
-        var pageBg = FirstValid(Get("Theme.PageBg"), "#f5f8f6");
+        var primary = FirstValid(Get("Theme.Primary"), "#1a3a6b");
+        var accent = FirstValid(Get("Theme.Accent"), "#2e6fd8");
+        var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#f8f8fa");
+        var pageBg = FirstValid(Get("Theme.PageBg"), "#f8f8fa");
 
         var sidebarDark = !ColorUtil.IsLight(sidebarBg);
         return new BrandingTheme
@@ -115,8 +115,8 @@ public class BrandingService : IBrandingService
             AccentStrong = DarkenSafe(Get("Theme.AccentStrong"), accent),
             AccentBright = ColorUtil.Lighten(accent, 0.15),
             SidebarBg = sidebarBg,
-            SidebarText = sidebarDark ? "#cbd5e1" : "#22302c",
-            SidebarSection = sidebarDark ? "#94a3b8" : "#55625e",
+            SidebarText = sidebarDark ? "#cbd5e1" : "#041424",
+            SidebarSection = sidebarDark ? "#94a3b8" : "#64748b",
             PageBg = pageBg,
             BsPrimaryBgSubtle = FirstValid(Get("Theme.BsPrimaryBgSubtle"), ColorUtil.Blend(primary, "#ffffff", 0.82)),
             BsPrimaryBorderSubtle = FirstValid(Get("Theme.BsPrimaryBorderSubtle"), ColorUtil.Blend(primary, "#ffffff", 0.68)),
@@ -138,8 +138,8 @@ public class BrandingService : IBrandingService
             AccentStrong = ColorUtil.Darken(p.Accent, 0.18),
             AccentBright = ColorUtil.Lighten(p.Accent, 0.15),
             SidebarBg = p.SidebarBg,
-            SidebarText = sidebarDark ? "#cbd5e1" : "#22302c",
-            SidebarSection = sidebarDark ? "#94a3b8" : "#55625e",
+            SidebarText = sidebarDark ? "#cbd5e1" : "#041424",
+            SidebarSection = sidebarDark ? "#94a3b8" : "#64748b",
             PageBg = p.PageBg,
             BsPrimaryBgSubtle = ColorUtil.Blend(primary, "#ffffff", 0.82),
             BsPrimaryBorderSubtle = ColorUtil.Blend(primary, "#ffffff", 0.68),
