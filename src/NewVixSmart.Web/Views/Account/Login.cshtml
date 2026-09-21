@@ -98,16 +98,18 @@
                     <div asp-validation-summary="All" class="text-danger mb-3"></div>
                     <div class="lg-field">
                         <label asp-for="Username" class="form-label"></label>
-                        <span class="lg-input__icon" aria-hidden="true"><i class="bi bi-person"></i></span>
-                        <input asp-for="Username" class="form-control lg-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
+                        <div class="lg-control">
+                            <span class="lg-control__icon" aria-hidden="true"><i class="bi bi-person"></i></span>
+                            <input asp-for="Username" class="form-control lg-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
+                        </div>
                         <span asp-validation-for="Username" class="text-danger small"></span>
                     </div>
                     <div class="lg-field">
                         <label asp-for="Password" class="form-label"></label>
-                        <span class="lg-input__icon" aria-hidden="true"><i class="bi bi-lock"></i></span>
-                        <div class="input-group">
+                        <div class="lg-control lg-control--password">
+                            <span class="lg-control__icon" aria-hidden="true"><i class="bi bi-lock"></i></span>
                             <input asp-for="Password" class="form-control lg-input" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
-                            <button type="button" class="btn btn-outline-secondary lg-password-toggle" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+                            <button type="button" class="lg-password-toggle" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </button>
                         </div>

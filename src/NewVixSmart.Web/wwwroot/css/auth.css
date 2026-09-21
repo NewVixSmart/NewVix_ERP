@@ -252,14 +252,13 @@
 .lg-form {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
+    gap: 1.15rem;
 }
 
 .lg-field {
-    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.42rem;
+    gap: 0.45rem;
 }
 .lg-field .form-label {
     margin: 0;
@@ -273,14 +272,39 @@
     margin: 0;
 }
 
-/* 52px inputs with leading-icon clearance */
+/* Control wrapper — relative anchor so the leading icon always lines up
+   with the 52px input, no matter how the label wraps */
+.lg-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.lg-control__icon {
+    position: absolute;
+    inset-inline-start: 1rem;
+    width: 1.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a97ac;
+    font-size: 1.05rem;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
+    transition: color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lg-control:focus-within .lg-control__icon {
+    color: #2e6fd8;
+}
+
+/* 52px inputs — soft surface, brand focus ring */
 .lg-input,
 .lg-field .form-control {
     width: 100%;
     height: 52px;
     min-height: 52px;
     border-radius: 14px;
-    background-color: #fbfcfe;
+    background-color: #f7f9fd;
     border: 1px solid rgba(13, 27, 53, 0.12);
     color: #0d1b35;
     font-size: 0.95rem;
@@ -288,6 +312,10 @@
     padding-inline-end: 1rem;
     box-shadow: none;
     transition: border-color 0.16s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.16s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lg-input:hover,
+.lg-field .form-control:hover {
+    border-color: rgba(13, 27, 53, 0.20);
 }
 .lg-input::placeholder,
 .lg-input::-webkit-input-placeholder,
@@ -302,55 +330,62 @@
     box-shadow: 0 0 0 4px rgba(46, 111, 216, 0.18);
 }
 
-/* Leading icon — anchored to the 52px control line (fixed 1.35rem label + 0.42rem gap + half-height offset) */
-.lg-input__icon {
-    position: absolute;
-    top: calc(1.35rem + 0.42rem + 0.5625rem);
-    inset-inline-start: 1rem;
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #8a97ac;
-    font-size: 1rem;
-    pointer-events: none;
-    z-index: 2;
-    transition: color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+/* Browser autofill — keep the soft surface + correct text colour */
+.lg-input:-webkit-autofill,
+.lg-field .form-control:-webkit-autofill {
+    -webkit-box-shadow: inset 0 0 0 1000px #f7f9fd !important;
+    box-shadow: inset 0 0 0 1000px #f7f9fd !important;
+    -webkit-text-fill-color: #0d1b35 !important;
+    caret-color: #0d1b35;
 }
 
-/* Password affix toggle — inset square flush to the input body */
-.lg-field .input-group {
-    display: flex;
-    align-items: stretch;
+/* Validation errors — Bootstrap .input-validation-error / aria-invalid */
+.lg-input.input-validation-error,
+.lg-field .form-control.input-validation-error,
+.lg-input[aria-invalid="true"],
+.lg-field .form-control[aria-invalid="true"] {
+    border-color: #c0362c;
+    background-color: #ffffff;
 }
-.lg-field .input-group .lg-input,
-.lg-field .input-group .form-control {
-    border-start-start-radius: 14px;
-    border-start-end-radius: 0;
-    border-end-start-radius: 14px;
-    border-end-end-radius: 0;
+.lg-input.input-validation-error:focus,
+.lg-field .form-control.input-validation-error:focus,
+.lg-input[aria-invalid="true"]:focus,
+.lg-field .form-control[aria-invalid="true"]:focus {
+    border-color: #c0362c;
+    box-shadow: 0 0 0 4px rgba(192, 54, 44, 0.16);
 }
-.lg-field .input-group .lg-password-toggle {
-    width: 52px;
-    min-width: 52px;
-    height: 52px;
+.lg-field .text-danger.small {
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+/* Password field — icon-only ghost toggle inset at the inline end.
+   Input gains inline-end padding so text never collides with it. */
+.lg-control--password .lg-input {
+    padding-inline-end: 3.25rem;
+}
+.lg-password-toggle {
+    position: absolute;
+    inset-inline-end: 0.35rem;
+    top: 6px;
+    width: 40px;
+    height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0;
-    border-start-end-radius: 14px;
-    border-end-end-radius: 14px;
-    background-color: #fbfcfe;
-    border: 1px solid rgba(13, 27, 53, 0.12);
-    border-inline-start: none;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
     color: #5a6a85;
     font-size: 1.05rem;
+    line-height: 1;
     padding: 0;
+    cursor: pointer;
     transition: color 0.16s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.lg-field .input-group .lg-password-toggle:hover {
-    background-color: #f0f4fb;
+.lg-password-toggle:hover {
+    background-color: rgba(46, 111, 216, 0.08);
     color: #2e6fd8;
 }
 .lg-password-toggle:focus-visible {
@@ -365,15 +400,40 @@
     justify-content: space-between;
     margin: 0.2rem 0 0;
 }
+.lg-actions .form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    cursor: pointer;
+}
 .lg-actions .form-check-label {
     color: #5a6a85;
     font-size: 0.88rem;
     font-weight: 600;
+    cursor: pointer;
 }
 .lg-actions input[type="checkbox"].form-check-input {
     width: 1.25em;
     height: 1.25em;
+    margin: 0;
+    border-radius: 6px;
+    border: 1px solid rgba(13, 27, 53, 0.24);
+    background-color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.16s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lg-actions input[type="checkbox"].form-check-input:checked {
+    background-color: #2e6fd8;
+    border-color: #2e6fd8;
     accent-color: #2e6fd8;
+}
+.lg-actions input[type="checkbox"].form-check-input:focus-visible {
+    outline: 3px solid #2e6fd8;
+    outline-offset: 1px;
+}
+.lg-actions .form-check:hover input[type="checkbox"].form-check-input:not(:checked) {
+    border-color: rgba(46, 111, 216, 0.45);
 }
 
 /* Submit — glowing gradient CTA, works as <button> OR <a> */
@@ -537,6 +597,10 @@ html[data-theme="dark"] .lg-field .form-control {
     border-color: rgba(255, 255, 255, 0.12);
     color: #e9edf5;
 }
+html[data-theme="dark"] .lg-input:hover,
+html[data-theme="dark"] .lg-field .form-control:hover {
+    border-color: rgba(255, 255, 255, 0.20);
+}
 html[data-theme="dark"] .lg-input::placeholder,
 html[data-theme="dark"] .lg-input::-webkit-input-placeholder,
 html[data-theme="dark"] .lg-field .form-control::placeholder {
@@ -548,25 +612,59 @@ html[data-theme="dark"] .lg-field .form-control:focus {
     background-color: #0a1120;
     box-shadow: 0 0 0 4px rgba(91, 200, 232, 0.28);
 }
-html[data-theme="dark"] .lg-input__icon {
+html[data-theme="dark"] .lg-control__icon {
     color: #7e8da5;
+}
+html[data-theme="dark"] .lg-control:focus-within .lg-control__icon {
+    color: #86dff2;
+}
+html[data-theme="dark"] .lg-input:-webkit-autofill,
+html[data-theme="dark"] .lg-field .form-control:-webkit-autofill {
+    -webkit-box-shadow: inset 0 0 0 1000px #0a1120 !important;
+    box-shadow: inset 0 0 0 1000px #0a1120 !important;
+    -webkit-text-fill-color: #e9edf5 !important;
+    caret-color: #e9edf5;
+}
+html[data-theme="dark"] .lg-input.input-validation-error,
+html[data-theme="dark"] .lg-field .form-control.input-validation-error,
+html[data-theme="dark"] .lg-input[aria-invalid="true"],
+html[data-theme="dark"] .lg-field .form-control[aria-invalid="true"] {
+    border-color: #ef7771;
+    background-color: #0a1120;
+}
+html[data-theme="dark"] .lg-input.input-validation-error:focus,
+html[data-theme="dark"] .lg-field .form-control.input-validation-error:focus,
+html[data-theme="dark"] .lg-input[aria-invalid="true"]:focus,
+html[data-theme="dark"] .lg-field .form-control[aria-invalid="true"]:focus {
+    border-color: #ef7771;
+    box-shadow: 0 0 0 4px rgba(239, 119, 113, 0.18);
 }
 
-html[data-theme="dark"] .lg-field .input-group .lg-password-toggle {
-    background-color: #0a1120;
-    border-color: rgba(255, 255, 255, 0.12);
+html[data-theme="dark"] .lg-password-toggle {
     color: #7e8da5;
 }
-html[data-theme="dark"] .lg-field .input-group .lg-password-toggle:hover {
-    background-color: #152b50;
+html[data-theme="dark"] .lg-password-toggle:hover {
+    background-color: rgba(91, 200, 232, 0.10);
     color: #86dff2;
+}
+html[data-theme="dark"] .lg-password-toggle:focus-visible {
+    outline-color: #5bc8e8;
 }
 
 html[data-theme="dark"] .lg-actions .form-check-label {
     color: #94a0b8;
 }
 html[data-theme="dark"] .lg-actions input[type="checkbox"].form-check-input {
+    background-color: #0a1120;
+    border-color: rgba(255, 255, 255, 0.28);
+}
+html[data-theme="dark"] .lg-actions input[type="checkbox"].form-check-input:checked {
+    background-color: #5bc8e8;
+    border-color: #5bc8e8;
     accent-color: #5bc8e8;
+}
+html[data-theme="dark"] .lg-actions .form-check:hover input[type="checkbox"].form-check-input:not(:checked) {
+    border-color: rgba(91, 200, 232, 0.55);
 }
 
 html[data-theme="dark"] .lg-submit,
@@ -608,7 +706,8 @@ html[data-theme="dark"] .lg-foot {
     .lg-hero > *,
     .lg-panel,
     .lg-input,
-    .lg-field .input-group .lg-password-toggle,
+    .lg-control__icon,
+    .lg-password-toggle,
     .lg-submit,
     a.lg-submit {
         animation: none !important;
@@ -632,7 +731,7 @@ html[data-theme="dark"] .lg-foot {
     }
     .lg-input,
     .lg-field .form-control,
-    .lg-field .input-group .lg-password-toggle {
+    .lg-password-toggle {
         border: 1px solid ButtonText;
         background-color: Canvas;
         color: CanvasText;
