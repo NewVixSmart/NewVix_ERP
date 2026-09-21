@@ -45,7 +45,7 @@ public class BrandingViewModel
     public string SidebarBg { get; set; } = "#ffffff";
 
     [Display(Name = "لون خلفية الصفحات")]
-    public string PageBg { get; set; } = "#f8f8fa";
+    public string PageBg { get; set; } = "#f6f7fb";
 
     [Display(Name = "شعار الشركة")]
     public IFormFile? LogoFile { get; set; }

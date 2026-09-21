@@ -18,8 +18,8 @@ public sealed class BrandingTheme
     public string AccentBright { get; set; } = "#86dff2";
     public string SidebarBg { get; set; } = "#ffffff";
     public string SidebarText { get; set; } = "#0d1b35";
-    public string SidebarSection { get; set; } = "#6b7785";
-    public string PageBg { get; set; } = "#f8f8fa";
+    public string SidebarSection { get; set; } = "#5b6b81";
+    public string PageBg { get; set; } = "#f6f7fb";
     public string BsPrimaryBgSubtle { get; set; } = "#d9e5f8";
     public string BsPrimaryBorderSubtle { get; set; } = "#bcd1f3";
     public string BsPrimaryText { get; set; } = "#1e488c";
@@ -46,7 +46,7 @@ public class BrandingService : IBrandingService
     private const string CacheKey = "branding.v1";
     private static readonly Dictionary<string, PalettePreset> PresetMap = new()
     {
-        ["modern"] = new("modern", "سافاير عالمي — Global", "#2e6fd8", "#5bc8e8", "#ffffff", "#f8f8fa"),
+        ["modern"] = new("modern", "سافاير عالمي — Global", "#2e6fd8", "#5bc8e8", "#ffffff", "#f6f7fb"),
         ["evergreen"] = new("evergreen", "زمردي ذهبي", "#115e59", "#2dd4bf", "#0f2b26", "#f4f7f6"),
         ["indigo"] = new("indigo", "ملكي نيلي", "#4f46e5", "#818cf8", "#1e1b4b", "#f5f5fb"),
         ["crimson"] = new("crimson", "قرمزي عتيق", "#be123c", "#fb7185", "#450a0a", "#faf5f7"),
@@ -102,7 +102,7 @@ public class BrandingService : IBrandingService
         var primary = FirstValid(Get("Theme.Primary"), "#2e6fd8");
         var accent = FirstValid(Get("Theme.Accent"), "#5bc8e8");
         var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#ffffff");
-        var pageBg = FirstValid(Get("Theme.PageBg"), "#f8f8fa");
+        var pageBg = FirstValid(Get("Theme.PageBg"), "#f6f7fb");
 
         var sidebarDark = !ColorUtil.IsLight(sidebarBg);
         return new BrandingTheme
