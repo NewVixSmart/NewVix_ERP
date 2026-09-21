@@ -28,33 +28,41 @@
         })();
     </script>
     <link href="~/css/dark-theme.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/auth.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
-    <div class="login-stage">
-        <main class="auth-wrap">
-            <section class="auth-brand">
-                <div class="brand-monogram auth-monogram" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
-                <h1>غير مصرح</h1>
-                <p class="auth-tagline">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
+    <div class="lg-stage">
+        <div class="lg-aura" aria-hidden="true"></div>
+        <main class="lg-shell">
+            <section class="lg-hero">
+                <div class="lg-hero__brand" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
+                <h1 class="lg-hero__title">غير مصرح</h1>
+                <p class="lg-hero__tagline">هذه الصفحة محمية ولا يمكن الوصول إليها بحسابك الحالي.</p>
+                <p class="lg-hero__trust"><i class="bi bi-shield-lock" aria-hidden="true"></i> اتصال آمن وإدارة صلاحيات مركزية</p>
             </section>
-            <section class="auth-form">
-                <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
-                    <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
-                        <i class="bi bi-display" aria-hidden="true"></i>
-                        <span class="theme-mode-label">النظام</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
-                        <i class="bi bi-sun" aria-hidden="true"></i>
-                        <span class="theme-mode-label">فاتح</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
-                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                        <span class="theme-mode-label">داكن</span>
-                    </button>
+            <section class="lg-panel">
+                <div class="lg-theme">
+                    <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
+                        <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
+                            <i class="bi bi-display" aria-hidden="true"></i>
+                            <span class="theme-mode-label">النظام</span>
+                        </button>
+                        <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
+                            <i class="bi bi-sun" aria-hidden="true"></i>
+                            <span class="theme-mode-label">فاتح</span>
+                        </button>
+                        <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
+                            <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                            <span class="theme-mode-label">داكن</span>
+                        </button>
+                    </div>
                 </div>
-                <h2>تسجيل الدخول</h2>
-                <p class="subtitle">تواصل مع مدير النظام إذا كنت تعتقد أن الوصول يجب أن يكون متاحاً لك.</p>
-                <a asp-controller="Account" asp-action="Login" class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> العودة لتسجيل الدخول</a>
+                <div class="lg-panel__head">
+                    <h2 class="lg-title">تم رفض الوصول</h2>
+                    <p class="lg-subtitle">ليس لديك الصلاحية للوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تعتقد أن الوصول يجب أن يكون متاحاً لك.</p>
+                </div>
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary w-100 lg-submit"><i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> العودة لتسجيل الدخول</a>
+                <p class="lg-foot">@_brand.Profile.CompanyName — جميع الحقوق محفوظة.</p>
             </section>
         </main>
     </div>

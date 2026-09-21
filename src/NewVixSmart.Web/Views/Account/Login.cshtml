@@ -29,87 +29,105 @@
         })();
     </script>
     <link href="~/css/dark-theme.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/auth.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
-    <div class="login-stage">
-        <main class="auth-wrap">
-            <section class="auth-brand">
+    <div class="lg-stage">
+        <div class="lg-aura" aria-hidden="true"></div>
+        <div class="lg-shell">
+            <section class="lg-hero" aria-label="نبذة عن النظام">
                 @if (_brand.Profile.HasLogo)
                 {
-                    <img class="login-logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
+                    <img class="lg-hero__brand lg-hero__logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
                 }
                 else
                 {
-                    <div class="brand-monogram auth-monogram" aria-hidden="true"><i class="bi bi-shop"></i></div>
+                    <div class="lg-hero__brand lg-hero__monogram" aria-hidden="true"><i class="bi bi-shop"></i></div>
                 }
-                <h1>@_brand.Profile.CompanyName</h1>
-                <p class="auth-tagline">@(_brand.Profile.Tagline ?? "Smart Solutions")</p>
-                <ul class="auth-points">
-                    <li><i class="bi bi-check-circle-fill"></i> إدارة المبيعات والمشتريات والمخزون</li>
-                    <li><i class="bi bi-check-circle-fill"></i> محاسبة وتقارير ولحظة أداء</li>
-                    <li><i class="bi bi-check-circle-fill"></i> نسخ احتياطي واستعادة آمنة</li>
+                <h1 class="lg-hero__title">@_brand.Profile.CompanyName</h1>
+                <p class="lg-hero__tagline">@(_brand.Profile.Tagline ?? "Smart Solutions")</p>
+                <ul class="lg-hero__points">
+                    <li><span class="lg-point__icon"><i class="bi bi-cart-check" aria-hidden="true"></i></span> إدارة المبيعات والمشتريات والمخزون</li>
+                    <li><span class="lg-point__icon"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span> محاسبة وتقارير ولحظة أداء</li>
+                    <li><span class="lg-point__icon"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i></span> نسخ احتياطي واستعادة آمنة</li>
                 </ul>
+                <p class="lg-hero__trust"><i class="bi bi-shield-lock" aria-hidden="true"></i> بياناتك محمية ومنقولة بتشفير آمن</p>
             </section>
-            <section class="auth-form">
-                <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
-                    <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
-                        <i class="bi bi-display" aria-hidden="true"></i>
-                        <span class="theme-mode-label">النظام</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
-                        <i class="bi bi-sun" aria-hidden="true"></i>
-                        <span class="theme-mode-label">فاتح</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
-                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                        <span class="theme-mode-label">داكن</span>
-                    </button>
+            <section class="lg-panel">
+                <div class="lg-theme">
+                    <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
+                        <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
+                            <i class="bi bi-display" aria-hidden="true"></i>
+                            <span class="theme-mode-label">النظام</span>
+                        </button>
+                        <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
+                            <i class="bi bi-sun" aria-hidden="true"></i>
+                            <span class="theme-mode-label">فاتح</span>
+                        </button>
+                        <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
+                            <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                            <span class="theme-mode-label">داكن</span>
+                        </button>
+                    </div>
                 </div>
-                <h2>تسجيل الدخول</h2>
-                <p class="subtitle">أدخل بياناتك للمتابعة إلى لوحة العمل</p>
+                <header class="lg-panel__head">
+                    <h2 class="lg-title">تسجيل الدخول</h2>
+                    <p class="lg-subtitle">أدخل بياناتك للمتابعة إلى لوحة العمل</p>
+                </header>
 
                 @if (TempData["Success"] is string successMsg)
                 {
-                    <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
-                        @successMsg
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <div class="lg-alert">
+                        <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
+                            @successMsg
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        </div>
                     </div>
                 }
                 @if (TempData["Error"] is string errorMsg)
                 {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
-                        @errorMsg
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                    <div class="lg-alert">
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
+                            @errorMsg
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+                        </div>
                     </div>
                 }
 
-                <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
+                <form class="lg-form" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
                     <div asp-validation-summary="All" class="text-danger mb-3"></div>
-                    <div class="mb-3">
+                    <div class="lg-field">
                         <label asp-for="Username" class="form-label"></label>
-                        <input asp-for="Username" class="form-control" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
+                        <span class="lg-input__icon" aria-hidden="true"><i class="bi bi-person"></i></span>
+                        <input asp-for="Username" class="form-control lg-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
                         <span asp-validation-for="Username" class="text-danger small"></span>
                     </div>
-                    <div class="mb-3">
+                    <div class="lg-field">
                         <label asp-for="Password" class="form-label"></label>
+                        <span class="lg-input__icon" aria-hidden="true"><i class="bi bi-lock"></i></span>
                         <div class="input-group">
-                            <input asp-for="Password" class="form-control" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
-                            <button type="button" class="btn btn-outline-secondary" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+                            <input asp-for="Password" class="form-control lg-input" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
+                            <button type="button" class="btn btn-outline-secondary lg-password-toggle" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </button>
                         </div>
                         <span asp-validation-for="Password" class="text-danger small"></span>
                     </div>
-                    <div class="mb-3 form-check">
-                        <input asp-for="RememberMe" class="form-check-input" />
-                        <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
+                    <div class="lg-actions">
+                        <div class="form-check">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> دخول
+                    <button type="submit" class="btn btn-primary w-100 lg-submit">
+                        <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i>
+                        <span>دخول</span>
                     </button>
                 </form>
+
+                <p class="lg-foot">&copy; @DateTime.Now.Year @_brand.Profile.CompanyName &mdash; جميع الحقوق محفوظة</p>
             </section>
-        </main>
+        </div>
     </div>
     <script src="~/js/site.js" asp-append-version="true"></script>
 </body>
