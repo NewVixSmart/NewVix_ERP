@@ -1068,4 +1068,54 @@
         initClock();
         initDataTables();
     }
+
+    // ---------- Prefetch same-origin navigation on hover/focus ----------
+    var prefetched = new Set();
+
+    function canPrefetch(a) {
+        if (!a || !a.href) return false;
+        var href = a.getAttribute('href');
+        if (!href) return false;
+        if (href.charAt(0) === '#') return false;
+        if (/^(mailto:|tel:|javascript:)/i.test(href)) return false;
+        if (a.target === '_blank') return false;
+        if (a.hasAttribute('download')) return false;
+        if (location.protocol === 'file:') return false;
+        try {
+            if (new URL(a.href, location.href).origin !== location.origin) return false;
+        } catch (err) { return false; }
+        if (navigator.connection) {
+            if (navigator.connection.saveData === true) return false;
+            var etype = navigator.connection.effectiveType || '';
+            if (etype.indexOf('2g') !== -1) return false;
+        }
+        return true;
+    }
+
+    function prefetchDocument(linkEl) {
+        var absUrl = linkEl.href;
+        if (prefetched.has(absUrl)) return;
+        prefetched.add(absUrl);
+        if (prefetched.size > 64) {
+            var oldest = prefetched.values().next();
+            if (!oldest.done) prefetched.delete(oldest.value);
+        }
+        try {
+            var p = document.createElement('link');
+            p.rel = 'prefetch';
+            p.as = 'document';
+            p.href = absUrl;
+            document.head.appendChild(p);
+        } catch (err) { }
+    }
+
+    document.addEventListener('mouseover', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (a && canPrefetch(a)) prefetchDocument(a);
+    }, true);
+
+    document.addEventListener('focusin', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (a && canPrefetch(a)) prefetchDocument(a);
+    }, true);
 })();

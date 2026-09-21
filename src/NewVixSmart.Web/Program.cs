@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using System.IO.Compression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -143,6 +145,30 @@ builder.Services.AddControllersWithViews(options =>
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
 
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = new[]
+    {
+        "text/plain",
+        "text/css",
+        "application/javascript",
+        "text/javascript",
+        "application/json",
+        "application/xml",
+        "image/svg+xml",
+        "text/html"
+    };
+    options.Providers.Add(new BrotliCompressionProvider(new BrotliCompressionProviderOptions
+    {
+        Level = CompressionLevel.Fastest
+    }));
+    options.Providers.Add(new GzipCompressionProvider(new GzipCompressionProviderOptions
+    {
+        Level = CompressionLevel.Fastest
+    }));
+});
+
 var corsOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(options =>
@@ -260,8 +286,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseResponseCompression();
+
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.CacheControl] = "public,max-age=31536000,immutable";
+    }
+});
 
 app.Use(async (context, next) =>
 {
