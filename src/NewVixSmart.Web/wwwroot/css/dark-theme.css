@@ -1,11 +1,16 @@
 /* ============================================================
-   NewVix Smart Solutions — Dark Theme (REDESIGN V4 "NEWVIX SAPPHIRE")
-   Dark navy canvas + sapphire accents. Variable NAMES preserved
-   from the v3 dark theme; values follow spec §2-§7.
-   Chrome (sidebar + topbar) stays NAVY in both themes and is
-   owned by site.css (light) — no conflicting chrome overrides here.
-   Section order: tokens -> component overrides -> auth dark ->
-   print reset -> reduced-motion -> forced-colors.
+   NewVix Smart Solutions — Dark Theme (REDESIGN V5 "NEWVIX GLOBAL")
+   Navy surfaces for world-class ERP dark mode. Dense language,
+   identical density to the new light theme (site.css? — G3).
+   Variable NAMES preserved; values follow spec §5.
+   DARK chrome: sidebar + topbar are NAVY IN DARK (light theme
+   owns the LIGHT/WHT chrome). Component overrides here flip the
+   shared shell to navy when [data-theme="dark"].
+   Zero gradients (auth-brand navy gradient is owned by light),
+   zero backdrop-filter, zero keyframes (reuse the 5 light ones).
+   Section order: dark tokens -> component overrides -> dark
+   surfaces -> dark chrome -> auth dark -> print reset ->
+   reduced-motion -> forced-colors.
    ============================================================ */
 
 /* ---------- 1. DARK TOKENS ---------- */
@@ -23,9 +28,11 @@
     --color-border: rgba(255, 255, 255, 0.09);
     --color-border-strong: rgba(255, 255, 255, 0.16);
     --color-divider: rgba(255, 255, 255, 0.06);
-    --color-text-strong: #FFFFFF;
+    /* ink #E8E8EE, strong #FFFFFF (headings), muted #8FA3C0, secondary #A9B8CC */
+    --color-text-strong: #E8E8EE;
     --color-text-muted: #8FA3C0;
     --color-text-secondary: #A9B8CC;
+    /* bright-on-dark hover is #4A9EE8; darker #1D5BBC (spec §5) */
     --color-primary: #2E6FD8;
     --color-primary-dark: #4A9EE8;
     --color-primary-darker: #1D5BBC;
@@ -36,6 +43,7 @@
     --color-gold-strong: #7FE0F5;
     --color-gold-bright: #9FE9FA;
     --color-code-on-primary: #FFFFFF;
+    /* Status hues (spec §6 escape hatch) — badge tints EXACT as before */
     --color-danger: #f87171;
     --color-danger-bg: #2c1216;
     --color-danger-text: #fca5a5;
@@ -64,10 +72,11 @@
     --color-stock-low-text: #fca5a5;
     --color-stock-ok-bg: #0f2a1c;
     --color-stock-ok-text: #86efac;
+    /* DARK chrome (navy). Direct .sidebar/.topbar overrides also exist below. */
     --color-sidebar-bg: #0D1B35;
     --color-sidebar-text: #E8E8EE;
     --color-sidebar-section: #94A3B8;
-    --color-sidebar-hairline: rgba(255, 255, 255, 0.10);
+    --color-sidebar-hairline: rgba(255, 255, 255, 0.08);
     --color-sidebar-soft: rgba(255, 255, 255, 0.07);
     --color-sidebar-rail-tip: #152B50;
     --color-chrome-bg: #0D1B35;
@@ -124,19 +133,40 @@
 /* ---------- 2. DARK COMPONENT OVERRIDES ---------- */
 html[data-theme="dark"] { color-scheme: dark; }
 
-/* Flat dark canvas (no gradients / no blur) */
+/* Flat dark canvas (no gradients / no blur / no keyframes) */
 html[data-theme="dark"] body { background-color: #0A1120; }
 
+/* Ink + strong heading scale */
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6,
+html[data-theme="dark"] .stat-card h3,
+html[data-theme="dark"] .stat-card h4,
+html[data-theme="dark"] .stat-card .stat-value,
+html[data-theme="dark"] .stat-card .fw-bold,
+html[data-theme="dark"] .card h5,
+html[data-theme="dark"] .card h6,
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .modal-title,
+html[data-theme="dark"] .table tfoot td,
+html[data-theme="dark"] .table tfoot th { color: #FFFFFF; }
+
+/* Links — cyan on navy (spec §5: links #5BC8E8, hover #86DFF2) */
 html[data-theme="dark"] a:not(.btn) { color: #5BC8E8; }
 html[data-theme="dark"] a:not(.btn):hover { color: #86DFF2; }
 html[data-theme="dark"] a:not(.btn):focus-visible { color: #86DFF2; }
 html[data-theme="dark"] .link-primary { color: #7FE0F5 !important; }
 html[data-theme="dark"] .text-primary { color: #7FE0F5 !important; }
+html[data-theme="dark"] .text-secondary { color: #A9B8CC !important; }
+html[data-theme="dark"] .text-muted { color: #8FA3C0 !important; }
 html[data-theme="dark"] .btn-link { color: #5BC8E8; }
 html[data-theme="dark"] .btn-link:hover { color: #86DFF2; }
 html[data-theme="dark"] ::selection { background: rgba(46, 111, 216, 0.40); color: #FFFFFF; }
 
-/* Sapphire focus rings on dark canvas */
+/* Focus rings on dark canvas */
 html[data-theme="dark"] a:focus-visible,
 html[data-theme="dark"] button:focus-visible,
 html[data-theme="dark"] input:focus-visible,
@@ -144,6 +174,16 @@ html[data-theme="dark"] select:focus-visible,
 html[data-theme="dark"] textarea:focus-visible,
 html[data-theme="dark"] [tabindex]:focus-visible {
     outline-color: #2E6FD8;
+}
+html[data-theme="dark"] .sidebar a:focus-visible,
+html[data-theme="dark"] .sidebar button:focus-visible,
+html[data-theme="dark"] .topbar a:focus-visible,
+html[data-theme="dark"] .topbar button:focus-visible,
+html[data-theme="dark"] .login-stage a:focus-visible,
+html[data-theme="dark"] .login-stage button:focus-visible,
+html[data-theme="dark"] .auth-panel a:focus-visible,
+html[data-theme="dark"] .auth-panel button:focus-visible {
+    outline-color: #7FE0F5;
 }
 
 /* Dark scrollbars */
@@ -160,14 +200,17 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2E4A7A; border-
 html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #4A9EE8; }
 html[data-theme="dark"] .sidebar::-webkit-scrollbar-thumb { background: transparent; }
 
+/* Inputs — translucent navy field, focus electric (spec §5) */
 html[data-theme="dark"] .form-control,
 html[data-theme="dark"] .form-select {
     background-color: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.14);
     color: #E8E8EE;
+    box-shadow: none;
     transition: background-color .16s var(--ease), border-color .16s var(--ease);
 }
-html[data-theme="dark"] .form-control::placeholder { color: rgba(143, 163, 192, 0.85); }
+html[data-theme="dark"] .form-control::placeholder,
+html[data-theme="dark"] .form-control::-webkit-input-placeholder { color: #6E7F99; }
 html[data-theme="dark"] .form-control:focus,
 html[data-theme="dark"] .form-select:focus {
     background-color: rgba(255, 255, 255, 0.06);
@@ -179,6 +222,7 @@ html[data-theme="dark"] .form-control[readonly]:focus { background-color: rgba(2
 html[data-theme="dark"] .form-check-input,
 html[data-theme="dark"] .form-check-input:checked { accent-color: #2E6FD8; }
 
+/* Primary buttons — flat electric, bright-on-dark hover */
 html[data-theme="dark"] .btn-primary {
     background-color: #2E6FD8;
     border-color: #2E6FD8;
@@ -205,6 +249,7 @@ html[data-theme="dark"] .btn-primary:disabled:focus-visible {
     transform: none;
 }
 
+/* Outline buttons — status tints aligned to the dark badge tints */
 html[data-theme="dark"] .btn-outline-primary { color: #5BC8E8 !important; border-color: rgba(91, 200, 232, 0.65); }
 html[data-theme="dark"] .btn-outline-primary:not(:disabled):hover,
 html[data-theme="dark"] .btn-outline-primary:not(:disabled):active,
@@ -213,28 +258,28 @@ html[data-theme="dark"] .btn-outline-primary:focus-visible {
     color: #04121F !important;
     border-color: #5BC8E8 !important;
 }
-html[data-theme="dark"] .btn-outline-success { color: #4ade80 !important; }
+html[data-theme="dark"] .btn-outline-success { color: #86efac !important; }
 html[data-theme="dark"] .btn-outline-success:hover,
-html[data-theme="dark"] .btn-outline-success:focus-visible { background-color: #4ade80 !important; color: #04120c !important; border-color: #4ade80 !important; }
-html[data-theme="dark"] .btn-outline-info { color: #67e8f9 !important; }
+html[data-theme="dark"] .btn-outline-success:focus-visible { background-color: #86efac !important; color: #0f2a1c !important; border-color: #86efac !important; }
+html[data-theme="dark"] .btn-outline-info { color: #a5dbff !important; }
 html[data-theme="dark"] .btn-outline-info:hover,
-html[data-theme="dark"] .btn-outline-info:focus-visible { background-color: #67e8f9 !important; color: #04120c !important; border-color: #67e8f9 !important; }
+html[data-theme="dark"] .btn-outline-info:focus-visible { background-color: #a5dbff !important; color: #0f2a4d !important; border-color: #a5dbff !important; }
 html[data-theme="dark"] .btn-outline-secondary { color: #cbd5e1 !important; }
 html[data-theme="dark"] .btn-outline-secondary:hover,
-html[data-theme="dark"] .btn-outline-secondary:focus-visible { background-color: #cbd5e1 !important; color: #04120c !important; border-color: #cbd5e1 !important; }
+html[data-theme="dark"] .btn-outline-secondary:focus-visible { background-color: #cbd5e1 !important; color: #22313e !important; border-color: #cbd5e1 !important; }
 html[data-theme="dark"] .btn-outline-danger { color: #fca5a5 !important; }
 html[data-theme="dark"] .btn-outline-danger:hover,
-html[data-theme="dark"] .btn-outline-danger:focus-visible { background-color: #fca5a5 !important; color: #04120c !important; border-color: #fca5a5 !important; }
+html[data-theme="dark"] .btn-outline-danger:focus-visible { background-color: #fca5a5 !important; color: #2c1216 !important; border-color: #fca5a5 !important; }
 
 html[data-theme="dark"] .btn-outline-primary:disabled,
 html[data-theme="dark"] .btn-outline-primary:disabled:hover,
 html[data-theme="dark"] .btn-outline-primary:disabled:focus-visible { color: #5BC8E8 !important; }
 html[data-theme="dark"] .btn-outline-success:disabled,
 html[data-theme="dark"] .btn-outline-success:disabled:hover,
-html[data-theme="dark"] .btn-outline-success:disabled:focus-visible { color: #4ade80 !important; }
+html[data-theme="dark"] .btn-outline-success:disabled:focus-visible { color: #86efac !important; }
 html[data-theme="dark"] .btn-outline-info:disabled,
 html[data-theme="dark"] .btn-outline-info:disabled:hover,
-html[data-theme="dark"] .btn-outline-info:disabled:focus-visible { color: #67e8f9 !important; }
+html[data-theme="dark"] .btn-outline-info:disabled:focus-visible { color: #a5dbff !important; }
 html[data-theme="dark"] .btn-outline-secondary:disabled,
 html[data-theme="dark"] .btn-outline-secondary:disabled:hover,
 html[data-theme="dark"] .btn-outline-secondary:disabled:focus-visible { color: #cbd5e1 !important; }
@@ -249,18 +294,37 @@ html[data-theme="dark"] .btn-outline-dark:disabled,
 html[data-theme="dark"] .btn-outline-dark:disabled:hover,
 html[data-theme="dark"] .btn-outline-dark:disabled:focus-visible { color: #d3d9e3 !important; }
 
-/* Badges — dark translucent tints preserved from v3 (contrast-verified) */
+/* Inline list action buttons (views/JS hooks) */
+html[data-theme="dark"] .btn-del { color: #fca5a5 !important; border-color: rgba(252, 165, 165, 0.55) !important; background: transparent; }
+html[data-theme="dark"] .btn-del:hover { color: #2c1216 !important; background-color: #fca5a5 !important; border-color: #fca5a5 !important; }
+
+/* Badges — dark translucent tints EXACT as before (contrast-verified) */
+html[data-theme="dark"] .badge-stock-warn { background: #2a2006; color: #ffefb3; }
 html[data-theme="dark"] .badge-stock-low { background: #2c1216; color: #fca5a5; }
 html[data-theme="dark"] .badge-stock-ok { background: #0f2a1c; color: #86efac; }
 html[data-theme="dark"] .badge.bg-dark { background: #374151 !important; color: #d3dce6; }
+/* Stock glyph dots reuse the badge text tints so the pair stays 3:1+ */
+html[data-theme="dark"] .badge-stock-low::before { background: #fca5a5; }
+html[data-theme="dark"] .badge-stock-ok::before { background: #86efac; }
 
 html[data-theme="dark"] .row-stock-warn td { background-color: #2a2006 !important; }
 html[data-theme="dark"] .stock-note { color: #ffefb3; }
 
-/* Flat sapphire surface states (no gradients / no LEDs / no glow) */
+html[data-theme="dark"] h1.text-warning,
+html[data-theme="dark"] h2.text-warning,
+html[data-theme="dark"] h3.text-warning,
+html[data-theme="dark"] h4.text-warning,
+html[data-theme="dark"] th.text-warning,
+html[data-theme="dark"] small.text-warning,
+html[data-theme="dark"] span.text-warning,
+html[data-theme="dark"] .text-warning p { color: #ffefb3 !important; }
+
+/* Flat navy surface states (no gradients / no LEDs / no glow) */
 html[data-theme="dark"] .all-clear { background: var(--color-surface-2); border-color: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .all-clear h3,
 html[data-theme="dark"] .all-clear h4 { color: #E8E8EE; }
 html[data-theme="dark"] .empty-state .empty-icon { background: rgba(46, 111, 216, 0.18); color: #5BC8E8; border: 1px solid rgba(91, 200, 232, 0.35); }
+html[data-theme="dark"] .page-header h2 i { background: rgba(46, 111, 216, 0.18); color: #5BC8E8; }
 html[data-theme="dark"] .tile-xl { background: var(--color-surface-2); color: #5BC8E8; border: 1px solid rgba(91, 200, 232, 0.35); }
 html[data-theme="dark"] .skeleton { background-color: rgba(255, 255, 255, 0.06); background-image: none; }
 
@@ -291,18 +355,21 @@ html[data-theme="dark"] .pagination .page-link { color: #5BC8E8 !important; bord
 html[data-theme="dark"] .pagination .page-item.active .page-link { background-color: #2E6FD8; border-color: #2E6FD8; color: #FFFFFF !important; }
 html[data-theme="dark"] .pagination .page-item.disabled .page-link { color: #6B7FA0; }
 
-html[data-theme="dark"] .modal-content { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); box-shadow: none; }
+html[data-theme="dark"] .modal-content { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); box-shadow: none; border-radius: 14px; }
+html[data-theme="dark"] .modal-dialog { border-radius: 14px; }
 html[data-theme="dark"] .modal-header { background-color: transparent; border-color: rgba(255, 255, 255, 0.10); }
 html[data-theme="dark"] .modal-footer { border-color: rgba(255, 255, 255, 0.10); }
 html[data-theme="dark"] .card-header { background-color: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.06); }
 
+/* Theme selector — navy chip (spec §5). Specificity beats light file's
+   `.theme-mode-btn[data-theme-value]` / `.auth-form .theme-mode-btn`. */
 html[data-theme="dark"] .theme-selector { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); }
-html[data-theme="dark"] .theme-mode-btn { color: rgba(232, 232, 238, 0.78); }
-html[data-theme="dark"] .theme-mode-btn:hover { background: rgba(255, 255, 255, 0.10); }
-html[data-theme="dark"] .auth-form .theme-mode-btn,
-html[data-theme="dark"] .auth-form .theme-mode-btn[data-theme-value] { color: rgba(232, 232, 238, 0.82); }
-html[data-theme="dark"] .auth-form .theme-mode-btn:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.10); }
-html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { background: #FFFFFF; border-color: #FFFFFF; color: #0D1B35; font-weight: 700; box-shadow: none; }
+html[data-theme="dark"] .theme-mode-btn,
+html[data-theme="dark"] .theme-mode-btn[data-theme-value] { color: rgba(232, 232, 238, 0.82); }
+html[data-theme="dark"] .theme-mode-btn:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.10); }
+html[data-theme="dark"] .theme-mode-btn:focus-visible { outline-color: #7FE0F5; }
+html[data-theme="dark"] .theme-mode-btn[aria-pressed="true"] { background: #FFFFFF; border-color: #FFFFFF; color: #0D1B35; font-weight: 700; box-shadow: none; }
+
 html[data-theme="dark"] .theme-mode-btn,
 html[data-theme="dark"] .preset-card,
 html[data-theme="dark"] .page-link,
@@ -313,7 +380,8 @@ html[data-theme="dark"] .stat-card {
 
 html[data-theme="dark"] .preset-card { border-color: rgba(255, 255, 255, 0.12); }
 html[data-theme="dark"] .preset-card.selected,
-html[data-theme="dark"] .preset-card:hover { border-color: #5BC8E8; }
+html[data-theme="dark"] .preset-card:hover { border-color: #5BC8E8; background: rgba(91, 200, 232, 0.10); }
+html[data-theme="dark"] .preset-swatches span { border-color: rgba(255, 255, 255, 0.18); }
 
 html[data-theme="dark"] .alert-info { background-color: #0f2a4d; color: #a5dbff; border-color: rgba(165, 219, 255, 0.28); }
 html[data-theme="dark"] .alert-success { background-color: #0f2a1c; color: #86efac; border-color: rgba(134, 239, 172, 0.28); }
@@ -324,8 +392,7 @@ html[data-theme="dark"] .text-danger { color: #fca5a5 !important; }
 html[data-theme="dark"] .invalid-feedback,
 html[data-theme="dark"] .validation-summary-errors li { color: #fca5a5; }
 
-/* ---------- 2b. DARK SURFACES (flat cards, no glass, no blur) ---------- */
-/* Chrome (sidebar/topbar) stays NAVY as in light — owned by site.css. */
+/* ---------- 2b. DARK SURFACES (flat navy cards, no glass, no blur) ---------- */
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .table-container,
 html[data-theme="dark"] .data-shell,
@@ -351,19 +418,136 @@ html[data-theme="dark"] th[aria-sort="ascending"] .th-sort .bi,
 html[data-theme="dark"] th[aria-sort="descending"] .th-sort .bi { color: #5BC8E8; }
 
 html[data-theme="dark"] .app-toast { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); color: #E8E8EE; box-shadow: none; }
+html[data-theme="dark"] .app-toast.success { background: #0f2a1c; }
+html[data-theme="dark"] .app-toast.error { background: #2c1216; }
+html[data-theme="dark"] .app-toast.success i { color: #86efac; }
+html[data-theme="dark"] .app-toast.error i { color: #fca5a5; }
 
 html[data-theme="dark"] .dash-hero { background: var(--color-surface-2); border-color: rgba(255, 255, 255, 0.12); }
 
 html[data-theme="dark"] .mobile-overlay { background: rgba(10, 17, 32, 0.72); }
 
-/* ---------- 3. AUTH DARK (split screen dark panels) ---------- */
+/* ---------- 2c. DARK CHROME (sidebar + topbar NAVY IN DARK) ---------- */
+/* Light theme owns the light/white shell; dark flips it navy (spec §5). */
+
+html[data-theme="dark"] .sidebar {
+    background: #0D1B35;
+    border-inline-end-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+    color: #E8E8EE;
+}
+html[data-theme="dark"] .sidebar .sidebar-brand { border-bottom-color: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .sidebar .brand-frame { background: rgba(46, 111, 216, 0.12); border-color: rgba(46, 111, 216, 0.35); }
+html[data-theme="dark"] .sidebar .brand-frame:hover { border-color: rgba(91, 200, 232, 0.55); background: rgba(46, 111, 216, 0.20); }
+html[data-theme="dark"] .sidebar .brand-monogram { background: var(--color-primary); color: #FFFFFF; }
+html[data-theme="dark"] .sidebar .brand-text strong { color: #FFFFFF; }
+html[data-theme="dark"] .sidebar .brand-text small { color: #94A3B8; }
+
+html[data-theme="dark"] .dash-hero .dash-hero-badge { color: #5BC8E8; background: rgba(91, 200, 232, 0.10); border-color: rgba(91, 200, 232, 0.30); }
+
+html[data-theme="dark"] .sidebar-nav .nav-section { color: #94A3B8; }
+html[data-theme="dark"] .sidebar-nav .nav-section::before { background: #5BC8E8; }
+html[data-theme="dark"] .sidebar-nav .nav-section::after,
+html[data-theme="dark"] .sidebar-nav .nav-group-header::after { background: rgba(255, 255, 255, 0.10); }
+
+html[data-theme="dark"] .sidebar-nav .nav-group-header { color: #D6E2F0; }
+html[data-theme="dark"] .sidebar-nav .nav-group-header:hover { color: #FFFFFF; background: rgba(46, 111, 216, 0.18); }
+html[data-theme="dark"] .sidebar-nav .nav-group-header > i:first-child { color: #94A3B8; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
+html[data-theme="dark"] .sidebar-nav .nav-group-header:hover > i:first-child { color: #FFFFFF; background: rgba(46, 111, 216, 0.28); border-color: rgba(46, 111, 216, 0.40); }
+html[data-theme="dark"] .sidebar-nav .nav-group-header[aria-expanded="true"] > i:first-child { color: #9FE9FA; background: rgba(46, 111, 216, 0.24); border-color: rgba(46, 111, 216, 0.40); }
+html[data-theme="dark"] .sidebar-nav .nav-group-header[aria-expanded="true"] > span { color: #86DFF2; font-weight: 700; }
+html[data-theme="dark"] .sidebar-nav .nav-chevron { color: #94A3B8; }
+
+html[data-theme="dark"] .sidebar-nav .nav-subheader { color: #94A3B8; }
+
+html[data-theme="dark"] .sidebar-nav .nav-link { color: #D6E2F0; }
+html[data-theme="dark"] .sidebar-nav .nav-link:hover { background: rgba(255, 255, 255, 0.06); color: #FFFFFF; border-color: transparent; border-inline-start-color: transparent; }
+html[data-theme="dark"] .sidebar-nav .nav-link i { color: #94A3B8; }
+html[data-theme="dark"] .sidebar-nav .nav-link:hover i { color: #FFFFFF; }
+html[data-theme="dark"] .sidebar-nav .nav-badge { background: rgba(46, 111, 216, 0.28); color: #9FE9FA; }
+/* Active — electric wash (SOLID, no gradient) + 3px indicator + white text */
+html[data-theme="dark"] .sidebar-nav .nav-link.active {
+    background: rgba(46, 111, 216, 0.25);
+    color: #FFFFFF !important;
+    font-weight: 700;
+    border-color: transparent;
+    border-inline-start: 3px solid #2E6FD8;
+}
+html[data-theme="dark"] .sidebar-nav .nav-link.active i { color: #2E6FD8; }
+
+html[data-theme="dark"] .sidebar-profile { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.10); }
+html[data-theme="dark"] .sidebar-profile:hover { border-color: rgba(46, 111, 216, 0.40); }
+html[data-theme="dark"] .sidebar-profile .user-meta strong { color: #FFFFFF; }
+html[data-theme="dark"] .sidebar-profile .user-meta small { color: #94A3B8; }
+html[data-theme="dark"] .sidebar-profile .btn { color: #94A3B8; border-color: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .sidebar-profile .btn:hover { color: #F2B8C0; border-color: rgba(242, 184, 192, 0.5); background: rgba(220, 38, 38, 0.18); }
+
+html[data-theme="dark"] .sidebar-footer { border-top-color: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .rail-toggle,
+html[data-theme="dark"] #railToggle { color: #94A3B8; border-color: rgba(148, 163, 184, 0.5); background: transparent; }
+html[data-theme="dark"] .rail-toggle:hover { background: rgba(46, 111, 216, 0.20); color: #86DFF2; border-color: rgba(46, 111, 216, 0.55); }
+
+/* CSS-only rail tooltips on navy */
+html[data-theme="dark"] .sidebar.is-rail .sidebar-nav .nav-link::after,
+html[data-theme="dark"] .sidebar.is-collapsed .sidebar-nav .nav-link::after,
+html[data-theme="dark"] .sidebar.is-rail .sidebar-nav .nav-group-header::after,
+html[data-theme="dark"] .sidebar.is-collapsed .sidebar-nav .nav-group-header::after {
+    background: #152B50;
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Topbar — navy chrome */
+html[data-theme="dark"] .topbar {
+    background: #0D1B35;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    color: #E8E8EE;
+    box-shadow: none;
+}
+html[data-theme="dark"] .top-bar {
+    background: #0D1B35;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    color: #E8E8EE;
+    box-shadow: none;
+}
+html[data-theme="dark"] .topbar-title h6,
+html[data-theme="dark"] .top-bar h6 { color: #FFFFFF; }
+html[data-theme="dark"] .topbar-greeting,
+html[data-theme="dark"] .topbar-clock,
+html[data-theme="dark"] .topbar-user,
+html[data-theme="dark"] #clock { color: rgba(232, 232, 238, 0.72); }
+html[data-theme="dark"] .topbar-clock i,
+html[data-theme="dark"] .topbar-user i { color: #5BC8E8; }
+
+/* Logout — rose ghost readable on navy (light ghost is for white topbar) */
+html[data-theme="dark"] .topbar .btn-outline-danger { color: #F2B8C0 !important; border-color: rgba(242, 184, 192, 0.5) !important; }
+html[data-theme="dark"] .topbar .btn-outline-danger:hover,
+html[data-theme="dark"] .topbar .btn-outline-danger:focus-visible {
+    color: #FFFFFF !important;
+    background-color: var(--color-danger) !important;
+    border-color: var(--color-danger) !important;
+}
+
+/* Mobile toggler on navy chrome */
+html[data-theme="dark"] .navbar-toggler { border-color: rgba(255, 255, 255, 0.14); color: #E8E8EE; background: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .navbar-toggler:hover { background: rgba(255, 255, 255, 0.16); color: #FFFFFF; }
+
+/* ---------- 3. AUTH DARK (split screen, dark form panel) ---------- */
 html[data-theme="dark"] .login-stage { background-color: #0A1120; }
 html[data-theme="dark"] .auth-wrap { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); box-shadow: none; }
-html[data-theme="dark"] .auth-brand { border-inline-end: 1px solid rgba(255, 255, 255, 0.08); }
 html[data-theme="dark"] .auth-panel.auth-form,
 html[data-theme="dark"] .auth-form { background: var(--color-surface); border-inline-start: 1px solid rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .auth-brand { border-inline-end: 1px solid rgba(255, 255, 255, 0.08); }
+/* auth-brand keeps G3's navy gradient from the light file — do NOT redefine */
 html[data-theme="dark"] .auth-form h2 { color: #FFFFFF; }
 html[data-theme="dark"] .auth-form .subtitle { color: #8FA3C0; }
+html[data-theme="dark"] .auth-card { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); box-shadow: none; }
+/* Theme selector inside the dark form panel — same navy chip */
+html[data-theme="dark"] .auth-form .theme-selector { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .auth-form .theme-mode-btn,
+html[data-theme="dark"] .auth-form .theme-mode-btn[data-theme-value] { color: rgba(232, 232, 238, 0.82); }
+html[data-theme="dark"] .auth-form .theme-mode-btn:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.10); }
+html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { background: #FFFFFF; border-color: #FFFFFF; color: #0D1B35; font-weight: 700; box-shadow: none; }
 
 /* ---------- 4. PRINT RESET (dark -> print-light palette flip) ---------- */
 @media print {
@@ -518,6 +702,10 @@ html[data-theme="dark"] .auth-form .subtitle { color: #8FA3C0; }
         border-color: #d8dce2;
         box-shadow: none !important;
     }
+    html[data-theme="dark"] .theme-selector,
+    html[data-theme="dark"] .theme-mode-btn,
+    html[data-theme="dark"] .theme-mode-btn[data-theme-value] { color: #1a2f4d; }
+    html[data-theme="dark"] .theme-mode-btn[aria-pressed="true"] { background: #1a2f4d; border-color: #1a2f4d; color: #ffffff; }
     html[data-theme="dark"] .table-container { background-color: #ffffff; border-color: #d8dce2; }
     html[data-theme="dark"] .all-clear { background: #ffffff; border-color: #d8dce2; }
     html[data-theme="dark"] .empty-state .empty-icon,
@@ -568,11 +756,16 @@ html[data-theme="dark"] .auth-form .subtitle { color: #8FA3C0; }
     html[data-theme="dark"] *::before,
     html[data-theme="dark"] *::after {
         transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
     }
     html,
     html[data-theme="dark"] { scroll-behavior: auto !important; }
+    html[data-theme="dark"] .theme-selector,
+    html[data-theme="dark"] .theme-mode-btn,
+    html[data-theme="dark"] .preset-card,
+    html[data-theme="dark"] .sidebar-nav .nav-group-header { transition: none !important; }
 }
 
 /* ---------- 6. FORCED COLORS ---------- */

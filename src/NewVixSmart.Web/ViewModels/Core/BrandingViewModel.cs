@@ -42,7 +42,7 @@ public class BrandingViewModel
     public string Accent { get; set; } = "#5bc8e8";
 
     [Display(Name = "لون الشريط الجانبي")]
-    public string SidebarBg { get; set; } = "#0d1b35";
+    public string SidebarBg { get; set; } = "#ffffff";
 
     [Display(Name = "لون خلفية الصفحات")]
     public string PageBg { get; set; } = "#f8f8fa";
