@@ -31,8 +31,14 @@
 </head>
 <body>
     <div class="login-stage">
-        <div class="auth-card text-center">
-            <div class="d-flex justify-content-center mb-3">
+        <div class="login-aura" aria-hidden="true"></div>
+        <main class="auth-wrap">
+            <section class="auth-panel auth-brand">
+                <div class="brand-monogram auth-monogram" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
+                <h1>غير مصرح</h1>
+                <p class="auth-tagline">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
+            </section>
+            <section class="auth-panel auth-form">
                 <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
                     <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
                         <i class="bi bi-display" aria-hidden="true"></i>
@@ -47,12 +53,11 @@
                         <span class="theme-mode-label">داكن</span>
                     </button>
                 </div>
-            </div>
-            <div class="brand-monogram" aria-hidden="true"><i class="bi bi-shield-lock"></i></div>
-            <h2>غير مصرح</h2>
-            <p class="subtitle">ليس لديك صلاحية للوصول لهذه الصفحة.</p>
-            <a href="/" class="btn btn-primary w-100"><i class="bi bi-house-door" aria-hidden="true"></i> العودة للرئيسية</a>
-        </div>
+                <h2>العودة إلى الصفحة الرئيسية</h2>
+                <p class="subtitle">تواصل مع مدير النظام إذا كنت تعتقد أن الوصول يجب أن يكون متاحاً لك.</p>
+                <a href="/" class="btn btn-primary w-100"><i class="bi bi-house-door" aria-hidden="true"></i> العودة للرئيسية</a>
+            </section>
+        </main>
     </div>
     <script src="~/js/site.js" asp-append-version="true"></script>
 </body>
