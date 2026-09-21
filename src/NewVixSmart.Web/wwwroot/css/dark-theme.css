@@ -3,12 +3,13 @@
    Airy navy surfaces for the Apple/Clean-SaaS dark mode.
    Mirrors the v6 light grammar: 20px cards, 24px modals/auth,
    999px pills, soft elevation (hairline whites + subtle shadows),
-   glass topbar, floating rounded nav pills, soft glowing primary.
+   near-opaque topbar, floating rounded nav pills, soft glowing primary.
    Variable NAMES preserved; values follow spec §2 (dark tokens).
-   DARK chrome: sidebar stays NAVY IN DARK; topbar is GLASS navy.
-   Glass (backdrop-filter) ONLY on the §3 allowlist: glass topbar,
-   theme-selector chip, dropdown/popover panels, modal header band,
-   auth side panel. Exactly 5 keyframes (dark variants).
+   DARK chrome: sidebar stays NAVY IN DARK; topbar is near-opaque
+   navy (no backdrop-filter on sticky chrome). Glass (backdrop-filter)
+   ONLY on transient overlays: modal header band, dropdown/popover
+   panels. theme-selector chips use solid navy tint. Exactly 5
+   keyframes (dark variants).
    Section order: dark tokens -> dark keyframes -> component
    overrides -> dark surfaces -> dark chrome -> auth dark ->
    print reset -> reduced-motion -> forced-colors.
@@ -91,7 +92,7 @@
     --color-sidebar-hairline: rgba(255, 255, 255, 0.08);
     --color-sidebar-soft: rgba(255, 255, 255, 0.06);
     --color-sidebar-rail-tip: #152B50;
-    --color-chrome-bg: rgba(10, 17, 32, 0.72);
+    --color-chrome-bg: rgba(10, 17, 32, 0.92);
     --color-chrome-text: #E9EDF5;
     --color-chrome-text-dim: rgba(233, 237, 245, 0.78);
     /* v6 soft elevation on dark: hairline whites + low-opacity navy shadows */
@@ -472,13 +473,12 @@ html[data-theme="dark"] .dropdown-divider { border-top-color: rgba(255, 255, 255
 html[data-theme="dark"] .popover-header { background: rgba(255, 255, 255, 0.04); border-bottom-color: rgba(255, 255, 255, 0.08); color: #FFFFFF; }
 html[data-theme="dark"] .popover-body { color: #E9EDF5; }
 
-/* Theme selector — glass navy chip (allowlisted backdrop-filter).
-   Active = cyan capsule #0A1120 bg, white text. Specificity beats light
-   file's `.theme-mode-btn[data-theme-value]` / `.auth-form .theme-mode-btn`. */
+/* Theme selector — navy tint chip (NO backdrop-filter; glass only on
+   transient overlays). Active = cyan capsule #0A1120 bg, white text.
+   Specificity beats light file's `.theme-mode-btn[data-theme-value]` /
+   `.auth-form .theme-mode-btn`. */
 html[data-theme="dark"] .theme-selector {
     background: rgba(10, 17, 32, 0.55);
-    -webkit-backdrop-filter: blur(14px) saturate(1.2);
-    backdrop-filter: blur(14px) saturate(1.2);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
 }
@@ -549,7 +549,7 @@ html[data-theme="dark"] .dash-hero { background: var(--color-surface-2); border-
 
 html[data-theme="dark"] .mobile-overlay { background: rgba(10, 17, 32, 0.72); }
 
-/* ---------- 5. DARK CHROME (sidebar NAVY IN DARK + glass topbar) ---------- */
+/* ---------- 5. DARK CHROME (sidebar NAVY IN DARK + near-opaque topbar) ---------- */
 /* Light theme owns the light/white shell; dark flips it navy (spec §2). */
 
 html[data-theme="dark"] .sidebar {
@@ -632,13 +632,11 @@ html[data-theme="dark"] .sidebar.is-collapsed .sidebar-nav .nav-group-header::af
     border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Topbar — glass navy (allowlisted backdrop-filter), 64px, hairline base */
+/* Topbar — near-opaque navy (NO backdrop-filter), 64px, hairline base */
 html[data-theme="dark"] .topbar,
 html[data-theme="dark"] .top-bar {
     height: 64px;
-    background: rgba(10, 17, 32, 0.72);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+    background: rgba(10, 17, 32, 0.92);
     border-bottom-color: rgba(255, 255, 255, 0.08);
     color: #E9EDF5;
     box-shadow: 0 4px 10px -4px rgba(3, 7, 18, 0.45);
@@ -670,13 +668,13 @@ html[data-theme="dark"] .login-stage { background-color: #0A1120; }
 html[data-theme="dark"] .auth-wrap { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); border-radius: 24px; box-shadow: var(--sh-lg); }
 html[data-theme="dark"] .auth-panel.auth-form,
 html[data-theme="dark"] .auth-form { background: var(--color-surface); border-inline-start: 1px solid rgba(255, 255, 255, 0.08); }
-html[data-theme="dark"] .auth-brand { border-inline-end: 1px solid rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-theme="dark"] .auth-brand { border-inline-end: 1px solid rgba(255, 255, 255, 0.08); }
 /* auth-brand keeps G3's navy gradient from the light file — do NOT redefine */
 html[data-theme="dark"] .auth-form h2 { color: #FFFFFF; }
 html[data-theme="dark"] .auth-form .subtitle { color: #94A0B8; }
 html[data-theme="dark"] .auth-card { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); border-radius: 24px; box-shadow: var(--sh-lg); }
-/* Theme selector inside the dark form panel — same glass navy chip */
-html[data-theme="dark"] .auth-form .theme-selector { background: rgba(10, 17, 32, 0.55); border-color: rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+/* Theme selector inside the dark form panel — same navy tint chip */
+html[data-theme="dark"] .auth-form .theme-selector { background: rgba(10, 17, 32, 0.55); border-color: rgba(255, 255, 255, 0.08); }
 html[data-theme="dark"] .auth-form .theme-mode-btn,
 html[data-theme="dark"] .auth-form .theme-mode-btn[data-theme-value] { color: rgba(233, 237, 245, 0.85); }
 html[data-theme="dark"] .auth-form .theme-mode-btn:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.10); }

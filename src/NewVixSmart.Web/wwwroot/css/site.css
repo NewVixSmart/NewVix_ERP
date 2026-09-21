@@ -1,7 +1,7 @@
 /* ============================================================
    NewVix Smart Solutions — Light Theme
    REDESIGN V6 "LIGHT MINIMAL أنيق"
-   Apple / Clean-SaaS aesthetic. Light sidebar + luminous glass
+   Apple / Clean-SaaS aesthetic. Light sidebar + near-opaque
    topbar over ambient #F6F7FB. Air is the law: large radius
    (16/20/24/999), tall 46px controls, soft layered elevation
    shadows INSTEAD of hairline borders, floating rounded nav
@@ -103,14 +103,14 @@
     --color-zebra: #F6F9FE;
     --color-zebra-hover: #F8FAFF;
 
-    /* Light chrome (sidebar + glass topbar) — dark-theme.css flips these to navy. */
+    /* Light chrome (sidebar + near-opaque topbar) — dark-theme.css flips these to navy. */
     --color-sidebar-bg: #FFFFFF;
     --color-sidebar-text: #0D1B35;
     --color-sidebar-section: #5B6B81;
     --color-sidebar-hairline: rgba(13, 27, 53, 0.06);
     --color-sidebar-soft: rgba(13, 27, 53, 0.05);
     --color-sidebar-rail-tip: #152B50;
-    --color-chrome-bg: rgba(246, 247, 251, 0.76);
+    --color-chrome-bg: rgba(246, 247, 251, 0.92);
     --color-chrome-text: #0D1B35;
     --color-chrome-text-dim: #5A6A85;
 
@@ -267,8 +267,9 @@ h1, h2, h3, h4, h5, h6 {
 /* ---------- 5. ACCESSIBILITY ---------- */
 .skip-link {
     position: absolute;
-    top: -100px;
+    top: 1rem;
     inset-inline-start: 1rem;
+    transform: translateY(-220px);
     background: var(--color-primary-darker);
     color: #fff;
     padding: 0.6rem 1rem;
@@ -277,10 +278,12 @@ h1, h2, h3, h4, h5, h6 {
     text-decoration: none;
     font-weight: 700;
     box-shadow: var(--sh-md);
-    transition: top var(--dur) var(--ease);
+    opacity: 0;
+    transition: transform 0.16s var(--ease), opacity 0.16s var(--ease);
 }
 .skip-link:focus {
-    top: 1rem;
+    transform: translateY(0);
+    opacity: 1;
     color: #fff;
 }
 
@@ -436,7 +439,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     color: var(--color-text-strong) !important;
 }
 
-/* ---------- 6. LAYOUT CHROME (LIGHT: floating white sidebar + glass topbar) ---------- */
+/* ---------- 6. LAYOUT CHROME (LIGHT: floating white sidebar + near-opaque topbar) ---------- */
 
 /* Sidebar - fixed full-height WHITE column (physical LEFT), soft elevation off the page */
 .sidebar {
@@ -456,7 +459,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     display: flex;
     flex-direction: column;
     padding: 1rem 0.8rem;
-    transition: transform var(--dur) var(--ease), width var(--dur) var(--ease);
+    /* transform-only transition: rail width collapse snaps via .is-rail to
+       avoid animating the layout property `width` on persistent chrome (P1). */
+    transition: transform var(--dur) var(--ease);
 }
 .sidebar {
     --color-sidebar-text: #0D1B35;
@@ -471,7 +476,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .sidebar::-webkit-scrollbar-thumb {
     background: transparent;
     border-radius: var(--r-pill);
-    transition: background var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease);
 }
 .sidebar::-webkit-scrollbar-thumb:hover {
     background: #D8DFE8;
@@ -506,7 +511,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     background: rgba(13, 27, 53, 0.05);
     border: 1px solid var(--color-border);
     padding: 3px;
-    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+    transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-brand .brand-frame:hover {
     border-color: var(--color-border-strong);
@@ -607,7 +612,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     text-align: start;
     white-space: nowrap;
     border-radius: var(--r-sm);
-    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-group-header:hover {
     color: #0D1B35;
@@ -626,7 +631,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     color: var(--color-sidebar-section);
     background: transparent;
     border: 1px solid transparent;
-    transition: color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-group-header:hover > i:first-child {
     color: var(--color-primary);
@@ -697,7 +702,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     border-radius: var(--r-sm);
     border: 1px solid transparent;
     position: relative;
-    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-link-home {
     padding: 0.6rem 0.85rem;
@@ -717,7 +722,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     justify-content: center;
     border-radius: var(--r-xs);
     color: #5A6A85;
-    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-link:hover i {
     color: #0D1B35;
@@ -774,7 +779,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .sidebar-profile:hover {
     background: rgba(46, 111, 216, 0.06);
@@ -829,7 +834,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     border: 1px solid transparent;
     border-radius: var(--r-sm);
     color: #4A5A70;
-    transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+    transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-profile .btn:hover {
     color: #B91C1C;
@@ -863,7 +868,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
-    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .rail-toggle:hover {
     background: rgba(46, 111, 216, 0.10);
@@ -1084,10 +1089,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    transition: margin-left var(--dur) var(--ease);
+    /* No transition on margin-left: it is a layout property on persistent
+       chrome. Rail/mobile margin shifts snap to avoid reflow cost (P1). */
 }
 
-/* ---------- 6b. TOPBAR (GLASS, 64px) ---------- */
+/* ---------- 6b. TOPBAR (near-opaque, 64px, NO backdrop-filter) ---------- */
 .topbar {
     position: sticky;
     top: 0;
@@ -1097,9 +1103,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     align-items: center;
     padding: 0 1.5rem;
     margin: 0;
-    background: var(--color-chrome-bg);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    backdrop-filter: blur(14px) saturate(1.4);
+    /* near-opaque chrome preserves the glass look without re-blur while
+       scrolling under the sticky bar (P1) */
+    background: rgba(246, 247, 251, 0.92);
     color: var(--color-chrome-text);
     border-bottom: 1px solid var(--color-border);
     box-shadow: var(--sh-glass);
@@ -1165,7 +1171,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     color: var(--color-gold-strong);
 }
 
-/* Logout on glass topbar: ghost text button (NOT a destructive chip) */
+/* Logout on near-opaque topbar: ghost text button (NOT a destructive chip) */
 .topbar a {
     color: var(--color-text-strong);
 }
@@ -1189,9 +1195,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     position: sticky;
     top: 0;
     z-index: 1015;
-    background: var(--color-chrome-bg);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    backdrop-filter: blur(14px) saturate(1.4);
+    background: rgba(246, 247, 251, 0.92);
     color: var(--color-chrome-text);
     border-bottom: 1px solid var(--color-border);
     box-shadow: var(--sh-glass);
@@ -2238,8 +2242,6 @@ th[aria-sort="descending"] {
 }
 .auth-brand {
     background: linear-gradient(135deg, #0A1120 0%, #0D1B35 45%, #1A3A6B 100%);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     color: #fff;
     padding: 3rem;
     display: flex;
@@ -2590,15 +2592,16 @@ th[aria-sort="descending"] {
     animation: pulseNum 0.5s var(--ease);
 }
 
-/* ---------- 19. THEME SELECTOR (GLASS chip — topbar + auth) ---------- */
+/* ---------- 19. THEME SELECTOR (tint chip — topbar + auth) ----------
+   NO backdrop-filter here: glass is reserved for transient overlays
+   (modal header, dropdown/popover). The chip's translucent tint sits
+   over the near-opaque topbar / opaque panels, so the look is preserved. */
 .theme-selector {
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
     padding: 0.24rem;
     background: rgba(255, 255, 255, 0.6);
-    -webkit-backdrop-filter: blur(12px) saturate(1.2);
-    backdrop-filter: blur(12px) saturate(1.2);
     border: 1px solid var(--color-border);
     border-radius: var(--r-pill);
 }
