@@ -36,6 +36,10 @@
         <div class="lg-aura" aria-hidden="true"></div>
         <div class="lg-shell">
             <section class="lg-hero" aria-label="نبذة عن النظام">
+                <p class="lg-hero__eyebrow">
+                    <span class="lg-hero__eyebrow-dot" aria-hidden="true"></span>
+                    نظام إدارة الأعمال المتكامل
+                </p>
                 @if (_brand.Profile.HasLogo)
                 {
                     <img class="lg-hero__brand lg-hero__logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
@@ -46,11 +50,40 @@
                 }
                 <h1 class="lg-hero__title">@_brand.Profile.CompanyName</h1>
                 <p class="lg-hero__tagline">@(_brand.Profile.Tagline ?? "Smart Solutions")</p>
-                <ul class="lg-hero__points">
-                    <li><span class="lg-point__icon"><i class="bi bi-cart-check" aria-hidden="true"></i></span> إدارة المبيعات والمشتريات والمخزون</li>
-                    <li><span class="lg-point__icon"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></span> محاسبة وتقارير ولحظة أداء</li>
-                    <li><span class="lg-point__icon"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i></span> نسخ احتياطي واستعادة آمنة</li>
-                </ul>
+                <div class="lg-preview" aria-hidden="true">
+                    <div class="lg-preview__head">
+                        <span class="lg-preview__title">نظرة على الأداء</span>
+                        <span class="lg-preview__live"><span class="lg-preview__live-dot" aria-hidden="true"></span>مباشر</span>
+                    </div>
+                    <div class="lg-preview__grid">
+                        <div class="lg-stat">
+                            <span class="lg-stat__value">+128</span>
+                            <span class="lg-stat__label">مبيعات اليوم</span>
+                        </div>
+                        <div class="lg-stat">
+                            <span class="lg-stat__value">1,240</span>
+                            <span class="lg-stat__label">الأصناف</span>
+                        </div>
+                        <div class="lg-stat">
+                            <span class="lg-stat__value">36</span>
+                            <span class="lg-stat__label">فواتير معلّقة</span>
+                        </div>
+                    </div>
+                    <div class="lg-preview__chart" aria-hidden="true">
+                        <span class="lg-bar lg-bar--h2"></span>
+                        <span class="lg-bar lg-bar--h5"></span>
+                        <span class="lg-bar lg-bar--h3"></span>
+                        <span class="lg-bar lg-bar--h4"></span>
+                        <span class="lg-bar lg-bar--h1"></span>
+                        <span class="lg-bar lg-bar--h5"></span>
+                        <span class="lg-bar lg-bar--h3"></span>
+                    </div>
+                </div>
+                <div class="lg-hero__badges" aria-hidden="true">
+                    <span class="lg-hero__badge"><i class="bi bi-box-seam" aria-hidden="true"></i>المخزون</span>
+                    <span class="lg-hero__badge"><i class="bi bi-cart-check" aria-hidden="true"></i>المبيعات</span>
+                    <span class="lg-hero__badge"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i>التقارير</span>
+                </div>
                 <p class="lg-hero__trust"><i class="bi bi-shield-lock" aria-hidden="true"></i> بياناتك محمية ومنقولة بتشفير آمن</p>
             </section>
             <section class="lg-panel">
@@ -71,6 +104,7 @@
                     </div>
                 </div>
                 <header class="lg-panel__head">
+                    <p class="lg-panel__eyebrow">مرحبًا بعودتك</p>
                     <h2 class="lg-title">تسجيل الدخول</h2>
                     <p class="lg-subtitle">أدخل بياناتك للمتابعة إلى لوحة العمل</p>
                 </header>
@@ -126,6 +160,8 @@
                         <span>دخول</span>
                     </button>
                 </form>
+
+                <p class="lg-secure"><i class="bi bi-lock" aria-hidden="true"></i> اتصال مشفّر وآمن</p>
 
                 <p class="lg-foot">&copy; @DateTime.Now.Year @_brand.Profile.CompanyName &mdash; جميع الحقوق محفوظة</p>
             </section>
