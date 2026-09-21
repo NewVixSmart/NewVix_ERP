@@ -32,9 +32,8 @@
 </head>
 <body>
     <div class="login-stage">
-        <div class="login-aura" aria-hidden="true"></div>
         <main class="auth-wrap">
-            <section class="auth-panel auth-brand">
+            <section class="auth-brand">
                 @if (_brand.Profile.HasLogo)
                 {
                     <img class="login-logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
@@ -51,7 +50,7 @@
                     <li><i class="bi bi-check-circle-fill"></i> نسخ احتياطي واستعادة آمنة</li>
                 </ul>
             </section>
-            <section class="auth-panel auth-form">
+            <section class="auth-form">
                 <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
                     <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
                         <i class="bi bi-display" aria-hidden="true"></i>

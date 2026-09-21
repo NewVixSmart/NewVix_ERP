@@ -34,7 +34,6 @@
     @Html.AntiForgeryToken()
     <a class="skip-link" href="#mainContent">تخطى إلى المحتوى الرئيسي</a>
     <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true"></div>
-    <div class="aurora" aria-hidden="true"></div>
 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -443,16 +442,13 @@
     </aside>
 
     <div class="main-content">
-        <div class="top-bar helm">
-            <div class="helm-left">
-                <button type="button" class="btn btn-sm navbar-toggler" id="sidebarToggle" aria-label="فتح القائمة الجانبية" aria-expanded="false" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-                <span class="helm-title"><h6 class="mb-0">@ViewData["Title"]</h6></span>
-            </div>
-            <span class="helm-center">
-                <span class="helm-chip helm-greeting"><i class="bi bi-emoji-smile" aria-hidden="true"></i> <span data-greeting></span></span>
-            </span>
-            <div class="helm-right">
-                <span class="helm-chip helm-clock"><i class="bi bi-calendar3" aria-hidden="true"></i> <span class="topbar-date" data-clock></span></span>
+        <div class="topbar">
+            <div class="topbar-inner">
+                <button type="button" class="btn btn-sm navbar-toggler topbar-toggle" id="sidebarToggle" aria-label="فتح القائمة الجانبية" aria-expanded="false" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
+                <span class="topbar-title"><h6 class="mb-0">@ViewData["Title"]</h6></span>
+                <span class="topbar-greeting" data-greeting></span>
+                <span class="topbar-spacer"></span>
+                <span class="topbar-clock"><i class="bi bi-clock" aria-hidden="true"></i> <span class="topbar-date" data-clock></span></span>
                 <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
                     <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
                         <i class="bi bi-display" aria-hidden="true"></i>
@@ -469,7 +465,7 @@
                 </div>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <span class="helm-user d-none d-xl-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity.Name</span>
+                    <span class="topbar-user d-none d-xl-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity.Name</span>
                     <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline d-lg-none" role="none"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-left" aria-hidden="true"></i> خروج</button></form>
                 }
             </div>
