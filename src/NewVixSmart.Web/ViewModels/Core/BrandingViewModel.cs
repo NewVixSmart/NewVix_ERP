@@ -36,16 +36,16 @@ public class BrandingViewModel
     public string? SelectedPreset { get; set; }
 
     [Display(Name = "اللون الأساسي")]
-    public string Primary { get; set; } = "#1a3a6b";
+    public string Primary { get; set; } = "#0e9f6e";
 
     [Display(Name = "لون التمييز")]
-    public string Accent { get; set; } = "#2e6fd8";
+    public string Accent { get; set; } = "#10b981";
 
     [Display(Name = "لون الشريط الجانبي")]
-    public string SidebarBg { get; set; } = "#f8f8fa";
+    public string SidebarBg { get; set; } = "#ffffff";
 
     [Display(Name = "لون خلفية الصفحات")]
-    public string PageBg { get; set; } = "#f8f8fa";
+    public string PageBg { get; set; } = "#f1f4f6";
 
     [Display(Name = "شعار الشركة")]
     public IFormFile? LogoFile { get; set; }

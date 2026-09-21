@@ -92,11 +92,11 @@ public static class PrintPdfBuilder
     public static string Fmt(decimal v, int decimals)
         => Round2(v, Math.Clamp(decimals, 0, 6)).ToString("N" + Math.Clamp(decimals, 0, 6).ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
 
-    public static string AccentColor(PrintLayoutOptions layout) => NormalizeHex(layout.AccentColor, "#2e6fd8");
+    public static string AccentColor(PrintLayoutOptions layout) => NormalizeHex(layout.AccentColor, "#10b981");
 
-    public static string TableHeaderBg(PrintLayoutOptions layout) => NormalizeHex(layout.TableHeaderBg, "#eef2f7");
+    public static string TableHeaderBg(PrintLayoutOptions layout) => NormalizeHex(layout.TableHeaderBg, "#eaf5f0");
 
-    public static string TableHeaderText(PrintLayoutOptions layout) => NormalizeHex(layout.TableHeaderText, "#1e293b");
+    public static string TableHeaderText(PrintLayoutOptions layout) => NormalizeHex(layout.TableHeaderText, "#0e1620");
 
     public static double FontScale(PrintLayoutOptions layout)
         => double.IsNaN(layout.FontScale) ? 1.0 : Math.Clamp(layout.FontScale, 0.8, 1.3);

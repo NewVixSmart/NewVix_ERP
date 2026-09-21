@@ -134,14 +134,14 @@
                         <label asp-for="Primary" class="form-label">اللون الأساسي</label>
                         <div class="input-group">
                             <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" />
-                            <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#1a3a6b" />
+                            <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#0e9f6e" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <label asp-for="Accent" class="form-label">لون التمييز</label>
                         <div class="input-group">
                             <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" />
-                            <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#2e6fd8" />
+                            <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#10b981" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
@@ -155,17 +155,17 @@
                         <label asp-for="PageBg" class="form-label">لون خلفية الصفحات</label>
                         <div class="input-group">
                             <input asp-for="PageBg" type="color" class="form-control form-control-color" title="لون خلفية الصفحات" />
-                            <input id="PageBgHex" name="PageBg" type="text" class="form-control" placeholder="#f8f8fa" />
+                            <input id="PageBgHex" name="PageBg" type="text" class="form-control" placeholder="#f1f4f6" />
                         </div>
                     </div>
                 </div>
 
                 <div class="border rounded-3 overflow-hidden">
                     <div class="d-flex" id="themePreview">
-                        <div class="p-3 flex-grow-1" id="prevPage" style="background:#f8f8fa;" role="img" aria-label="معاينة لوحة الألوان">
-                            <span class="badge rounded-pill" id="prevPrimary" style="background:#1a3a6b;color:#fff;">زر أساسي</span>
-                            <span class="badge rounded-pill" id="prevAccent" style="background:#2e6fd8;color:#fff;">لمسة سماوية</span>
-                            <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:#ffffff;color:#041424;border:1px solid #e3e7f0;">شريط جانبي — نص</div>
+                        <div class="p-3 flex-grow-1" id="prevPage" style="background:#f1f4f6;" role="img" aria-label="معاينة لوحة الألوان">
+                            <span class="badge rounded-pill" id="prevPrimary" style="background:#0e9f6e;color:#fff;">زر أساسي</span>
+                            <span class="badge rounded-pill" id="prevAccent" style="background:#10b981;color:#fff;">لمسة سماوية</span>
+                            <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:#ffffff;color:#0e1620;border:1px solid #cdd6df;">شريط جانبي — نص</div>
                         </div>
                     </div>
                     <div class="bg-body border-top small text-muted p-2">معاينة حية — احرص على تباين مناسب للنصوص (4.5:1 على الأقل).</div>
@@ -197,7 +197,7 @@
             document.getElementById('prevPrimary').style.background = p;
             document.getElementById('prevAccent').style.background = a;
             document.getElementById('prevSidebar').style.background = s;
-            document.getElementById('prevSidebar').style.color = isLight(s) ? '#041424' : '#cbd5e1';
+            document.getElementById('prevSidebar').style.color = isLight(s) ? '#0e1620' : '#cbd5e1';
             document.getElementById('prevPage').style.background = page.value;
         }
         function wire(el) {
