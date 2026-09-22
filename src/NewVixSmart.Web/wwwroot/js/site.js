@@ -580,6 +580,110 @@
         syncSidebarInert();
     }
 
+    // ---------- Sidebar nav filter (type-to-search) ----------
+    var navFilterInput = document.querySelector('[data-nav-filter]');
+    var navFilterClear = document.querySelector('[data-nav-filter-clear]');
+    var navFilterEmpty = document.querySelector('[data-nav-empty]');
+
+    function clearNavFilter() {
+        if (sidebar) sidebar.classList.remove('is-filtering');
+        var all = document.querySelectorAll('.sidebar-nav .nav-link, .sidebar-nav .nav-group, .sidebar-nav .nav-section, .sidebar-nav .nav-subheader');
+        for (var i = 0; i < all.length; i++) all[i].hidden = false;
+        if (navFilterClear) navFilterClear.hidden = true;
+        if (navFilterEmpty) navFilterEmpty.hidden = true;
+    }
+
+    function navFilterGroupText(link) {
+        var group = link.closest ? link.closest('.nav-group') : null;
+        var header = group ? group.querySelector('.nav-group-header') : null;
+        return header ? (header.textContent || '') : '';
+    }
+
+    function navFilterHasLinksBeneath(el) {
+        var node = el.nextElementSibling;
+        while (node) {
+            if (node.classList && (node.classList.contains('nav-section') || node.classList.contains('nav-subheader'))) break;
+            if (node.classList && node.classList.contains('nav-link') && !node.hidden) return true;
+            if (node.classList && node.classList.contains('nav-group')) {
+                var groupLinks = node.querySelectorAll('.nav-link');
+                for (var i = 0; i < groupLinks.length; i++) {
+                    if (!groupLinks[i].hidden) return true;
+                }
+            }
+            node = node.nextElementSibling;
+        }
+        return false;
+    }
+
+    function applyNavFilter() {
+        if (!navFilterInput || !sidebar) {
+            clearNavFilter();
+            return;
+        }
+        var q = navFilterInput.value.trim().toLowerCase();
+        if (!q) {
+            clearNavFilter();
+            return;
+        }
+
+        sidebar.classList.add('is-filtering');
+
+        var links = document.querySelectorAll('.sidebar-nav .nav-link');
+        var groups = document.querySelectorAll('.sidebar-nav .nav-group');
+        var sections = document.querySelectorAll('.sidebar-nav .nav-section, .sidebar-nav .nav-subheader');
+
+        var visible = 0;
+        for (var i = 0; i < links.length; i++) {
+            var link = links[i];
+            var text = ((link.textContent || '') + ' ' + (link.getAttribute('aria-label') || '') + ' ' + navFilterGroupText(link)).toLowerCase();
+            var match = text.indexOf(q) !== -1;
+            link.hidden = !match;
+            if (match) visible++;
+        }
+
+        for (var g = 0; g < groups.length; g++) {
+            var group = groups[g];
+            var groupLinks = group.querySelectorAll('.nav-link');
+            var groupHasVisible = false;
+            for (var gl = 0; gl < groupLinks.length; gl++) {
+                if (!groupLinks[gl].hidden) { groupHasVisible = true; break; }
+            }
+            group.hidden = !groupHasVisible;
+        }
+
+        for (var s = 0; s < sections.length; s++) {
+            sections[s].hidden = !navFilterHasLinksBeneath(sections[s]);
+        }
+
+        if (navFilterClear) navFilterClear.hidden = false;
+        if (navFilterEmpty) navFilterEmpty.hidden = visible > 0;
+    }
+
+    function initNavFilter() {
+        if (!sidebar || !navFilterInput) return;
+        navFilterInput.addEventListener('input', applyNavFilter);
+        if (navFilterClear) {
+            navFilterClear.addEventListener('click', function () {
+                navFilterInput.value = '';
+                applyNavFilter();
+            });
+        }
+        document.addEventListener('keydown', function (e) {
+            var t = e.target;
+            var editing = !!(t && t.closest && t.closest('input, textarea, select, [contenteditable]'));
+            if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'k') {
+                if (editing) return;
+                e.preventDefault();
+                navFilterInput.focus();
+                return;
+            }
+            if (e.key === 'Escape' && document.activeElement === navFilterInput) {
+                navFilterInput.value = '';
+                applyNavFilter();
+            }
+        });
+    }
+
     // ---------- Delegated accessible confirms (data-confirm) ----------
     document.addEventListener('submit', function (e) {
         var form = e.target.closest ? e.target.closest('form[data-confirm]') : null;
@@ -1059,9 +1163,10 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initTables(); initCounters(); initTheme(); initClock(); initDataTables(); });
+        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initNavFilter(); initTables(); initCounters(); initTheme(); initClock(); initDataTables(); });
     } else {
         initSidebar();
+        initNavFilter();
         initTables();
         initCounters();
         initTheme();

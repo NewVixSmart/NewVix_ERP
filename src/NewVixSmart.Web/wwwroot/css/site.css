@@ -470,6 +470,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     --color-text-muted: #5A6A85;
     --color-text-secondary: #64748B;
 }
+/* Static top/bottom scroll fade (background-attachment: local, zero JS).
+   Uses --color-sidebar-bg so dark-theme flips it navy automatically. */
+.sidebar {
+    background-image:
+        linear-gradient(to bottom, var(--color-sidebar-bg) 0%, rgba(255, 255, 255, 0) 16px),
+        linear-gradient(to top, var(--color-sidebar-bg) 0%, rgba(255, 255, 255, 0) 16px);
+    background-repeat: no-repeat, no-repeat;
+    background-position: 0 0, 0 100%;
+    background-size: 100% 16px, 100% 16px;
+    background-attachment: local, local;
+}
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -492,66 +503,70 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     scrollbar-color: #D8DFE8 transparent;
 }
 
-/* Brand header - electric tile + navy name + silver subnick */
+/* Brand header - ROW: gradient logo tile (44px, r14, ring+glow) -> text column -> rail toggle */
 .sidebar-brand {
     padding: 0.5rem 0.45rem 0.95rem;
     border-bottom: 1px solid var(--color-divider);
     flex-shrink: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     position: relative;
 }
 .sidebar-brand .brand-frame {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--r-sm);
-    background: rgba(13, 27, 53, 0.05);
-    border: 1px solid var(--color-border);
-    padding: 3px;
-    transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+    border-radius: 14px;
+    padding: 0;
+    border: 0;
+    background: linear-gradient(140deg, #1D4FB2 0%, #2E6FD8 52%, #5BC8E8 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.30), 0 6px 16px -6px rgba(46, 111, 216, 0.45);
 }
 .sidebar-brand .brand-frame:hover {
-    border-color: var(--color-border-strong);
-    background: rgba(46, 111, 216, 0.10);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 8px 20px -6px rgba(46, 111, 216, 0.55);
 }
 .sidebar-brand .brand-monogram {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--r-sm);
-    background: var(--color-primary);
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: transparent;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     line-height: 1;
-    box-shadow: var(--sh-glow);
 }
 .sidebar-brand .brand-logo {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     object-fit: contain;
-    border-radius: var(--r-sm);
-    background: #fff;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 2px;
 }
 .sidebar-brand .brand-text {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.1rem;
+    align-items: flex-start;
+    gap: 0.12rem;
     min-width: 0;
-    width: 100%;
-    padding: 0 0.5rem;
+    flex: 1 1 auto;
+    padding: 0;
+    text-align: start;
 }
 .sidebar-brand .brand-text strong {
     color: var(--color-text-strong);
     font-size: 0.95rem;
     font-weight: 800;
     letter-spacing: 0.01em;
+    line-height: 1.25;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -567,12 +582,101 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     text-overflow: ellipsis;
     max-width: 100%;
 }
+.sidebar-brand .rail-toggle,
+.sidebar-brand #railToggle {
+    width: 40px;
+    height: 40px;
+    margin-inline-start: auto;
+    border-radius: 12px;
+}
 
-/* Nav section - tiny muted caps, airy */
+/* Nav scroll area */
 .sidebar-nav {
-    padding: 0.75rem 0 1rem;
+    padding: 0.6rem 0 1rem;
     flex: 1 1 auto;
 }
+
+/* Nav filter - type-to-search (S3 wires data-nav-filter / data-nav-filter-clear) */
+.sidebar-nav .nav-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.1rem 0.45rem 0.7rem;
+    padding: 0.25rem 0.5rem;
+    height: 42px;
+    border-radius: 14px;
+    background: rgba(13, 27, 53, 0.05);
+    border: 1px solid transparent;
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.sidebar-nav .nav-filter:hover {
+    background: rgba(13, 27, 53, 0.08);
+}
+.sidebar-nav .nav-filter:focus-within {
+    background: #fff;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-focus);
+}
+.sidebar-nav .nav-filter__icon {
+    color: #64748B;
+    font-size: 0.92rem;
+    flex-shrink: 0;
+}
+.sidebar-nav .nav-filter__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--color-text-strong);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+.sidebar-nav .nav-filter__input::placeholder {
+    color: #8A97A8;
+}
+.sidebar-nav .nav-filter__input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+.sidebar-nav .nav-filter__clear {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 0;
+    background: transparent;
+    color: #64748B;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.sidebar-nav .nav-filter__clear:hover {
+    color: var(--color-text-strong);
+    background: rgba(13, 27, 53, 0.08);
+}
+.sidebar-nav .nav-filter__clear[hidden] {
+    display: none;
+}
+.sidebar-nav .nav-empty {
+    margin: 0.4rem 0.75rem 0.7rem;
+    padding: 0.9rem 0.5rem;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #64748B;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: 14px;
+}
+.sidebar-nav .nav-empty[hidden] {
+    display: none;
+}
+
+/* Section labels - tiny muted caps + flexible trailing hairline */
 .sidebar-nav .nav-section {
     padding: 0.5rem 0.75rem 0.4rem;
     font-size: 0.68rem;
@@ -580,19 +684,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     color: var(--color-sidebar-section);
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    margin-top: 0.4rem;
+    margin-top: 0.6rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     white-space: nowrap;
     position: relative;
 }
-.sidebar-nav .nav-section::before,
-.sidebar-nav .nav-section::after {
+.sidebar-nav .nav-section::before {
     content: none;
 }
+.sidebar-nav .nav-section::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    border-radius: 999px;
+    background: rgba(91, 107, 129, 0.35);
+}
 
-/* Nav groups - section headers, calm hover */
+/* Nav groups - surface headers, calm hover, 30px icon tile */
 .sidebar-nav .nav-group {
     margin-top: 0.3rem;
 }
@@ -606,12 +716,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     background: transparent;
     border: 0;
     color: #4A5A70;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     text-align: start;
     white-space: nowrap;
-    border-radius: var(--r-sm);
+    border-radius: 14px;
     transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-group-header:hover {
@@ -620,14 +730,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .sidebar-nav .nav-group-header > i:first-child {
     order: 0;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--r-xs);
-    font-size: 0.9rem;
+    border-radius: 10px;
+    font-size: 0.92rem;
     color: var(--color-sidebar-section);
     background: transparent;
     border: 1px solid transparent;
@@ -642,6 +752,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+.sidebar-nav .nav-group-header[aria-expanded="true"] {
+    background: rgba(46, 111, 216, 0.06);
+}
+.sidebar-nav .nav-group-header[aria-expanded="true"] > i:first-child {
+    color: #1D4FB2;
+    background: rgba(46, 111, 216, 0.12);
+    border-color: rgba(46, 111, 216, 0.16);
 }
 .sidebar-nav .nav-group-header[aria-expanded="true"] > span {
     color: #1D4FB2;
@@ -687,7 +805,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     padding: 0.3rem 0 0.4rem;
 }
 
-/* Nav links - muted ink, calm hover, floating active pill with cyan dot (NO left bar) */
+/* Filtering forces collapsed groups open (S3 toggles .is-filtering) */
+.sidebar.is-filtering .nav-group.is-collapsed .nav-group-body {
+    grid-template-rows: 1fr;
+}
+.sidebar.is-filtering .nav-group.is-collapsed .nav-group-body > * {
+    visibility: visible;
+}
+
+/* Nav links - muted ink, calm hover, 30px icon tile, floating active pill + cyan dot (NO left bar) */
 .sidebar-nav .nav-link {
     color: #4A5A70;
     padding: 0.55rem 0.85rem;
@@ -696,10 +822,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     align-items: center;
     gap: 0.55rem;
     min-height: 44px;
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     font-weight: 500;
     line-height: 1.3;
-    border-radius: var(--r-sm);
+    border-radius: 14px;
     border: 1px solid transparent;
     position: relative;
     transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
@@ -714,18 +840,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .sidebar-nav .nav-link i {
     font-size: 1rem;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--r-xs);
+    border-radius: 10px;
     color: #5A6A85;
     transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .sidebar-nav .nav-link:hover i {
     color: #0D1B35;
+    background: rgba(13, 27, 53, 0.05);
 }
 .sidebar-nav .nav-link-text {
     overflow: hidden;
@@ -744,9 +871,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     font-variant-numeric: tabular-nums;
 }
 
-/* Active pill - floating rounded wash + 6px cyan dot (NO left border bar) */
+/* Active - subtle gradient tint + accent text + 6px cyan dot + tinted icon tile (NO left border bar) */
 .sidebar-nav .nav-link.active {
-    background: rgba(46, 111, 216, 0.09);
+    background: linear-gradient(135deg, rgba(46, 111, 216, 0.10), rgba(91, 200, 232, 0.07));
     color: #1D4FB2;
     font-weight: 700;
     border-color: transparent;
@@ -756,12 +883,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-gold);
+    background: #5BC8E8;
+    box-shadow: 0 0 0 4px rgba(91, 200, 232, 0.16);
     flex-shrink: 0;
 }
 .sidebar-nav .nav-link.active i {
     color: #1D4FB2;
-    background: rgba(46, 111, 216, 0.12);
+    background: rgba(91, 200, 232, 0.16);
 }
 .sidebar .nav-link:focus-visible {
     outline: 3px solid var(--color-focus-ring);
@@ -769,35 +897,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     box-shadow: none;
 }
 
-/* Profile card - soft wash at dock foot */
+/* Profile card - gradient avatar ring + status dot + logout at dock foot */
 .sidebar-profile {
     flex-shrink: 0;
     margin: 0.6rem 0 0.7rem;
-    padding: 0.7rem 0.75rem;
+    padding: 0.65rem 0.7rem;
     border-radius: var(--r-md);
     background: rgba(13, 27, 53, 0.04);
+    border: 1px solid var(--color-divider);
     display: flex;
     align-items: center;
     gap: 0.65rem;
-    transition: background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .sidebar-profile:hover {
     background: rgba(46, 111, 216, 0.06);
-    box-shadow: var(--sh-xs);
+    border-color: var(--color-border);
 }
 .sidebar-profile .user-avatar {
     width: 44px;
     height: 44px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: var(--color-primary);
+    background: linear-gradient(140deg, #2E6FD8, #5BC8E8);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.95rem;
     position: relative;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(13, 27, 53, 0.08), 0 3px 8px -2px rgba(46, 111, 216, 0.35);
 }
 .sidebar-profile .user-avatar .status-dot {
     position: absolute;
@@ -807,7 +938,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     height: 10px;
     border-radius: 50%;
     background: var(--color-success);
-    border: 2px solid #FFFFFF;
+    border: 2px solid #fff;
 }
 .sidebar-profile .user-meta {
     min-width: 0;
@@ -842,7 +973,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     background: #FEF2F2;
 }
 
-/* Sidebar footer: rail toggle chip */
+/* Sidebar footer - hairline top + legacy rail toggle chip */
 .sidebar-footer {
     flex-shrink: 0;
     margin-top: auto;
@@ -857,18 +988,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .rail-toggle,
 #railToggle {
     display: none;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     align-items: center;
     justify-content: center;
-    border-radius: var(--r-pill);
+    border-radius: 12px;
     border: 1px solid var(--color-border-strong);
     background: transparent;
     color: #4A5A70;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     line-height: 1;
     cursor: pointer;
-    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .rail-toggle:hover {
     background: rgba(46, 111, 216, 0.10);
@@ -904,6 +1035,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         width: 40px;
         height: 40px;
         font-size: 1.05rem;
+    }
+    /* Rail brand stacks tile above the rotating rail toggle (spec D) */
+    .sidebar.is-rail .sidebar-brand,
+    .sidebar.is-collapsed .sidebar-brand {
+        flex-direction: column;
+        gap: 0.45rem;
+        padding: 0.6rem 0.25rem 0.8rem;
+    }
+    .sidebar.is-rail .sidebar-brand .brand-frame,
+    .sidebar.is-collapsed .sidebar-brand .brand-frame {
+        width: 44px;
+        height: 44px;
+    }
+    .sidebar.is-rail .sidebar-brand .rail-toggle,
+    .sidebar.is-rail .sidebar-brand #railToggle,
+    .sidebar.is-collapsed .sidebar-brand .rail-toggle,
+    .sidebar.is-collapsed .sidebar-brand #railToggle {
+        margin-inline-start: 0;
+        width: 40px;
+        height: 40px;
+        transform: rotate(180deg);
+    }
+    /* Rail hides the filter UI entirely (spec D) */
+    .sidebar.is-rail .sidebar-nav .nav-filter,
+    .sidebar.is-collapsed .sidebar-nav .nav-filter,
+    .sidebar.is-rail .sidebar-nav .nav-empty,
+    .sidebar.is-collapsed .sidebar-nav .nav-empty {
+        display: none;
     }
     .sidebar.is-rail .nav-section,
     .sidebar.is-collapsed .nav-section {
@@ -990,14 +1149,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         width: 10px;
         height: 10px;
     }
+    /* Rail profile: avatar only (spec D) */
     .sidebar.is-rail .sidebar-profile .btn,
     .sidebar.is-collapsed .sidebar-profile .btn {
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        display: none;
     }
     .sidebar.is-rail .sidebar-footer,
     .sidebar.is-collapsed .sidebar-footer {
@@ -1079,6 +1234,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         .sidebar.is-rail .sidebar-nav .nav-group-header::after {
             display: none !important;
         }
+    }
+}
+
+/* Sidebar motion + forced-colors guards (local; global guards in §21/§26 also apply) */
+@media (prefers-reduced-motion: reduce) {
+    .sidebar .nav-filter,
+    .sidebar .nav-filter__input,
+    .sidebar .nav-filter__clear,
+    .sidebar .rail-toggle {
+        transition: none !important;
+    }
+}
+@media (forced-colors: active) {
+    .sidebar .nav-filter {
+        border: 1px solid ButtonText;
+    }
+    .sidebar .nav-filter__input {
+        color: CanvasText;
+    }
+    .sidebar .nav-filter__clear {
+        border: 1px solid ButtonText;
+    }
+    .sidebar .nav-empty {
+        border-color: ButtonText;
     }
 }
 
@@ -2673,6 +2852,24 @@ th[aria-sort="descending"] {
         padding: 0.2rem 0.65rem;
         min-height: 36px;
         font-size: 0.76rem;
+    }
+
+    /* Keep the mobile topbar inside the viewport (RTL flex overflow fix):
+       drop the clock and collapse the theme selector to icon-only while
+       preserving each button's accessible name (sr-only label). */
+    .topbar-clock {
+        display: none;
+    }
+    .theme-mode-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
     .auth-brand,
     .auth-form {
