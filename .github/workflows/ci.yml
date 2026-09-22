@@ -51,7 +51,15 @@ jobs:
         run: dotnet restore NewVixSmart.slnx
 
       - name: Vulnerability scan (fail on any CVE)
-        run: dotnet list NewVixSmart.slnx package --vulnerable --include-transitive
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet list NewVixSmart.slnx package --vulnerable --include-transitive 2>&1 | tee /tmp/vuln-scan.txt
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then echo "::error::dotnet vulnerability scan tool exited non-zero"; exit ${PIPESTATUS[0]}; fi
+          if grep -Eq "has the following vulnerable packages|known vulnerabilities" /tmp/vuln-scan.txt; then
+            echo "::error::Vulnerable packages detected - the CVE gate fails the build regardless of the dotnet CLI exit code."
+            exit 1
+          fi
 
   docker-image:
     runs-on: ubuntu-latest
@@ -89,6 +97,8 @@ jobs:
             -e ASPNETCORE_ENVIRONMENT=Production \
             -e Jwt__Key="Vix-CI-Smoke-JwtSecret-0123456789-abcdefghijklmnop" \
             -e Seed__AdminPassword="Vix-CiAdmin-Passw0rd-2026!" \
+            -e Seed__AccountantPassword="Vix-CiAccountant-Passw0rd-2026!" \
+            -e Seed__WarehousePassword="Vix-CiWarehouse-Passw0rd-2026!" \
             -e ConnectionStrings__DefaultConnection="Server=host.docker.internal,1433;Database=NewVixSmartDb;User Id=sa;Password=Vix-CI-Smoke-Passw0rd-2026!;TrustServerCertificate=True" \
             new-vix-smart-web:ci
 

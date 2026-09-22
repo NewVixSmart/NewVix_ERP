@@ -343,13 +343,17 @@ app.MapHealthChecks("/healthz");
 
 if (!app.Environment.IsDevelopment())
 {
-    var adminSeedPassword = app.Configuration["Seed:AdminPassword"];
     string[] insecureSeedDefaults = ["Admin@123", "Acc@12345", "War@12345"];
-    if (string.IsNullOrWhiteSpace(adminSeedPassword)
-        || insecureSeedDefaults.Contains(adminSeedPassword, StringComparer.Ordinal))
+    string[] seedKeys = ["Seed:AdminPassword", "Seed:AccountantPassword", "Seed:WarehousePassword"];
+    var insecure = seedKeys
+        .Where(key => string.IsNullOrWhiteSpace(app.Configuration[key])
+            || insecureSeedDefaults.Contains(app.Configuration[key], StringComparer.Ordinal))
+        .Select(key => key.Replace(":", "__", StringComparison.Ordinal))
+        .ToList();
+    if (insecure.Count > 0)
     {
         throw new InvalidOperationException(
-            "Insecure or missing default admin seed password in production. Set the Seed__AdminPassword environment variable to a strong password and remove the shipped defaults from appsettings.json. لن يُشغَّل النظام في بيئة الإنتاج بكلمة مرور مدير افتراضية غير آمنة؛ عيّن متغير البيئة Seed__AdminPassword.");
+            $"Insecure or missing default seed passwords in production: {string.Join(", ", insecure)}. Set the corresponding environment variables (e.g. {insecure[0]}) to strong passwords and remove the shipped defaults from appsettings.json. لن يُشغَّل النظام في بيئة الإنتاج بكلمات مرور افتراضية غير آمنة؛ عيّن المتغيرات البيئية للصلاحيات الثلاث.");
     }
 }
 
