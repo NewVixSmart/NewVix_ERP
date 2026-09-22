@@ -164,7 +164,7 @@
                     <div class="d-flex" id="themePreview">
                         <div class="p-3 flex-grow-1" id="prevPage" style="background:#f8f8fa;" role="img" aria-label="معاينة لوحة الألوان">
                             <span class="badge rounded-pill" id="prevPrimary" style="background:#2e6fd8;color:#fff;">زر أساسي</span>
-                            <span class="badge rounded-pill" id="prevAccent" style="background:#5bc8e8;color:#fff;">لمسة سماوية</span>
+                            <span class="badge rounded-pill" id="prevAccent" style="background:#5bc8e8;color:#0d1b35;">لمسة سماوية</span>
                             <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:#0d1b35;color:#e8e8ee;border:1px solid #3b4a66;">شريط جانبي — نص</div>
                         </div>
                     </div>
@@ -187,6 +187,21 @@
             function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
             return (0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)) > 0.55;
         }
+        function contrastTextOn(hex) {
+            var c = hex.replace('#', '');
+            if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+            var r = parseInt(c.slice(0, 2), 16) / 255, g = parseInt(c.slice(2, 4), 16) / 255, b = parseInt(c.slice(4, 6), 16) / 255;
+            function lin(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+            function lum(x) { return 0.2126 * lin(x[0]) + 0.7152 * lin(x[1]) + 0.0722 * lin(x[2]); }
+            var l = lum([r, g, b]);
+            function ratio(a, c2) { var hi = Math.max(a, c2), lo = Math.min(a, c2); return (hi + 0.05) / (lo + 0.05); }
+            var darkInk = { c: '#0d1b35', l: lum([13 / 255, 27 / 255, 53 / 255]) };
+            var whiteInk = { c: '#ffffff', l: 1 };
+            var rd = ratio(l, darkInk.l), rw = ratio(l, whiteInk.l);
+            if (rd >= 4.5) return darkInk.c;
+            if (rw >= 4.5) return whiteInk.c;
+            return rd >= rw ? darkInk.c : whiteInk.c;
+        }
         function pick(el) { return document.getElementById(el); }
         var primary = pick('Primary'), accent = pick('Accent'), sidebar = pick('SidebarBg'), page = pick('PageBg');
         function syncTextFromColor(colorEl, textEl) {
@@ -195,7 +210,9 @@
         function apply() {
             var p = primary.value, a = accent.value, s = sidebar.value;
             document.getElementById('prevPrimary').style.background = p;
+            document.getElementById('prevPrimary').style.color = contrastTextOn(p);
             document.getElementById('prevAccent').style.background = a;
+            document.getElementById('prevAccent').style.color = contrastTextOn(a);
             document.getElementById('prevSidebar').style.background = s;
             document.getElementById('prevSidebar').style.color = isLight(s) ? '#0e1620' : '#cbd5e1';
             document.getElementById('prevPage').style.background = page.value;

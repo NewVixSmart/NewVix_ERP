@@ -350,6 +350,9 @@ html[data-theme="dark"] .btn-outline-secondary:focus-visible { background-color:
 html[data-theme="dark"] .btn-outline-danger { color: #fca5a5 !important; }
 html[data-theme="dark"] .btn-outline-danger:hover,
 html[data-theme="dark"] .btn-outline-danger:focus-visible { background-color: #fca5a5 !important; color: #2c1216 !important; border-color: #fca5a5 !important; transform: translateY(-1px); }
+html[data-theme="dark"] .btn-outline-warning { color: #ffd28a !important; border-color: #f59e0b !important; }
+html[data-theme="dark"] .btn-outline-warning:hover,
+html[data-theme="dark"] .btn-outline-warning:focus-visible { background-color: #f59e0b !important; color: #1f1300 !important; border-color: #f59e0b !important; transform: translateY(-1px); }
 
 html[data-theme="dark"] .btn-outline-primary:disabled,
 html[data-theme="dark"] .btn-outline-primary:disabled:hover,
@@ -366,6 +369,9 @@ html[data-theme="dark"] .btn-outline-secondary:disabled:focus-visible { color: #
 html[data-theme="dark"] .btn-outline-danger:disabled,
 html[data-theme="dark"] .btn-outline-danger:disabled:hover,
 html[data-theme="dark"] .btn-outline-danger:disabled:focus-visible { color: #fca5a5 !important; }
+html[data-theme="dark"] .btn-outline-warning:disabled,
+html[data-theme="dark"] .btn-outline-warning:disabled:hover,
+html[data-theme="dark"] .btn-outline-warning:disabled:focus-visible { color: #ffd28a !important; }
 
 html[data-theme="dark"] .btn-outline-dark { color: #d3d9e3 !important; border-color: #d3d9e3 !important; background-color: transparent !important; }
 html[data-theme="dark"] .btn-outline-dark:hover,
@@ -433,6 +439,7 @@ html[data-theme="dark"] .table-primary { --bs-table-bg: rgba(46, 111, 216, 0.16)
 html[data-theme="dark"] .table-primary td,
 html[data-theme="dark"] .table-primary th,
 html[data-theme="dark"] .table-primary code { color: #BEF0FC; }
+html[data-theme="dark"] .table-primary .text-primary { color: #BEF0FC !important; }
 html[data-theme="dark"] .table code { color: #D6E2F0; }
 html[data-theme="dark"] .table-danger code { color: #fca5a5; }
 
@@ -978,6 +985,7 @@ html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { backgr
     html[data-theme="dark"] .btn-outline-success,
     html[data-theme="dark"] .btn-outline-info,
     html[data-theme="dark"] .btn-outline-danger,
+    html[data-theme="dark"] .btn-outline-warning,
     html[data-theme="dark"] .btn-outline-secondary,
     html[data-theme="dark"] .btn-outline-dark { background-image: none; color: ButtonText; }
     html[data-theme="dark"] .skip-link { border: 2px solid ButtonText; background-color: ButtonFace; color: ButtonText; }

@@ -322,6 +322,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .table-primary code {
     color: var(--color-code-on-primary);
 }
+.table-primary .text-primary {
+    color: var(--color-code-on-primary) !important;
+}
 .table-danger code, .table-warning code, .table-info code, .table-secondary code {
     color: inherit;
 }
@@ -361,6 +364,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     background-color: #B91C1C !important;
     border-color: #B91C1C !important;
 }
+.btn-outline-warning {
+    color: var(--color-warning) !important;
+    border-color: var(--color-warning) !important;
+}
+.btn-outline-warning:hover, .btn-outline-warning:focus-visible {
+    color: #fff !important;
+    background-color: var(--color-warning) !important;
+    border-color: var(--color-warning) !important;
+}
 
 /* Disabled buttons keep 4.5:1 text and a clear disabled surface */
 .btn:disabled, .btn.disabled {
@@ -372,6 +384,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     color: #991b1b !important;
     background-color: #fee2e2 !important;
     border-color: #fecaca !important;
+}
+.btn-outline-warning:disabled,
+.btn-outline-warning:disabled:hover,
+.btn-outline-warning:disabled:focus-visible {
+    color: #78350F !important;
+    background-color: var(--color-alert-warning-bg) !important;
+    border-color: var(--color-badge-warning-border) !important;
 }
 .btn-outline-success:disabled,
 .btn-outline-success:disabled:hover,
