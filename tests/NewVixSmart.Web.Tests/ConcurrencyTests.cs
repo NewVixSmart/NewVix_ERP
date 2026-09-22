@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using Xunit;
@@ -153,5 +154,168 @@ public sealed class ConcurrencyTests : IDisposable
         Assert.NotNull(p1);
         Assert.NotNull(p2);
         Assert.NotEqual(p1.ReceiptNumber, p2.ReceiptNumber);
+    }
+
+    [Fact]
+    public async Task SaleOrder_CannotBeInvoicedTwice()
+    {
+        using var db = CreateContext();
+        var unit = new Unit { Name = "قطعة فوترة" };
+        var item = new Item
+        {
+            Name = "صنف فوترة",
+            Category = new ItemCategory { Name = "تصنيف فوترة" },
+            ItemType = new ItemType { Name = "نوع فوترة" },
+            CountUnit = unit,
+            QuantityUnit = unit,
+            CurrentCount = 50m,
+            CurrentQuantity = 50m
+        };
+        var customer = new Customer { Name = "عميل الفوترة" };
+        db.Items.Add(item);
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
+        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var order = new SalesOrder { CustomerId = customer.Id, OrderDate = DateTime.Today };
+        var (okCreate, _) = await orders.CreateOrderAsync(order, new List<SalesOrderItem>
+        {
+            new() { ItemId = item.Id, Quantity = 5, Count = 5, UnitPrice = 60 }
+        }, "tester");
+        Assert.True(okCreate);
+        var (okApprove, _) = await orders.ApproveOrderAsync(order.Id);
+        Assert.True(okApprove);
+
+        var (ok1, err1) = await orders.CreateInvoiceFromOrderAsync(order.Id, "tester");
+        Assert.True(ok1, err1);
+        Assert.Single(await db.SaleInvoices.ToListAsync());
+        var invoice = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(order.Id, invoice.SalesOrderId);
+        Assert.Equal(SalesOrderStatus.Invoiced, (await db.SalesOrders.FindAsync(order.Id))!.Status);
+
+        using var verify = CreateContext();
+        var again = new SalesOrdersService(verify, new InventoryService(verify));
+        var (ok2, err2) = await again.CreateInvoiceFromOrderAsync(order.Id, "tester");
+        Assert.False(ok2);
+        Assert.Contains("بالفعل", err2);
+        Assert.Single(await verify.SaleInvoices.ToListAsync());
+        Assert.Equal(5m, (await verify.SalesOrderItems.SingleAsync()).InvoicedQty);
+    }
+
+    [Fact]
+    public async Task PurchaseOrder_CannotBeInvoicedTwice()
+    {
+        using var db = CreateContext();
+        var unit = new Unit { Name = "قطعة فاتورة شراء" };
+        var item = new Item
+        {
+            Name = "صنف فاتورة شراء",
+            Category = new ItemCategory { Name = "تصنيف فاتورة شراء" },
+            ItemType = new ItemType { Name = "نوع فاتورة شراء" },
+            CountUnit = unit,
+            QuantityUnit = unit,
+            CurrentCount = 0m,
+            CurrentQuantity = 0m
+        };
+        var supplier = new Supplier { Name = "مورد الفوترة" };
+        db.Items.Add(item);
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+
+        var proc = new ProcurementService(db, new InventoryService(db));
+        var order = new PurchaseOrder { SupplierId = supplier.Id, OrderDate = DateTime.Today };
+        var (okCreate, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
+        {
+            new() { ItemId = item.Id, Quantity = 8, Count = 8, UnitPrice = 40 }
+        }, "tester");
+        Assert.True(okCreate);
+        var (okApprove, _) = await proc.ApproveOrderAsync(order.Id);
+        Assert.True(okApprove);
+        var orderItem = await db.PurchaseOrderItems.SingleAsync();
+        var (okReceive, _) = await proc.ReceiveOrderLineAsync(order.Id, orderItem.Id, 8, 8);
+        Assert.True(okReceive);
+
+        var (ok1, err1) = await proc.CreateInvoiceFromOrderAsync(order.Id, "tester");
+        Assert.True(ok1, err1);
+        Assert.Single(await db.PurchaseInvoices.ToListAsync());
+        var invoice = await db.PurchaseInvoices.SingleAsync();
+        Assert.Equal(order.Id, invoice.PurchaseOrderId);
+
+        var (ok2, err2) = await proc.CreateInvoiceFromOrderAsync(order.Id, "tester");
+        Assert.False(ok2);
+        Assert.Contains("مرة", err2);
+        Assert.Single(await db.PurchaseInvoices.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SaleInvoice_UniqueSalesOrderIndex_RejectsDuplicateDirectInsert()
+    {
+        using var db = CreateContext();
+        var customer = new Customer { Name = "عميل الفهرس الفريد" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
+        var order = new SalesOrder { CustomerId = customer.Id, OrderDate = DateTime.Today, Status = SalesOrderStatus.Approved };
+        db.SalesOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        db.SaleInvoices.Add(new SaleInvoice
+        {
+            InvoiceNumber = "SI-UNIQ-1",
+            CustomerId = customer.Id,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.OpenTerm,
+            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            SalesOrderId = order.Id
+        });
+        await db.SaveChangesAsync();
+
+        using var second = CreateContext();
+        second.SaleInvoices.Add(new SaleInvoice
+        {
+            InvoiceNumber = "SI-UNIQ-2",
+            CustomerId = customer.Id,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.OpenTerm,
+            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            SalesOrderId = order.Id
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync());
+        Assert.Single(await db.SaleInvoices.Where(s => s.SalesOrderId == order.Id).ToListAsync());
+    }
+
+    [Fact]
+    public async Task PurchaseInvoice_UniquePurchaseOrderIndex_RejectsDuplicateDirectInsert()
+    {
+        using var db = CreateContext();
+        var supplier = new Supplier { Name = "مورد الفهرس الفريد" };
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+
+        var order = new PurchaseOrder { SupplierId = supplier.Id, OrderDate = DateTime.Today, Status = PurchaseOrderStatus.Approved };
+        db.PurchaseOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        db.PurchaseInvoices.Add(new PurchaseInvoice
+        {
+            InvoiceNumber = "PO-UNIQ-1",
+            SupplierId = supplier.Id,
+            InvoiceDate = DateTime.Today,
+            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            PurchaseOrderId = order.Id
+        });
+        await db.SaveChangesAsync();
+
+        using var second = CreateContext();
+        second.PurchaseInvoices.Add(new PurchaseInvoice
+        {
+            InvoiceNumber = "PO-UNIQ-2",
+            SupplierId = supplier.Id,
+            InvoiceDate = DateTime.Today,
+            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            PurchaseOrderId = order.Id
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync());
+        Assert.Single(await db.PurchaseInvoices.Where(p => p.PurchaseOrderId == order.Id).ToListAsync());
     }
 }

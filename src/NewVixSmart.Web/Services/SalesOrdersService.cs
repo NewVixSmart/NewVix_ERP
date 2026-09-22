@@ -7,6 +7,7 @@ namespace NewVixSmart.Web.Services;
 
 public sealed class SalesOrdersService : ISalesOrdersService
 {
+    private const int MaxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
 
@@ -132,50 +133,77 @@ public sealed class SalesOrdersService : ISalesOrdersService
 
     public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
-        var order = await _db.SalesOrders
-            .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null) return (false, "أمر البيع غير موجود");
-        if (order.Status != SalesOrderStatus.Approved && order.Status != SalesOrderStatus.PartiallyInvoiced)
-            return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط");
+        if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == orderId))
+            return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
 
-        var remainingLines = order.Items
-            .Where(i => i.Quantity - i.InvoicedQty > 0 || i.Count - i.InvoicedCount > 0)
-            .ToList();
-        if (remainingLines.Count == 0)
-            return (false, "لا توجد كمية متبقية للتحويل إلى فاتورة");
-
-        var invoiceItems = remainingLines.Select(line => new SaleInvoiceItem
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            ItemId = line.ItemId,
-            Quantity = line.Quantity - line.InvoicedQty,
-            Count = line.Count - line.InvoicedCount,
-            UnitPrice = line.UnitPrice
-        }).ToList();
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _db.SalesOrders
+                    .Include(o => o.Items)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+                if (order == null) return (false, "أمر البيع غير موجود");
+                if (order.Status != SalesOrderStatus.Approved && order.Status != SalesOrderStatus.PartiallyInvoiced)
+                    return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط");
+                if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == order.Id))
+                {
+                    await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+                    return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
+                }
 
-        var invoice = new SaleInvoice
-        {
-            CustomerId = order.CustomerId,
-            InvoiceDate = DateTime.Today,
-            PaymentTerms = InvoicePaymentTerms.OpenTerm,
-            SalesOrderId = order.Id,
-            OrderReference = order.OrderNumber,
-            CurrencyId = order.CurrencyId,
-            ExchangeRate = order.ExchangeRate,
-            Notes = order.Notes
-        };
+                var remainingLines = order.Items
+                    .Where(i => i.Quantity - i.InvoicedQty > 0 || i.Count - i.InvoicedCount > 0)
+                    .ToList();
+                if (remainingLines.Count == 0)
+                    return (false, "لا توجد كمية متبقية للتحويل إلى فاتورة");
 
-        var (ok, error) = await _inventory.CreateSaleAsync(invoice, invoiceItems, user);
-        if (!ok) return (false, error);
+                var invoiceItems = remainingLines.Select(line => new SaleInvoiceItem
+                {
+                    ItemId = line.ItemId,
+                    Quantity = line.Quantity - line.InvoicedQty,
+                    Count = line.Count - line.InvoicedCount,
+                    UnitPrice = line.UnitPrice
+                }).ToList();
 
-        foreach (var line in order.Items)
-        {
-            line.InvoicedQty = line.Quantity;
-            line.InvoicedCount = line.Count;
+                var invoice = new SaleInvoice
+                {
+                    CustomerId = order.CustomerId,
+                    InvoiceDate = DateTime.Today,
+                    PaymentTerms = InvoicePaymentTerms.OpenTerm,
+                    SalesOrderId = order.Id,
+                    OrderReference = order.OrderNumber,
+                    CurrencyId = order.CurrencyId,
+                    ExchangeRate = order.ExchangeRate,
+                    Notes = order.Notes
+                };
+
+                var (ok, error) = await _inventory.CreateSaleAsync(invoice, invoiceItems, user, branchId: null, beginOwnTransaction: false);
+                if (!ok) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); return (false, error); }
+
+                foreach (var line in order.Items)
+                {
+                    line.InvoicedQty = line.Quantity;
+                    line.InvoicedCount = line.Count;
+                }
+                order.Status = SalesOrderStatus.Invoiced;
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+                if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == orderId))
+                    return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
+            }
         }
-        order.Status = SalesOrderStatus.Invoiced;
-        await _db.SaveChangesAsync();
-        return (true, null);
+        return (false, "تعذر فوترة الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     private async Task<string> NextOrderNumberAsync()

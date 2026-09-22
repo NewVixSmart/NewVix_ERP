@@ -174,44 +174,70 @@ public sealed class ProcurementService : IProcurementService
         return (false, "تعارض في البيانات أثناء الاستلام، يرجى إعادة المحاولة");
     }
 
-    public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
+public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
-        var order = await _db.PurchaseOrders
-            .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
-.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null) return (false, "أمر الشراء غير موجود");
-        if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.PartiallyReceived)
-            return (false, "يمكن إنشاء فاتورة لأمر معتمد أو مستلم فقط");
-
-        if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == order.Id))
+        if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
             return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
 
-        var receivedLines = order.Items
-            .Where(i => (i.ReceivedQty > 0 || i.ReceivedCount > 0))
-            .ToList();
-        if (receivedLines.Count == 0)
-            return (false, "لا توجد أصناف مستلمة للتحويل إلى فاتورة");
-
-        var invoiceItems = receivedLines.Select(line => new PurchaseInvoiceItem
+        for (int attempt = 1; attempt <= 3; attempt++)
         {
-            ItemId = line.ItemId,
-            Quantity = line.ReceivedQty,
-            Count = line.ReceivedCount,
-            UnitPrice = line.UnitPrice
-        }).ToList();
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _db.PurchaseOrders
+                    .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+                if (order == null) return (false, "أمر الشراء غير موجود");
+                if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.PartiallyReceived)
+                    return (false, "يمكن إنشاء فاتورة لأمر معتمد أو مستلم فقط");
+                if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == order.Id))
+                {
+                    await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+                    return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
+                }
 
-        var invoice = new PurchaseInvoice
-        {
-            SupplierId = order.SupplierId,
-            InvoiceDate = DateTime.Today,
-            PurchaseOrderId = order.Id,
-            OrderReference = order.OrderNumber,
-            Notes = order.Notes
-        };
+                var receivedLines = order.Items
+                    .Where(i => (i.ReceivedQty > 0 || i.ReceivedCount > 0))
+                    .ToList();
+                if (receivedLines.Count == 0)
+                    return (false, "لا توجد أصناف مستلمة للتحويل إلى فاتورة");
 
-        var (ok, error) = await _inventory.CreatePurchaseAsync(invoice, invoiceItems, user);
-        return (ok, error);
+                var invoiceItems = receivedLines.Select(line => new PurchaseInvoiceItem
+                {
+                    ItemId = line.ItemId,
+                    Quantity = line.ReceivedQty,
+                    Count = line.ReceivedCount,
+                    UnitPrice = line.UnitPrice
+                }).ToList();
+
+                var invoice = new PurchaseInvoice
+                {
+                    SupplierId = order.SupplierId,
+                    InvoiceDate = DateTime.Today,
+                    PurchaseOrderId = order.Id,
+                    OrderReference = order.OrderNumber,
+                    Notes = order.Notes
+                };
+
+                var (ok, error) = await _inventory.CreatePurchaseAsync(invoice, invoiceItems, user, branchId: null, beginOwnTransaction: false);
+                if (!ok) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); return (ok, error); }
+
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync(); _db.ChangeTracker.Clear();
+                if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+                    return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
+            }
+        }
+        return (false, "تعذر فوترة الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<IReadOnlyList<SupplierQuote>> GetSupplierQuotesAsync()

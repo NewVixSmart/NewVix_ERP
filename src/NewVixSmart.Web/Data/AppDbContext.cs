@@ -109,6 +109,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<PurchaseInvoice>(e =>
         {
             e.HasIndex(p => p.InvoiceNumber).IsUnique();
+            e.HasIndex(p => p.PurchaseOrderId).IsUnique().HasFilter("[PurchaseOrderId] IS NOT NULL");
             e.HasOne(p => p.Supplier).WithMany(s => s.PurchaseInvoices).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Currency).WithMany().HasForeignKey(p => p.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Branch).WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -138,6 +139,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<SaleInvoice>(e =>
         {
             e.HasIndex(s => s.InvoiceNumber).IsUnique();
+            e.HasIndex(s => s.SalesOrderId).IsUnique().HasFilter("[SalesOrderId] IS NOT NULL");
             e.HasOne(s => s.Customer).WithMany(c => c.SaleInvoices).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);

@@ -28,7 +28,7 @@ public sealed class InventoryService : IInventoryService
         _accounting = accounting;
     }
 
-    public async Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null)
+    public async Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
@@ -36,39 +36,17 @@ public sealed class InventoryService : IInventoryService
         if (duplicateSale != null)
             return (false, $"الصنف رقم {duplicateSale.Key} مكرر أكثر من مرة في الفاتورة");
 
+        if (!beginOwnTransaction)
+            return await CreateSaleCoreAsync(invoice, valid, user, branchId);
+
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                invoice.InvoiceNumber = await NextInvoiceNumberAsync(
-                    _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
-                invoice.BranchId = branchId;
-
-                invoice.TotalAmount = valid.Sum(i => i.Total);
-                invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
-                if (invoice.NetAmount < 0)
-                {
-                    await tx.RollbackAsync(); DetachAll();
-                    return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
-                }
-                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
-                    && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
-                    && invoice.DueDate == null)
-                    invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
-
-                invoice.PaidAmount = 0m;
-                invoice.IsPaid = false;
-                invoice.CreatedBy = user;
-                invoice.CreatedAt = DateTime.UtcNow;
-                invoice.Items = valid;
-
-                _db.SaleInvoices.Add(invoice);
-                await _db.SaveChangesAsync();
-
+                var result = await CreateSaleCoreAsync(invoice, valid, user, branchId);
+                if (!result.Success) { await tx.RollbackAsync(); DetachAll(); ResetInvoiceKeys(invoice); return result; }
                 await tx.CommitAsync();
-                _logger?.LogInformation("سُجّلت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId} — غير مسددة، بانتظار أذن التسليم",
-                    user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
@@ -81,6 +59,38 @@ public sealed class InventoryService : IInventoryService
             }
         }
         return (false, "تعذر حفظ فاتورة البيع بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    private async Task<(bool Success, string? Error)> CreateSaleCoreAsync(SaleInvoice invoice, List<SaleInvoiceItem> valid, string? user, int? branchId)
+    {
+        invoice.InvoiceNumber = await NextInvoiceNumberAsync(
+            _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
+        invoice.BranchId = branchId;
+
+        invoice.TotalAmount = valid.Sum(i => i.Total);
+        invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
+        if (invoice.NetAmount < 0)
+        {
+            _db.ChangeTracker.Clear();
+            return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
+        }
+        if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
+            && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
+            && invoice.DueDate == null)
+            invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
+
+        invoice.PaidAmount = 0m;
+        invoice.IsPaid = false;
+        invoice.CreatedBy = user;
+        invoice.CreatedAt = DateTime.UtcNow;
+        invoice.Items = valid;
+
+        _db.SaleInvoices.Add(invoice);
+        await _db.SaveChangesAsync();
+
+        _logger?.LogInformation("سُجّلت فاتورة بيع {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId} — غير مسددة، بانتظار أذن التسليم",
+            user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
+        return (true, null);
     }
 
     public async Task<(bool Success, string? Error)> CreateDeliveryOrderAsync(DeliveryOrder delivery, List<DeliveryOrderItem> items, string? user)
@@ -221,7 +231,7 @@ public sealed class InventoryService : IInventoryService
         return (true, null);
     }
 
-    public async Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null)
+    public async Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true)
     {
         if (await IsPeriodClosedAsync(invoice.InvoiceDate))
             return (false, $"السنة المالية {invoice.InvoiceDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
@@ -232,72 +242,17 @@ public sealed class InventoryService : IInventoryService
         if (duplicatePurchase != null)
             return (false, $"الصنف رقم {duplicatePurchase.Key} مكرر أكثر من مرة في الفاتورة");
 
+        if (!beginOwnTransaction)
+            return await CreatePurchaseCoreAsync(invoice, valid, user, branchId);
+
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                invoice.InvoiceNumber = await NextInvoiceNumberAsync(
-                    _db.PurchaseInvoices.Select(p => p.InvoiceNumber), "PO");
-                invoice.BranchId = branchId;
-
-                foreach (var group in valid.GroupBy(i => i.ItemId))
-                {
-                    var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == group.Key);
-                    if (item == null) continue;
-                    var priceLine = group.LastOrDefault(l => l.Quantity > 0);
-                    if (priceLine != null)
-                        item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
-                }
-
-                var stockLines = ToStockLines(valid);
-                var stockError = await ApplyStockAsync(
-                    stockLines, sign: +1,
-                    docNumber: invoice.InvoiceNumber, docType: DocumentType.PurchaseInvoice, docId: null,
-                    movementDate: DateTime.UtcNow, user);
-                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
-
-                invoice.TotalAmount = valid.Sum(i => i.Total);
-                invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
-                if (invoice.NetAmount < 0)
-                {
-                    await tx.RollbackAsync(); DetachAll();
-                    return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
-                }
-                if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
-                    && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
-                    && invoice.DueDate == null)
-                    invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
-                if (invoice.SupplierId > 0)
-                {
-                    foreach (var line in valid)
-                    {
-                        await UpsertSupplierQuoteAsync(invoice.SupplierId, line.ItemId, line.UnitPrice);
-                    }
-                }
-
-                invoice.PaidAmount = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt ? invoice.NetAmount : 0;
-                invoice.IsPaid = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt;
-                invoice.CreatedBy = user;
-                invoice.CreatedAt = DateTime.UtcNow;
-                invoice.Items = valid;
-
-                _db.PurchaseInvoices.Add(invoice);
-                await _db.SaveChangesAsync();
-
-                await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate, invoice.ExchangeRate);
-
-                if (_accounting != null && invoice.NetAmount > 0)
-                    await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
-
-                if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
-                    await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
-                        decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
-                        PaymentMethod.Cash, invoice.SupplierId, user, branchId);
-
+                var result = await CreatePurchaseCoreAsync(invoice, valid, user, branchId);
+                if (!result.Success) { await tx.RollbackAsync(); DetachAll(); ResetInvoiceKeys(invoice); return result; }
                 await tx.CommitAsync();
-                _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
-                    user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
@@ -310,6 +265,71 @@ public sealed class InventoryService : IInventoryService
             }
         }
         return (false, "تعذر حفظ فاتورة الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    private async Task<(bool Success, string? Error)> CreatePurchaseCoreAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> valid, string? user, int? branchId)
+    {
+        invoice.InvoiceNumber = await NextInvoiceNumberAsync(
+            _db.PurchaseInvoices.Select(p => p.InvoiceNumber), "PO");
+        invoice.BranchId = branchId;
+
+        foreach (var group in valid.GroupBy(i => i.ItemId))
+        {
+            var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == group.Key);
+            if (item == null) continue;
+            var priceLine = group.LastOrDefault(l => l.Quantity > 0);
+            if (priceLine != null)
+                item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
+        }
+
+        var stockLines = ToStockLines(valid);
+        var stockError = await ApplyStockAsync(
+            stockLines, sign: +1,
+            docNumber: invoice.InvoiceNumber, docType: DocumentType.PurchaseInvoice, docId: null,
+            movementDate: DateTime.UtcNow, user);
+        if (stockError != null) { _db.ChangeTracker.Clear(); return (false, stockError); }
+
+        invoice.TotalAmount = valid.Sum(i => i.Total);
+        invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
+        if (invoice.NetAmount < 0)
+        {
+            _db.ChangeTracker.Clear();
+            return (false, "الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
+        }
+        if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
+            && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
+            && invoice.DueDate == null)
+            invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
+        if (invoice.SupplierId > 0)
+        {
+            foreach (var line in valid)
+            {
+                await UpsertSupplierQuoteAsync(invoice.SupplierId, line.ItemId, line.UnitPrice);
+            }
+        }
+
+        invoice.PaidAmount = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt ? invoice.NetAmount : 0;
+        invoice.IsPaid = invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt;
+        invoice.CreatedBy = user;
+        invoice.CreatedAt = DateTime.UtcNow;
+        invoice.Items = valid;
+
+        _db.PurchaseInvoices.Add(invoice);
+        await _db.SaveChangesAsync();
+
+        await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate, invoice.ExchangeRate);
+
+        if (_accounting != null && invoice.NetAmount > 0)
+            await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
+
+        if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
+            await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
+                decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
+                PaymentMethod.Cash, invoice.SupplierId, user, branchId);
+
+        _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
+            user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
+        return (true, null);
     }
 
     public async Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user)
