@@ -52,18 +52,36 @@ public sealed class SalesOrdersService : ISalesOrdersService
         if (await _db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId) == null)
             return (false, "العميل غير موجود");
 
-        order.OrderNumber = await NextOrderNumberAsync();
         order.Status = SalesOrderStatus.Draft;
         order.CreatedBy = user;
         order.CreatedAt = DateTime.UtcNow;
         order.Items = valid;
 
-        foreach (var item in valid)
-            item.SalesOrderId = order.Id;
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            order.OrderNumber = await NextOrderNumberAsync();
 
-        _db.SalesOrders.Add(order);
-        await _db.SaveChangesAsync();
-        return (true, null);
+            foreach (var item in valid)
+                item.SalesOrderId = order.Id;
+
+            _db.SalesOrders.Add(order);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateException)
+            {
+                var colliding = order.OrderNumber;
+                _db.ChangeTracker.Clear();
+                if (!await _db.SalesOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == colliding))
+                    return (false, "تعذر حفظ الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
+                order.Id = 0;
+                foreach (var item in valid) { item.Id = 0; item.SalesOrderId = 0; }
+                order.Items = valid;
+            }
+        }
+        return (false, "تعذر حفظ الأمر بسبب تعارض في الترقيم، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> UpdateOrderAsync(SalesOrder order, List<SalesOrderItem> items, string? user)
@@ -208,13 +226,13 @@ public sealed class SalesOrdersService : ISalesOrdersService
 
     private async Task<string> NextOrderNumberAsync()
     {
-        int next = await _db.SalesOrders.CountAsync() + 1;
-        string num = $"SO-{DateTime.Now:yyyyMMdd}-{next:D3}";
-        while (await _db.SalesOrders.AnyAsync(o => o.OrderNumber == num))
-        {
-            next++;
-            num = $"SO-{DateTime.Now:yyyyMMdd}-{next:D3}";
-        }
-        return num;
+        var prefix = $"SO-{DateTime.Now:yyyyMMdd}-";
+        var last = await _db.SalesOrders.AsNoTracking()
+            .Where(o => o.OrderNumber.StartsWith(prefix))
+            .OrderByDescending(o => o.OrderNumber)
+            .Select(o => o.OrderNumber)
+            .FirstOrDefaultAsync();
+        int next = last != null && int.TryParse(last.AsSpan(prefix.Length), out var n) ? n + 1 : 1;
+        return $"{prefix}{next:D3}";
     }
 }

@@ -40,7 +40,7 @@ public sealed class ProcurementService : IProcurementService
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-    public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
+public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
@@ -48,18 +48,37 @@ public sealed class ProcurementService : IProcurementService
         if (await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == order.SupplierId) == null)
             return (false, "المورد غير موجود");
 
-        order.OrderNumber = await NextOrderNumberAsync();
         order.Status = PurchaseOrderStatus.Draft;
         order.CreatedBy = user;
         order.CreatedAt = DateTime.UtcNow;
         order.Items = valid;
+        order.OrderDate = order.OrderDate == default ? DateTime.Today : order.OrderDate;
 
-        foreach (var item in valid)
-            item.PurchaseOrderId = order.Id;
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            order.OrderNumber = await NextOrderNumberAsync();
 
-        _db.PurchaseOrders.Add(order);
-        await _db.SaveChangesAsync();
-        return (true, null);
+            foreach (var item in valid)
+                item.PurchaseOrderId = order.Id;
+
+            _db.PurchaseOrders.Add(order);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateException)
+            {
+                var colliding = order.OrderNumber;
+                _db.ChangeTracker.Clear();
+                if (!await _db.PurchaseOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == colliding))
+                    return (false, "تعذر حفظ الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
+                order.Id = 0;
+                foreach (var item in valid) { item.Id = 0; item.PurchaseOrderId = 0; }
+                order.Items = valid;
+            }
+        }
+        return (false, "تعذر حفظ الأمر بسبب تعارض في الترقيم، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> UpdateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
@@ -274,15 +293,15 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
         return (true, null);
     }
 
-    private async Task<string> NextOrderNumberAsync()
+private async Task<string> NextOrderNumberAsync()
     {
-        int next = await _db.PurchaseOrders.CountAsync() + 1;
-        string num = $"PRC-{DateTime.Now:yyyyMMdd}-{next:D3}";
-        while (await _db.PurchaseOrders.AnyAsync(o => o.OrderNumber == num))
-        {
-            next++;
-            num = $"PRC-{DateTime.Now:yyyyMMdd}-{next:D3}";
-        }
-        return num;
+        var prefix = $"PRC-{DateTime.Now:yyyyMMdd}-";
+        var last = await _db.PurchaseOrders.AsNoTracking()
+            .Where(o => o.OrderNumber.StartsWith(prefix))
+            .OrderByDescending(o => o.OrderNumber)
+            .Select(o => o.OrderNumber)
+            .FirstOrDefaultAsync();
+        int next = last != null && int.TryParse(last.AsSpan(prefix.Length), out var n) ? n + 1 : 1;
+        return $"{prefix}{next:D3}";
     }
 }

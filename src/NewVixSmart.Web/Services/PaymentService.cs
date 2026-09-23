@@ -49,7 +49,7 @@ public sealed class PaymentService : IPaymentService
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                payment.ReceiptNumber = await NextPaymentNumberAsync(_db.Payments.Select(p => p.ReceiptNumber));
+                payment.ReceiptNumber = await NextPaymentNumberAsync();
 
                 if (await HasDuplicatePaymentAsync(payment))
                 {
@@ -110,16 +110,14 @@ public sealed class PaymentService : IPaymentService
                 await tx.RollbackAsync();
                 _db.ChangeTracker.Clear();
                 payment.Id = 0;
-                var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
-                payment.ReceiptNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
+                payment.ReceiptNumber = await NextPaymentNumberAsync();
             }
             catch (DbUpdateException)
             {
                 await tx.RollbackAsync();
                 _db.ChangeTracker.Clear();
                 payment.Id = 0;
-                var lastPayment = await _db.Payments.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
-                payment.ReceiptNumber = $"PAY-{(lastPayment == null ? 1 : lastPayment.Id + 1):D5}";
+                payment.ReceiptNumber = await NextPaymentNumberAsync();
             }
         }
         return (false, "تعارض في البيانات أثناء الحفظ، يرجى إعادة المحاولة", null);
@@ -144,16 +142,15 @@ public sealed class PaymentService : IPaymentService
     private Task<bool> IsPeriodClosedAsync(DateTime date)
         => _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed);
 
-    private async Task<string> NextPaymentNumberAsync(IQueryable<string> existing)
+    private async Task<string> NextPaymentNumberAsync()
     {
-        int next = await existing.CountAsync() + 1;
-        string num = $"PAY-{next:D5}";
-        while (await existing.AnyAsync(n => n == num))
-        {
-            next++;
-            num = $"PAY-{next:D5}";
-        }
-        return num;
+        var last = await _db.Payments.AsNoTracking()
+            .Where(p => p.ReceiptNumber.StartsWith("PAY-"))
+            .OrderByDescending(p => p.ReceiptNumber)
+            .Select(p => p.ReceiptNumber)
+            .FirstOrDefaultAsync();
+        int next = last != null && int.TryParse(last.AsSpan(4), out var n) ? n + 1 : 1;
+        return $"PAY-{next:D5}";
     }
 
     private async Task<(decimal Remaining, decimal PartyBaseReduction, decimal RemainingForeign)> ApplyInvoiceAllocationAsync(Payment payment, bool foreign)
