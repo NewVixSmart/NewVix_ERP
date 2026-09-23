@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models;
 using NewVixSmart.Web.Services;
 
@@ -12,6 +13,7 @@ public class HomeController : Controller
     private readonly IDashboardService _dashboardService;
     public HomeController(IDashboardService dashboardService) => _dashboardService = dashboardService;
 
+    [RequirePerm("Reports.Dashboard")]
     public async Task<IActionResult> Index()
     {
         return View(await _dashboardService.GetDashboardAsync());

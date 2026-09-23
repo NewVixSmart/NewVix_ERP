@@ -10,7 +10,6 @@ using NewVixSmart.Web.ViewModels.Accounting;
 namespace NewVixSmart.Web.Controllers;
 
 [Authorize]
-[RequirePerm("FiscalClose.Close")]
 public class FiscalController : Controller
 {
     private readonly AppDbContext _db;
@@ -22,6 +21,7 @@ public class FiscalController : Controller
         _fiscal = fiscal;
     }
 
+    [RequirePerm("FiscalClose.Close")]
     public async Task<IActionResult> Index()
     {
         var periods = await _db.FiscalPeriods.AsNoTracking().OrderByDescending(p => p.Year).ToListAsync();

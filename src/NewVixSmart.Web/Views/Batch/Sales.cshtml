@@ -112,7 +112,7 @@
                                         </select>
                                     </td>
                                     <td><input name="Invoices[@i].Items[@j].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" /></td>
-                                    <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 1)" aria-label="الكمية" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
                                     <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                                     <td><input name="Invoices[@i].Items[@j].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="@(line?.Discount ?? 0)" aria-label="خصم الصنف" /></td>
                                     <td><span class="total fw-bold">0.00</span></td>
@@ -159,7 +159,7 @@ function lineRow(invIdx, rowIdx) {
     return `<tr>
         <td><select name="Invoices[${invIdx}].Items[${rowIdx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="1" aria-label="الكمية" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="0" aria-label="خصم الصنف" /></td>
         <td><span class="total fw-bold">0.00</span></td>

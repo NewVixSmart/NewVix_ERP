@@ -25,7 +25,7 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.View")]
     public async Task<IActionResult> Index(PurchaseOrderStatus? status = null)
     {
-        var orders = await _procurement.GetOrdersAsync(status);
+        var orders = await _procurement.GetOrdersAsync(status, 500);
         ViewBag.StatusFilter = status;
         return View(orders);
     }

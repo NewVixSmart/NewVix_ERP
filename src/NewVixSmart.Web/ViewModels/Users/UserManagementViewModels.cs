@@ -27,16 +27,9 @@ public class ModulePermissionViewModel
     public bool Create;
     public bool Edit;
     public bool Delete;
+    public HashSet<string> Granted { get; set; } = new();
 
-    public bool HasAction(string action) =>
-        PermissionCatalog.Key(Key, action) switch
-        {
-            _ when action == PermissionCatalog.View && View => true,
-            _ when action == PermissionCatalog.Create && Create => true,
-            _ when action == PermissionCatalog.Edit && Edit => true,
-            _ when action == PermissionCatalog.Delete && Delete => true,
-            _ => false
-        };
+    public bool HasAction(string action) => Granted.Contains(PermissionCatalog.Key(Key, action));
 }
 
 public class CreateUserViewModel

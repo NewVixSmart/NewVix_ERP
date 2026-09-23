@@ -308,6 +308,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<DeliveryOrder>(e =>
         {
             e.HasIndex(d => d.DeliveryNumber).IsUnique();
+            e.Property(d => d.RowVersion).IsRowVersion();
             e.HasOne(d => d.SaleInvoice).WithMany().HasForeignKey(d => d.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(d => d.Customer).WithMany().HasForeignKey(d => d.CustomerId).OnDelete(DeleteBehavior.Restrict);
         });

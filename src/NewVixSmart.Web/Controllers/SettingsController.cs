@@ -149,9 +149,17 @@ public class SettingsController : Controller
     {
         var currency = await _db.Currencies.FindAsync(id);
         if (currency == null) return NotFound();
+
+        var factor = currency.ExchangeRate > 0 && !currency.IsBase ? currency.ExchangeRate : 1m;
+        var others = await _db.Currencies.Where(c => c.Id != id).ToListAsync();
+        foreach (var c in others)
+        {
+            c.IsBase = false;
+            c.ExchangeRate = decimal.Round(c.ExchangeRate / factor, 6);
+        }
+
         currency.IsBase = true;
         currency.ExchangeRate = 1m;
-        await _db.Currencies.Where(c => c.Id != id).ForEachAsync(c => c.IsBase = false);
         await _db.SaveChangesAsync();
         TempData["Success"] = $"أُعيدت إلى العملة الأساسية: {currency.Name}";
         return RedirectToAction(nameof(Index));
@@ -555,15 +563,22 @@ public class SettingsController : Controller
         var existing = await _db.SystemSettings.FindAsync(key);
         if (existing == null)
         {
-            _db.SystemSettings.Add(new SystemSetting { Key = key, Value = value, UpdatedAt = DateTime.UtcNow });
+            var created = new SystemSetting { Key = key, Value = value, UpdatedAt = DateTime.UtcNow };
+            _db.SystemSettings.Add(created);
             try
             {
                 await _db.SaveChangesAsync();
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException)
             {
+                _db.Entry(created).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 existing = await _db.SystemSettings.FindAsync(key);
-                if (existing == null) throw;
+                if (existing == null)
+                {
+                    _db.SystemSettings.Add(created);
+                    await _db.SaveChangesAsync();
+                    return;
+                }
                 existing.Value = value;
                 existing.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();

@@ -114,6 +114,7 @@ public class UsersController : Controller
             {
                 Key = m.Key,
                 TitleAr = m.TitleAr,
+                Granted = granted,
                 View = granted.Contains(PermissionCatalog.Key(m.Key, PermissionCatalog.View)),
                 Create = granted.Contains(PermissionCatalog.Key(m.Key, PermissionCatalog.Create)),
                 Edit = granted.Contains(PermissionCatalog.Key(m.Key, PermissionCatalog.Edit)),

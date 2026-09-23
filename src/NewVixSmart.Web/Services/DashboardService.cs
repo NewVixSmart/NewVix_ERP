@@ -118,22 +118,34 @@ public class DashboardService : IDashboardService
             .Select(p => new { p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate })
             .Where(p => p.NetAmount - p.PaidAmount > 0.005m);
 
-        var overdueSales = await sales.Where(s => (s.DueDate ?? s.InvoiceDate).Date < today).ToListAsync();
+        var overdueSales = await sales
+            .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today)
+            .GroupBy(s => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(s => s.NetAmount - s.PaidAmount) })
+            .FirstOrDefaultAsync();
         var dueSoonSales = await sales
             .Where(s => (s.DueDate ?? s.InvoiceDate).Date >= today && (s.DueDate ?? s.InvoiceDate).Date <= today.AddDays(7))
-            .ToListAsync();
-        var overduePurchases = await purchases.Where(p => (p.DueDate ?? p.InvoiceDate).Date < today).ToListAsync();
+            .GroupBy(s => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(s => s.NetAmount - s.PaidAmount) })
+            .FirstOrDefaultAsync();
+        var overduePurchases = await purchases
+            .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today)
+            .GroupBy(p => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(p => p.NetAmount - p.PaidAmount) })
+            .FirstOrDefaultAsync();
         var dueSoonPurchases = await purchases
             .Where(p => (p.DueDate ?? p.InvoiceDate).Date >= today && (p.DueDate ?? p.InvoiceDate).Date <= today.AddDays(7))
-            .ToListAsync();
+            .GroupBy(p => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(p => p.NetAmount - p.PaidAmount) })
+            .FirstOrDefaultAsync();
 
-        vm.OverdueReceivableCount = overdueSales.Count;
-        vm.OverdueReceivableTotal = overdueSales.Sum(s => s.NetAmount - s.PaidAmount);
-        vm.DueSoonReceivableCount = dueSoonSales.Count;
-        vm.DueSoonReceivableTotal = dueSoonSales.Sum(s => s.NetAmount - s.PaidAmount);
-        vm.OverduePayableCount = overduePurchases.Count;
-        vm.OverduePayableTotal = overduePurchases.Sum(p => p.NetAmount - p.PaidAmount);
-        vm.DueSoonPayableCount = dueSoonPurchases.Count;
-        vm.DueSoonPayableTotal = dueSoonPurchases.Sum(p => p.NetAmount - p.PaidAmount);
+        vm.OverdueReceivableCount = overdueSales?.Count ?? 0;
+        vm.OverdueReceivableTotal = overdueSales?.Total ?? 0m;
+        vm.DueSoonReceivableCount = dueSoonSales?.Count ?? 0;
+        vm.DueSoonReceivableTotal = dueSoonSales?.Total ?? 0m;
+        vm.OverduePayableCount = overduePurchases?.Count ?? 0;
+        vm.OverduePayableTotal = overduePurchases?.Total ?? 0m;
+        vm.DueSoonPayableCount = dueSoonPurchases?.Count ?? 0;
+        vm.DueSoonPayableTotal = dueSoonPurchases?.Total ?? 0m;
     }
 }

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Options;
 using NewVixSmart.Web.Controllers;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Infrastructure;
+using NewVixSmart.Web.Models.Access;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
@@ -296,6 +299,85 @@ public sealed class ListPagingTests : IDisposable
         Assert.Single(items, u => u.UserName == "acct-user" && u.Roles.SequenceEqual(new[] { "Accountant" }));
         Assert.Single(items, u => u.UserName == "wh-user" && u.Roles.SequenceEqual(new[] { "Warehouse" }));
         Assert.Equal("admin-user", items.First().UserName);
+    }
+
+    [Fact]
+    public async Task Permissions_Get_SurfacesCustomGrants_AsActions()
+    {
+        using var db = CreateContext();
+        var um = CreateUserManager(db);
+
+        db.Roles.AddRange(
+            new IdentityRole { Name = "Admin", NormalizedName = "ADMIN" },
+            new IdentityRole { Name = "Accountant", NormalizedName = "ACCOUNTANT" },
+            new IdentityRole { Name = "Warehouse", NormalizedName = "WAREHOUSE" });
+        await db.SaveChangesAsync();
+
+        var created = await um.CreateAsync(new IdentityUser { UserName = "perms-user" }, "Perms@12345");
+        Assert.True(created.Succeeded);
+        var user = await um.FindByNameAsync("perms-user");
+        await um.AddToRoleAsync(user!, "Accountant");
+
+        db.UserPermissions.AddRange(
+            new UserPermission { UserId = user!.Id, PermissionKey = "Sales.Create" },
+            new UserPermission { UserId = user.Id, PermissionKey = "Batch.SalesCreate" });
+        await db.SaveChangesAsync();
+
+        var controller = new UsersController(um, db);
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+        var result = Assert.IsType<ViewResult>(await controller.Permissions(user.Id));
+        var vm = Assert.IsType<UserPermissionViewModel>(result.Model);
+
+        var salesModule = Assert.Single(vm.Modules, m => m.Key == "Sales");
+        Assert.True(salesModule.HasAction("Create"));
+        Assert.False(salesModule.HasAction("Delete"));
+        Assert.False(Assert.Single(vm.Modules, m => m.Key == "Purchases").HasAction("Create"));
+    }
+
+    [Fact]
+    public async Task Permissions_Post_ReplacesAllCustomGrants()
+    {
+        using var db = CreateContext();
+        var um = CreateUserManager(db);
+
+        db.Roles.AddRange(
+            new IdentityRole { Name = "Admin", NormalizedName = "ADMIN" },
+            new IdentityRole { Name = "Accountant", NormalizedName = "ACCOUNTANT" },
+            new IdentityRole { Name = "Warehouse", NormalizedName = "WAREHOUSE" });
+        await db.SaveChangesAsync();
+
+        var created = await um.CreateAsync(new IdentityUser { UserName = "perms-user2" }, "Perms@12345");
+        Assert.True(created.Succeeded);
+        var user = await um.FindByNameAsync("perms-user2");
+        await um.AddToRoleAsync(user!, "Accountant");
+
+        db.UserPermissions.AddRange(
+            new UserPermission { UserId = user!.Id, PermissionKey = "Sales.Create" },
+            new UserPermission { UserId = user.Id, PermissionKey = "Batch.SalesCreate" });
+        await db.SaveChangesAsync();
+
+        var controller = new UsersController(um, db);
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+        await controller.Permissions(user.Id, new[] { "Warehouses.View", "Warehouses.Edit" });
+
+        var remaining = await db.UserPermissions.Where(p => p.UserId == user.Id).Select(p => p.PermissionKey).ToListAsync();
+        Assert.Contains("Warehouses.View", remaining);
+        Assert.Contains("Warehouses.Edit", remaining);
+        Assert.DoesNotContain("Sales.Create", remaining);
+        Assert.DoesNotContain("Batch.SalesCreate", remaining);
+    }
+
+    private sealed class FakeTempDataProvider : ITempDataProvider
+    {
+        private readonly Dictionary<string, object?> _data = new();
+
+        public IDictionary<string, object?> LoadTempData(HttpContext context) => _data;
+
+        public void SaveTempData(HttpContext context, IDictionary<string, object?> values)
+        {
+            foreach (var kv in values)
+                _data[kv.Key] = kv.Value;
+        }
     }
 
     private static UserManager<IdentityUser> CreateUserManager(AppDbContext db)

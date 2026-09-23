@@ -21,7 +21,7 @@ public class AccountController : Controller
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Home");
+            return Redirect(HomeLanding());
         ViewData["ReturnUrl"] = returnUrl;
         return View();
     }
@@ -36,7 +36,7 @@ public class AccountController : Controller
 
         var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, model.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
-            return LocalRedirect(returnUrl ?? "/");
+            return LocalRedirect(returnUrl ?? HomeLanding());
 
         ModelState.AddModelError(string.Empty, "اسم المستخدم أو كلمة المرور غير صحيحة");
         return View(model);
@@ -73,7 +73,7 @@ public class AccountController : Controller
         {
             await _signInManager.RefreshSignInAsync(user);
             TempData["Success"] = "تم تغيير كلمة المرور بنجاح";
-            return RedirectToAction("Index", "Home");
+            return Redirect(HomeLanding());
         }
 
         foreach (var error in result.Errors)
@@ -82,6 +82,14 @@ public class AccountController : Controller
     }
 
     public IActionResult AccessDenied() => View();
+
+    private string HomeLanding()
+    {
+        if (User.IsInRole("Admin")) return "/";
+        if (User.IsInRole("Accountant")) return "/Reports/Index";
+        if (User.IsInRole("Warehouse")) return "/Stock/Index";
+        return "/";
+    }
 }
 
 public class LoginViewModel

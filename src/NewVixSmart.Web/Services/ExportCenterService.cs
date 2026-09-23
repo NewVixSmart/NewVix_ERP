@@ -820,6 +820,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(s => s.Currency)
             .OrderBy(s => s.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -848,6 +849,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(c => c.Currency)
             .OrderBy(c => c.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -879,6 +881,7 @@ public class ExportCenterService : IExportCenterService
             .Include(i => i.CountUnit)
             .Include(i => i.QuantityUnit)
             .OrderBy(i => i.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -913,6 +916,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(a => a.ParentAccount)
             .OrderBy(a => a.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -938,6 +942,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(c => c.Items)
             .OrderBy(c => c.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -957,6 +962,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(t => t.Items)
             .OrderBy(t => t.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -976,6 +982,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(u => u.ParentUnit)
             .OrderBy(u => u.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -995,6 +1002,7 @@ public class ExportCenterService : IExportCenterService
         var currencies = await _db.Currencies
             .AsNoTracking()
             .OrderBy(c => c.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1014,6 +1022,7 @@ public class ExportCenterService : IExportCenterService
         var branches = await _db.Branches
             .AsNoTracking()
             .OrderBy(b => b.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1032,6 +1041,7 @@ public class ExportCenterService : IExportCenterService
         var warehouses = await _db.Warehouses
             .AsNoTracking()
             .OrderBy(w => w.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1054,6 +1064,7 @@ public class ExportCenterService : IExportCenterService
             .Include(p => p.Currency)
             .OrderByDescending(p => p.PaymentDate)
             .ThenBy(p => p.ReceiptNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1086,6 +1097,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(s => s.InvoiceDate)
             .ThenBy(s => s.InvoiceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1128,6 +1140,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(p => p.InvoiceDate)
             .ThenBy(p => p.InvoiceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1170,6 +1183,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(r => r.ReturnDate)
             .ThenBy(r => r.ReturnNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1205,6 +1219,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(r => r.ReturnDate)
             .ThenBy(r => r.ReturnNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1240,6 +1255,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(q => q.QuoteDate)
             .ThenBy(q => q.QuoteNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1273,6 +1289,7 @@ public class ExportCenterService : IExportCenterService
             .Include(m => m.Item)
             .OrderByDescending(m => m.MovementDate)
             .ThenBy(m => m.Id)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1304,6 +1321,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(t => t.TransferDate)
             .ThenBy(t => t.TransferNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1332,6 +1350,7 @@ public class ExportCenterService : IExportCenterService
             .Include(a => a.Item)
             .OrderByDescending(a => a.AdjustmentDate)
             .ThenBy(a => a.ReferenceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1355,6 +1374,7 @@ public class ExportCenterService : IExportCenterService
             .Include(j => j.Lines)
             .ThenInclude(l => l.Account)
             .OrderBy(j => j.EntryNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1382,6 +1402,7 @@ public class ExportCenterService : IExportCenterService
         var periods = await _db.FiscalPeriods
             .AsNoTracking()
             .OrderByDescending(p => p.Year)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1404,6 +1425,7 @@ public class ExportCenterService : IExportCenterService
             .Include(l => l.Account)
             .OrderBy(l => l.BudgetYear!.Year)
             .ThenBy(l => l.Account!.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1427,6 +1449,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(o => o.OrderDate)
             .ThenBy(o => o.OrderNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1459,6 +1482,7 @@ public class ExportCenterService : IExportCenterService
             .Include(o => o.Customer)
             .Include(o => o.Items).ThenInclude(i => i.Item)
             .OrderByDescending(o => o.OrderDate)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -1495,6 +1519,7 @@ public class ExportCenterService : IExportCenterService
             .Include(d => d.SaleInvoice)
             .Include(d => d.Items).ThenInclude(i => i.Item)
             .OrderByDescending(d => d.DeliveryDate)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();

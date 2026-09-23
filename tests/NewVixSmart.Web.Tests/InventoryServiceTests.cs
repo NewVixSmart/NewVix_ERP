@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
@@ -737,6 +738,55 @@ public sealed class InventoryServiceTests : IDisposable
         Assert.Equal(40, targetLayer.UnitCost);
         Assert.Equal(new DateTime(2026, 3, 15), targetLayer.DateReceived);
         Assert.Equal(0, (await db.StockLayers.SingleAsync(sl => sl.WarehouseId == wh1Id)).RemainingQty);
+    }
+
+    [Fact]
+    public async Task Transfer_ConsumesNullWarehouseLayers_And_ClaimsThem()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
+        var svc = new InventoryService(db);
+
+        await SeedPurchaseLayerAsync(db, itemId, null, 4, 30, new DateTime(2026, 1, 1));
+        await SeedPurchaseLayerAsync(db, itemId, wh1Id, 6, 50, new DateTime(2026, 2, 1));
+
+        var transfer = new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh2Id, TransferDate = DateTime.UtcNow };
+        var items = new List<StockTransferItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitCost = 0 } };
+        var (ok, _) = await svc.CreateTransferAsync(transfer, items, "test");
+
+        Assert.True(ok);
+        var claimed = await db.StockLayers.SingleAsync(sl => sl.WarehouseId == wh1Id && sl.DateReceived == new DateTime(2026, 1, 1));
+        Assert.Equal(0, claimed.RemainingQty);
+
+        var targetLayers = await db.StockLayers.Where(sl => sl.ItemId == itemId && sl.WarehouseId == wh2Id)
+            .OrderBy(sl => sl.DateReceived).ToListAsync();
+        Assert.Equal(2, targetLayers.Count);
+        Assert.Equal(4, targetLayers[0].RemainingQty);
+        Assert.Equal(30, targetLayers[0].UnitCost);
+        Assert.Equal(6, targetLayers[1].RemainingQty);
+        Assert.Equal(50, targetLayers[1].UnitCost);
+        Assert.Equal(42, (await db.StockTransfers.Include(t => t.Items).SingleAsync(t => t.Id == transfer.Id)).Items.Single().UnitCost);
+    }
+
+    [Fact]
+    public async Task Transfer_RejectedForClosedPeriod()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
+        db.FiscalPeriods.Add(new FiscalPeriod { Year = 2026, IsClosed = true });
+        await db.SaveChangesAsync();
+        var svc = new InventoryService(db);
+
+        var transfer = new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh2Id, TransferDate = new DateTime(2026, 5, 1) };
+        var items = new List<StockTransferItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitCost = 0 } };
+        var (ok, err) = await svc.CreateTransferAsync(transfer, items, "test");
+
+        Assert.False(ok);
+        Assert.Contains("مغلقة", err);
+        Assert.Equal(0, await db.StockTransfers.CountAsync());
+        Assert.Equal(0, await db.StockMovements.CountAsync(m => m.DocumentType == DocumentType.Transfer));
     }
 
     // ---------- Adjustment countdown (N-6) ----------

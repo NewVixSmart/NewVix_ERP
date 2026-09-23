@@ -60,6 +60,10 @@ public class DeliveryOrder
     [BindNever]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Timestamp]
+    [BindNever]
+    public byte[]? RowVersion { get; set; }
+
     [BindNever]
     public ICollection<DeliveryOrderItem> Items { get; set; } = new List<DeliveryOrderItem>();
 }

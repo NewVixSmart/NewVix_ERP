@@ -78,7 +78,7 @@
                                 <small class="stock-note" hidden></small>
                             </td>
                             <td><input name="items[@idx].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" /></td>
-                            <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 1)" aria-label="الكمية" /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
                             <td><input name="items[@idx].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                             <td><span class="total fw-bold">0.00</span></td>
                             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
@@ -141,7 +141,7 @@ document.getElementById('addRow').addEventListener('click', function() {
     tr.classList.add('row-in');
     tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select><small class="stock-note" hidden></small></td>
         <td><input name="items[${rowIndex}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-        <td><input name="items[${rowIndex}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="1" aria-label="الكمية" /></td>
+        <td><input name="items[${rowIndex}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><span class="total fw-bold">0.00</span></td>
         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;

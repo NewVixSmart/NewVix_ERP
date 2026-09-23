@@ -90,7 +90,8 @@ public static class SeedData
 
         await EnsureDefaultPermissionsAsync(serviceProvider);
 
-        await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<NewVixSmart.Web.Services.IAccountingService>());
+        if (env.EnvironmentName.Equals("Development", StringComparison.OrdinalIgnoreCase))
+            await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<NewVixSmart.Web.Services.IAccountingService>());
     }
 
     private static async Task EnsureDemoDataAsync(AppDbContext db, NewVixSmart.Web.Services.IAccountingService accounting)

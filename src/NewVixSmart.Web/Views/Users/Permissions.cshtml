@@ -28,10 +28,7 @@ else
                 <thead>
                     <tr>
                         <th scope="col" style="min-width: 220px;">الوحدة</th>
-                        <th>عرض</th>
-                        <th>إضافة</th>
-                        <th>تعديل</th>
-                        <th>حذف</th>
+                        <th scope="col">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,26 +36,41 @@ else
                     {
                         <tr>
                             <td><strong>@m.TitleAr</strong></td>
-                            @foreach (var act in PermissionCatalog.ActionsFor(m.Key))
-                            {
-                                var key = PermissionCatalog.Key(m.Key, act);
-                                var label = act switch
-                                {
-                                    PermissionCatalog.View => "عرض",
-                                    PermissionCatalog.Create => "إضافة",
-                                    PermissionCatalog.Edit => "تعديل",
-                                    "SalesCreate" => "مبيعات",
-                                    "AdjustmentCreate" => "جرد",
-                                    _ => "حذف"
-                                };
-                                <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="perm" value="@key" id="@key"
-                                               @(m.HasAction(act) ? "checked" : "") />
-                                        <label class="form-check-label small text-muted" for="@key">@label</label>
-                                    </div>
-                                </td>
-                            }
+                            <td>
+                                <div class="d-flex flex-wrap gap-3">
+                                    @foreach (var act in PermissionCatalog.ActionsFor(m.Key))
+                                    {
+                                        var key = PermissionCatalog.Key(m.Key, act);
+                                        var label = act switch
+                                        {
+                                            PermissionCatalog.View => "عرض",
+                                            PermissionCatalog.Create => "إضافة",
+                                            PermissionCatalog.Edit => "تعديل",
+                                            PermissionCatalog.Delete => "حذف",
+                                            PermissionCatalog.Approve => "اعتماد",
+                                            PermissionCatalog.Receive => "استلام",
+                                            PermissionCatalog.Post => "ترحيل",
+                                            "Convert" => "تحويل",
+                                            "Deliver" => "تسليم",
+                                            "Deactivate" => "إيقاف",
+                                            "Manage" => "إدارة",
+                                            "Dashboard" => "لوحة",
+                                            "Export" => "تصدير",
+                                            "Import" => "استيراد",
+                                            "Close" => "إقفال",
+                                            "Reopen" => "إعادة فتح",
+                                            "SalesCreate" => "مبيعات",
+                                            "AdjustmentCreate" => "جرد",
+                                            _ => act
+                                        };
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="perm" value="@key" id="@key"
+                                                   @(m.HasAction(act) ? "checked" : "") />
+                                            <label class="form-check-label small text-muted" for="@key">@label</label>
+                                        </div>
+                                    }
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>

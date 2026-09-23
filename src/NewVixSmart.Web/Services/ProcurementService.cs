@@ -15,19 +15,19 @@ public sealed class ProcurementService : IProcurementService
         _inventory = inventory;
     }
 
-    public async Task<IReadOnlyList<PurchaseOrder>> GetOrdersAsync(PurchaseOrderStatus? status = null)
+    public async Task<IReadOnlyList<PurchaseOrder>> GetOrdersAsync(PurchaseOrderStatus? status = null, int maxRows = 500)
     {
         var query = _db.PurchaseOrders
             .Include(o => o.Supplier)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
-.Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .AsQueryable();
 
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);
 
-        return await query.OrderByDescending(o => o.OrderDate).ToListAsync();
+        return await query.OrderByDescending(o => o.OrderDate).Take(maxRows).ToListAsync();
     }
 
     public async Task<PurchaseOrder?> GetOrderAsync(int id)
@@ -271,6 +271,7 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
             .Include(q => q.Item)
             .AsNoTracking()
             .OrderByDescending(q => q.EffectiveDate)
+            .Take(500)
             .ToListAsync();
     }
 
