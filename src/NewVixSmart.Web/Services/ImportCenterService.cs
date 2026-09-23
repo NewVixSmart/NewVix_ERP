@@ -716,6 +716,9 @@ public class ImportCenterService : IImportCenterService
 
         var created = 0;
         var docFailures = new List<string>();
+        var invalidDocs = new List<List<ImportRowPayload>>();
+        var validationExamples = new List<string>();
+
         foreach (var doc in docs)
         {
             List<string> errors;
@@ -737,10 +740,23 @@ public class ImportCenterService : IImportCenterService
             errors = errors.Distinct().ToList();
             if (errors.Count > 0)
             {
-                failed += doc.Count;
-                continue;
+                invalidDocs.Add(doc);
+                if (validationExamples.Count < 5)
+                    validationExamples.Add(string.Join("؛ ", errors.Take(2)));
             }
+        }
 
+        if (invalidDocs.Count > 0)
+        {
+            var skipped = invalidDocs.Sum(d => d.Count);
+            var detail = validationExamples.Count == 0 ? "" : "؛ أمثلة: " + string.Join(" — ", validationExamples.Take(3));
+            return new ImportResult(false,
+                $"لم يُستورد أي مستند بسبب أخطاء في {invalidDocs.Count} مستند، اصلح الملف وأعد الاعتماد{detail}",
+                0, 0, 0, skipped);
+        }
+
+        foreach (var doc in docs)
+        {
             var (ok, error) = await ApplyDocumentAsync(def, doc, cache);
             if (ok) created++;
             else
@@ -1404,17 +1420,20 @@ public class ImportCenterService : IImportCenterService
 
         entity.Name = name;
         entity.Code = code;
-        entity.Address = OptNull(cells, "Address");
-        entity.Phone = OptNull(cells, "Phone");
-        entity.Email = OptNull(cells, "Email");
-        entity.TaxNumber = OptNull(cells, "TaxNumber");
+        entity.Address = OptKeep(cells, "Address", entity.Address);
+        entity.Phone = OptKeep(cells, "Phone", entity.Phone);
+        entity.Email = OptKeep(cells, "Email", entity.Email);
+        entity.TaxNumber = OptKeep(cells, "TaxNumber", entity.TaxNumber);
         if (isNew)
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
-        entity.Notes = OptNull(cells, "Notes");
+        entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
-        var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (curRaw.Length == 0) entity.CurrencyId = null;
-        else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
+        if (cells.ContainsKey("CurrencyCode"))
+        {
+            var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
+            if (curRaw.Length == 0) entity.CurrencyId = null;
+            else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
+        }
 
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
@@ -1441,17 +1460,20 @@ public class ImportCenterService : IImportCenterService
 
         entity.Name = name;
         entity.Code = code;
-        entity.Address = OptNull(cells, "Address");
-        entity.Phone = OptNull(cells, "Phone");
-        entity.Email = OptNull(cells, "Email");
-        entity.TaxNumber = OptNull(cells, "TaxNumber");
+        entity.Address = OptKeep(cells, "Address", entity.Address);
+        entity.Phone = OptKeep(cells, "Phone", entity.Phone);
+        entity.Email = OptKeep(cells, "Email", entity.Email);
+        entity.TaxNumber = OptKeep(cells, "TaxNumber", entity.TaxNumber);
         if (isNew)
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
-        entity.Notes = OptNull(cells, "Notes");
+        entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
-        var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (curRaw.Length == 0) entity.CurrencyId = null;
-        else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
+        if (cells.ContainsKey("CurrencyCode"))
+        {
+            var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
+            if (curRaw.Length == 0) entity.CurrencyId = null;
+            else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
+        }
 
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
@@ -1486,15 +1508,21 @@ public class ImportCenterService : IImportCenterService
         var catRaw = cells.GetValueOrDefault("CategoryName", "").Trim();
         if (cache.CategoriesByName.TryGetValue(NormKey(catRaw), out var category)) entity.CategoryId = category.Id;
 
-        var countUnitRaw = cells.GetValueOrDefault("CountUnitName", "").Trim();
-        entity.CountUnitId = countUnitRaw.Length == 0
-            ? null
-            : cache.UnitsByName.TryGetValue(NormKey(countUnitRaw), out var countUnit) ? countUnit.Id : null;
+        if (cells.ContainsKey("CountUnitName"))
+        {
+            var countUnitRaw = cells.GetValueOrDefault("CountUnitName", "").Trim();
+            entity.CountUnitId = countUnitRaw.Length == 0
+                ? null
+                : cache.UnitsByName.TryGetValue(NormKey(countUnitRaw), out var countUnit) ? countUnit.Id : null;
+        }
 
-        var qtyUnitRaw = cells.GetValueOrDefault("QuantityUnitName", "").Trim();
-        entity.QuantityUnitId = qtyUnitRaw.Length == 0
-            ? null
-            : cache.UnitsByName.TryGetValue(NormKey(qtyUnitRaw), out var qtyUnit) ? qtyUnit.Id : null;
+        if (cells.ContainsKey("QuantityUnitName"))
+        {
+            var qtyUnitRaw = cells.GetValueOrDefault("QuantityUnitName", "").Trim();
+            entity.QuantityUnitId = qtyUnitRaw.Length == 0
+                ? null
+                : cache.UnitsByName.TryGetValue(NormKey(qtyUnitRaw), out var qtyUnit) ? qtyUnit.Id : null;
+        }
 
         if (TryCellDecimal(cells, "PurchasePrice", out var purchasePrice)) entity.PurchasePrice = purchasePrice;
         else if (isNew) entity.PurchasePrice = 0m;
@@ -1509,7 +1537,7 @@ public class ImportCenterService : IImportCenterService
             entity.CurrentCount = 0m;
             entity.CurrentQuantity = 0m;
         }
-        entity.Notes = OptNull(cells, "Notes");
+        entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
         var sellable = OptionalBool(cells, "IsSellable");
         if (sellable.HasValue) entity.IsSellable = sellable.Value;
@@ -1533,7 +1561,7 @@ public class ImportCenterService : IImportCenterService
         if (isNew) _db.ItemCategories.Add(entity);
 
         entity.Name = name;
-        entity.Notes = OptNull(cells, "Notes");
+        entity.Notes = OptKeep(cells, "Notes", entity.Notes);
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
         else if (isNew) entity.IsActive = true;
@@ -1551,7 +1579,7 @@ public class ImportCenterService : IImportCenterService
         if (isNew) _db.ItemTypes.Add(entity);
 
         entity.Name = name;
-        entity.Notes = OptNull(cells, "Notes");
+        entity.Notes = OptKeep(cells, "Notes", entity.Notes);
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
         else if (isNew) entity.IsActive = true;
@@ -1570,33 +1598,39 @@ public class ImportCenterService : IImportCenterService
         if (isNew) _db.Units.Add(entity);
 
         entity.Name = name;
-        entity.ShortName = OptNull(cells, "ShortName");
+        entity.ShortName = OptKeep(cells, "ShortName", entity.ShortName);
 
-        var subRaw = cells.GetValueOrDefault("SubUnits", "").Trim();
-        if (subRaw.Length == 0)
+        if (cells.ContainsKey("SubUnits"))
         {
-            if (isNew) entity.SubUnits = null;
-        }
-        else if (int.TryParse(StripNumber(subRaw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var subVal))
-        {
-            entity.SubUnits = subVal;
+            var subRaw = cells.GetValueOrDefault("SubUnits", "").Trim();
+            if (subRaw.Length == 0)
+            {
+                if (isNew) entity.SubUnits = null;
+            }
+            else if (int.TryParse(StripNumber(subRaw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var subVal))
+            {
+                entity.SubUnits = subVal;
+            }
         }
 
-        var parentRaw = cells.GetValueOrDefault("ParentUnitName", "").Trim();
-        if (parentRaw.Length == 0)
+        if (cells.ContainsKey("ParentUnitName"))
         {
-            entity.ParentUnitId = null;
-        }
-        else if (cache.UnitsByName.TryGetValue(NormKey(parentRaw), out var parent))
-        {
-            if (parent != entity)
-                entity.ParentUnit = parent;
+            var parentRaw = cells.GetValueOrDefault("ParentUnitName", "").Trim();
+            if (parentRaw.Length == 0)
+            {
+                if (isNew) entity.ParentUnitId = null;
+            }
+            else if (cache.UnitsByName.TryGetValue(NormKey(parentRaw), out var parent))
+            {
+                if (parent != entity)
+                    entity.ParentUnit = parent;
+                else
+                    entity.ParentUnitId = null;
+            }
             else
-                entity.ParentUnitId = null;
-        }
-        else
-        {
-            parentLinks.Add((entity, parentRaw));
+            {
+                parentLinks.Add((entity, parentRaw));
+            }
         }
 
         var active = OptionalBool(cells, "IsActive");
@@ -1618,7 +1652,7 @@ public class ImportCenterService : IImportCenterService
 
         entity.Code = codeRaw;
         entity.Name = cells.GetValueOrDefault("Name", "").Trim();
-        entity.Symbol = OptNull(cells, "Symbol");
+        entity.Symbol = OptKeep(cells, "Symbol", entity.Symbol);
         if (TryCellDecimal(cells, "ExchangeRate", out var exchangeRate)) entity.ExchangeRate = exchangeRate;
         else if (isNew) entity.ExchangeRate = 1m;
 
@@ -1651,8 +1685,8 @@ public class ImportCenterService : IImportCenterService
 
         entity.Code = codeRaw;
         entity.Name = cells.GetValueOrDefault("Name", "").Trim();
-        entity.Address = OptNull(cells, "Address");
-        entity.Phone = OptNull(cells, "Phone");
+        entity.Address = OptKeep(cells, "Address", entity.Address);
+        entity.Phone = OptKeep(cells, "Phone", entity.Phone);
 
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
@@ -1694,17 +1728,20 @@ public class ImportCenterService : IImportCenterService
         entity.Type = (GLAccountType)EnumValue(def, cells, "Type", isNew ? (int)GLAccountType.Asset : (int)entity.Type);
         entity.NormalBalance = (NormalBalance)EnumValue(def, cells, "NormalBalance", isNew ? (int)NormalBalance.Debit : (int)entity.NormalBalance);
 
-        var parentRaw = cells.GetValueOrDefault("ParentCode", "").Trim();
-        if (parentRaw.Length == 0)
+        if (cells.ContainsKey("ParentCode"))
         {
-            entity.ParentAccountId = null;
-        }
-        else if (cache.AccountsByCode.TryGetValue(NormKey(parentRaw), out var parent))
-        {
-            if (parent != entity)
-                entity.ParentAccount = parent;
-            else
-                entity.ParentAccountId = null;
+            var parentRaw = cells.GetValueOrDefault("ParentCode", "").Trim();
+            if (parentRaw.Length == 0)
+            {
+                if (isNew) entity.ParentAccountId = null;
+            }
+            else if (cache.AccountsByCode.TryGetValue(NormKey(parentRaw), out var parent))
+            {
+                if (parent != entity)
+                    entity.ParentAccount = parent;
+                else
+                    entity.ParentAccountId = null;
+            }
         }
 
         var active = OptionalBool(cells, "IsActive");
@@ -1772,6 +1809,13 @@ public class ImportCenterService : IImportCenterService
     {
         var value = cells.GetValueOrDefault(key, "").Trim();
         return value.Length == 0 ? null : value;
+    }
+
+    private static string? OptKeep(IReadOnlyDictionary<string, string> cells, string key, string? current)
+    {
+        var value = cells.GetValueOrDefault(key, "").Trim();
+        if (value.Length == 0) return current;
+        return value;
     }
 
     private static bool TryCellDecimal(IReadOnlyDictionary<string, string> cells, string key, out decimal value)
@@ -1884,7 +1928,15 @@ public class ImportCenterService : IImportCenterService
     private static string NormalizeNumber(string raw)
     {
         var s = NormalizeDigits(raw).Replace(" ", "");
-        return s.Replace(",", "");
+        if (s.IndexOf(',') >= 0)
+        {
+            var parts = s.Split(',');
+            if (parts.Length == 2 && parts[1].Length > 0 && parts[1].Length <= 2 && parts[1].IndexOf('.') < 0)
+                s = parts[0] + "." + parts[1];
+            else
+                s = s.Replace(",", "");
+        }
+        return s;
     }
 
     private static string NormalizeDigits(string value)

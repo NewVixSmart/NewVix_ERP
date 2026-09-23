@@ -50,19 +50,26 @@ public class DashboardService : IDashboardService
             .Distinct()
             .ToListAsync();
 
-        var totalSale = deliveredInvoiceIds.Count == 0
-            ? 0m
+        var saleAmounts = deliveredInvoiceIds.Count == 0
+            ? new List<decimal>()
             : await _db.SaleInvoices
                 .AsNoTracking()
                 .Where(s => deliveredInvoiceIds.Contains(s.Id))
-                .SumAsync(s => (decimal?)Math.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2)) ?? 0m;
+                .Select(s => s.NetAmount * (s.ExchangeRate ?? 1m))
+                .ToListAsync();
+        var totalSale = saleAmounts.Sum(v => Math.Round(v, 2));
+
+        var purchaseAmounts = await _db.PurchaseInvoices
+            .AsNoTracking()
+            .Select(p => p.NetAmount * (p.ExchangeRate ?? 1m))
+            .ToListAsync();
 
         var vm = new DashboardViewModel
         {
             TotalItems = await _db.Items.CountAsync(i => i.IsActive),
             TotalCustomers = await _db.Customers.CountAsync(c => c.IsActive),
             TotalSuppliers = await _db.Suppliers.CountAsync(s => s.IsActive),
-            TotalPurchaseAmount = await _db.PurchaseInvoices.SumAsync(p => (decimal?)Math.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2)) ?? 0,
+            TotalPurchaseAmount = purchaseAmounts.Sum(v => Math.Round(v, 2)),
             TotalSaleAmount = totalSale
         };
 
@@ -111,32 +118,32 @@ public class DashboardService : IDashboardService
 
         var sales = _db.SaleInvoices
             .AsNoTracking()
-            .Select(s => new { s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate })
+            .Select(s => new { s.NetAmount, s.PaidAmount, s.ExchangeRate, s.InvoiceDate, s.DueDate })
             .Where(s => s.NetAmount - s.PaidAmount > 0.005m);
         var purchases = _db.PurchaseInvoices
             .AsNoTracking()
-            .Select(p => new { p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate })
+            .Select(p => new { p.NetAmount, p.PaidAmount, p.ExchangeRate, p.InvoiceDate, p.DueDate })
             .Where(p => p.NetAmount - p.PaidAmount > 0.005m);
 
         var overdueSales = await sales
             .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today)
             .GroupBy(s => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(s => s.NetAmount - s.PaidAmount) })
+            .Select(g => new { Count = g.Count(), Total = g.Sum(s => (s.NetAmount - s.PaidAmount) * (s.ExchangeRate ?? 1m)) })
             .FirstOrDefaultAsync();
         var dueSoonSales = await sales
             .Where(s => (s.DueDate ?? s.InvoiceDate).Date >= today && (s.DueDate ?? s.InvoiceDate).Date <= today.AddDays(7))
             .GroupBy(s => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(s => s.NetAmount - s.PaidAmount) })
+            .Select(g => new { Count = g.Count(), Total = g.Sum(s => (s.NetAmount - s.PaidAmount) * (s.ExchangeRate ?? 1m)) })
             .FirstOrDefaultAsync();
         var overduePurchases = await purchases
             .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today)
             .GroupBy(p => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(p => p.NetAmount - p.PaidAmount) })
+            .Select(g => new { Count = g.Count(), Total = g.Sum(p => (p.NetAmount - p.PaidAmount) * (p.ExchangeRate ?? 1m)) })
             .FirstOrDefaultAsync();
         var dueSoonPurchases = await purchases
             .Where(p => (p.DueDate ?? p.InvoiceDate).Date >= today && (p.DueDate ?? p.InvoiceDate).Date <= today.AddDays(7))
             .GroupBy(p => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(p => p.NetAmount - p.PaidAmount) })
+            .Select(g => new { Count = g.Count(), Total = g.Sum(p => (p.NetAmount - p.PaidAmount) * (p.ExchangeRate ?? 1m)) })
             .FirstOrDefaultAsync();
 
         vm.OverdueReceivableCount = overdueSales?.Count ?? 0;

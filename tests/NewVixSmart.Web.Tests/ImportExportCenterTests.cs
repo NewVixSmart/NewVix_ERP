@@ -278,4 +278,78 @@ public sealed class ImportExportCenterTests : IDisposable
         Assert.DoesNotContain("\r\n=HYPERLINK(", paymentsCsv);
         Assert.DoesNotContain("\r\n=cmd", paymentsCsv);
     }
+
+    // ---------- Import robustness (Round-7) ----------
+
+    [Fact]
+    public async Task Import_Supplier_DecimalComma_IsNotMultipliedByTen()
+    {
+        using var db = CreateContext();
+        var svc = CreateImportService(db);
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("موردون");
+        ws.Cell(1, 1).Value = "الكود";
+        ws.Cell(1, 2).Value = "الاسم";
+        ws.Cell(1, 3).Value = "الرصيد الافتتاحي";
+        ws.Cell(2, 1).Value = "S-D";
+        ws.Cell(2, 2).Value = "مورد المفصولة";
+        ws.Cell(2, 3).Value = "1,5";
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+
+        var vm = await svc.ParseAsync("suppliers", "s.xlsx", ms.ToArray());
+        Assert.Null(vm.FatalError);
+        Assert.Equal(1, vm.ValidCount);
+        Assert.Equal(0, vm.ErrorCount);
+
+        var result = await svc.ImportAsync("suppliers", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+
+        var supplier = await db.Suppliers.SingleAsync(s => s.Code == "S-D");
+        Assert.Equal(1.5m, supplier.OpeningBalance);
+    }
+
+    [Fact]
+    public async Task Import_SupplierUpdate_BlankCell_KeepsExistingValue()
+    {
+        using var db = CreateContext();
+        var svc = CreateImportService(db);
+
+        var first = CsvBytes("الكود,الاسم,التليفون,ملاحظات\nS-U,مورد التحديث,01111,ملاحظة أولى\n");
+        var vm1 = await svc.ParseAsync("suppliers", "s1.csv", first);
+        var r1 = await svc.ImportAsync("suppliers", vm1.Payload, vm1.ApplyToken!);
+        Assert.True(r1.Success, r1.Message);
+
+        var second = CsvBytes("الكود,الاسم,التليفون,ملاحظات\nS-U,مورد التحديث,,ملاحظة ثانية\n");
+        var vm2 = await svc.ParseAsync("suppliers", "s2.csv", second);
+        Assert.Equal(1, vm2.ValidCount);
+        var r2 = await svc.ImportAsync("suppliers", vm2.Payload, vm2.ApplyToken!);
+        Assert.True(r2.Success, r2.Message);
+        Assert.Equal(0, r2.Created);
+        Assert.Equal(1, r2.Updated);
+
+        var supplier = await db.Suppliers.SingleAsync(s => s.Code == "S-U");
+        Assert.Equal("01111", supplier.Phone);
+        Assert.Equal("ملاحظة ثانية", supplier.Notes);
+    }
+
+    [Fact]
+    public async Task Import_Supplier_DuplicateName_SameBatch_BecomesUpdateNotInsert()
+    {
+        using var db = CreateContext();
+        var svc = CreateImportService(db);
+
+        var csv = CsvBytes("الكود,الاسم,التليفون\nS-A,مورد مكرر,111\nS-B,مورد مكرر,222\n");
+        var vm = await svc.ParseAsync("suppliers", "s.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(2, vm.ValidCount);
+
+        var result = await svc.ImportAsync("suppliers", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(1, result.Created);
+        Assert.Equal(1, result.Updated);
+
+        Assert.Equal(1, await db.Suppliers.CountAsync(s => s.Name == "مورد مكرر"));
+    }
 }

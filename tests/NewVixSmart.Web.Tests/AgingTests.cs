@@ -196,12 +196,43 @@ db.SaleInvoices.Add(SaleInvoice(customerId, "S-X", today.AddDays(-15), 100, 0, d
         var sx = await db.SaleInvoices.SingleAsync(s => s.InvoiceNumber == "S-X");
         await MarkDeliveredAsync(db, sx.Id, customerId, "DLV-S-X");
 
-        var svc = new ReportService(db, new FinancialReportService(db));
+var svc = new ReportService(db, new FinancialReportService(db));
         var bytes = await svc.ExportAgingXlsxAsync();
 
         Assert.NotNull(bytes);
         Assert.True(bytes.Length > 0);
         Assert.Equal(0x50, bytes[0]);
         Assert.Equal(0x4B, bytes[1]);
+    }
+
+    [Fact]
+    public async Task Dashboard_DueAlerts_ConvertsForeignCurrenciesToBase()
+    {
+        using var db = CreateContext();
+        var (customerId, _) = await SeedPartiesAsync(db);
+
+        db.Currencies.Add(new Currency { Code = "EUR", Name = "يورو", Symbol = "€", ExchangeRate = 3m, IsBase = false });
+        await db.SaveChangesAsync();
+        var currency = await db.Currencies.SingleAsync(c => c.Code == "EUR");
+
+        var today = DateTime.Today;
+        db.SaleInvoices.Add(new SaleInvoice
+        {
+            InvoiceNumber = "S-FX",
+            CustomerId = customerId,
+            InvoiceDate = today.AddDays(-20),
+            DueDate = today.AddDays(-10),
+            CurrencyId = currency.Id,
+            ExchangeRate = 3m,
+            TotalAmount = 100m,
+            NetAmount = 100m,
+            PaidAmount = 0m
+        });
+        await db.SaveChangesAsync();
+
+        var vm = await new DashboardService(db).GetDashboardAsync();
+
+        Assert.Equal(1, vm.OverdueReceivableCount);
+        Assert.Equal(300m, vm.OverdueReceivableTotal); // 100 × 3, not a raw mixed-currency 100
     }
 }

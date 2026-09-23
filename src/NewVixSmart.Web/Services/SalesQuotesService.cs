@@ -39,6 +39,8 @@ public sealed class SalesQuotesService : ISalesQuotesService
             {
                 quote.QuoteNumber = autoNumber ? await NextQuoteNumberAsync() : quote.QuoteNumber;
                 quote.TotalAmount = valid.Sum(i => i.Total);
+                if (quote.Discount > quote.TotalAmount + quote.Tax)
+                    return (false, "الخصم أكبر من إجمالي قيمة العرض مع الضرائب", null);
                 quote.NetAmount = quote.TotalAmount - quote.Discount + quote.Tax;
                 quote.Status = SaleQuoteStatus.Draft;
                 quote.CreatedBy = user;
@@ -101,16 +103,23 @@ public sealed class SalesQuotesService : ISalesQuotesService
         var convertedAt = DateTime.UtcNow;
         try
         {
-            await _db.SaleQuotes
+            var updated = await _db.SaleQuotes
                 .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Converting)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(q => q.Status, SaleQuoteStatus.Converted)
                     .SetProperty(q => q.SalesOrderId, order.Id)
                     .SetProperty(q => q.ConvertedBy, user)
                     .SetProperty(q => q.ConvertedAt, convertedAt));
+            if (updated == 0)
+            {
+                await DeleteCreatedOrderAsync(order.Id);
+                await RollbackConversionAsync(quoteId);
+                return (false, "تعذر تحديث حالة عرض السعر أثناء التحويل، حاول مرة أخرى", null);
+            }
         }
         catch
         {
+            await DeleteCreatedOrderAsync(order.Id);
             await RollbackConversionAsync(quoteId);
             throw;
         }
@@ -134,6 +143,13 @@ public sealed class SalesQuotesService : ISalesQuotesService
         PatchTrackedQuote(quoteId, q => q.Status = SaleQuoteStatus.Draft);
     }
 
+    private async Task DeleteCreatedOrderAsync(int orderId)
+    {
+        _db.ChangeTracker.Clear();
+        await _db.SalesOrderItems.Where(i => i.SalesOrderId == orderId).ExecuteDeleteAsync();
+        await _db.SalesOrders.Where(o => o.Id == orderId).ExecuteDeleteAsync();
+    }
+
     private void PatchTrackedQuote(int quoteId, Action<SaleQuote> apply)
     {
         foreach (var entry in _db.ChangeTracker.Entries<SaleQuote>().ToList())
@@ -150,6 +166,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
         if (quote == null) return (false, "عرض السعر غير موجود");
         if (quote.Status == SaleQuoteStatus.Converted) return (false, "لا يمكن حذف عرض تم تحويله إلى أمر بيع");
         if (quote.Status == SaleQuoteStatus.Cancelled) return (false, "لا يمكن حذف عرض سعر ملغي");
+        if (quote.Status == SaleQuoteStatus.Converting) return (false, "عرض السعر جارٍ تحويله حالياً، أعد المحاولة بعد لحظات");
 
         await _db.SaleQuotes.Where(q => q.Id == quoteId).ExecuteDeleteAsync();
         return (true, null);

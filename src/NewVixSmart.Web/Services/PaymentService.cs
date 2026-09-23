@@ -9,11 +9,13 @@ public sealed class PaymentService : IPaymentService
 {
     private readonly AppDbContext _db;
     private readonly IAccountingService? _accounting;
+    private readonly ILogger<PaymentService>? _logger;
 
-    public PaymentService(AppDbContext db, IAccountingService? accounting = null)
+    public PaymentService(AppDbContext db, IAccountingService? accounting = null, ILogger<PaymentService>? logger = null)
     {
         _db = db;
         _accounting = accounting;
+        _logger = logger;
     }
 
     public async Task<(bool Success, string? Error, Payment? Payment)> CreatePaymentAsync(Payment payment, string? user, int? branchId = null)
@@ -124,6 +126,13 @@ public sealed class PaymentService : IPaymentService
                     return (false, "توجد دفعة مطابقة أُنشئت قبل قليل؛ تخلَّص من الإرسال المكرر", null);
                 }
                 payment.ReceiptNumber = await NextPaymentNumberAsync();
+            }
+            catch (Exception ex) when (ex is not DbUpdateException && ex is not DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync();
+                _db.ChangeTracker.Clear();
+                _logger?.LogError(ex, "فشلت معالجة الدفعة رقم {Number}", payment.ReceiptNumber);
+                return (false, "تعذر معالجة الدفعة بسبب خطأ غير متوقع، حاول مرة أخرى", null);
             }
         }
         return (false, "تعارض في البيانات أثناء الحفظ، يرجى إعادة المحاولة", null);

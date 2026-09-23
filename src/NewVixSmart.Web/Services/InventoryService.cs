@@ -386,6 +386,8 @@ public sealed class InventoryService : IInventoryService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع البيع", 0);
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -444,6 +446,17 @@ public sealed class InventoryService : IInventoryService
                 var returnError = await ValidateSaleReturnQuantitiesAsync(saleReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
 
+                var invPrices = await _db.SaleInvoiceItems.AsNoTracking()
+                    .Where(i => i.SaleInvoiceId == saleReturn.SaleInvoiceId)
+                    .Select(i => new { i.ItemId, i.UnitPrice })
+                    .ToListAsync();
+                foreach (var line in valid)
+                {
+                    var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
+                    if (match != null) line.UnitPrice = match.UnitPrice;
+                }
+                saleReturn.TotalAmount = valid.Sum(i => i.Total);
+
                 var stockError = await ApplyStockAsync(
                     ToReturnStockLines(valid), sign: +1,
                     docNumber: saleReturn.ReturnNumber, docType: DocumentType.SaleReturn, docId: saleReturn.Id,
@@ -497,6 +510,8 @@ public sealed class InventoryService : IInventoryService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع الشراء", 0);
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -554,6 +569,17 @@ public sealed class InventoryService : IInventoryService
 
                 var returnError = await ValidatePurchaseReturnQuantitiesAsync(purchaseReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
+
+                var invPrices = await _db.PurchaseInvoiceItems.AsNoTracking()
+                    .Where(i => i.PurchaseInvoiceId == purchaseReturn.PurchaseInvoiceId)
+                    .Select(i => new { i.ItemId, i.UnitPrice })
+                    .ToListAsync();
+                foreach (var line in valid)
+                {
+                    var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
+                    if (match != null) line.UnitPrice = match.UnitPrice;
+                }
+                purchaseReturn.TotalAmount = valid.Sum(i => i.Total);
 
                 var stockError = await ApplyStockAsync(
                     ToReturnStockLines(valid), sign: -1,
@@ -958,6 +984,9 @@ public sealed class InventoryService : IInventoryService
         if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
             return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
 
+        if (valid.GroupBy(l => l.ItemId).Any(g => g.Count() > 1))
+            return "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع البيع";
+
         if (saleReturn.SaleInvoiceId == null) return null;
 
         var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
@@ -994,6 +1023,9 @@ public sealed class InventoryService : IInventoryService
     {
         if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
             return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
+
+        if (valid.GroupBy(l => l.ItemId).Any(g => g.Count() > 1))
+            return "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع الشراء";
 
         if (purchaseReturn.PurchaseInvoiceId == null) return null;
 

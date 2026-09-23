@@ -103,6 +103,25 @@ public sealed class SalesQuoteTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateQuote_DiscountGreaterThanTotalPlusTax_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId) = await SeedAsync(db);
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+
+        var quote = new SaleQuote { CustomerId = custId, Discount = 500m, Tax = 0m };
+        var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("الخصم أكبر", err);
+        Assert.Null(saved);
+        Assert.Equal(0, await db.SaleQuotes.CountAsync());
+    }
+
+    [Fact]
     public async Task CreateQuote_EmptyOrInvalidLines_Rejected()
     {
         using var db = CreateContext();

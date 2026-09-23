@@ -78,6 +78,8 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<Item>(e =>
         {
             e.HasIndex(i => i.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            e.HasIndex(i => i.Name).IsUnique();
+            e.HasIndex(i => i.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
             e.HasOne(i => i.Category).WithMany(c => c.Items).HasForeignKey(i => i.CategoryId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.ItemType).WithMany(t => t.Items).HasForeignKey(i => i.ItemTypeId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.CountUnit).WithMany().HasForeignKey(i => i.CountUnitId).OnDelete(DeleteBehavior.Restrict);
@@ -87,12 +89,14 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<Supplier>(e =>
         {
             e.HasIndex(s => s.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            e.HasIndex(s => s.Name).IsUnique();
             e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Customer>(e =>
         {
             e.HasIndex(c => c.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            e.HasIndex(c => c.Name).IsUnique();
             e.HasOne(c => c.Currency).WithMany().HasForeignKey(c => c.CurrencyId).OnDelete(DeleteBehavior.Restrict);
         });
 

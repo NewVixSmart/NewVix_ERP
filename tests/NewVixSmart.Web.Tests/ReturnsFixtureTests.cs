@@ -146,6 +146,87 @@ public sealed class ReturnsFixtureTests : IDisposable
     }
 
     [Fact]
+    public async Task SaleReturn_DuplicateItemLine_WithinSameReturn_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var saleInv = new SaleInvoice { CustomerId = custId };
+        await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
+        var delivery = new DeliveryOrder { SaleInvoiceId = saleInv.Id, DeliveryDate = new DateTime(2026, 3, 2) };
+        var (dOk, dErr) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 10, Count = 0 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
+
+        var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id, ReturnDate = new DateTime(2026, 3, 2) };
+        var (ok, err) = await svc.CreateSaleReturnAsync(ret,
+            new List<SaleReturnItem>
+            {
+                new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 },
+                new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 }
+            }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("تكرار", err);
+        Assert.Equal(0, await db.SaleReturns.CountAsync());
+        Assert.Equal(0, await db.StockMovements.CountAsync(m => m.DocumentType == DocumentType.SaleReturn));
+    }
+
+    [Fact]
+    public async Task PostSaleReturn_UnitPrice_IsTakenFromInvoiceLine_NotClientValue()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var saleInv = new SaleInvoice { CustomerId = custId };
+        await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
+        var delivery = new DeliveryOrder { SaleInvoiceId = saleInv.Id, DeliveryDate = new DateTime(2026, 3, 2) };
+        var (dOk, dErr) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 10, Count = 0 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
+
+        var ret = new SaleReturn { CustomerId = custId, SaleInvoiceId = saleInv.Id, ReturnDate = new DateTime(2026, 3, 2) };
+        var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,
+            new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 9999m } }, "test");
+        Assert.True(ok);
+
+        var (posted, postErr) = await svc.PostSaleReturnAsync(id, "test");
+        Assert.True(posted, postErr);
+
+        var saved = await db.SaleReturns.SingleAsync(r => r.Id == id);
+        Assert.Equal(320m, saved.TotalAmount); // 4 × 80 from the original invoice, not 4 × 9999
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_DuplicateItemLine_WithinSameReturn_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var purchase = new PurchaseInvoice { SupplierId = supId };
+        var (ok, err) = await svc.CreatePurchaseAsync(purchase,
+            new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 40 } }, "test");
+        Assert.True(ok, err);
+
+        var ret = new PurchaseReturn { SupplierId = supId, PurchaseInvoiceId = purchase.Id, ReturnDate = new DateTime(2026, 3, 2) };
+        var (rok, rerr) = await svc.CreatePurchaseReturnAsync(ret,
+            new List<PurchaseReturnItem>
+            {
+                new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 40 },
+                new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 40 }
+            }, "test");
+
+        Assert.False(rok);
+        Assert.Contains("تكرار", rerr);
+        Assert.Equal(0, await db.PurchaseReturns.CountAsync());
+    }
+
+    [Fact]
     public async Task PostSaleReturn_InClosedYear_IsRejected_BeforeAnySideEffect()
     {
         using var db = CreateContext();

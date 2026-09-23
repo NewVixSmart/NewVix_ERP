@@ -762,9 +762,11 @@ public static class PrintPdfBuilder
     private static string IntegerWords(long n)
     {
         var parts = new List<string>();
-        long millions = n / 1000000;
+        long billions = n / 1000000000;
+        long millions = (n / 1000000) % 1000;
         long thousands = (n / 1000) % 1000;
         long rest = n % 1000;
+        if (billions > 0) parts.Add(UnderThousand((int)billions) + (billions == 1 ? " مليار" : billions == 2 ? " ملياران" : " مليارات"));
         if (millions > 0) parts.Add(UnderThousand((int)millions) + (millions == 1 ? " مليون" : millions == 2 ? " مليونان" : " ملايين"));
         if (thousands > 0) parts.Add(UnderThousand((int)thousands) + (thousands == 1 ? " ألف" : thousands == 2 ? " ألفان" : " ألفاً"));
         if (rest > 0) parts.Add(UnderThousand((int)rest));

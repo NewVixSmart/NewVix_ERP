@@ -683,7 +683,7 @@ public class ReportService : IReportService
             .GroupBy(a => a.InvoiceId)
             .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
 
-        var receivableLines = new List<(string Name, DateTime Due, decimal Amount)>();
+        var receivableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var s in saleInvoices)
         {
             var rate = s.ExchangeRate ?? 1m;
@@ -694,7 +694,7 @@ public class ReportService : IReportService
                 - paidBase
                 - returnsBySaleInvoice.GetValueOrDefault(s.Id);
             if (outstanding > 0.005m)
-                receivableLines.Add((s.Customer?.Name ?? "—", s.DueDate ?? s.InvoiceDate, outstanding));
+                receivableLines.Add((s.CustomerId, s.Customer?.Name ?? "—", s.DueDate ?? s.InvoiceDate, outstanding));
         }
 
         var standaloneSaleReturns = await _db.SaleReturns
@@ -703,11 +703,11 @@ public class ReportService : IReportService
             .Where(r => r.Status == ReturnStatus.Posted && r.SaleInvoiceId == null)
             .ToListAsync();
         receivableLines.AddRange(standaloneSaleReturns.Select(r =>
-            (r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+            (r.CustomerId, r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
 
         vm.Receivables = receivableLines
-            .GroupBy(x => x.Name)
-            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Amount)), today))
+            .GroupBy(x => x.PartyId)
+            .Select(g => BuildAgingRow(g.First().Name, g.Select(x => (x.Due, x.Amount)), today))
             .Where(r => r.Total > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
@@ -737,7 +737,7 @@ public class ReportService : IReportService
             .GroupBy(a => a.InvoiceId)
             .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
 
-        var payableLines = new List<(string Name, DateTime Due, decimal Amount)>();
+        var payableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var p in purchaseInvoices)
         {
             var rate = p.ExchangeRate ?? 1m;
@@ -748,7 +748,7 @@ public class ReportService : IReportService
                 - paidBase
                 - returnsByPurchaseInvoice.GetValueOrDefault(p.Id);
             if (outstanding > 0.005m)
-                payableLines.Add((p.Supplier?.Name ?? "—", p.DueDate ?? p.InvoiceDate, outstanding));
+                payableLines.Add((p.SupplierId, p.Supplier?.Name ?? "—", p.DueDate ?? p.InvoiceDate, outstanding));
         }
 
         var standalonePurchaseReturns = await _db.PurchaseReturns
@@ -757,11 +757,11 @@ public class ReportService : IReportService
             .Where(r => r.Status == ReturnStatus.Posted && r.PurchaseInvoiceId == null)
             .ToListAsync();
         payableLines.AddRange(standalonePurchaseReturns.Select(r =>
-            (r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+            (r.SupplierId, r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
 
         vm.Payables = payableLines
-            .GroupBy(x => x.Name)
-            .Select(g => BuildAgingRow(g.Key, g.Select(x => (x.Due, x.Amount)), today))
+            .GroupBy(x => x.PartyId)
+            .Select(g => BuildAgingRow(g.First().Name, g.Select(x => (x.Due, x.Amount)), today))
             .Where(r => r.Total > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
