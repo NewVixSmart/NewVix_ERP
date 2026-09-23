@@ -25,7 +25,7 @@ public class PurchasesController : Controller
     public async Task<IActionResult> Index()
     {
         var query = _db.PurchaseInvoices.Include(p => p.Supplier).AsNoTracking().OrderByDescending(p => p.InvoiceDate);
-        var invoices = await query.ToListAsync();
+        var invoices = await query.Take(500).ToListAsync();
         return View(invoices);
     }
 

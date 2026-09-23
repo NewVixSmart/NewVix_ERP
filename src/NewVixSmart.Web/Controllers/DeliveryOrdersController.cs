@@ -33,7 +33,7 @@ public class DeliveryOrdersController : Controller
             .AsQueryable();
         if (status.HasValue)
             query = query.Where(d => d.Status == status.Value);
-        var list = await query.OrderByDescending(d => d.DeliveryDate).ToListAsync();
+        var list = await query.OrderByDescending(d => d.DeliveryDate).Take(500).ToListAsync();
         ViewBag.StatusFilter = status;
         return View(list);
     }

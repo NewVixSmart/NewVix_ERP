@@ -28,7 +28,7 @@ public class ItemsController : Controller
 
         var vm = new ItemListViewModel
         {
-            Items = await query.Where(i => i.IsActive).OrderBy(i => i.Name).ToListAsync(),
+            Items = await query.Where(i => i.IsActive).OrderBy(i => i.Name).Take(500).ToListAsync(),
             Categories = await _db.ItemCategories.Where(c => c.IsActive).AsNoTracking().ToListAsync(),
             CategoryId = categoryId
         };

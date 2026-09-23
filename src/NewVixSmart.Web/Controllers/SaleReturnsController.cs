@@ -28,6 +28,7 @@ public class SaleReturnsController : Controller
             .Include(r => r.Customer)
             .AsNoTracking()
             .OrderByDescending(r => r.ReturnDate)
+            .Take(500)
             .ToListAsync();
         return View(list);
     }

@@ -27,6 +27,7 @@ public class InventoryAdjustmentsController : Controller
 
         var list = await query
             .OrderByDescending(a => a.AdjustmentDate)
+            .Take(500)
             .ToListAsync();
         return View(list);
     }
