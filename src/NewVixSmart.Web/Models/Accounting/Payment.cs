@@ -90,6 +90,9 @@ public class Payment
     [Display(Name = "تاريخ الإنشاء")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [BindNever]
+    public string? DedupeKey { get; set; }
+
     public ICollection<PaymentAllocation>? PaymentAllocations { get; set; } = [];
 }
 

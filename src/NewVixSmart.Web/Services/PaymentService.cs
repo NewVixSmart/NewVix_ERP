@@ -43,6 +43,7 @@ public sealed class PaymentService : IPaymentService
         payment.BaseAmount = foreign
             ? decimal.Round(payment.Amount * payment.ExchangeRate!.Value, 2)
             : payment.Amount;
+        payment.DedupeKey = BuildDedupeKey(payment);
 
         for (int attempt = 1; attempt <= 3; attempt++)
         {
@@ -117,6 +118,11 @@ public sealed class PaymentService : IPaymentService
                 await tx.RollbackAsync();
                 _db.ChangeTracker.Clear();
                 payment.Id = 0;
+                if (payment.DedupeKey != null
+                    && await _db.Payments.AsNoTracking().AnyAsync(p => p.DedupeKey == payment.DedupeKey))
+                {
+                    return (false, "توجد دفعة مطابقة أُنشئت قبل قليل؛ تخلَّص من الإرسال المكرر", null);
+                }
                 payment.ReceiptNumber = await NextPaymentNumberAsync();
             }
         }
@@ -370,16 +376,19 @@ public sealed class PaymentService : IPaymentService
     private static bool IsForeignPayment(Payment payment, Currency? currency)
         => payment.CurrencyId.HasValue && currency != null && !currency.IsBase;
 
-    private async Task<bool> HasDuplicatePaymentAsync(Payment payment)
+    private Task<bool> HasDuplicatePaymentAsync(Payment payment)
+        => payment.DedupeKey == null
+            ? Task.FromResult(false)
+            : _db.Payments.AsNoTracking().AnyAsync(p => p.DedupeKey == payment.DedupeKey);
+
+    private static string? BuildDedupeKey(Payment payment)
     {
-        var window = DateTime.UtcNow.AddMinutes(-2);
-        var q = _db.Payments.AsNoTracking()
-            .Where(p => p.CreatedAt >= window && p.Amount == payment.Amount && p.Type == payment.Type
-                && p.CurrencyId == payment.CurrencyId && p.ExchangeRate == payment.ExchangeRate);
-        if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
-            q = q.Where(p => p.CustomerId == payment.CustomerId);
-        else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
-            q = q.Where(p => p.SupplierId == payment.SupplierId);
-        return await q.AnyAsync();
+        if (payment.Amount <= 0) return null;
+        var party = payment.CustomerId.HasValue ? $"C{payment.CustomerId}"
+            : payment.SupplierId.HasValue ? $"S{payment.SupplierId}" : null;
+        if (party == null) return null;
+        var date = payment.PaymentDate;
+        var bucket = new DateTime(date.Year, date.Month, date.Day, date.Hour, (date.Minute / 2) * 2, 0);
+        return $"{payment.Type}|{party}|{payment.Amount}|{payment.CurrencyId}|{payment.ExchangeRate}|{bucket:yyyyMMddHHmm}";
     }
 }

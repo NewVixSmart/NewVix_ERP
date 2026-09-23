@@ -197,6 +197,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<Payment>(e =>
         {
             e.HasIndex(p => p.ReceiptNumber).IsUnique();
+            e.HasIndex(p => p.DedupeKey).IsUnique().HasFilter("[DedupeKey] IS NOT NULL");
             e.HasOne(p => p.Customer).WithMany(c => c.Payments).HasForeignKey(p => p.CustomerId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(p => p.Supplier).WithMany(s => s.Payments).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(p => p.Currency).WithMany().HasForeignKey(p => p.CurrencyId).OnDelete(DeleteBehavior.Restrict);
