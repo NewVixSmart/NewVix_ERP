@@ -44,6 +44,7 @@ public static class PermissionDefaults
             "Customers.View", "Customers.Create", "Customers.Edit", "Customers.Delete",
             "Suppliers.View", "Suppliers.Create", "Suppliers.Edit", "Suppliers.Delete",
             "Stock.View", "StockReport.View",
+            "LowStock.View",
             "InventoryAdjustments.View", "InventoryAdjustments.Create",
             "Warehouses.View", "Warehouses.Create", "Warehouses.Edit",
             "StockTransfers.View", "StockTransfers.Create",

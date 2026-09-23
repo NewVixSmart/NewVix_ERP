@@ -11,6 +11,7 @@ namespace NewVixSmart.Web.Services;
 
 public class ExportCenterService : IExportCenterService
 {
+    private const int MaxExportRows = 50_000;
     private readonly AppDbContext _db;
     private readonly Dictionary<string, Func<Task<byte[]>>> _xlsx;
     private readonly Dictionary<string, Func<Task<byte[]>>> _csv;
@@ -1553,7 +1554,7 @@ public class ExportCenterService : IExportCenterService
             WriteCell(ws, 1, c + 1, headers[c]);
 
         int row = 2;
-        foreach (var r in rows)
+        foreach (var r in rows.Take(MaxExportRows))
         {
             for (int c = 0; c < r.Length; c++)
                 WriteCell(ws, row, c + 1, r[c]);

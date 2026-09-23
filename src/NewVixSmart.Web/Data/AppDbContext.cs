@@ -207,6 +207,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<PaymentAllocation>(e =>
         {
             e.HasIndex(a => new { a.PaymentId, a.InvoiceType, a.InvoiceId });
+            e.HasIndex(a => new { a.InvoiceType, a.InvoiceId });
             e.Property(a => a.InvoiceType).HasColumnType("smallint");
             e.HasOne(a => a.Payment).WithMany(p => p.PaymentAllocations).HasForeignKey(a => a.PaymentId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -238,6 +239,7 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<JournalEntry>(e =>
         {
             e.HasIndex(j => j.EntryNumber).IsUnique();
+            e.HasIndex(j => new { j.Source, j.SourceId });
         });
 
         builder.Entity<JournalEntryLine>(e =>

@@ -80,6 +80,11 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> UpdateCurrency(Currency currency)
     {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
+        }
         var existing = await _db.Currencies.FindAsync(currency.Id);
         if (existing == null) return NotFound();
 
@@ -182,6 +187,11 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> UpdateBranch(Branch branch)
     {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
+        }
         var existing = await _db.Branches.FindAsync(branch.Id);
         if (existing == null) return NotFound();
 
@@ -283,6 +293,11 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> UpdateUnit(Unit unit)
     {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
+            return RedirectToAction(nameof(Index));
+        }
         var existing = await _db.Units.FindAsync(unit.Id);
         if (existing != null && !string.IsNullOrWhiteSpace(unit.Name) && unit.ParentUnitId != unit.Id && !await CreatesCycleAsync(unit.Id, unit.ParentUnitId))
         {
@@ -412,14 +427,22 @@ public class SettingsController : Controller
             await vm.LogoFile.CopyToAsync(ms);
             profile.LogoData = ms.ToArray();
             profile.LogoContentType = contentType;
-            profile.LogoFileName = Path.GetFileName(vm.LogoFile.FileName);
+            var logoName = Path.GetFileName(vm.LogoFile.FileName)?.Trim();
+            profile.LogoFileName = string.IsNullOrWhiteSpace(logoName) ? null : logoName[..Math.Min(logoName.Length, 80)];
         }
 
         await SetSettingAsync("Theme.Primary", NormalizeHex(vm.Primary));
         await SetSettingAsync("Theme.Accent", NormalizeHex(vm.Accent));
         await SetSettingAsync("Theme.SidebarBg", NormalizeHex(vm.SidebarBg));
         await SetSettingAsync("Theme.PageBg", NormalizeHex(vm.PageBg));
-        await SetSettingAsync("Theme.Preset", vm.SelectedPreset);
+        var presetId = string.IsNullOrWhiteSpace(vm.SelectedPreset) ? null : vm.SelectedPreset.Trim();
+        if (presetId != null && !_branding.Presets.Any(p => p.Id == presetId))
+        {
+            vm.Presets = _branding.Presets;
+            ModelState.AddModelError(nameof(vm.SelectedPreset), "قالب الألوان غير صالح");
+            return View("Branding", vm);
+        }
+        await SetSettingAsync("Theme.Preset", presetId);
 
         await _db.SaveChangesAsync();
         _branding.Invalidate();
@@ -476,8 +499,10 @@ public class SettingsController : Controller
         var options = PrintSettingsService.Clamp(vm);
         if (applyToAll)
         {
+            await using var tx = await _db.Database.BeginTransactionAsync();
             foreach (var g in Enum.GetValues<PrintGroup>())
                 await _printSettings.SaveLayoutAsync(g, options);
+            await tx.CommitAsync();
         }
         else
         {
@@ -531,6 +556,18 @@ public class SettingsController : Controller
         if (existing == null)
         {
             _db.SystemSettings.Add(new SystemSetting { Key = key, Value = value, UpdatedAt = DateTime.UtcNow });
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+            {
+                existing = await _db.SystemSettings.FindAsync(key);
+                if (existing == null) throw;
+                existing.Value = value;
+                existing.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
         }
         else
         {

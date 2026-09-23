@@ -160,6 +160,7 @@ public sealed class BackupServiceTests : IDisposable
         services.AddSingleton(rm);
         services.AddSingleton(db);
         services.AddSingleton<IAccountingService>(new AccountingService(db));
+        services.AddSingleton<IWebHostEnvironment>(new FakeWebHostEnvironment());
         var provider = services.BuildServiceProvider();
 
         await SeedData.InitializeAsync(provider);
@@ -174,7 +175,7 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializeAsync_AdminExists_SkipsAdditionalSeedData()
+    public async Task InitializeAsync_ExistingData_IsIdempotent()
     {
         using var db = CreateContext();
         var um = CreateUserManager(db);
@@ -190,13 +191,32 @@ public sealed class BackupServiceTests : IDisposable
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddSingleton(um);
         services.AddSingleton(rm);
+        services.AddSingleton(db);
+        services.AddSingleton<IAccountingService>(new AccountingService(db));
+        services.AddSingleton<IWebHostEnvironment>(new FakeWebHostEnvironment());
         var provider = services.BuildServiceProvider();
 
         await SeedData.InitializeAsync(provider);
 
-        Assert.Null(await um.FindByNameAsync("accountant"));
-        Assert.Null(await um.FindByNameAsync("warehouse"));
-        Assert.Empty(db.ItemCategories);
+        Assert.NotNull(await um.FindByNameAsync("admin"));
+        Assert.NotNull(await um.FindByNameAsync("accountant"));
+        Assert.NotNull(await um.FindByNameAsync("warehouse"));
+        Assert.NotEmpty(db.ItemCategories);
+        int adminRoleCount = (await um.GetUsersInRoleAsync("Admin")).Count;
+        int userCount = um.Users.Count();
+        int categoryCount = db.ItemCategories.Count();
+        int itemCount = db.Items.Count();
+        int purchaseOrderCount = db.PurchaseOrders.Count();
+        int journalCount = db.JournalEntries.Count();
+
+        await SeedData.InitializeAsync(provider);
+
+        Assert.Equal(adminRoleCount, (await um.GetUsersInRoleAsync("Admin")).Count);
+        Assert.Equal(userCount, um.Users.Count());
+        Assert.Equal(categoryCount, db.ItemCategories.Count());
+        Assert.Equal(itemCount, db.Items.Count());
+        Assert.Equal(purchaseOrderCount, db.PurchaseOrders.Count());
+        Assert.Equal(journalCount, db.JournalEntries.Count());
     }
 
     [Fact]

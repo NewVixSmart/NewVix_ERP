@@ -22,6 +22,7 @@ public static class SeedData
         var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
         var config = serviceProvider.GetRequiredService<IConfiguration>();
         var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SeedData");
+        var env = serviceProvider.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
 
         string[] roles = ["Admin", "Accountant", "Warehouse"];
         foreach (var role in roles)
@@ -31,7 +32,6 @@ public static class SeedData
         }
 
         var adminUser = await userManager.FindByNameAsync("admin");
-        bool isFirstRun = adminUser == null;
         if (adminUser == null)
         {
             var configuredAdminPwd = config["Seed:AdminPassword"];
@@ -48,52 +48,49 @@ public static class SeedData
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(adminUser, "Admin");
-                if (string.IsNullOrWhiteSpace(configuredAdminPwd))
+                if (string.IsNullOrWhiteSpace(configuredAdminPwd) && env.IsDevelopment())
                     logger.LogInformation("مستخدم البذرة Admin: كلمة المرور = {Password}", adminPwd);
             }
         }
 
-        if (isFirstRun)
+        await EnsureUserAsync(userManager, config, logger, env, "accountant", "Seed:AccountantPassword", "accountant@vix.com", "Accountant");
+        await EnsureUserAsync(userManager, config, logger, env, "warehouse", "Seed:WarehousePassword", "warehouse@vix.com", "Warehouse");
+
+        var db = serviceProvider.GetRequiredService<AppDbContext>();
+        if (!db.ItemCategories.Any())
         {
-            await EnsureUserAsync(userManager, config, logger, "accountant", "Seed:AccountantPassword", "accountant@vix.com", "Accountant");
-            await EnsureUserAsync(userManager, config, logger, "warehouse", "Seed:WarehousePassword", "warehouse@vix.com", "Warehouse");
-
-            var db = serviceProvider.GetRequiredService<AppDbContext>();
-            if (!db.ItemCategories.Any())
-            {
-                db.ItemCategories.AddRange(
-                    new ItemCategory { Name = "إلكترونيات", IsActive = true },
-                    new ItemCategory { Name = "ملابس", IsActive = true },
-                    new ItemCategory { Name = "أغذية", IsActive = true },
-                    new ItemCategory { Name = "مواد بناء", IsActive = true }
-                );
-                await db.SaveChangesAsync();
-            }
-
-            if (!db.ItemTypes.Any())
-            {
-                db.ItemTypes.AddRange(
-                    new ItemType { Name = "منتج تام", IsActive = true },
-                    new ItemType { Name = "مواد خام", IsActive = true }
-                );
-                await db.SaveChangesAsync();
-            }
-
-            if (!db.Units.Any())
-            {
-                db.Units.AddRange(
-                    new Unit { Name = "قطعة", ShortName = "قط" },
-                    new Unit { Name = "كيلوجرام", ShortName = "كجم" },
-                    new Unit { Name = "متر", ShortName = "م" },
-                    new Unit { Name = "صندوق", ShortName = "صن" }
-                );
-                await db.SaveChangesAsync();
-            }
-
-            await EnsureDefaultPermissionsAsync(serviceProvider);
-
-            await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<NewVixSmart.Web.Services.IAccountingService>());
+            db.ItemCategories.AddRange(
+                new ItemCategory { Name = "إلكترونيات", IsActive = true },
+                new ItemCategory { Name = "ملابس", IsActive = true },
+                new ItemCategory { Name = "أغذية", IsActive = true },
+                new ItemCategory { Name = "مواد بناء", IsActive = true }
+            );
+            await db.SaveChangesAsync();
         }
+
+        if (!db.ItemTypes.Any())
+        {
+            db.ItemTypes.AddRange(
+                new ItemType { Name = "منتج تام", IsActive = true },
+                new ItemType { Name = "مواد خام", IsActive = true }
+            );
+            await db.SaveChangesAsync();
+        }
+
+        if (!db.Units.Any())
+        {
+            db.Units.AddRange(
+                new Unit { Name = "قطعة", ShortName = "قط" },
+                new Unit { Name = "كيلوجرام", ShortName = "كجم" },
+                new Unit { Name = "متر", ShortName = "م" },
+                new Unit { Name = "صندوق", ShortName = "صن" }
+            );
+            await db.SaveChangesAsync();
+        }
+
+        await EnsureDefaultPermissionsAsync(serviceProvider);
+
+        await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<NewVixSmart.Web.Services.IAccountingService>());
     }
 
     private static async Task EnsureDemoDataAsync(AppDbContext db, NewVixSmart.Web.Services.IAccountingService accounting)
@@ -105,37 +102,6 @@ public static class SeedData
                 new Warehouse { Code = "WH-002", Name = "المخزن الثانوي", IsActive = true, CreatedAt = DateTime.UtcNow }
             );
             await db.SaveChangesAsync();
-        }
-
-        if (!db.PurchaseOrders.Any() && db.Items.Any())
-        {
-            var supplier = await db.Suppliers.FirstOrDefaultAsync();
-            var item = await db.Items.FirstOrDefaultAsync();
-            if (supplier != null && item != null)
-            {
-                db.PurchaseOrders.Add(new PurchaseOrder
-                {
-                    OrderNumber = "PRC-20260903-001",
-                    SupplierId = supplier.Id,
-                    OrderDate = DateTime.Today,
-                    ExpectedDate = DateTime.Today.AddDays(7),
-                    Status = PurchaseOrderStatus.Draft,
-                    Notes = "أمر شراء تجريبي من البذرة",
-                    CreatedBy = "admin",
-                    CreatedAt = DateTime.UtcNow,
-                    Items =
-                    {
-                        new PurchaseOrderItem
-                        {
-                            ItemId = item.Id,
-                            Quantity = 10,
-                            Count = 10,
-                            UnitPrice = item.PurchasePrice
-                        }
-                    }
-                });
-                await db.SaveChangesAsync();
-            }
         }
 
         if (!db.Currencies.Any())
@@ -373,15 +339,48 @@ public static class SeedData
                 Qty = demoItem.CurrentQuantity,
                 Count = demoItem.CurrentCount,
                 UnitCost = demoItem.PurchasePrice,
-                CountCost = demoItem.PurchasePrice,
+                CountCost = demoItem.CurrentCount > 0 && demoItem.CurrentQuantity > 0
+                    ? decimal.Round(demoItem.PurchasePrice * (demoItem.CurrentQuantity / demoItem.CurrentCount), 2)
+                    : demoItem.PurchasePrice,
                 DateReceived = DateTime.Today,
                 RemainingQty = demoItem.CurrentQuantity,
                 RemainingCount = demoItem.CurrentCount
             });
-            await accounting.RecordOpeningStockAsync(demoItem.Id, demoItem.CurrentQuantity, demoItem.CurrentCount,
+            await accounting.RecordOpeningStockAsync(demoItem.Id, demoItem.CurrentQuantity, 0,
                 demoItem.PurchasePrice, "admin");
         }
         await db.SaveChangesAsync();
+
+        if (!db.PurchaseOrders.Any())
+        {
+            var supplier = await db.Suppliers.FirstOrDefaultAsync();
+            var item = await db.Items.FirstOrDefaultAsync();
+            if (supplier != null && item != null)
+            {
+                db.PurchaseOrders.Add(new PurchaseOrder
+                {
+                    OrderNumber = "PRC-20260903-001",
+                    SupplierId = supplier.Id,
+                    OrderDate = DateTime.Today,
+                    ExpectedDate = DateTime.Today.AddDays(7),
+                    Status = PurchaseOrderStatus.Draft,
+                    Notes = "أمر شراء تجريبي من البذرة",
+                    CreatedBy = "admin",
+                    CreatedAt = DateTime.UtcNow,
+                    Items =
+                    {
+                        new PurchaseOrderItem
+                        {
+                            ItemId = item.Id,
+                            Quantity = 10,
+                            Count = 10,
+                            UnitPrice = item.PurchasePrice
+                        }
+                    }
+                });
+                await db.SaveChangesAsync();
+            }
+        }
     }
 
     private static async Task EnsureDefaultPermissionsAsync(IServiceProvider serviceProvider)
@@ -417,7 +416,7 @@ public static class SeedData
         }
     }
 
-    private static async Task EnsureUserAsync(UserManager<IdentityUser> userManager, IConfiguration config, ILogger logger, string userName, string configKey, string email, string role)
+    private static async Task EnsureUserAsync(UserManager<IdentityUser> userManager, IConfiguration config, ILogger logger, Microsoft.AspNetCore.Hosting.IWebHostEnvironment env, string userName, string configKey, string email, string role)
     {
         var user = await userManager.FindByNameAsync(userName);
         if (user == null)
@@ -433,7 +432,7 @@ public static class SeedData
                 user = new IdentityUser { UserName = userName, Email = email, EmailConfirmed = true };
                 result = await userManager.CreateAsync(user, password);
             }
-            if (result.Succeeded && string.IsNullOrWhiteSpace(configuredPwd))
+            if (result.Succeeded && string.IsNullOrWhiteSpace(configuredPwd) && env.IsDevelopment())
                 logger.LogInformation("مستخدم البذرة {Role}: كلمة المرور = {Password}", role, password);
         }
         if (!await userManager.IsInRoleAsync(user, role))

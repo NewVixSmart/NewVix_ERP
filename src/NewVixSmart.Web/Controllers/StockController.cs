@@ -91,7 +91,7 @@ public class StockController : Controller
         return View(vm);
     }
 
-    [RequirePerm("Stock.View")]
+    [RequirePerm("LowStock.View")]
     public async Task<IActionResult> LowStock()
     {
         return View(await _dashboardService.GetLowStockItemsAsync());

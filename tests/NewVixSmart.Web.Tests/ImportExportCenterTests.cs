@@ -185,4 +185,45 @@ public sealed class ImportExportCenterTests : IDisposable
         Assert.Contains("+cmd", nameCell.GetString());
         Assert.Contains("=1+1", notesCell.GetString());
     }
+
+    [Fact]
+    public async Task ReportExport_SalesToCsv_NeutralizesNewlineInjection()
+    {
+        using var db = CreateContext();
+        var customer = new NewVixSmart.Web.Models.Sales.Customer { Name = "\n=HYPERLINK(\"http://evil\")" };
+        db.Customers.Add(customer);
+        db.SaleInvoices.Add(new NewVixSmart.Web.Models.Sales.SaleInvoice
+        {
+            InvoiceNumber = "SI-INJ-1",
+            CustomerId = customer.Id,
+            Customer = customer,
+            InvoiceDate = DateTime.Today,
+            TotalAmount = 100m,
+            Discount = 0m,
+            Tax = 0m,
+            NetAmount = 100m
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ReportExportService(db);
+        var salesCsv = Encoding.UTF8.GetString(await svc.SalesToCsv(DateTime.Today.AddDays(-1), DateTime.Today));
+        Assert.DoesNotContain("\r\n=HYPERLINK(", salesCsv);
+        Assert.Contains("'\n=HYPERLINK", salesCsv);
+
+        db.Payments.Add(new NewVixSmart.Web.Models.Accounting.Payment
+        {
+            Type = NewVixSmart.Web.Models.Accounting.PaymentType.Receipt,
+            CustomerId = customer.Id,
+            ReceiptNumber = "RP-INJ-1",
+            Amount = 50m,
+            BaseAmount = 50m,
+            PaymentDate = DateTime.Today,
+            Method = NewVixSmart.Web.Models.Accounting.PaymentMethod.Cash
+        });
+        await db.SaveChangesAsync();
+
+        var paymentsCsv = Encoding.UTF8.GetString(await svc.PaymentsToCsv(DateTime.Today.AddDays(-1), DateTime.Today));
+        Assert.DoesNotContain("\r\n=HYPERLINK(", paymentsCsv);
+        Assert.DoesNotContain("\r\n=cmd", paymentsCsv);
+    }
 }

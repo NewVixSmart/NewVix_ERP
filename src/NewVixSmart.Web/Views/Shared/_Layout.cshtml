@@ -247,7 +247,7 @@
                                     <span class="nav-link-text">تقرير المخزون</span>
                                 </a>
                             }
-                            @if (await Perm.HasAsync("Stock.View"))
+                            @if (await Perm.HasAnyAsync("Stock.View", "LowStock.View"))
                             {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Stock" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStock" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Stock" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStock" ? "page" : null)" aria-label="انخفاض المخزون" asp-controller="Stock" asp-action="LowStock">
                                     <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>

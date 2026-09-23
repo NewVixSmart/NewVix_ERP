@@ -143,6 +143,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddControllersWithViews(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
 });
 
 builder.Services.AddResponseCompression(options =>

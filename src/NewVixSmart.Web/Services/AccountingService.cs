@@ -213,6 +213,7 @@ public class AccountingService : IAccountingService
             }
             catch (DbUpdateException)
             {
+                if (_db.Database.CurrentTransaction != null) throw;
                 _db.ChangeTracker.Clear();
             }
         }

@@ -43,24 +43,19 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardViewModel> GetDashboardAsync()
     {
-        var delivered = await _db.DeliveryOrders
+        var deliveredInvoiceIds = await _db.DeliveryOrders
             .AsNoTracking()
-            .Where(d => d.Status == DeliveryOrderStatus.Delivered)
-            .Include(d => d.SaleInvoice!.Items)
-            .Include(d => d.Items)
+            .Where(d => d.Status == DeliveryOrderStatus.Delivered && d.SaleInvoiceId != null)
+            .Select(d => d.SaleInvoiceId)
+            .Distinct()
             .ToListAsync();
 
-        var totalSale = 0m;
-        foreach (var d in delivered)
-        {
-            foreach (var di in d.Items)
-            {
-                var invLine = d.SaleInvoice!.Items.FirstOrDefault(i => i.ItemId == di.ItemId);
-                if (invLine == null) continue;
-                var qty = di.Quantity > 0 ? di.Quantity : di.Count;
-                totalSale += decimal.Round(qty * invLine.UnitPrice * (d.SaleInvoice.ExchangeRate ?? 1m), 2);
-            }
-        }
+        var totalSale = deliveredInvoiceIds.Count == 0
+            ? 0m
+            : await _db.SaleInvoices
+                .AsNoTracking()
+                .Where(s => deliveredInvoiceIds.Contains(s.Id))
+                .SumAsync(s => (decimal?)Math.Round(s.NetAmount * (s.ExchangeRate ?? 1m), 2)) ?? 0m;
 
         var vm = new DashboardViewModel
         {
@@ -114,44 +109,31 @@ public class DashboardService : IDashboardService
     {
         var today = DateTime.Today;
 
-        var sales = await _db.SaleInvoices
+        var sales = _db.SaleInvoices
             .AsNoTracking()
             .Select(s => new { s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate })
-            .ToListAsync();
-        var purchases = await _db.PurchaseInvoices
+            .Where(s => s.NetAmount - s.PaidAmount > 0.005m);
+        var purchases = _db.PurchaseInvoices
             .AsNoTracking()
             .Select(p => new { p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate })
+            .Where(p => p.NetAmount - p.PaidAmount > 0.005m);
+
+        var overdueSales = await sales.Where(s => (s.DueDate ?? s.InvoiceDate).Date < today).ToListAsync();
+        var dueSoonSales = await sales
+            .Where(s => (s.DueDate ?? s.InvoiceDate).Date >= today && (s.DueDate ?? s.InvoiceDate).Date <= today.AddDays(7))
+            .ToListAsync();
+        var overduePurchases = await purchases.Where(p => (p.DueDate ?? p.InvoiceDate).Date < today).ToListAsync();
+        var dueSoonPurchases = await purchases
+            .Where(p => (p.DueDate ?? p.InvoiceDate).Date >= today && (p.DueDate ?? p.InvoiceDate).Date <= today.AddDays(7))
             .ToListAsync();
 
-        (vm.OverdueReceivableCount, vm.OverdueReceivableTotal) =
-            DueAggregates(sales.Select(s => (s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate)), today, upcoming: false);
-        (vm.DueSoonReceivableCount, vm.DueSoonReceivableTotal) =
-            DueAggregates(sales.Select(s => (s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate)), today, upcoming: true);
-        (vm.OverduePayableCount, vm.OverduePayableTotal) =
-            DueAggregates(purchases.Select(p => (p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate)), today, upcoming: false);
-        (vm.DueSoonPayableCount, vm.DueSoonPayableTotal) =
-            DueAggregates(purchases.Select(p => (p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate)), today, upcoming: true);
-    }
-
-    private static (int Count, decimal Total) DueAggregates(
-        IEnumerable<(decimal Net, decimal Paid, DateTime Invoice, DateTime? Due)> items,
-        DateTime today,
-        bool upcoming)
-    {
-        int count = 0;
-        decimal total = 0;
-        foreach (var (net, paid, invoice, due) in items)
-        {
-            var outstanding = net - paid;
-            if (outstanding <= 0.005m) continue;
-            var dueDate = (due ?? invoice).Date;
-            bool hit = upcoming
-                ? dueDate >= today && dueDate <= today.AddDays(7)
-                : dueDate < today;
-            if (!hit) continue;
-            count++;
-            total += outstanding;
-        }
-        return (count, total);
+        vm.OverdueReceivableCount = overdueSales.Count;
+        vm.OverdueReceivableTotal = overdueSales.Sum(s => s.NetAmount - s.PaidAmount);
+        vm.DueSoonReceivableCount = dueSoonSales.Count;
+        vm.DueSoonReceivableTotal = dueSoonSales.Sum(s => s.NetAmount - s.PaidAmount);
+        vm.OverduePayableCount = overduePurchases.Count;
+        vm.OverduePayableTotal = overduePurchases.Sum(p => p.NetAmount - p.PaidAmount);
+        vm.DueSoonPayableCount = dueSoonPurchases.Count;
+        vm.DueSoonPayableTotal = dueSoonPurchases.Sum(p => p.NetAmount - p.PaidAmount);
     }
 }

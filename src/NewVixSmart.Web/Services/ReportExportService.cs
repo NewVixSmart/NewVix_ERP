@@ -8,6 +8,7 @@ namespace NewVixSmart.Web.Services;
 
 public class ReportExportService
 {
+    private const int MaxExportRows = 50_000;
     private readonly AppDbContext _db;
     public ReportExportService(AppDbContext db) => _db = db;
 
@@ -19,6 +20,7 @@ public class ReportExportService
             .Include(s => s.Currency)
             .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
             .OrderByDescending(s => s.InvoiceDate)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -50,6 +52,7 @@ public class ReportExportService
             .Include(p => p.Currency)
             .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
             .OrderByDescending(p => p.InvoiceDate)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -82,6 +85,7 @@ public class ReportExportService
             .Include(p => p.Currency)
             .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
             .OrderByDescending(p => p.PaymentDate)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -112,7 +116,7 @@ public class ReportExportService
     private static string CsvField(string value)
     {
         value ??= string.Empty;
-        if (value.Length > 0 && "=+-\t@".IndexOf(value[0]) >= 0)
+        if (value.Length > 0 && "=+-\t@\r\n".IndexOf(value[0]) >= 0)
             value = "'" + value;
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
             return "\"" + value.Replace("\"", "\"\"") + "\"";

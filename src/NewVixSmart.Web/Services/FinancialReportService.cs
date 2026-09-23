@@ -70,6 +70,8 @@ public class FinancialReportService : IFinancialReportService
     {
         var fromDate = from.Date;
         var toDate = to.Date;
+        if (fromDate > toDate) (fromDate, toDate) = (toDate, fromDate);
+        if (toDate > DateTime.Today) toDate = DateTime.Today;
 
         var activity = await GetAccountActivityAsync(fromDate, toDate, GLAccountType.Revenue, GLAccountType.Expense);
 
@@ -78,6 +80,8 @@ public class FinancialReportService : IFinancialReportService
         foreach (var line in activity)
         {
             var signed = line.NormalBalance == NormalBalance.Debit ? line.Debit - line.Credit : line.Credit - line.Debit;
+
+            if (signed == 0m) continue;
 
             if (line.Type == GLAccountType.Revenue)
             {
