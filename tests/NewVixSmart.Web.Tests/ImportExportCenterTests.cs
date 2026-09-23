@@ -141,6 +141,58 @@ public sealed class ImportExportCenterTests : IDisposable
         Assert.Equal(1, await db.Branches.CountAsync());
     }
 
+    // ---------- Import stock-counter / opening-balance guards ----------
+
+    [Fact]
+    public async Task Import_Items_IgnoresStockBalanceColumns()
+    {
+        using var db = CreateContext();
+        db.ItemTypes.Add(new NewVixSmart.Web.Models.Core.ItemType { Name = "منتج" });
+        db.ItemCategories.Add(new NewVixSmart.Web.Models.Core.ItemCategory { Name = "تصنيف" });
+        await db.SaveChangesAsync();
+        var svc = CreateImportService(db);
+
+        var csv = CsvBytes("الكود,الاسم,النوع,التصنيف,الرصيد (عدد),الرصيد (كمية)\n" +
+                           "IT-1,منتج أول,منتج,تصنيف,50,20\n");
+        var vm = await svc.ParseAsync("items", "items.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(1, vm.ValidCount);
+
+        var result = await svc.ImportAsync("items", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(1, result.Created);
+
+        var item = Assert.Single(db.Items);
+        Assert.Equal(0m, item.CurrentCount);
+        Assert.Equal(0m, item.CurrentQuantity);
+    }
+
+    [Fact]
+    public async Task Import_Customers_PreservesExistingOpeningBalance()
+    {
+        using var db = CreateContext();
+        db.Customers.Add(new NewVixSmart.Web.Models.Sales.Customer { Code = "C-1", Name = "عميل قديم", OpeningBalance = 100m });
+        await db.SaveChangesAsync();
+        var svc = CreateImportService(db);
+
+        var csv = CsvBytes("الكود,الاسم,الرصيد الافتتاحي\n" +
+                           "C-1,عميل قديم,250\n" +
+                           "C-2,عميل جديد,300\n");
+        var vm = await svc.ParseAsync("customers", "c.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(2, vm.ValidCount);
+
+        var result = await svc.ImportAsync("customers", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(1, result.Created);
+        Assert.Equal(1, result.Updated);
+
+        var existing = await db.Customers.AsNoTracking().SingleAsync(c => c.Code == "C-1");
+        var created = await db.Customers.AsNoTracking().SingleAsync(c => c.Code == "C-2");
+        Assert.Equal(100m, existing.OpeningBalance);
+        Assert.Equal(300m, created.OpeningBalance);
+    }
+
     // ---------- Export formula-injection guards ----------
 
     [Fact]

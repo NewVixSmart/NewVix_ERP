@@ -55,12 +55,17 @@ public class FiscalService : IFiscalService
         if (retained == null || !retained.IsActive)
             throw new InvalidOperationException("حساب الأرباح المحتجزة 3001 غير موجود في مخطط الحسابات");
 
-        var activity = await _financial.GetYearlyPlActivityAsync(year);
         var closeDate = new DateTime(year, 12, 31);
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            var activePeriod = await _db.FiscalPeriods.AsNoTracking().FirstOrDefaultAsync(p => p.Year == year);
+            if (activePeriod?.IsClosed == true)
+                throw new InvalidOperationException($"السنة المالية {year} أُغلقت في جلسة أخرى — أعد فتحها أولاً");
+
+            var activity = await _financial.GetYearlyPlActivityAsync(year);
+
             var openEntryCount = await _db.JournalEntries.CountAsync(j => j.Source == JournalSource.YearEndClose && j.SourceId == period.Id);
             if (openEntryCount > 0)
                 throw new InvalidOperationException($"سنة {year} بها قيد إقفال سنوي مرصّد بالفعل — أعد فتحها أولاً");

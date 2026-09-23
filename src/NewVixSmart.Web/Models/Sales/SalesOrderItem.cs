@@ -43,4 +43,7 @@ public class SalesOrderItem
     public decimal InvoicedCount { get; set; }
 
     public decimal Total => (Quantity > 0 ? Quantity : Count) * UnitPrice;
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

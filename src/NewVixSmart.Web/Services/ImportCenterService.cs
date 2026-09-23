@@ -79,8 +79,6 @@ public class ImportCenterService : IImportCenterService
                 Col("SalePrice", "سعر البيع", ImportValueType.Decimal, minInclusive: 0, aliases: "سعر البيع (الافتراضي)"),
                 Col("MinCount", "الحد الأدنى (عدد)", ImportValueType.Decimal, minInclusive: 0, aliases: "الحد الأدنى للعدد"),
                 Col("MinQuantity", "الحد الأدنى (كمية)", ImportValueType.Decimal, minInclusive: 0, aliases: "الحد الأدنى للكمية"),
-                Col("CurrentCount", "الرصيد (عدد)", ImportValueType.Decimal, minInclusive: 0, aliases: ["رصيد أول المدة (عدد)", "رصيد العدد"]),
-                Col("CurrentQuantity", "الرصيد (كمية)", ImportValueType.Decimal, minInclusive: 0, aliases: ["رصيد أول المدة (كمية)", "رصيد الكمية"]),
                 Col("IsSellable", "قابل للبيع", ImportValueType.Bool),
                 Col("Notes", "ملاحظات", ImportValueType.Text, maxLength: 500),
                 Col("IsActive", "الحالة", ImportValueType.Bool, aliases: ["نشط", "يُباع خارجياً"])
@@ -1410,8 +1408,8 @@ public class ImportCenterService : IImportCenterService
         entity.Phone = OptNull(cells, "Phone");
         entity.Email = OptNull(cells, "Email");
         entity.TaxNumber = OptNull(cells, "TaxNumber");
-        if (TryCellDecimal(cells, "OpeningBalance", out var openingBalance)) entity.OpeningBalance = openingBalance;
-        else if (isNew) entity.OpeningBalance = 0m;
+        if (isNew)
+            entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
         entity.Notes = OptNull(cells, "Notes");
 
         var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
@@ -1447,8 +1445,8 @@ public class ImportCenterService : IImportCenterService
         entity.Phone = OptNull(cells, "Phone");
         entity.Email = OptNull(cells, "Email");
         entity.TaxNumber = OptNull(cells, "TaxNumber");
-        if (TryCellDecimal(cells, "OpeningBalance", out var openingBalance)) entity.OpeningBalance = openingBalance;
-        else if (isNew) entity.OpeningBalance = 0m;
+        if (isNew)
+            entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
         entity.Notes = OptNull(cells, "Notes");
 
         var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
@@ -1508,8 +1506,8 @@ public class ImportCenterService : IImportCenterService
         else if (isNew) entity.MinQuantity = 0m;
         if (isNew)
         {
-            entity.CurrentCount = TryCellDecimal(cells, "CurrentCount", out var cc) ? cc : 0m;
-            entity.CurrentQuantity = TryCellDecimal(cells, "CurrentQuantity", out var cq) ? cq : 0m;
+            entity.CurrentCount = 0m;
+            entity.CurrentQuantity = 0m;
         }
         entity.Notes = OptNull(cells, "Notes");
 

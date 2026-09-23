@@ -62,4 +62,7 @@ public class SalesOrder
 
     [BindNever]
     public ICollection<SalesOrderItem> Items { get; set; } = new List<SalesOrderItem>();
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }
