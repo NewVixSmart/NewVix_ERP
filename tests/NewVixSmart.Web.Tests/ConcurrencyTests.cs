@@ -28,6 +28,20 @@ public sealed class ConcurrencyTests : IDisposable
 
     private AppDbContext CreateContext() => new(_options);
 
+    private static async Task MarkDeliveredAsync(AppDbContext db, int invoiceId, int customerId)
+    {
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = $"DLV-{invoiceId}",
+            SaleInvoiceId = invoiceId,
+            CustomerId = customerId,
+            DeliveryDate = DateTime.Today,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task DuplicateReceipt_WithinTwoMinuteWindow_IsRejected()
     {
@@ -48,6 +62,7 @@ public sealed class ConcurrencyTests : IDisposable
             IsPaid = false
         });
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, customer.Id);
 
         var svc = new PaymentService(db);
 
@@ -129,6 +144,7 @@ public sealed class ConcurrencyTests : IDisposable
             IsPaid = false
         });
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, customer.Id);
 
         var svc = new PaymentService(db);
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Sales;
 
 namespace NewVixSmart.Web.Services;
 
@@ -166,6 +167,7 @@ public sealed class PaymentService : IPaymentService
         {
             var invoices = await _db.SaleInvoices
                 .Where(s => s.CustomerId == payment.CustomerId && s.PaidAmount < s.NetAmount)
+                .Where(s => _db.DeliveryOrders.Any(d => d.SaleInvoiceId == s.Id && d.Status == DeliveryOrderStatus.Delivered))
                 .OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id)
                 .ToListAsync();
             foreach (var inv in invoices)

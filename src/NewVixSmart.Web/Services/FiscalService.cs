@@ -61,6 +61,10 @@ public class FiscalService : IFiscalService
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            var openEntryCount = await _db.JournalEntries.CountAsync(j => j.Source == JournalSource.YearEndClose && j.SourceId == period.Id);
+            if (openEntryCount > 0)
+                throw new InvalidOperationException($"سنة {year} بها قيد إقفال سنوي مرصّد بالفعل — أعد فتحها أولاً");
+
             int posted = 0;
             decimal netIncome = 0;
             foreach (var line in activity)
@@ -88,6 +92,8 @@ public class FiscalService : IFiscalService
             _db.ChangeTracker.Clear();
 
             var toClose = await _db.FiscalPeriods.SingleAsync(p => p.Year == year);
+            if (toClose.IsClosed)
+                throw new InvalidOperationException($"السنة المالية {year} أُغلقت للتو في جلسة أخرى — أعد فتحها أولاً");
             toClose.IsClosed = true;
             toClose.ClosedById = user;
             toClose.ClosedAt = DateTime.UtcNow;

@@ -63,6 +63,9 @@ public sealed class InventoryService : IInventoryService
 
     private async Task<(bool Success, string? Error)> CreateSaleCoreAsync(SaleInvoice invoice, List<SaleInvoiceItem> valid, string? user, int? branchId)
     {
+        if (await IsPeriodClosedAsync(invoice.InvoiceDate))
+            return (false, $"السنة المالية {invoice.InvoiceDate.Year} مغلقة — لا يمكن إدراج فاتورة بيع فيها");
+
         invoice.InvoiceNumber = await NextInvoiceNumberAsync(
             _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
         invoice.BranchId = branchId;
@@ -191,6 +194,8 @@ public sealed class InventoryService : IInventoryService
                     decimal effective = item.Quantity > 0 ? item.Quantity : item.Count;
                     value += effective * invLine.UnitPrice;
                 }
+                if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m && invoice.NetAmount != invoice.TotalAmount)
+                    value = invoice.NetAmount * (value / invoice.TotalAmount);
                 var localValue = decimal.Round(value * (invoice.ExchangeRate ?? 1m), 2);
 
                 if (_accounting != null && (localValue > 0 || costTotal > 0))

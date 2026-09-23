@@ -44,6 +44,10 @@ public class PurchaseOrderItem
     [Display(Name = "العدد المستلم")]
     public decimal ReceivedCount { get; set; }
 
+    [Timestamp]
+    [Display(Name = "إصدار السطر")]
+    public byte[]? RowVersion { get; set; }
+
     [Column(TypeName = "decimal(18,2)")]
     [Display(Name = "الإجمالي")]
     public decimal Total => Quantity * UnitPrice;

@@ -212,6 +212,17 @@ public sealed class FinancialStatementsCorrectnessTests : IDisposable
         db.PurchaseInvoices.Add(purchase);
         await db.SaveChangesAsync();
 
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = $"DLV-FSC-{sale.Id}",
+            SaleInvoiceId = sale.Id,
+            CustomerId = customer.Id,
+            DeliveryDate = today.AddDays(-30),
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
         db.SaleReturns.AddRange(
             new SaleReturn { ReturnNumber = "SR-1-P", CustomerId = customer.Id, SaleInvoiceId = sale.Id, Status = ReturnStatus.Posted, TotalAmount = 400, ReturnDate = today.AddDays(-10) },
             new SaleReturn { ReturnNumber = "SR-2-D", CustomerId = customer.Id, SaleInvoiceId = sale.Id, Status = ReturnStatus.Draft, TotalAmount = 100, ReturnDate = today.AddDays(-5) }

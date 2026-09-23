@@ -21,7 +21,7 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="invoiceSelect">فاتورة البيع</label>
-                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select" id="invoiceSelect" onchange="if(this.value) location.href='@Url.Action("Create", "DeliveryOrders")?invoiceId=' + this.value;">
+                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select" id="invoiceSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر فاتورة بيع --</option>
                     </select>
                 </div>
@@ -90,5 +90,12 @@
 document.querySelectorAll('.remove-row').forEach(btn => {
     btn.addEventListener('click', function() { this.closest('tr').remove(); });
 });
+const invoiceSelect = document.getElementById('invoiceSelect');
+if (invoiceSelect) {
+    const baseUrl = invoiceSelect.getAttribute('data-redirect') || '';
+    invoiceSelect.addEventListener('change', () => {
+        if (invoiceSelect.value) location.href = baseUrl + '?invoiceId=' + encodeURIComponent(invoiceSelect.value);
+    });
+}
 </script>
 }

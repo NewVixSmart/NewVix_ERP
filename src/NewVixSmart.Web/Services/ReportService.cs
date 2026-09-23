@@ -661,6 +661,7 @@ public class ReportService : IReportService
             .AsNoTracking()
             .Include(s => s.Customer)
             .Where(s => s.PaidAmount < s.NetAmount)
+            .Where(s => _db.DeliveryOrders.Any(d => d.SaleInvoiceId == s.Id && d.Status == NewVixSmart.Web.Models.Sales.DeliveryOrderStatus.Delivered))
             .ToListAsync();
 
         var saleReturns = await _db.SaleReturns

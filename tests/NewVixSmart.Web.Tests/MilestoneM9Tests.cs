@@ -87,7 +87,22 @@ public sealed class MilestoneM9Tests : IDisposable
         };
         db.SaleInvoices.Add(inv);
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, inv.Id, customerId);
         return inv;
+    }
+
+    private static async Task MarkDeliveredAsync(AppDbContext db, int invoiceId, int customerId)
+    {
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = $"DLV-M9-{invoiceId}",
+            SaleInvoiceId = invoiceId,
+            CustomerId = customerId,
+            DeliveryDate = DateTime.Today,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
     }
 
     private static async Task<Models.Purchases.PurchaseInvoice> SeedForeignPurchaseAsync(AppDbContext db, int supplierId, int usdId, decimal rate, decimal net)
@@ -125,6 +140,7 @@ public sealed class MilestoneM9Tests : IDisposable
         var cust = await SeedCustomerAsync(db);
         db.SaleInvoices.Add(new SaleInvoice { InvoiceNumber = "SI-1000", CustomerId = cust, NetAmount = 1000m, TotalAmount = 1000m, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, cust);
         var svc = await NewPaymentServiceAsync(db);
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
@@ -163,6 +179,7 @@ public sealed class MilestoneM9Tests : IDisposable
         var cust = await SeedCustomerAsync(db);
         db.SaleInvoices.Add(new SaleInvoice { InvoiceNumber = "SI-1001", CustomerId = cust, NetAmount = 1000m, TotalAmount = 1000m, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, cust);
         var svc = await NewPaymentServiceAsync(db);
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment

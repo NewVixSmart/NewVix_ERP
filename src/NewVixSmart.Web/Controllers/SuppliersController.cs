@@ -80,7 +80,16 @@ public class SuppliersController : Controller
             existing.Phone = supplier.Phone;
             existing.Email = supplier.Email;
             existing.TaxNumber = supplier.TaxNumber;
-            existing.OpeningBalance = supplier.OpeningBalance;
+            if (existing.OpeningBalance != supplier.OpeningBalance)
+            {
+                var hasHistory = await _db.PurchaseInvoices.AnyAsync(i => i.SupplierId == id)
+                    || await _db.Payments.AnyAsync(p => p.SupplierId == id)
+                    || await _db.PurchaseReturns.AnyAsync(r => r.SupplierId == id);
+                if (hasHistory)
+                    ModelState.AddModelError(nameof(Supplier.OpeningBalance), "لا يمكن تغيير الرصيد الافتتاحي بعد وجود حركات مالية — عالج الرصيد بقيد تسوية");
+                else
+                    existing.OpeningBalance = supplier.OpeningBalance;
+            }
             existing.Notes = supplier.Notes;
             existing.IsActive = supplier.IsActive;
 

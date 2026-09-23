@@ -149,13 +149,24 @@ public sealed class OperationsIntegrityTests : IDisposable
 
     private static async Task SeedSaleInvoiceAsync(AppDbContext db, int customerId, decimal net)
     {
-        db.SaleInvoices.Add(new SaleInvoice
+        var invoice = new SaleInvoice
         {
             InvoiceNumber = $"SI-OP-{Guid.NewGuid():N}".Substring(0, 12),
             CustomerId = customerId,
             TotalAmount = net,
             NetAmount = net,
             CreatedAt = DateTime.UtcNow
+        };
+        db.SaleInvoices.Add(invoice);
+        await db.SaveChangesAsync();
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = $"DLV-OP-{invoice.Id}",
+            SaleInvoiceId = invoice.Id,
+            CustomerId = customerId,
+            DeliveryDate = DateTime.Today,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
     }

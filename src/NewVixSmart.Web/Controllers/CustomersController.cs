@@ -80,7 +80,16 @@ public class CustomersController : Controller
             existing.Phone = customer.Phone;
             existing.Email = customer.Email;
             existing.TaxNumber = customer.TaxNumber;
-            existing.OpeningBalance = customer.OpeningBalance;
+            if (existing.OpeningBalance != customer.OpeningBalance)
+            {
+                var hasHistory = await _db.SaleInvoices.AnyAsync(i => i.CustomerId == id)
+                    || await _db.Payments.AnyAsync(p => p.CustomerId == id)
+                    || await _db.SaleReturns.AnyAsync(r => r.CustomerId == id);
+                if (hasHistory)
+                    ModelState.AddModelError(nameof(Customer.OpeningBalance), "لا يمكن تغيير الرصيد الافتتاحي بعد وجود حركات مالية — عالج الرصيد بقيد تسوية");
+                else
+                    existing.OpeningBalance = customer.OpeningBalance;
+            }
             existing.Notes = customer.Notes;
             existing.IsActive = customer.IsActive;
 

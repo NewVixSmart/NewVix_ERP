@@ -277,6 +277,7 @@ public class AppDbContext : IdentityDbContext
 
         builder.Entity<PurchaseOrderItem>(e =>
         {
+            e.Property(oi => oi.RowVersion).IsRowVersion();
             e.HasOne(oi => oi.PurchaseOrder).WithMany(o => o.Items).HasForeignKey(oi => oi.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(oi => oi.Item).WithMany().HasForeignKey(oi => oi.ItemId).OnDelete(DeleteBehavior.Restrict);
         });

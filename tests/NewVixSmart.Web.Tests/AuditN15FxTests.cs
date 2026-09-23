@@ -84,6 +84,16 @@ public sealed class AuditN15FxTests : IDisposable
         };
         db.SaleInvoices.Add(inv);
         await db.SaveChangesAsync();
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = $"DLV-N15-{inv.Id}",
+            SaleInvoiceId = inv.Id,
+            CustomerId = customerId,
+            DeliveryDate = date,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
         return inv;
     }
 

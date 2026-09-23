@@ -220,7 +220,7 @@ public sealed class FiscalCloseTests : IDisposable
     }
 
     [Fact]
-    public async Task Guard_DeliverSaleInClosedYear_ReturnsFalse()
+    public async Task Guard_CreateSaleInvoiceInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
         var inventory = new InventoryService(db);
@@ -254,16 +254,8 @@ public sealed class FiscalCloseTests : IDisposable
         var items = new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem> { new() { ItemId = item.Id, Quantity = 1, UnitPrice = 10 } };
 
         var (ok, err) = await inventory.CreateSaleAsync(invoice, items, "test");
-        Assert.True(ok, err); // invoice creation is no longer period-guarded
-
-        var delivery = new NewVixSmart.Web.Models.Sales.DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = new DateTime(2026, 6, 1) };
-        var (dOk, _) = await inventory.CreateDeliveryOrderAsync(delivery,
-            new List<NewVixSmart.Web.Models.Sales.DeliveryOrderItem> { new() { ItemId = item.Id, Quantity = 1, Count = 0 } }, "test");
-        Assert.True(dOk);
-
-        var (dlvOk, error) = await inventory.DeliverDeliveryOrderAsync(delivery.Id, "test");
-        Assert.False(dlvOk);
-        Assert.Contains("مغلقة", error);
+        Assert.False(ok);
+        Assert.Contains("مغلقة", err);
     }
 
     [Fact]

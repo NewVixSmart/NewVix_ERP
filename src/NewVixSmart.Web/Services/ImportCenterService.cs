@@ -1506,10 +1506,11 @@ public class ImportCenterService : IImportCenterService
         else if (isNew) entity.MinCount = 0m;
         if (TryCellDecimal(cells, "MinQuantity", out var minQuantity)) entity.MinQuantity = minQuantity;
         else if (isNew) entity.MinQuantity = 0m;
-        if (TryCellDecimal(cells, "CurrentCount", out var currentCount)) entity.CurrentCount = currentCount;
-        else if (isNew) entity.CurrentCount = 0m;
-        if (TryCellDecimal(cells, "CurrentQuantity", out var currentQuantity)) entity.CurrentQuantity = currentQuantity;
-        else if (isNew) entity.CurrentQuantity = 0m;
+        if (isNew)
+        {
+            entity.CurrentCount = TryCellDecimal(cells, "CurrentCount", out var cc) ? cc : 0m;
+            entity.CurrentQuantity = TryCellDecimal(cells, "CurrentQuantity", out var cq) ? cq : 0m;
+        }
         entity.Notes = OptNull(cells, "Notes");
 
         var sellable = OptionalBool(cells, "IsSellable");

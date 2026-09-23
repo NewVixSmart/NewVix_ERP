@@ -51,7 +51,7 @@ var customer = new Customer { Name = "عميل أ" };
         IsPaid = paid >= net
     };
 
-    private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, DateTime date, decimal net, decimal paid, DateTime? due = null) => new()
+private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, DateTime date, decimal net, decimal paid, DateTime? due = null) => new()
     {
         InvoiceNumber = number,
         SupplierId = supplierId,
@@ -62,6 +62,20 @@ var customer = new Customer { Name = "عميل أ" };
         PaidAmount = paid,
         IsPaid = paid >= net
     };
+
+    private static async Task MarkDeliveredAsync(AppDbContext db, int invoiceId, int customerId, string number)
+    {
+        db.DeliveryOrders.Add(new DeliveryOrder
+        {
+            DeliveryNumber = number,
+            SaleInvoiceId = invoiceId,
+            CustomerId = customerId,
+            DeliveryDate = DateTime.Today,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
 
     [Fact]
     public async Task Aging_Buckets_Customers_ByDueDate()
@@ -79,6 +93,9 @@ var customer = new Customer { Name = "عميل أ" };
             SaleInvoice(customerId, "S-PAID", today.AddDays(-30), 600, 600, due: today.AddDays(-15))
         );
         await db.SaveChangesAsync();
+
+        foreach (var inv in db.SaleInvoices.ToList())
+            await MarkDeliveredAsync(db, inv.Id, customerId, $"DLV-{inv.InvoiceNumber}");
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await svc.AgingAsync();
@@ -102,8 +119,10 @@ var customer = new Customer { Name = "عميل أ" };
         var (customerId, _) = await SeedPartiesAsync(db);
         var today = DateTime.Today;
 
-        db.SaleInvoices.Add(SaleInvoice(customerId, "S-OR", today.AddDays(-100), 250, 0, due: null));
+var sOr = SaleInvoice(customerId, "S-OR", today.AddDays(-100), 250, 0, due: null);
+        db.SaleInvoices.Add(sOr);
         await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, sOr.Id, customerId, "DLV-S-OR");
 
         var svc = new ReportService(db, new FinancialReportService(db));
 var vm = await svc.AgingAsync();
@@ -124,11 +143,14 @@ var vm = await svc.AgingAsync();
             PurchaseInvoice(supplierId, "P-OVER", today.AddDays(-60), 800, 0, due: today.AddDays(-5)),
             PurchaseInvoice(supplierId, "P-FUT", today.AddDays(-60), 900, 0, due: today.AddDays(3))
         );
-        db.SaleInvoices.AddRange(
+db.SaleInvoices.AddRange(
             SaleInvoice(customerId, "S-PAID2", today.AddDays(-40), 200, 200, due: today.AddDays(-10)),
             SaleInvoice(customerId, "S-FUT2", today.AddDays(-40), 300, 0, due: today.AddDays(2))
         );
         await db.SaveChangesAsync();
+
+        foreach (var inv in db.SaleInvoices.Where(s => s.CustomerId == customerId).ToList())
+            await MarkDeliveredAsync(db, inv.Id, customerId, $"DLV-{inv.InvoiceNumber}");
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await svc.AgingAsync();
@@ -168,9 +190,11 @@ var vm = await svc.AgingAsync();
         var (customerId, supplierId) = await SeedPartiesAsync(db);
         var today = DateTime.Today;
 
-        db.SaleInvoices.Add(SaleInvoice(customerId, "S-X", today.AddDays(-15), 100, 0, due: today.AddDays(-10)));
+db.SaleInvoices.Add(SaleInvoice(customerId, "S-X", today.AddDays(-15), 100, 0, due: today.AddDays(-10)));
         db.PurchaseInvoices.Add(PurchaseInvoice(supplierId, "P-X", today.AddDays(-15), 150, 0, due: today.AddDays(-10)));
         await db.SaveChangesAsync();
+        var sx = await db.SaleInvoices.SingleAsync(s => s.InvoiceNumber == "S-X");
+        await MarkDeliveredAsync(db, sx.Id, customerId, "DLV-S-X");
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var bytes = await svc.ExportAgingXlsxAsync();

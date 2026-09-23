@@ -161,9 +161,14 @@ public sealed class ProcurementService : IProcurementService
                 else if (anyReceived)
                     order.Status = PurchaseOrderStatus.PartiallyReceived;
 
-                await _db.SaveChangesAsync();
+await _db.SaveChangesAsync();
                 await tx.CommitAsync();
                 return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync();
+                _db.ChangeTracker.Clear();
             }
             catch (DbUpdateException)
             {
