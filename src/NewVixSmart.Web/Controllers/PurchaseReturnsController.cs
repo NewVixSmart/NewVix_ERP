@@ -22,13 +22,26 @@ public class PurchaseReturnsController : Controller
     }
 
 [RequirePerm("PurchaseReturns.View")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
-        var list = await _db.PurchaseReturns
+        var query = _db.PurchaseReturns
             .Include(r => r.Supplier)
             .AsNoTracking()
-            .OrderByDescending(r => r.ReturnDate)
+            .AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(r => r.ReturnNumber.Contains(term) || r.Supplier.Name.Contains(term));
+        }
+        query = query.OrderByDescending(r => r.ReturnDate).ThenByDescending(r => r.Id);
+
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var list = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
             .ToListAsync();
+        this.SetPager(page, total, list.Count, search);
         return View(list);
     }
 

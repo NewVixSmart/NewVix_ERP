@@ -30,6 +30,10 @@
         </select>
     </div>
     <div class="col-auto">
+        <label class="visually-hidden" for="accSearch">بحث في الحسابات</label>
+        <input type="search" name="search" id="accSearch" value="@ViewBag.Search" class="form-control" placeholder="بحث بالرمز أو الاسم">
+    </div>
+    <div class="col-auto">
         <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-funnel"></i> تصفية</button>
     </div>
 </form>
@@ -94,3 +98,5 @@
         </tbody>
     </table>
 </div>
+
+@await Html.PartialAsync("_Pager")

@@ -21,12 +21,27 @@ public class CustomersController : Controller
     }
 
     [RequirePerm("Customers.View")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
-        var query = _db.Customers.AsNoTracking().AsQueryable();
-        query = query.Where(c => c.IsActive).OrderBy(c => c.Name);
+        var query = _db.Customers.AsNoTracking().Where(c => c.IsActive).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(c => c.Name.Contains(term)
+                || (c.Code != null && c.Code.Contains(term))
+                || (c.Phone != null && c.Phone.Contains(term)));
+        }
+        query = query.OrderBy(c => c.Name);
 
-        return View(await query.ToListAsync());
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var customers = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
+            .ToListAsync();
+        this.SetPager(page, total, customers.Count, search);
+
+        return View(customers);
     }
 
     [RequirePerm("Customers.Create")]

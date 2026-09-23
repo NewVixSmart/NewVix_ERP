@@ -21,6 +21,10 @@
                 <option value="2" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.Out)">صادر (خروج)</option>
             </select>
         </div>
+        <div class="col-md-3">
+            <label class="visually-hidden" for="stockSearch">بحث في الحركة</label>
+            <input type="search" name="search" id="stockSearch" value="@ViewBag.Search" class="form-control" placeholder="رقم المستند أو الصنف">
+        </div>
         <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> بحث</button></div>
     </form>
 </div></div>
@@ -54,6 +58,8 @@
         </tbody>
     </table>
 </div>
+
+@await Html.PartialAsync("_Pager")
 
 @if (!Model.Movements.Any())
 {

@@ -1,6 +1,8 @@
 @{
     var page = (int)(ViewBag.Page ?? 1);
     var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var totalCount = (long)(ViewBag.TotalCount ?? 0L);
+    var pageItemCount = (int)(ViewBag.PageItemCount ?? 0);
     var search = ViewBag.Search as string;
     var categoryId = ViewBag.CategoryId?.ToString();
     var itemId = ViewBag.ItemId?.ToString();
@@ -10,6 +12,7 @@
     var lowOnly = ViewBag.LowOnly?.ToString();
     var accountId = ViewBag.AccountId?.ToString();
     var source = ViewBag.Source?.ToString();
+    var active = ViewBag.ActiveFilter?.ToString();
     Func<string, string> href = (string p) =>
     {
         var qs = "?page=" + p;
@@ -31,11 +34,21 @@
             qs += "&accountId=" + Uri.EscapeDataString(accountId);
         if (!string.IsNullOrEmpty(source))
             qs += "&source=" + Uri.EscapeDataString(source);
+        if (!string.IsNullOrEmpty(active))
+            qs += "&active=" + Uri.EscapeDataString(active);
         return qs;
     };
     const int windowSize = 2;
     var windowStart = Math.Max(2, page - windowSize);
     var windowEnd = Math.Min(totalPages - 1, page + windowSize);
+    var resultFrom = totalCount == 0 ? 0 : (page - 1) * NewVixSmart.Web.Extensions.PagerExtensions.PageSize + 1;
+    var resultTo = resultFrom + pageItemCount - 1;
+}
+@if (totalCount > 0)
+{
+    <p class="text-center text-muted small mt-3 mb-0">
+        عرض @resultFrom–@resultTo من @totalCount
+    </p>
 }
 @if (totalPages > 1)
 {

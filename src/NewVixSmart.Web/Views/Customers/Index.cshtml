@@ -10,6 +10,18 @@
     }
 </div>
 
+<div class="mb-3">
+    <form method="get" class="row g-2">
+        <div class="col-auto flex-grow-1">
+            <label class="visually-hidden" for="custSearch">بحث في العملاء</label>
+            <input type="search" name="search" id="custSearch" value="@ViewBag.Search" class="form-control" placeholder="بحث بالاسم أو الكود أو التليفون">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search" aria-hidden="true"></i> بحث</button>
+        </div>
+    </form>
+</div>
+
 <div class="table-container">
     <table class="table table-hover mb-0">
         <thead><tr><th scope="col">الكود</th><th scope="col">اسم العميل</th><th scope="col">التليفون</th><th scope="col">العنوان</th><th scope="col">الرصيد</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
@@ -40,3 +52,5 @@
         </tbody>
     </table>
 </div>
+
+@await Html.PartialAsync("_Pager")

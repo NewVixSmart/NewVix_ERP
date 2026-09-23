@@ -22,15 +22,26 @@ public class AccountsController : Controller
     }
 
     [RequirePerm("ChartOfAccounts.View")]
-    public async Task<IActionResult> Index(GLAccountType? type, bool? active)
+    public async Task<IActionResult> Index(GLAccountType? type, bool? active, int page = 1, string? search = null)
     {
         var query = _db.GLAccounts.AsNoTracking().AsQueryable();
         if (type.HasValue)
             query = query.Where(a => a.Type == type.Value);
         if (active.HasValue)
             query = query.Where(a => a.IsActive == active.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(a => a.Code.Contains(term) || a.Name.Contains(term));
+        }
+        query = query.OrderBy(a => a.Code);
 
-        var accounts = await query.OrderBy(a => a.Code).ToListAsync();
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var accounts = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
+            .ToListAsync();
         ViewBag.TypeFilter = type;
         ViewBag.ActiveFilter = active;
         ViewBag.TypeList = new SelectList(Enum.GetValues<GLAccountType>(), "Value", "Value");
@@ -43,6 +54,7 @@ public class AccountsController : Controller
             .Select(g => new { AccountId = g.Key, Debit = g.Sum(l => l.Debit), Credit = g.Sum(l => l.Credit) })
             .ToListAsync();
         ViewBag.Balances = balances.ToDictionary(b => b.AccountId, b => (b.Debit, b.Credit));
+        this.SetPager(page, total, accounts.Count, search);
 
         return View(accounts);
     }

@@ -25,8 +25,14 @@ public class UsersController : Controller
     public async Task<IActionResult> Index()
     {
         var users = await _userManager.Users.AsNoTracking().ToListAsync();
+        var userIds = users.Select(u => u.Id).ToArray();
         var permsByUser = await _db.UserPermissions.AsNoTracking().GroupBy(p => p.UserId)
             .ToDictionaryAsync(g => g.Key, g => g.Count());
+        var rolesByUser = await _db.UserRoles.AsNoTracking()
+            .Where(ur => userIds.Contains(ur.UserId))
+            .Join(_db.Roles.AsNoTracking(), ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
+            .GroupBy(x => x.UserId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.Name!).ToList());
 
         var items = new List<UserListItemViewModel>();
         foreach (var user in users)
@@ -35,11 +41,11 @@ public class UsersController : Controller
             {
                 Id = user.Id,
                 UserName = user.UserName ?? user.Id,
-                Roles = (await _userManager.GetRolesAsync(user)).ToList(),
+                Roles = rolesByUser.TryGetValue(user.Id, out var roles) ? roles : new List<string>(),
                 PermissionCount = permsByUser.TryGetValue(user.Id, out var c) ? c : 0
             });
         }
-        return View(items.OrderByDescending(x => x.Roles.Contains("Admin")).ThenBy(x => x.UserName));
+        return View(items.OrderByDescending(x => x.Roles.Contains("Admin")).ThenBy(x => x.UserName).ToList());
     }
 
     public async Task<IActionResult> Create()

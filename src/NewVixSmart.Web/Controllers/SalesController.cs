@@ -22,10 +22,24 @@ public class SalesController : Controller
     }
 
 [RequirePerm("Sales.View")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
-        var query = _db.SaleInvoices.Include(s => s.Customer).AsNoTracking().OrderByDescending(s => s.InvoiceDate);
-        var invoices = await query.ToListAsync();
+        var query = _db.SaleInvoices.Include(s => s.Customer).AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(s => s.InvoiceNumber.Contains(term) || s.Customer.Name.Contains(term));
+        }
+        query = query.OrderByDescending(s => s.InvoiceDate).ThenByDescending(s => s.Id);
+
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var invoices = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
+            .ToListAsync();
+        this.SetPager(page, total, invoices.Count, search);
+
         return View(invoices);
     }
 

@@ -23,24 +23,38 @@ public class StockController : Controller
     }
 
     [RequirePerm("Stock.View")]
-    public async Task<IActionResult> Index(int? itemId, MovementType? type)
+    public async Task<IActionResult> Index(int? itemId, MovementType? type, int page = 1, string? search = null)
     {
         var query = _db.StockMovements.Include(s => s.Item).AsNoTracking().AsQueryable();
 
         if (itemId.HasValue) query = query.Where(s => s.ItemId == itemId.Value);
         if (type.HasValue && Enum.IsDefined(typeof(MovementType), type.Value))
             query = query.Where(s => s.Type == type.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(s => (s.DocumentNumber != null && s.DocumentNumber.Contains(term)) || s.Item.Name.Contains(term));
+        }
+        query = query.OrderByDescending(s => s.MovementDate);
+
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var movements = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
+            .ToListAsync();
 
         ViewBag.ItemId = itemId;
         ViewBag.Type = type?.ToString();
 
         var vm = new StockIndexViewModel
         {
-            Movements = await query.OrderByDescending(s => s.MovementDate).ToListAsync(),
+            Movements = movements,
             Items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync(),
             ItemId = itemId,
             Type = type
         };
+        this.SetPager(page, total, movements.Count, search);
         return View(vm);
     }
 

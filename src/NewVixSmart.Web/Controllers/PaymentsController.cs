@@ -23,14 +23,29 @@ public class PaymentsController : Controller
     }
 
     [RequirePerm("Payments.View")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
         var query = _db.Payments
             .Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
             .AsNoTracking()
-            .OrderByDescending(p => p.PaymentDate);
+            .AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(p => p.ReceiptNumber.Contains(term)
+                || (p.Customer != null && p.Customer.Name.Contains(term))
+                || (p.Supplier != null && p.Supplier.Name.Contains(term)));
+        }
+        query = query.OrderByDescending(p => p.PaymentDate).ThenByDescending(p => p.Id);
 
-        var payments = await query.ToListAsync();
+        var total = await query.CountAsync();
+        page = PagerExtensions.NormalizePage(page, total);
+        var payments = await query
+            .Skip((page - 1) * PagerExtensions.PageSize)
+            .Take(PagerExtensions.PageSize)
+            .ToListAsync();
+        this.SetPager(page, total, payments.Count, search);
+
         return View(payments);
     }
 
