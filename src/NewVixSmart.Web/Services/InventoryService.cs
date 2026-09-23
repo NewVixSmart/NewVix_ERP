@@ -199,8 +199,8 @@ public sealed class InventoryService : IInventoryService
                     movementDate: delivery.DeliveryDate, user);
                 if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
 
-                var (consumedQtyCost, consumedCountCost) = await ConsumeFifoLayersAsync(stockLines, delivery.DeliveryDate);
-                var costTotal = consumedQtyCost + consumedCountCost;
+                var consumed = await ConsumeFifoLayersAsync(stockLines, delivery.DeliveryDate);
+                var costTotal = consumed.DominantTotal;
 
                 decimal value = 0m;
                 foreach (var item in valid)
@@ -562,7 +562,7 @@ public sealed class InventoryService : IInventoryService
                 if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
 
                 var consumed = await ConsumeFifoLayersAsync(ToReturnStockLines(valid), purchaseReturn.ReturnDate);
-                var costTotal = consumed.CountCost + consumed.QtyCost;
+                var costTotal = consumed.DominantTotal;
 
                 await _db.SaveChangesAsync();
 
@@ -742,13 +742,14 @@ public sealed class InventoryService : IInventoryService
             if (tempQty <= 0 && tempCount <= 0) break;
         }
 
-        return new ConsumedCostResult(totalQtyCost, totalCountCost);
+        return new ConsumedCostResult(totalQtyCost, totalCountCost, neededQty > 0 ? totalQtyCost : totalCountCost);
     }
 
     private async Task<ConsumedCostResult> ConsumeFifoLayersAsync(IReadOnlyCollection<StockLine> lines, DateTime movementDate)
     {
         var qtyCost = 0m;
         var countCost = 0m;
+        var dominantTotal = 0m;
 
         var grouped = lines
             .GroupBy(l => l.ItemId)
@@ -766,6 +767,9 @@ public sealed class InventoryService : IInventoryService
                 .OrderBy(sl => sl.DateReceived).ThenBy(sl => sl.Id)
                 .ToListAsync();
 
+            var lineQtyCost = 0m;
+            var lineCountCost = 0m;
+
             if (line.Quantity > 0)
             {
                 var remaining = line.Quantity;
@@ -774,12 +778,12 @@ public sealed class InventoryService : IInventoryService
                     if (remaining <= 0) break;
                     if (layer.RemainingQty <= 0) continue;
                     var take = Math.Min(remaining, layer.RemainingQty);
-                    qtyCost += take * layer.UnitCost;
+                    lineQtyCost += take * layer.UnitCost;
                     layer.RemainingQty -= take;
                     remaining -= take;
                 }
                 if (remaining > 0)
-                    qtyCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
+                    lineQtyCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
             }
 
             if (line.Count > 0)
@@ -790,23 +794,27 @@ public sealed class InventoryService : IInventoryService
                     if (remaining <= 0) break;
                     if (layer.RemainingCount <= 0) continue;
                     var take = Math.Min(remaining, layer.RemainingCount);
-                    countCost += take * layer.CountCost;
+                    lineCountCost += take * layer.CountCost;
                     layer.RemainingCount -= take;
                     remaining -= take;
                 }
                 if (remaining > 0)
-                    countCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
+                    lineCountCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
             }
+
+            qtyCost += lineQtyCost;
+            countCost += lineCountCost;
+            dominantTotal += line.Quantity > 0 ? lineQtyCost : lineCountCost;
         }
 
-        return new ConsumedCostResult(qtyCost, countCost);
+        return new ConsumedCostResult(qtyCost, countCost, dominantTotal);
     }
 
     private async Task<ConsumedCostResult> ConsumeAdjustmentLayersAsync(int itemId, decimal qtyToRemove, decimal countToRemove)
     {
         var qtyCost = 0m;
         var countCost = 0m;
-        if (qtyToRemove <= 0 && countToRemove <= 0) return new ConsumedCostResult(0, 0);
+        if (qtyToRemove <= 0 && countToRemove <= 0) return new ConsumedCostResult(0, 0, 0);
 
         var layers = await _db.StockLayers
             .Where(sl => sl.ItemId == itemId && (sl.RemainingQty > 0 || sl.RemainingCount > 0))
@@ -834,7 +842,7 @@ public sealed class InventoryService : IInventoryService
             if (q <= 0 && c <= 0) break;
         }
 
-        return new ConsumedCostResult(qtyCost, countCost);
+        return new ConsumedCostResult(qtyCost, countCost, qtyCost > 0 ? qtyCost : countCost);
     }
 
     private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived, decimal? exchangeRate)
@@ -869,6 +877,7 @@ public sealed class InventoryService : IInventoryService
 
             decimal remainingQty = item.Quantity;
             decimal remainingCount = item.Count;
+            bool quantityDriven = item.Quantity > 0;
 
             foreach (var layer in layers)
             {
@@ -879,7 +888,7 @@ public sealed class InventoryService : IInventoryService
                     {
                         var take = Math.Min(remainingQty, capacity);
                         layer.RemainingQty += take;
-                        totalCost += take * layer.UnitCost;
+                        if (quantityDriven) totalCost += take * layer.UnitCost;
                         remainingQty -= take;
                     }
                 }
@@ -890,7 +899,7 @@ public sealed class InventoryService : IInventoryService
                     {
                         var take = Math.Min(remainingCount, capacity);
                         layer.RemainingCount += take;
-                        totalCost += take * layer.CountCost;
+                        if (!quantityDriven) totalCost += take * layer.CountCost;
                         remainingCount -= take;
                     }
                 }
@@ -902,7 +911,7 @@ public sealed class InventoryService : IInventoryService
                 var price = itemsById.TryGetValue(item.ItemId, out var it)
                     ? it.PurchasePrice
                     : decimal.Round(item.UnitPrice * (exchangeRate ?? 1m), 2);
-                totalCost += remainingQty * price + remainingCount * price;
+                totalCost += (quantityDriven ? remainingQty : remainingCount) * price;
                 CreateOrTopUpLayer(item.ItemId, remainingQty, remainingCount, price, price, returnDate);
             }
         }

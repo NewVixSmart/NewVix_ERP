@@ -114,6 +114,58 @@ public sealed class InventoryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaleDelivery_DualDimensionLine_ValuesQuantityOnly_NotQuantityPlusCount()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+
+        // Distinct per-dimension costs: a count unit (80) costs more than a quantity unit (40).
+        // Quantity-primary valuation must price the quantity dimension only (H-2/M-1).
+        db.StockLayers.Add(new StockLayer
+        {
+            ItemId = itemId, Qty = 20, Count = 0, UnitCost = 40m, CountCost = 40m,
+            RemainingQty = 20, RemainingCount = 0, DateReceived = DateTime.Today.AddDays(-5), CreatedAt = DateTime.UtcNow
+        });
+        db.StockLayers.Add(new StockLayer
+        {
+            ItemId = itemId, Qty = 0, Count = 20, UnitCost = 0m, CountCost = 80m,
+            RemainingQty = 0, RemainingCount = 20, DateReceived = DateTime.Today.AddDays(-5), CreatedAt = DateTime.UtcNow
+        });
+        db.GLAccounts.Add(new GLAccount { Code = "1200", Name = "المدينون", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true });
+        db.GLAccounts.Add(new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true });
+        db.GLAccounts.Add(new GLAccount { Code = "1300", Name = "المخزون", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true });
+        db.GLAccounts.Add(new GLAccount { Code = "5000", Name = "تكلفة البضاعة المباعة", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
+        await db.SaveChangesAsync();
+
+        var svc = new InventoryService(db, new AccountingService(db));
+        var invoice = new SaleInvoice { CustomerId = custId };
+        var lines = new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 100 } };
+        var (ok, _) = await svc.CreateSaleAsync(invoice, lines, "test");
+        Assert.True(ok);
+        Assert.Equal(500, invoice.TotalAmount); // Total = 5 × 100, count is display-only
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (dok, derr) = await svc.CreateDeliveryOrderAsync(delivery,
+            new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 5, Count = 5 } }, "test");
+        Assert.True(dok, derr);
+        var (ddok, dderr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(ddok, dderr);
+
+        // Physical relief is both-dimensional (each dimension stays consistent with its layer),
+        // but the COGS/GL amount is quantity-driven: 5 × 40 = 200, never 200 + 5 × 80.
+        Assert.Equal(15m, db.StockLayers.Single(l => l.Qty > 0).RemainingQty);
+        Assert.Equal(15m, db.StockLayers.Single(l => l.Count > 0).RemainingCount);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines)
+            .SingleAsync(e => e.Source == JournalSource.SaleDeliveryOrder);
+        var codeById = (await db.GLAccounts.AsNoTracking().ToListAsync()).ToDictionary(a => a.Id, a => a.Code);
+        var cogsDebit = entry.Lines.Single(l => l.Credit == 0 && codeById[l.AccountId] == "5000");
+        var cogsCredit = entry.Lines.Single(l => l.Debit == 0 && codeById[l.AccountId] == "1300");
+        Assert.Equal(5 * 40m, cogsDebit.Debit);
+        Assert.Equal(5 * 40m, cogsCredit.Credit);
+    }
+
+    [Fact]
     public async Task CreateSale_DoesNotOversell()
     {
         using var db = CreateContext();
