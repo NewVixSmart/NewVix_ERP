@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using NewVixSmart.Web.Api.Dtos;
+using NewVixSmart.Web.Infrastructure;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;

@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using Vix.ServiceDefaults;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Infrastructure;
 using NewVixSmart.Web.Services;
 using System.Net;
 using System.Security.Claims;
@@ -367,11 +368,3 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
-
-public static class TokenStampChecks
-{
-    public const string StampClaimType = "stamp";
-
-    public static bool StampMatches(string? tokenStamp, string currentStamp) =>
-        string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal);
-}
