@@ -74,6 +74,8 @@ public class StockController : Controller
         ViewBag.CategoryId = categoryId;
         ViewBag.LowOnly = lowOnly;
 
+        var baseQuery = _db.Items.AsNoTracking().Where(i => i.IsActive);
+
         var vm = new StockReportViewModel
         {
             Items = await query.OrderBy(i => i.Name).ToListAsync(),
@@ -82,9 +84,9 @@ public class StockController : Controller
             LowOnly = lowOnly,
             TotalItems = total,
             LowItems = lowOnly ? total : await query.CountAsync(i => (i.CurrentCount <= i.MinCount && i.MinCount > 0) || (i.CurrentQuantity <= i.MinQuantity && i.MinQuantity > 0)),
-            TotalCount = await query.SumAsync(i => i.CurrentCount),
-            TotalQuantity = await query.SumAsync(i => i.CurrentQuantity),
-            TotalValue = await query.SumAsync(i => (i.QuantityUnitId.HasValue || i.CurrentQuantity > 0)
+            TotalCount = await baseQuery.SumAsync(i => i.CurrentCount),
+            TotalQuantity = await baseQuery.SumAsync(i => i.CurrentQuantity),
+            TotalValue = await baseQuery.SumAsync(i => (i.QuantityUnitId.HasValue || i.CurrentQuantity > 0)
                 ? i.CurrentQuantity * i.PurchasePrice
                 : i.CurrentCount * i.PurchasePrice)
         };

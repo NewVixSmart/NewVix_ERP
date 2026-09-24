@@ -270,6 +270,78 @@ var svc = new ReportService(db, new FinancialReportService(db));
     }
 
     [Fact]
+    public async Task Aging_StandaloneReturn_CreditRemainder_IsSurfacedNotDropped()
+    {
+        using var db = CreateContext();
+        var customer = new Customer { Name = "عميل دائن" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
+        db.SaleReturns.Add(new SaleReturn
+        {
+            ReturnNumber = "SR-CR1",
+            CustomerId = customer.Id,
+            Status = ReturnStatus.Posted,
+            TotalAmount = 120m,
+            ReturnDate = DateTime.Today.AddDays(-3)
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+
+        var row = Assert.Single(vm.Receivables);
+        Assert.Equal(-120m, row.Total);
+        Assert.Equal(-120m, row.Days1To30);
+        Assert.Equal(-120m, vm.ArTotal);
+    }
+
+    [Fact]
+    public async Task Aging_ZeroNetPosition_Excluded_ButPureCreditRemainderSurfaced()
+    {
+        using var db = CreateContext();
+        var customer = new Customer { Name = "عميل صفري" };
+        var supplier = new Supplier { Name = "مورد دائن" };
+        db.Customers.Add(customer);
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        var inv = SaleInvoice(customer.Id, "S-ZERO", today.AddDays(-10), 100, 0, due: today.AddDays(-5));
+        db.SaleInvoices.Add(inv);
+        await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, inv.Id, customer.Id, "DLV-S-ZERO");
+
+        db.SaleReturns.Add(new SaleReturn
+        {
+            ReturnNumber = "SR-Z",
+            CustomerId = customer.Id,
+            SaleInvoiceId = inv.Id,
+            Status = ReturnStatus.Posted,
+            TotalAmount = 100m,
+            ReturnDate = today.AddDays(-2)
+        });
+        db.PurchaseReturns.Add(new PurchaseReturn
+        {
+            ReturnNumber = "PR-CR",
+            SupplierId = supplier.Id,
+            Status = ReturnStatus.Posted,
+            TotalAmount = 60m,
+            ReturnDate = today.AddDays(-4)
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+
+        Assert.Empty(vm.Receivables);
+        var payable = Assert.Single(vm.Payables);
+        Assert.Equal("مورد دائن", payable.PartyName);
+        Assert.Equal(-60m, payable.Total);
+        Assert.Equal(-60m, vm.ApTotal);
+    }
+
+    [Fact]
     public async Task DashboardReport_Overdue_UsesInvoiceDate_WhenNoDueDate()
     {
         using var db = CreateContext();

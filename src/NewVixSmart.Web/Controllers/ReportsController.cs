@@ -177,8 +177,13 @@ public class ReportsController : Controller
         var fromDate = from.Value.Date;
         var toDate = to.Value.Date;
 
-        var bytes = await _export.SalesToCsv(fromDate, toDate);
-        return File(bytes, "text/csv; charset=utf-8", $"sales_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
+        var result = await _export.SalesToCsv(fromDate, toDate);
+        if (result.Truncated)
+        {
+            TempData["Error"] = $"عدد فواتير البيع في هذا النطاق يتجاوز حد التصدير ({ReportExportService.MaxExportRows:N0} سجل)؛ ضيّق نطاق التاريخ ثم أعد التصدير.";
+            return RedirectToAction(nameof(Sales), new { from = fromDate, to = toDate });
+        }
+        return File(result.Bytes, "text/csv; charset=utf-8", $"sales_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
     }
 
     [HttpGet]
@@ -191,8 +196,13 @@ public class ReportsController : Controller
         var fromDate = from.Value.Date;
         var toDate = to.Value.Date;
 
-        var bytes = await _export.PurchasesToCsv(fromDate, toDate);
-        return File(bytes, "text/csv; charset=utf-8", $"purchases_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
+        var result = await _export.PurchasesToCsv(fromDate, toDate);
+        if (result.Truncated)
+        {
+            TempData["Error"] = $"عدد فواتير الشراء في هذا النطاق يتجاوز حد التصدير ({ReportExportService.MaxExportRows:N0} سجل)؛ ضيّق نطاق التاريخ ثم أعد التصدير.";
+            return RedirectToAction(nameof(Purchases), new { from = fromDate, to = toDate });
+        }
+        return File(result.Bytes, "text/csv; charset=utf-8", $"purchases_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
     }
 
     [HttpGet]
@@ -205,8 +215,13 @@ public class ReportsController : Controller
         var fromDate = from.Value.Date;
         var toDate = to.Value.Date;
 
-        var bytes = await _export.PaymentsToCsv(fromDate, toDate);
-        return File(bytes, "text/csv; charset=utf-8", $"payments_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
+        var result = await _export.PaymentsToCsv(fromDate, toDate);
+        if (result.Truncated)
+        {
+            TempData["Error"] = $"عدد الحركات النقدية في هذا النطاق يتجاوز حد التصدير ({ReportExportService.MaxExportRows:N0} سجل)؛ ضيّق نطاق التاريخ ثم أعد التصدير.";
+            return RedirectToAction(nameof(Payments), new { from = fromDate, to = toDate });
+        }
+        return File(result.Bytes, "text/csv; charset=utf-8", $"payments_{fromDate:yyyyMMdd}-{toDate:yyyyMMdd}.csv");
     }
 
     [HttpGet]

@@ -6,21 +6,28 @@ using NewVixSmart.Web.Models.Accounting;
 
 namespace NewVixSmart.Web.Services;
 
+public sealed record CsvExportResult(byte[] Bytes, bool Truncated, int TotalRows);
+
 public class ReportExportService
 {
-    private const int MaxExportRows = 50_000;
+    public const int MaxExportRows = 50_000;
     private readonly AppDbContext _db;
     public ReportExportService(AppDbContext db) => _db = db;
 
-    public async Task<byte[]> SalesToCsv(DateTime from, DateTime to)
+    public async Task<CsvExportResult> SalesToCsv(DateTime from, DateTime to, int maxRows = MaxExportRows)
     {
+        var total = await _db.SaleInvoices.AsNoTracking()
+            .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
+            .CountAsync();
+        var truncated = total > maxRows;
+
         var invoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
             .Include(s => s.Currency)
             .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
             .OrderByDescending(s => s.InvoiceDate)
-            .Take(MaxExportRows)
+            .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -41,18 +48,23 @@ public class ReportExportService
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        return bytes;
+        return new CsvExportResult(bytes, truncated, total);
     }
 
-    public async Task<byte[]> PurchasesToCsv(DateTime from, DateTime to)
+    public async Task<CsvExportResult> PurchasesToCsv(DateTime from, DateTime to, int maxRows = MaxExportRows)
     {
+        var total = await _db.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
+            .CountAsync();
+        var truncated = total > maxRows;
+
         var invoices = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
             .Include(p => p.Currency)
             .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
             .OrderByDescending(p => p.InvoiceDate)
-            .Take(MaxExportRows)
+            .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -73,11 +85,16 @@ public class ReportExportService
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        return bytes;
+        return new CsvExportResult(bytes, truncated, total);
     }
 
-    public async Task<byte[]> PaymentsToCsv(DateTime from, DateTime to)
+    public async Task<CsvExportResult> PaymentsToCsv(DateTime from, DateTime to, int maxRows = MaxExportRows)
     {
+        var total = await _db.Payments.AsNoTracking()
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
+            .CountAsync();
+        var truncated = total > maxRows;
+
         var payments = await _db.Payments
             .AsNoTracking()
             .Include(p => p.Customer)
@@ -85,7 +102,7 @@ public class ReportExportService
             .Include(p => p.Currency)
             .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
             .OrderByDescending(p => p.PaymentDate)
-            .Take(MaxExportRows)
+            .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
@@ -110,7 +127,7 @@ public class ReportExportService
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
-        return bytes;
+        return new CsvExportResult(bytes, truncated, total);
     }
 
     private static string CsvField(string value)

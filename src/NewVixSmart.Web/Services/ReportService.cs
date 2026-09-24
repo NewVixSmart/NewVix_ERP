@@ -721,7 +721,7 @@ public class ReportService : IReportService
         vm.Receivables = receivableLines
             .GroupBy(x => x.PartyId)
             .Select(g => BuildAgingRow(g.First().Name, g.Select(x => (x.Due, x.Amount)), today))
-            .Where(r => r.Total > 0.005m)
+            .Where(r => Math.Abs(r.Total) > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
 
@@ -782,7 +782,7 @@ public class ReportService : IReportService
         vm.Payables = payableLines
             .GroupBy(x => x.PartyId)
             .Select(g => BuildAgingRow(g.First().Name, g.Select(x => (x.Due, x.Amount)), today))
-            .Where(r => r.Total > 0.005m)
+            .Where(r => Math.Abs(r.Total) > 0.005m)
             .OrderByDescending(r => r.Total)
             .ToList();
 

@@ -258,7 +258,7 @@ public sealed class ImportExportCenterTests : IDisposable
         await db.SaveChangesAsync();
 
         var svc = new ReportExportService(db);
-        var salesCsv = Encoding.UTF8.GetString(await svc.SalesToCsv(DateTime.Today.AddDays(-1), DateTime.Today));
+        var salesCsv = Encoding.UTF8.GetString((await svc.SalesToCsv(DateTime.Today.AddDays(-1), DateTime.Today)).Bytes);
         Assert.DoesNotContain("\r\n=HYPERLINK(", salesCsv);
         Assert.Contains("'\n=HYPERLINK", salesCsv);
 
@@ -274,7 +274,7 @@ public sealed class ImportExportCenterTests : IDisposable
         });
         await db.SaveChangesAsync();
 
-        var paymentsCsv = Encoding.UTF8.GetString(await svc.PaymentsToCsv(DateTime.Today.AddDays(-1), DateTime.Today));
+        var paymentsCsv = Encoding.UTF8.GetString((await svc.PaymentsToCsv(DateTime.Today.AddDays(-1), DateTime.Today)).Bytes);
         Assert.DoesNotContain("\r\n=HYPERLINK(", paymentsCsv);
         Assert.DoesNotContain("\r\n=cmd", paymentsCsv);
     }
