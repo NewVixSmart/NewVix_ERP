@@ -38,7 +38,7 @@ public class ReportExportService
             sb.AppendLine(string.Join(",",
                 CsvField(i.InvoiceNumber),
                 CsvField(i.Customer?.Name ?? "—"),
-                CsvField(i.InvoiceDate.ToString("dd/MM/yyyy")),
+                CsvField(i.InvoiceDate.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
@@ -75,7 +75,7 @@ public class ReportExportService
             sb.AppendLine(string.Join(",",
                 CsvField(i.InvoiceNumber),
                 CsvField(i.Supplier?.Name ?? "—"),
-                CsvField(i.InvoiceDate.ToString("dd/MM/yyyy")),
+                CsvField(i.InvoiceDate.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
@@ -123,7 +123,7 @@ public class ReportExportService
                 CsvField(p.Currency?.Code ?? "—"),
                 CsvField(p.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—"),
                 CsvField(methodLabel),
-                CsvField(p.PaymentDate.ToString("dd/MM/yyyy"))));
+                CsvField(p.PaymentDate.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture))));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();

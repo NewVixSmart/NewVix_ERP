@@ -286,7 +286,7 @@ public class ExportCenterService : IExportCenterService
 
         var rows = branches.Select(b => new object?[]
         {
-            b.Code, b.Name, b.Address ?? "", b.Phone ?? "", b.IsActive ? "نشط" : "معطل", b.CreatedAt.ToString("dd/MM/yyyy")
+            b.Code, b.Name, b.Address ?? "", b.Phone ?? "", b.IsActive ? "نشط" : "معطل", b.CreatedAt.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
         });
 
         return BuildWorkbook("الفروع", $"تصدير الفروع — {DateTime.Today:dd/MM/yyyy}",
@@ -303,7 +303,7 @@ public class ExportCenterService : IExportCenterService
 
         var rows = warehouses.Select(w => new object?[]
         {
-            w.Code, w.Name, w.IsActive ? "نشط" : "معطل", w.CreatedAt.ToString("dd/MM/yyyy")
+            w.Code, w.Name, w.IsActive ? "نشط" : "معطل", w.CreatedAt.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
         });
 
         return BuildWorkbook("المخازن", $"تصدير المخازن — {DateTime.Today:dd/MM/yyyy}",
@@ -333,7 +333,7 @@ public class ExportCenterService : IExportCenterService
             p.ExchangeRate.HasValue ? (object?)(double)p.ExchangeRate.Value : null,
             p.Method.GetDisplayName(),
             p.ReferenceNumber ?? "",
-            p.PaymentDate.ToString("dd/MM/yyyy"),
+            p.PaymentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             p.Notes ?? ""
         });
 
@@ -359,7 +359,7 @@ public class ExportCenterService : IExportCenterService
         var invoiceRows = invoices.SelectMany(s => s.Items.Select(i => new object?[]
         {
             s.InvoiceNumber, s.Customer?.Name ?? "",
-            s.InvoiceDate.ToString("dd/MM/yyyy"), s.Currency?.Code ?? "",
+            s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), s.Currency?.Code ?? "",
             s.ExchangeRate.HasValue ? (object?)(double)s.ExchangeRate.Value : null,
             s.PaymentTerms.GetDisplayName(),
             (double)s.Discount, (double)(s.Discount2 ?? 0), (double)(s.Discount3 ?? 0),
@@ -399,7 +399,7 @@ public class ExportCenterService : IExportCenterService
         var invoiceRows = invoices.SelectMany(p => p.Items.Select(i => new object?[]
         {
             p.InvoiceNumber, p.Supplier?.Name ?? "",
-            p.InvoiceDate.ToString("dd/MM/yyyy"), p.Currency?.Code ?? "",
+            p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), p.Currency?.Code ?? "",
             p.ExchangeRate.HasValue ? (object?)(double)p.ExchangeRate.Value : null,
             p.PaymentTerms.GetDisplayName(),
             (double)p.Discount, (double)(p.Discount2 ?? 0), (double)(p.Discount3 ?? 0),
@@ -439,7 +439,7 @@ public class ExportCenterService : IExportCenterService
         var returnRows = returns.SelectMany(r => r.Items.Select(i => new object?[]
         {
             r.ReturnNumber, r.Customer?.Name ?? "", r.SaleInvoice?.InvoiceNumber ?? "",
-            r.ReturnDate.ToString("dd/MM/yyyy"), r.Currency?.Code ?? "",
+            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), r.Currency?.Code ?? "",
             r.ExchangeRate.HasValue ? (object?)(double)r.ExchangeRate.Value : null,
             r.Reason ?? "",
             i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitPrice, (double)i.Total,
@@ -475,7 +475,7 @@ public class ExportCenterService : IExportCenterService
         var returnRows = returns.SelectMany(r => r.Items.Select(i => new object?[]
         {
             r.ReturnNumber, r.Supplier?.Name ?? "", r.PurchaseInvoice?.InvoiceNumber ?? "",
-            r.ReturnDate.ToString("dd/MM/yyyy"), r.Currency?.Code ?? "",
+            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), r.Currency?.Code ?? "",
             r.ExchangeRate.HasValue ? (object?)(double)r.ExchangeRate.Value : null,
             r.Reason ?? "",
             i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitPrice, (double)i.Total,
@@ -518,8 +518,8 @@ public class ExportCenterService : IExportCenterService
 
         var quoteRows = quotes.Select(q => new object?[]
         {
-            q.QuoteNumber, q.Customer?.Name ?? "", q.QuoteDate.ToString("dd/MM/yyyy"),
-            q.ValidUntil?.ToString("dd/MM/yyyy") ?? "", q.Currency?.Code ?? "",
+            q.QuoteNumber, q.Customer?.Name ?? "", q.QuoteDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
+            q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", q.Currency?.Code ?? "",
             (double)q.TotalAmount, (double)q.Discount, (double)q.Tax, (double)q.NetAmount,
             q.Status.GetDisplayName(), q.Notes ?? ""
         });
@@ -537,7 +537,7 @@ public class ExportCenterService : IExportCenterService
 
         var sqRows = supplierQuotes.Select(q => new object?[]
         {
-            q.Supplier.Name, q.Item.Name, (double)q.UnitPrice, q.EffectiveDate.ToString("dd/MM/yyyy"), q.Notes ?? ""
+            q.Supplier.Name, q.Item.Name, (double)q.UnitPrice, q.EffectiveDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), q.Notes ?? ""
         });
         WriteSheet(wb, "عروض الموردين", $"عروض أسعار الموردين — {DateTime.Today:dd/MM/yyyy}",
             new List<string> { "المورد", "الصنف", "سعر الوحدة", "تاريخ السعر", "ملاحظات" },
@@ -559,7 +559,7 @@ public class ExportCenterService : IExportCenterService
 
         var rows = movements.Select(m => new object?[]
         {
-            m.MovementDate.ToString("dd/MM/yyyy"), m.Item.Name, m.Type.GetDisplayName(),
+            m.MovementDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), m.Item.Name, m.Type.GetDisplayName(),
             (double)m.Quantity, (double)m.Count,
             (double)m.BalanceBefore, (double)m.BalanceAfter, (double)m.CountBefore, (double)m.CountAfter,
             m.DocumentNumber ?? "", m.DocumentType.HasValue ? m.DocumentType.Value.GetDisplayName() : "",
@@ -588,7 +588,7 @@ public class ExportCenterService : IExportCenterService
         var itemRows = transfers.SelectMany(t => t.Items.Select(i => new object?[]
         {
             t.TransferNumber, t.SourceWarehouse.Name, t.TargetWarehouse.Name,
-            t.TransferDate.ToString("dd/MM/yyyy"), t.Notes ?? "",
+            t.TransferDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), t.Notes ?? "",
             i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitCost,
             (double)(i.Quantity > 0 ? i.Quantity : i.Count) * (double)i.UnitCost
         }));
@@ -613,7 +613,7 @@ public class ExportCenterService : IExportCenterService
         var rows = adjustments.Select(a => new object?[]
         {
             a.ReferenceNumber, a.Item.Name, (double)a.NewQuantity, (double)a.NewCount,
-            a.AdjustmentDate.ToString("dd/MM/yyyy"), a.Reason ?? "", a.CreatedBy ?? ""
+            a.AdjustmentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), a.Reason ?? "", a.CreatedBy ?? ""
         });
 
         return BuildWorkbook("تسويات المخزون", $"تصدير تسويات المخزون — {DateTime.Today:dd/MM/yyyy}",
@@ -634,7 +634,7 @@ public class ExportCenterService : IExportCenterService
 
         var lineRows = entries.SelectMany(j => j.Lines.Select(l => new object?[]
         {
-            j.EntryNumber, j.Date.ToString("dd/MM/yyyy"), j.Description, j.Source.GetDisplayName(),
+            j.EntryNumber, j.Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), j.Description, j.Source.GetDisplayName(),
             j.SourceId, j.IsPosted ? "مرحّل" : "مسودة", j.CreatedBy ?? "",
             l.Account?.Code ?? "", l.Account?.Name ?? "", (double)l.Debit, (double)l.Credit, l.Description ?? ""
         }));
@@ -657,7 +657,7 @@ public class ExportCenterService : IExportCenterService
         var rows = periods.Select(p => new object?[]
         {
             p.Year, p.Name ?? "", p.IsClosed ? "مغلقة" : "مفتوحة", p.ClosedById ?? "",
-            p.ClosedAt?.ToString("dd/MM/yyyy") ?? ""
+            p.ClosedAt?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""
         });
 
         return BuildWorkbook("السنوات المالية", $"تصدير السنوات المالية — {DateTime.Today:dd/MM/yyyy}",
@@ -684,7 +684,7 @@ public class ExportCenterService : IExportCenterService
 
         var yearRows = years.Select(b => new object?[]
         {
-            b.Year, b.IsActive ? "نشطة" : "معطلة", b.CreatedBy ?? "", b.CreatedAt.ToString("dd/MM/yyyy")
+            b.Year, b.IsActive ? "نشطة" : "معطلة", b.CreatedBy ?? "", b.CreatedAt.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
         });
         WriteSheet(wb, "سنوات الميزانية", $"تصدير سنوات الميزانية — {DateTime.Today:dd/MM/yyyy}",
             new List<string> { "السنة", "الحالة", "أنشئ بواسطة", "تاريخ الإنشاء" },
@@ -718,8 +718,8 @@ public class ExportCenterService : IExportCenterService
 
         var orderRows = orders.Select(o => new object?[]
         {
-            o.OrderNumber, o.Supplier.Name, o.OrderDate.ToString("dd/MM/yyyy"),
-            o.ExpectedDate?.ToString("dd/MM/yyyy") ?? "", o.Status.GetDisplayName(), o.Notes ?? ""
+            o.OrderNumber, o.Supplier.Name, o.OrderDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
+            o.ExpectedDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", o.Status.GetDisplayName(), o.Notes ?? ""
         });
         WriteSheet(wb, "أوامر الشراء", $"تصدير أوامر الشراء — {DateTime.Today:dd/MM/yyyy}",
             new List<string> { "رقم الأمر", "المورد", "التاريخ", "التاريخ المتوقع", "الحالة", "ملاحظات" },
@@ -754,8 +754,8 @@ public class ExportCenterService : IExportCenterService
 
         var orderRows = orders.Select(o => new object?[]
         {
-            o.OrderNumber, o.Customer.Name, o.OrderDate.ToString("dd/MM/yyyy"),
-            o.ExpectedDate?.ToString("dd/MM/yyyy") ?? "", o.Status.GetDisplayName(),
+            o.OrderNumber, o.Customer.Name, o.OrderDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
+            o.ExpectedDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", o.Status.GetDisplayName(),
             o.SaleQuoteId?.ToString() ?? "", o.Notes ?? ""
         });
         WriteSheet(wb, "أوامر البيع", $"تصدير أوامر البيع — {DateTime.Today:dd/MM/yyyy}",
@@ -793,9 +793,9 @@ public class ExportCenterService : IExportCenterService
         var deliveryRows = deliveries.Select(d => new object?[]
         {
             d.DeliveryNumber, d.SaleInvoice?.InvoiceNumber ?? "", d.Customer?.Name ?? "",
-            d.DeliveryDate.ToString("dd/MM/yyyy"), d.Status.GetDisplayName(),
+            d.DeliveryDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), d.Status.GetDisplayName(),
             d.Carrier ?? "", d.TrackingNumber ?? "", d.Notes ?? "",
-            d.DeliveredBy ?? "", d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? ""
+            d.DeliveredBy ?? "", d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""
         });
         WriteSheet(wb, "أذونات التسليم", $"تصدير أذونات التسليم — {DateTime.Today:dd/MM/yyyy}",
             new List<string> { "رقم الإذن", "فاتورة البيع", "العميل", "تاريخ التسليم", "الحالة", "الناقل", "رقم التتبع", "ملاحظات", "رحّلها", "تاريخ الترحيل" },
@@ -1031,7 +1031,7 @@ public class ExportCenterService : IExportCenterService
         {
             sb.AppendLine(string.Join(",",
                 CsvField(b.Code), CsvField(b.Name), CsvField(b.Address ?? ""), CsvField(b.Phone ?? ""),
-                CsvField(b.IsActive ? "نشط" : "معطل"), CsvField(b.CreatedAt.ToString("dd/MM/yyyy"))));
+                CsvField(b.IsActive ? "نشط" : "معطل"), CsvField(b.CreatedAt.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture))));
         }
         return CsvBytes(sb);
     }
@@ -1050,7 +1050,7 @@ public class ExportCenterService : IExportCenterService
         {
             sb.AppendLine(string.Join(",",
                 CsvField(w.Code), CsvField(w.Name),
-                CsvField(w.IsActive ? "نشط" : "معطل"), CsvField(w.CreatedAt.ToString("dd/MM/yyyy"))));
+                CsvField(w.IsActive ? "نشط" : "معطل"), CsvField(w.CreatedAt.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture))));
         }
         return CsvBytes(sb);
     }
@@ -1081,7 +1081,7 @@ public class ExportCenterService : IExportCenterService
                 p.ExchangeRate.HasValue ? p.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                 CsvField(p.Method.GetDisplayName()),
                 CsvField(p.ReferenceNumber ?? ""),
-                CsvField(p.PaymentDate.ToString("dd/MM/yyyy")),
+                CsvField(p.PaymentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                 CsvField(p.Notes ?? "")));
         }
         return CsvBytes(sb);
@@ -1108,7 +1108,7 @@ public class ExportCenterService : IExportCenterService
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(s.InvoiceNumber), CsvField(s.Customer?.Name ?? ""),
-                    CsvField(s.InvoiceDate.ToString("dd/MM/yyyy")), CsvField(s.Currency?.Code ?? ""),
+                    CsvField(s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(s.Currency?.Code ?? ""),
                     s.ExchangeRate.HasValue ? s.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                     CsvField(s.PaymentTerms.GetDisplayName()),
                     s.Discount.ToString("0.00", CultureInfo.InvariantCulture),
@@ -1151,7 +1151,7 @@ public class ExportCenterService : IExportCenterService
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(p.InvoiceNumber), CsvField(p.Supplier?.Name ?? ""),
-                    CsvField(p.InvoiceDate.ToString("dd/MM/yyyy")), CsvField(p.Currency?.Code ?? ""),
+                    CsvField(p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(p.Currency?.Code ?? ""),
                     p.ExchangeRate.HasValue ? p.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                     CsvField(p.PaymentTerms.GetDisplayName()),
                     p.Discount.ToString("0.00", CultureInfo.InvariantCulture),
@@ -1195,7 +1195,7 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(r.ReturnNumber), CsvField(r.Customer?.Name ?? ""),
                     CsvField(r.SaleInvoice?.InvoiceNumber ?? ""),
-                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy")), CsvField(r.Currency?.Code ?? ""),
+                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(r.Currency?.Code ?? ""),
                     r.ExchangeRate.HasValue ? r.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                     CsvField(r.Reason ?? ""),
                     CsvField(i.Item.Name),
@@ -1231,7 +1231,7 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(r.ReturnNumber), CsvField(r.Supplier?.Name ?? ""),
                     CsvField(r.PurchaseInvoice?.InvoiceNumber ?? ""),
-                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy")), CsvField(r.Currency?.Code ?? ""),
+                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(r.Currency?.Code ?? ""),
                     r.ExchangeRate.HasValue ? r.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                     CsvField(r.Reason ?? ""),
                     CsvField(i.Item.Name),
@@ -1266,8 +1266,8 @@ public class ExportCenterService : IExportCenterService
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(q.QuoteNumber), CsvField(q.Customer?.Name ?? ""),
-                    CsvField(q.QuoteDate.ToString("dd/MM/yyyy")),
-                    CsvField(q.ValidUntil?.ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(q.QuoteDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
+                    CsvField(q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""),
                     CsvField(q.Currency?.Code ?? ""), CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                     i.Count.ToString("0.000", CultureInfo.InvariantCulture),
@@ -1297,7 +1297,7 @@ public class ExportCenterService : IExportCenterService
         foreach (var m in movements)
         {
             sb.AppendLine(string.Join(",",
-                CsvField(m.MovementDate.ToString("dd/MM/yyyy")), CsvField(m.Item.Name), CsvField(m.Type.GetDisplayName()),
+                CsvField(m.MovementDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(m.Item.Name), CsvField(m.Type.GetDisplayName()),
                 m.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                 m.Count.ToString("0.000", CultureInfo.InvariantCulture),
                 m.BalanceBefore.ToString("0.000", CultureInfo.InvariantCulture),
@@ -1332,7 +1332,7 @@ public class ExportCenterService : IExportCenterService
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(t.TransferNumber), CsvField(t.SourceWarehouse.Name), CsvField(t.TargetWarehouse.Name),
-                    CsvField(t.TransferDate.ToString("dd/MM/yyyy")), CsvField(i.Item.Name),
+                    CsvField(t.TransferDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                     i.Count.ToString("0.000", CultureInfo.InvariantCulture),
                     i.UnitCost.ToString("0.00", CultureInfo.InvariantCulture),
@@ -1361,7 +1361,7 @@ public class ExportCenterService : IExportCenterService
                 CsvField(a.ReferenceNumber), CsvField(a.Item.Name),
                 a.NewQuantity.ToString("0.000", CultureInfo.InvariantCulture),
                 a.NewCount.ToString("0.000", CultureInfo.InvariantCulture),
-                CsvField(a.AdjustmentDate.ToString("dd/MM/yyyy")),
+                CsvField(a.AdjustmentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                 CsvField(a.Reason ?? ""), CsvField(a.CreatedBy ?? "")));
         }
         return CsvBytes(sb);
@@ -1384,7 +1384,7 @@ public class ExportCenterService : IExportCenterService
             foreach (var l in j.Lines)
             {
                 sb.AppendLine(string.Join(",",
-                    CsvField(j.EntryNumber), CsvField(j.Date.ToString("dd/MM/yyyy")),
+                    CsvField(j.EntryNumber), CsvField(j.Date.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(j.Description), CsvField(j.Source.GetDisplayName()),
                     j.SourceId.ToString(CultureInfo.InvariantCulture),
                     CsvField(j.IsPosted ? "مرحّل" : "مسودة"), CsvField(j.CreatedBy ?? ""),
@@ -1412,7 +1412,7 @@ public class ExportCenterService : IExportCenterService
             sb.AppendLine(string.Join(",",
                 p.Year.ToString(CultureInfo.InvariantCulture), CsvField(p.Name ?? ""),
                 CsvField(p.IsClosed ? "مغلقة" : "مفتوحة"), CsvField(p.ClosedById ?? ""),
-                CsvField(p.ClosedAt?.ToString("dd/MM/yyyy") ?? "")));
+                CsvField(p.ClosedAt?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "")));
         }
         return CsvBytes(sb);
     }
@@ -1460,8 +1460,8 @@ public class ExportCenterService : IExportCenterService
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(o.OrderNumber), CsvField(o.Supplier.Name),
-                    CsvField(o.OrderDate.ToString("dd/MM/yyyy")),
-                    CsvField(o.ExpectedDate?.ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(o.OrderDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
+                    CsvField(o.ExpectedDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""),
                     CsvField(o.Status.GetDisplayName()), CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                     i.Count.ToString("0.000", CultureInfo.InvariantCulture),
@@ -1494,8 +1494,8 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(o.OrderNumber),
                     CsvField(o.Customer?.Name ?? ""),
-                    CsvField(o.OrderDate.ToString("dd/MM/yyyy")),
-                    CsvField(o.ExpectedDate?.ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(o.OrderDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
+                    CsvField(o.ExpectedDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""),
                     CsvField(o.Status.GetDisplayName()),
                     o.SaleQuoteId?.ToString() ?? "",
                     CsvField(o.Notes ?? ""),
@@ -1532,13 +1532,13 @@ public class ExportCenterService : IExportCenterService
                     CsvField(d.DeliveryNumber),
                     CsvField(d.SaleInvoice?.InvoiceNumber ?? ""),
                     CsvField(d.Customer?.Name ?? ""),
-                    CsvField(d.DeliveryDate.ToString("dd/MM/yyyy")),
+                    CsvField(d.DeliveryDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(d.Status.GetDisplayName()),
                     CsvField(d.Carrier ?? ""),
                     CsvField(d.TrackingNumber ?? ""),
                     CsvField(d.Notes ?? ""),
                     CsvField(d.DeliveredBy ?? ""),
-                    CsvField(d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy") ?? ""),
+                    CsvField(d.DeliveredAt?.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""),
                     CsvField(i.Item?.Name ?? ""),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                     i.Count.ToString("0.000", CultureInfo.InvariantCulture)));

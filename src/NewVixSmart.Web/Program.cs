@@ -12,11 +12,17 @@ using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Infrastructure;
 using NewVixSmart.Web.Services;
+using System.Globalization;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.IO.Compression;
+
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 
