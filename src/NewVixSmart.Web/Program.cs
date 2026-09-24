@@ -355,7 +355,8 @@ if (!app.Environment.IsDevelopment())
     string[] seedKeys = ["Seed:AdminPassword", "Seed:AccountantPassword", "Seed:WarehousePassword"];
     var insecure = seedKeys
         .Where(key => string.IsNullOrWhiteSpace(app.Configuration[key])
-            || insecureSeedDefaults.Contains(app.Configuration[key], StringComparer.Ordinal))
+            || insecureSeedDefaults.Contains(app.Configuration[key], StringComparer.Ordinal)
+            || app.Configuration[key]?.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase) == true)
         .Select(key => key.Replace(":", "__", StringComparison.Ordinal))
         .ToList();
     if (insecure.Count > 0)

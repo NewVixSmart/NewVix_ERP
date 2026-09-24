@@ -11,6 +11,10 @@ obj/
 *.nupkg
 *.snupkg
 TestResults/
+docs/test-results/
+*.trx
+*.coverage
+backups/
 project.lock.json
 .vs/
 .idea/

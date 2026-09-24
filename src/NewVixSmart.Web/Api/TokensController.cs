@@ -28,6 +28,7 @@ public class TokensController : ControllerBase
     [HttpPost("token")]
     [AllowAnonymous]
     [EnableRateLimiting("token")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> CreateToken([FromBody] TokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))

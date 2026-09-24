@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -19,11 +22,25 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       - name: Restore
         run: dotnet restore NewVixSmart.slnx
 
       - name: Build (warnings are errors)
         run: dotnet build NewVixSmart.slnx -c Release --no-restore
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Verify EF model matches migrations snapshot
+        run: dotnet ef migrations has-pending-model-changes --project src/NewVixSmart.Web/NewVixSmart.Web.csproj --startup-project src/NewVixSmart.Web/NewVixSmart.Web.csproj --configuration Release
 
       - name: Test
         run: dotnet test NewVixSmart.slnx -c Release --no-build --results-directory TestResults --logger "trx;LogFileName=test-results.trx"
@@ -46,6 +63,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
       - name: Restore
         run: dotnet restore NewVixSmart.slnx
