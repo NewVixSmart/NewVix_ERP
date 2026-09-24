@@ -32,6 +32,12 @@ public sealed class InventoryService : IInventoryService
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var badPrice = items.FirstOrDefault(i => i.ItemId > 0 && i.UnitPrice < 0);
+        if (badPrice != null)
+            return (false, "سعر الوحدة يجب ألا يكون سالباً");
+        var badQty = items.FirstOrDefault(i => i.ItemId > 0 && (i.Quantity < 0 || i.Count < 0));
+        if (badQty != null)
+            return (false, "الكمية أو العدد يجب ألا يكون سالباً");
         var duplicateSale = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicateSale != null)
             return (false, $"الصنف رقم {duplicateSale.Key} مكرر أكثر من مرة في الفاتورة");
@@ -276,6 +282,12 @@ public sealed class InventoryService : IInventoryService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        var badPrice = items.FirstOrDefault(i => i.ItemId > 0 && i.UnitPrice < 0);
+        if (badPrice != null)
+            return (false, "سعر الوحدة يجب ألا يكون سالباً");
+        var badQty = items.FirstOrDefault(i => i.ItemId > 0 && (i.Quantity < 0 || i.Count < 0));
+        if (badQty != null)
+            return (false, "الكمية أو العدد يجب ألا يكون سالباً");
         var duplicatePurchase = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicatePurchase != null)
             return (false, $"الصنف رقم {duplicatePurchase.Key} مكرر أكثر من مرة في الفاتورة");
@@ -623,6 +635,9 @@ public sealed class InventoryService : IInventoryService
     {
         if (await IsPeriodClosedAsync(adjustment.AdjustmentDate))
             return (false, $"السنة المالية {adjustment.AdjustmentDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
+
+        if (adjustment.NewCount < 0 || adjustment.NewQuantity < 0)
+            return (false, "لا يمكن أن يكون الرصيد بعد الجرد سالباً");
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {

@@ -14,6 +14,9 @@ using Microsoft.Extensions.Options;
 using NewVixSmart.Web.Controllers;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Infrastructure;
+using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
 using Xunit;
 
@@ -100,6 +103,28 @@ public sealed class BackupServiceTests : IDisposable
             new UpperInvariantLookupNormalizer(),
             new IdentityErrorDescriber(),
             NullLogger<RoleManager<IdentityRole>>.Instance);
+    }
+
+    private static ServiceProvider BuildSeedProvider(AppDbContext db)
+    {
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Seed:AdminPassword"] = "Test@Admin12345",
+                ["Seed:AccountantPassword"] = "Test@Acct123456",
+                ["Seed:WarehousePassword"] = "Test@Ware123456"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton(config);
+        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+        services.AddSingleton(CreateUserManager(db));
+        services.AddSingleton(CreateRoleManager(db));
+        services.AddSingleton(db);
+        services.AddSingleton<IAccountingService>(new AccountingService(db));
+        services.AddSingleton<IWebHostEnvironment>(new FakeWebHostEnvironment());
+        return services.BuildServiceProvider();
     }
 
     [Fact]
@@ -217,6 +242,75 @@ public sealed class BackupServiceTests : IDisposable
         Assert.Equal(itemCount, db.Items.Count());
         Assert.Equal(purchaseOrderCount, db.PurchaseOrders.Count());
         Assert.Equal(journalCount, db.JournalEntries.Count());
+    }
+
+    [Fact]
+    public async Task InitializeAsync_RepairsMissing5102_OnPartialSeed()
+    {
+        using var db = CreateContext();
+        using var provider = BuildSeedProvider(db);
+        await SeedData.InitializeAsync(provider);
+
+        var missing = await db.GLAccounts.FirstAsync(a => a.Code == "5102");
+        db.GLAccounts.Remove(missing);
+        await db.SaveChangesAsync();
+
+        await SeedData.InitializeAsync(provider);
+
+        Assert.NotNull(await db.GLAccounts.AsNoTracking().SingleOrDefaultAsync(a => a.Code == "5102"));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_RepairsMissing8400_OnPartialSeed()
+    {
+        using var db = CreateContext();
+        using var provider = BuildSeedProvider(db);
+        await SeedData.InitializeAsync(provider);
+
+        var missing = await db.GLAccounts.FirstAsync(a => a.Code == "8400");
+        db.GLAccounts.Remove(missing);
+        await db.SaveChangesAsync();
+
+        await SeedData.InitializeAsync(provider);
+
+        Assert.NotNull(await db.GLAccounts.AsNoTracking().SingleOrDefaultAsync(a => a.Code == "8400"));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_RepairsMissingChartAccount_WithoutDuplicatingDemoData()
+    {
+        using var db = CreateContext();
+        using var provider = BuildSeedProvider(db);
+        await SeedData.InitializeAsync(provider);
+
+        var missing = await db.GLAccounts.FirstAsync(a => a.Code == "5000");
+        db.GLAccounts.Remove(missing);
+        await db.SaveChangesAsync();
+
+        await SeedData.InitializeAsync(provider);
+
+        Assert.NotNull(await db.GLAccounts.AsNoTracking().SingleOrDefaultAsync(a => a.Code == "5000"));
+        Assert.Single(await db.GLAccounts.AsNoTracking().Where(a => a.Code == "5000").ToListAsync());
+    }
+
+    [Fact]
+    public async Task InitializeAsync_SameNameDifferentCode_DemoSupplier_DoesNotCrash()
+    {
+        using var db = CreateContext();
+
+        db.GLAccounts.Add(new GLAccount
+        {
+            Code = "1000", Name = "النقد / الصندوق",
+            Type = GLAccountType.Asset,
+            NormalBalance = NormalBalance.Debit, IsActive = true
+        });
+        db.Suppliers.Add(new Supplier { Name = "مصنع النور للأغذية", Code = "SUP-XYZ" });
+        db.SaveChanges();
+
+        using var provider = BuildSeedProvider(db);
+        await SeedData.InitializeAsync(provider);
+
+        Assert.Single(db.Suppliers.Where(s => s.Name == "مصنع النور للأغذية"));
     }
 
     [Fact]

@@ -12,6 +12,7 @@ namespace NewVixSmart.Web.Api;
 [ApiController]
 [Route("api")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[IgnoreAntiforgeryToken]
 public class JournalEntriesController : ControllerBase
 {
     private const int PageSize = 50;

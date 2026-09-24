@@ -80,6 +80,28 @@ public class CreatePaymentRequest
     public string? Notes { get; set; }
 }
 
+public class PaymentResponse
+{
+    public int Id { get; set; }
+    public string ReceiptNumber { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public int? CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public int? CurrencyId { get; set; }
+    public string? CurrencyCode { get; set; }
+    public decimal? ExchangeRate { get; set; }
+    public decimal BaseAmount { get; set; }
+    public decimal Amount { get; set; }
+    public string Method { get; set; } = string.Empty;
+    public DateTime PaymentDate { get; set; }
+    public string? ReferenceNumber { get; set; }
+    public string? Notes { get; set; }
+    public int? BranchId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 public class CreateSaleRequest
 {
     public int CustomerId { get; set; }

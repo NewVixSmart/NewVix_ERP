@@ -13,6 +13,7 @@ namespace NewVixSmart.Web.Api;
 [ApiController]
 [Route("api")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[IgnoreAntiforgeryToken]
 public class PurchasesController : ControllerBase
 {
     private readonly IInventoryService _inventory;

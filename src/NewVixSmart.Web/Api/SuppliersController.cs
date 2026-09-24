@@ -11,6 +11,7 @@ namespace NewVixSmart.Web.Api;
 [ApiController]
 [Route("api")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[IgnoreAntiforgeryToken]
 public class SuppliersController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -35,12 +36,9 @@ public class SuppliersController : ControllerBase
 
         query = query.OrderBy(s => s.Name);
 
-        if (page.HasValue)
-        {
-            var ps = Math.Clamp(pageSize ?? 100, 1, 500);
-            var p = Math.Max(1, page.Value);
-            query = query.Skip((p - 1) * ps).Take(ps);
-        }
+        var ps = Math.Clamp(pageSize ?? 100, 1, 500);
+        var p = Math.Max(1, page ?? 1);
+        query = query.Skip((p - 1) * ps).Take(ps);
 
         var suppliers = await query
             .Select(s => new SupplierResponse

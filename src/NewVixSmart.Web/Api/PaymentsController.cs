@@ -12,6 +12,7 @@ namespace NewVixSmart.Web.Api;
 [ApiController]
 [Route("api")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[IgnoreAntiforgeryToken]
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _payment;
@@ -28,7 +29,7 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> GetPayments([FromQuery] int page = 1)
     {
         var payments = await _payment.GetPaymentsAsync(page, 50);
-        return Ok(payments);
+        return Ok(payments.Select(ToResponse).ToList());
     }
 
     [HttpPost("payments")]
@@ -56,8 +57,30 @@ public class PaymentsController : ControllerBase
         var branchId = _http.GetCurrentBranchId();
         var (ok, error, result) = await _payment.CreatePaymentAsync(payment, User.Identity?.Name, branchId);
         if (!ok) return BadRequest(new { message = error });
-        return Ok(new ApiResponse<Payment> { Success = true, Data = result });
+        return Ok(new ApiResponse<PaymentResponse> { Success = true, Data = ToResponse(result!) });
     }
+
+    private static PaymentResponse ToResponse(Payment p) => new()
+    {
+        Id = p.Id,
+        ReceiptNumber = p.ReceiptNumber,
+        Type = p.Type.GetDisplayName(),
+        CustomerId = p.CustomerId,
+        CustomerName = p.Customer?.Name,
+        SupplierId = p.SupplierId,
+        SupplierName = p.Supplier?.Name,
+        CurrencyId = p.CurrencyId,
+        CurrencyCode = p.Currency?.Code,
+        ExchangeRate = p.ExchangeRate,
+        BaseAmount = p.BaseAmount,
+        Amount = p.Amount,
+        Method = p.Method.GetDisplayName(),
+        PaymentDate = p.PaymentDate,
+        ReferenceNumber = p.ReferenceNumber,
+        Notes = p.Notes,
+        BranchId = p.BranchId,
+        CreatedAt = p.CreatedAt
+    };
 
     private static string? ValidateCreatePayment(CreatePaymentRequest request)
     {

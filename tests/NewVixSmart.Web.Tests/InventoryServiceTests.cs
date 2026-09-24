@@ -114,6 +114,78 @@ public sealed class InventoryServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateSale_NegativeUnitPrice_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var invoice = new SaleInvoice { CustomerId = custId };
+        var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, -5) };
+
+        var (ok, err) = await svc.CreateSaleAsync(invoice, lines, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالب", err);
+        Assert.Equal(0, db.SaleInvoices.Count());
+    }
+
+    [Fact]
+    public async Task CreateSale_NegativeQuantity_IsRejected_Exactly()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var invoice = new SaleInvoice { CustomerId = custId };
+        var lines = new List<SaleInvoiceItem>
+        {
+            QtyLine(itemId, 5, 50),
+            new() { ItemId = itemId, Quantity = -3, Count = 0, UnitPrice = 50 }
+        };
+
+        var (ok, err) = await svc.CreateSaleAsync(invoice, lines, "test");
+
+        Assert.False(ok);
+        Assert.Equal(0, db.SaleInvoices.Count());
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+    }
+
+    [Fact]
+    public async Task CreatePurchase_NegativeUnitPrice_IsRejected()
+    {
+        using var db = CreateContext();
+        var (_, _, supId) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var invoice = new PurchaseInvoice { SupplierId = supId };
+        var lines = new List<PurchaseInvoiceItem> { new() { ItemId = db.Items.Single().Id, Quantity = 5, Count = 0, UnitPrice = -10 } };
+
+        var (ok, err) = await svc.CreatePurchaseAsync(invoice, lines, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالب", err);
+        Assert.Equal(0, db.PurchaseInvoices.Count());
+    }
+
+    [Fact]
+    public async Task CreateAdjustment_NegativeQuantity_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = -5, AdjustmentDate = DateTime.Today };
+
+        var (ok, err) = await svc.CreateAdjustmentAsync(adjustment, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالب", err);
+        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        Assert.Equal(0, db.InventoryAdjustments.Count());
+    }
+
+    [Fact]
     public async Task SaleDelivery_DualDimensionLine_ValuesQuantityOnly_NotQuantityPlusCount()
     {
         using var db = CreateContext();

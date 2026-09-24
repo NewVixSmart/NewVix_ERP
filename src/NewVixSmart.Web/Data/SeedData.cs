@@ -125,10 +125,12 @@ public static class SeedData
 
         if (!await db.GLAccounts.AnyAsync(a => a.Code == "4400"))
         {
-            db.GLAccounts.AddRange(
-                new GLAccount { Code = "4400", Name = "خسائر فروقات العملة (عملة أجنبية)", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
-                new GLAccount { Code = "8400", Name = "أرباح فروقات العملة (عملة أجنبية)", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true }
-            );
+            db.GLAccounts.Add(new GLAccount { Code = "4400", Name = "خسائر فروقات العملة (عملة أجنبية)", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
+            await db.SaveChangesAsync();
+        }
+        if (!await db.GLAccounts.AnyAsync(a => a.Code == "8400"))
+        {
+            db.GLAccounts.Add(new GLAccount { Code = "8400", Name = "أرباح فروقات العملة (عملة أجنبية)", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true });
             await db.SaveChangesAsync();
         }
 
@@ -152,17 +154,19 @@ public static class SeedData
 
         if (!await db.GLAccounts.AnyAsync(a => a.Code == "5101"))
         {
-            db.GLAccounts.AddRange(
-                new GLAccount { Code = "5101", Name = "مرتجعات المبيعات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
-                new GLAccount { Code = "5102", Name = "مرتجعات المشتريات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true }
-            );
+            db.GLAccounts.Add(new GLAccount { Code = "5101", Name = "مرتجعات المبيعات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
+            await db.SaveChangesAsync();
+        }
+        if (!await db.GLAccounts.AnyAsync(a => a.Code == "5102"))
+        {
+            db.GLAccounts.Add(new GLAccount { Code = "5102", Name = "مرتجعات المشتريات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
             await db.SaveChangesAsync();
         }
 
-        if (await db.GLAccounts.AnyAsync(a => a.Code == "1000"))
-            return;
+        bool hasChart = await db.GLAccounts.AnyAsync(a => a.Code == "1000");
 
-        db.GLAccounts.AddRange(
+        var chartAccounts = new[]
+        {
             new GLAccount { Code = "1000", Name = "النقد / الصندوق", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true },
             new GLAccount { Code = "1100", Name = "البنوك / الحسابات البنكية", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true },
             new GLAccount { Code = "1200", Name = "المدينون (العملاء)", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true },
@@ -173,8 +177,16 @@ public static class SeedData
             new GLAccount { Code = "4100", Name = "مرتجعات البيع", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true },
             new GLAccount { Code = "5000", Name = "تكلفة البضاعة المباعة (COGS)", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
             new GLAccount { Code = "5100", Name = "مرتجعات الشراء", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true }
-        );
+        };
+        foreach (var chartAccount in chartAccounts)
+        {
+            if (!await db.GLAccounts.AnyAsync(a => a.Code == chartAccount.Code))
+                db.GLAccounts.Add(chartAccount);
+        }
         await db.SaveChangesAsync();
+
+        if (hasChart)
+            return;
 
         var categories = new[]
         {
@@ -234,7 +246,7 @@ public static class SeedData
         };
         foreach (var supplier in suppliers)
         {
-            if (!await db.Suppliers.AnyAsync(s => s.Code == supplier.Code))
+            if (!await db.Suppliers.AnyAsync(s => s.Code == supplier.Code || s.Name == supplier.Name))
                 db.Suppliers.Add(supplier);
         }
 
@@ -248,7 +260,7 @@ public static class SeedData
         };
         foreach (var customer in customers)
         {
-            if (!await db.Customers.AnyAsync(c => c.Code == customer.Code))
+            if (!await db.Customers.AnyAsync(c => c.Code == customer.Code || c.Name == customer.Name))
                 db.Customers.Add(customer);
         }
 
@@ -276,7 +288,7 @@ public static class SeedData
         };
         foreach (var it in items)
         {
-            if (await db.Items.AnyAsync(i => i.Code == it.Code)) continue;
+            if (await db.Items.AnyAsync(i => i.Code == it.Code || i.Name == it.Name)) continue;
             var typeId = typesByName.TryGetValue(it.Type, out var it_t) ? it_t : default;
             var catId = categoriesByName.TryGetValue(it.Category, out var it_c) ? it_c : default;
             db.Items.Add(new Item

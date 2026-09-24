@@ -640,7 +640,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         });
 
         var objectResult = Assert.IsType<OkObjectResult>(actionResult);
-        var response = Assert.IsType<ApiResponse<Payment>>(objectResult.Value);
+        var response = Assert.IsType<ApiResponse<PaymentResponse>>(objectResult.Value);
         Assert.True(response.Success);
         Assert.StartsWith("PAY-", response.Data!.ReceiptNumber);
     }

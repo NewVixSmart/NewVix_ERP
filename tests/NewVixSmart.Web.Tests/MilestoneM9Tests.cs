@@ -445,7 +445,7 @@ public sealed class MilestoneM9Tests : IDisposable
         });
 
         var objectResult = Assert.IsType<OkObjectResult>(actionResult);
-        var response = Assert.IsType<ApiResponse<Payment>>(objectResult.Value);
+        var response = Assert.IsType<ApiResponse<PaymentResponse>>(objectResult.Value);
         Assert.True(response.Success);
         Assert.Equal(usd.Id, response.Data!.CurrencyId);
         Assert.Equal(520m, response.Data.ExchangeRate);

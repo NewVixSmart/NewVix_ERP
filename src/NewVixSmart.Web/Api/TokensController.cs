@@ -12,6 +12,7 @@ namespace NewVixSmart.Web.Api;
 
 [ApiController]
 [Route("api/auth")]
+[IgnoreAntiforgeryToken]
 public class TokensController : ControllerBase
 {
     private readonly UserManager<IdentityUser> _userManager;
