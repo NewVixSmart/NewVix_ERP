@@ -1,17 +1,9 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using NewVixSmart.Web.Models.Sales;
 
 namespace NewVixSmart.Web.Models.Accounting;
 
-public enum PaymentAllocationInvoiceType
-{
-    [Display(Name = "مبيعات")]
-    Sales = 1,
-    [Display(Name = "مشتريات")]
-    Purchases = 2
-}
-
-public class PaymentAllocation
+public class SalePaymentAllocation
 {
     public int Id { get; set; }
 
@@ -20,9 +12,10 @@ public class PaymentAllocation
     [ForeignKey(nameof(PaymentId))]
     public Payment? Payment { get; set; }
 
-    public PaymentAllocationInvoiceType InvoiceType { get; set; }
+    public int SaleInvoiceId { get; set; }
 
-    public int InvoiceId { get; set; }
+    [ForeignKey(nameof(SaleInvoiceId))]
+    public SaleInvoice? SaleInvoice { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
     public decimal AllocatedBaseAmount { get; set; }

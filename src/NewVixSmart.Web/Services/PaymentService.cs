@@ -151,7 +151,8 @@ public sealed class PaymentService : IPaymentService
 
     public async Task<Payment?> GetPaymentAsync(int id) =>
         await _db.Payments.Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
-            .Include(p => p.PaymentAllocations)
+            .Include(p => p.SalePaymentAllocations!).ThenInclude(a => a.SaleInvoice)
+            .Include(p => p.PurchasePaymentAllocations!).ThenInclude(a => a.PurchaseInvoice)
             .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
 
     private Task<bool> IsPeriodClosedAsync(DateTime date)
@@ -173,7 +174,8 @@ public sealed class PaymentService : IPaymentService
         decimal remaining = payment.BaseAmount;
         decimal remainingForeign = payment.Amount;
         decimal partyBaseReduction = 0m;
-        var rows = new List<PaymentAllocation>();
+        var saleRows = new List<SalePaymentAllocation>();
+        var purchaseRows = new List<PurchasePaymentAllocation>();
 
         if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue && remaining > 0)
         {
@@ -212,11 +214,10 @@ public sealed class PaymentService : IPaymentService
                         remaining -= invoiceBase;
                         remainingForeign -= fCap;
                         partyBaseReduction += invoiceBase;
-                        rows.Add(new PaymentAllocation
+                        saleRows.Add(new SalePaymentAllocation
                         {
                             PaymentId = payment.Id,
-                            InvoiceType = PaymentAllocationInvoiceType.Sales,
-                            InvoiceId = inv.Id,
+                            SaleInvoiceId = inv.Id,
                             AllocatedBaseAmount = invoiceBase,
                             ExchangeRateAtSettlement = payment.ExchangeRate,
                             FxGain = fxDiff > 0 ? fxDiff : 0m,
@@ -238,11 +239,10 @@ public sealed class PaymentService : IPaymentService
                         remaining -= allocate;
                         remainingForeign -= consumedForeign;
                         partyBaseReduction += allocate;
-                        rows.Add(new PaymentAllocation
+                        saleRows.Add(new SalePaymentAllocation
                         {
                             PaymentId = payment.Id,
-                            InvoiceType = PaymentAllocationInvoiceType.Sales,
-                            InvoiceId = inv.Id,
+                            SaleInvoiceId = inv.Id,
                             AllocatedBaseAmount = allocate,
                             ExchangeRateAtSettlement = payment.ExchangeRate,
                             FxGain = 0m,
@@ -260,11 +260,10 @@ public sealed class PaymentService : IPaymentService
                     inv.PaidAmount += foreignApplied;
                     remaining -= allocate;
                     partyBaseReduction += allocate;
-                    rows.Add(new PaymentAllocation
+                    saleRows.Add(new SalePaymentAllocation
                     {
                         PaymentId = payment.Id,
-                        InvoiceType = PaymentAllocationInvoiceType.Sales,
-                        InvoiceId = inv.Id,
+                        SaleInvoiceId = inv.Id,
                         AllocatedBaseAmount = allocate,
                         ExchangeRateAtSettlement = null,
                         FxGain = 0m,
@@ -310,11 +309,10 @@ public sealed class PaymentService : IPaymentService
                         remaining -= invoiceBase;
                         remainingForeign -= fCap;
                         partyBaseReduction += invoiceBase;
-                        rows.Add(new PaymentAllocation
+                        purchaseRows.Add(new PurchasePaymentAllocation
                         {
                             PaymentId = payment.Id,
-                            InvoiceType = PaymentAllocationInvoiceType.Purchases,
-                            InvoiceId = inv.Id,
+                            PurchaseInvoiceId = inv.Id,
                             AllocatedBaseAmount = invoiceBase,
                             ExchangeRateAtSettlement = payment.ExchangeRate,
                             FxGain = fxDiff < 0 ? -fxDiff : 0m,
@@ -336,11 +334,10 @@ public sealed class PaymentService : IPaymentService
                         remaining -= allocate;
                         remainingForeign -= consumedForeign;
                         partyBaseReduction += allocate;
-                        rows.Add(new PaymentAllocation
+                        purchaseRows.Add(new PurchasePaymentAllocation
                         {
                             PaymentId = payment.Id,
-                            InvoiceType = PaymentAllocationInvoiceType.Purchases,
-                            InvoiceId = inv.Id,
+                            PurchaseInvoiceId = inv.Id,
                             AllocatedBaseAmount = allocate,
                             ExchangeRateAtSettlement = payment.ExchangeRate,
                             FxGain = 0m,
@@ -358,11 +355,10 @@ public sealed class PaymentService : IPaymentService
                     inv.PaidAmount += foreignApplied;
                     remaining -= allocate;
                     partyBaseReduction += allocate;
-                    rows.Add(new PaymentAllocation
+                    purchaseRows.Add(new PurchasePaymentAllocation
                     {
                         PaymentId = payment.Id,
-                        InvoiceType = PaymentAllocationInvoiceType.Purchases,
-                        InvoiceId = inv.Id,
+                        PurchaseInvoiceId = inv.Id,
                         AllocatedBaseAmount = allocate,
                         ExchangeRateAtSettlement = null,
                         FxGain = 0m,
@@ -373,11 +369,12 @@ public sealed class PaymentService : IPaymentService
             }
         }
 
-        if (rows.Count > 0)
-        {
-            _db.PaymentAllocations.AddRange(rows);
+        if (saleRows.Count > 0)
+            _db.SalePaymentAllocations.AddRange(saleRows);
+        if (purchaseRows.Count > 0)
+            _db.PurchasePaymentAllocations.AddRange(purchaseRows);
+        if (saleRows.Count > 0 || purchaseRows.Count > 0)
             await _db.SaveChangesAsync();
-        }
 
         return (remaining, partyBaseReduction, remainingForeign);
     }

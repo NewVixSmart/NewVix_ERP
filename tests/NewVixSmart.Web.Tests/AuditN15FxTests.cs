@@ -145,7 +145,7 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.True(inv.IsPaid);
         Assert.Equal(0m, inv.PaidAmount - inv.NetAmount);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(50000m, allocation.AllocatedBaseAmount);
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
@@ -187,7 +187,7 @@ public sealed class AuditN15FxTests : IDisposable
         var inv = await db.SaleInvoices.SingleAsync();
         Assert.Equal(25000m, inv.PaidAmount);
         Assert.False(inv.IsPaid);
-        Assert.Equal(25000m, (await db.PaymentAllocations.SingleAsync()).AllocatedBaseAmount);
+        Assert.Equal(25000m, (await db.SalePaymentAllocations.SingleAsync()).AllocatedBaseAmount);
     }
 
     // (3) Foreign overpayment against a base invoice is rejected and fully rolled back.
@@ -218,7 +218,7 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Contains("المبلغ أكبر من إجمالي المستحق", error);
         Assert.Null(payment);
         Assert.Equal(0, await db.Payments.CountAsync());
-        Assert.Equal(0, await db.PaymentAllocations.CountAsync());
+        Assert.Equal(0, await db.SalePaymentAllocations.CountAsync() + await db.PurchasePaymentAllocations.CountAsync());
         Assert.Equal(0, await db.JournalEntries.CountAsync());
         var inv = await db.SaleInvoices.SingleAsync();
         Assert.Equal(0m, inv.PaidAmount);
@@ -255,7 +255,7 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Equal(30000m, invoices[0].PaidAmount);
         Assert.Equal(20000m, invoices[1].PaidAmount);
         Assert.All(invoices, i => Assert.True(i.IsPaid));
-        var allocations = await db.PaymentAllocations.OrderBy(a => a.InvoiceId).ToListAsync();
+        var allocations = await db.SalePaymentAllocations.OrderBy(a => a.SaleInvoiceId).ToListAsync();
         Assert.Equal(2, allocations.Count);
         Assert.Equal(30000m, allocations[0].AllocatedBaseAmount);
         Assert.Equal(20000m, allocations[1].AllocatedBaseAmount);
@@ -291,7 +291,7 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Equal(4000m, inv.PaidAmount);
         Assert.True(inv.IsPaid);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.PurchasePaymentAllocations.SingleAsync();
         Assert.Equal(4000m, allocation.AllocatedBaseAmount);
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
@@ -375,7 +375,7 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Equal(320m, settled.PaidAmount);
         Assert.True(settled.IsPaid);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(160000m, allocation.AllocatedBaseAmount);
         Assert.Equal(6400m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);

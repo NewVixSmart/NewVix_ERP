@@ -35,7 +35,8 @@ public class AppDbContext : IdentityDbContext
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<Payment> Payments => Set<Payment>();
-    public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
+    public DbSet<SalePaymentAllocation> SalePaymentAllocations => Set<SalePaymentAllocation>();
+    public DbSet<PurchasePaymentAllocation> PurchasePaymentAllocations => Set<PurchasePaymentAllocation>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     public DbSet<SupplierQuote> SupplierQuotes => Set<SupplierQuote>();
     public DbSet<GLAccount> GLAccounts => Set<GLAccount>();
@@ -208,12 +209,18 @@ public class AppDbContext : IdentityDbContext
             e.HasOne<Branch>().WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        builder.Entity<PaymentAllocation>(e =>
+        builder.Entity<SalePaymentAllocation>(e =>
         {
-            e.HasIndex(a => new { a.PaymentId, a.InvoiceType, a.InvoiceId });
-            e.HasIndex(a => new { a.InvoiceType, a.InvoiceId });
-            e.Property(a => a.InvoiceType).HasColumnType("smallint");
-            e.HasOne(a => a.Payment).WithMany(p => p.PaymentAllocations).HasForeignKey(a => a.PaymentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(a => new { a.PaymentId, a.SaleInvoiceId }).IsUnique();
+            e.HasOne(a => a.Payment).WithMany(p => p.SalePaymentAllocations).HasForeignKey(a => a.PaymentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.SaleInvoice).WithMany().HasForeignKey(a => a.SaleInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PurchasePaymentAllocation>(e =>
+        {
+            e.HasIndex(a => new { a.PaymentId, a.PurchaseInvoiceId }).IsUnique();
+            e.HasOne(a => a.Payment).WithMany(p => p.PurchasePaymentAllocations).HasForeignKey(a => a.PaymentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.PurchaseInvoice).WithMany().HasForeignKey(a => a.PurchaseInvoiceId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<SupplierQuote>(e =>

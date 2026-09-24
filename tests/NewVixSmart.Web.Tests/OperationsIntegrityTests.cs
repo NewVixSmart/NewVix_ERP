@@ -571,7 +571,7 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         Assert.True(ok, err);
         Assert.Equal(100m, payment!.BaseAmount);
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(1m, allocation.ExchangeRateAtSettlement);
     }
 

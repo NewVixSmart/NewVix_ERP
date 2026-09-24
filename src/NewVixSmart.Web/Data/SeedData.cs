@@ -134,6 +134,12 @@ public static class SeedData
             await db.SaveChangesAsync();
         }
 
+        if (!await db.GLAccounts.AnyAsync(a => a.Code == "2055"))
+        {
+            db.GLAccounts.Add(new GLAccount { Code = "2055", Name = "الضريبة المستحقة (VAT)", Type = GLAccountType.Liability, NormalBalance = NormalBalance.Credit, IsActive = true });
+            await db.SaveChangesAsync();
+        }
+
         if (!await db.FiscalPeriods.AnyAsync(fp => fp.Year == DateTime.Today.Year))
         {
             db.FiscalPeriods.Add(new FiscalPeriod { Year = DateTime.Today.Year, Name = $"سنة {DateTime.Today.Year}" });

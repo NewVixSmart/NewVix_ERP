@@ -93,7 +93,8 @@ public class Payment
     [BindNever]
     public string? DedupeKey { get; set; }
 
-    public ICollection<PaymentAllocation>? PaymentAllocations { get; set; } = [];
+    public ICollection<SalePaymentAllocation>? SalePaymentAllocations { get; set; } = [];
+    public ICollection<PurchasePaymentAllocation>? PurchasePaymentAllocations { get; set; } = [];
 }
 
 public enum PaymentType

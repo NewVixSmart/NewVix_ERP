@@ -65,39 +65,11 @@ public class InventoryAdjustmentsController : Controller
     [RequirePerm("InventoryAdjustments.Delete")]
     public async Task<IActionResult> Delete(int id)
     {
-        var adj = await _db.InventoryAdjustments.FindAsync(id);
-        if (adj == null) return NotFound();
-
-        if (await _db.JournalEntries.AnyAsync(j => j.Source == NewVixSmart.Web.Models.Accounting.JournalSource.OpeningStock && j.SourceId == adj.ItemId))
-        {
-            TempData["Error"] = "لا يمكن حذف هذا الجرد لأن بياناته رُحّلت إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك";
-            return RedirectToAction(nameof(Index));
-        }
-
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        var stock = await _db.StockMovements.FirstOrDefaultAsync(s => s.DocumentType == DocumentType.Adjustment && s.DocumentNumber == adj.ReferenceNumber);
-        if (stock != null)
-        {
-            var hasLaterMovements = await _db.StockMovements.AnyAsync(m => m.ItemId == stock.ItemId && m.Id > stock.Id);
-            if (hasLaterMovements)
-            {
-                await tx.RollbackAsync();
-                TempData["Error"] = "لا يمكن حذف هذا الجرد لأن حركات مخزون لاحقة تمت على نفس الصنف؛ اضبط المخزون بجرد جديد بدلاً من ذلك";
-                return RedirectToAction(nameof(Index));
-            }
-            var item = await _db.Items.FindAsync(stock.ItemId);
-            if (item != null)
-            {
-                item.CurrentCount = stock.CountBefore;
-                item.CurrentQuantity = stock.BalanceBefore;
-            }
-            _db.StockMovements.Remove(stock);
-        }
-
-        _db.InventoryAdjustments.Remove(adj);
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
-        TempData["Success"] = "تم حذف سجل الجرد وإعادة المخزون إلى حالته السابقة";
+        var (ok, error) = await _inventory.DeleteAdjustmentAsync(id, User.Identity?.Name);
+        if (ok)
+            TempData["Success"] = "تم حذف سجل الجرد وإعادة المخزون إلى حالته السابقة";
+        else
+            TempData["Error"] = error ?? "تعذر حذف سجل الجرد";
         return RedirectToAction(nameof(Index));
     }
 

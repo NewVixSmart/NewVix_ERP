@@ -35,15 +35,20 @@ public class AccountingService : IAccountingService
     }
 
     public async Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null)
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null, decimal taxAmount = 0m)
     {
         var localValue = decimal.Round(value, 2);
         var localCost = decimal.Round(cost, 2);
+        var localTax = decimal.Round(taxAmount, 2);
+        if (localTax < 0.005m) localTax = 0m;
+        if (localTax > localValue - 0.005m) localTax = 0m;
         var lines = new List<JournalLine>();
         if (localValue > 0)
         {
             lines.Add(new JournalLine("1200", localValue, 0));
-            lines.Add(new JournalLine("4000", 0, localValue));
+            lines.Add(new JournalLine("4000", 0, decimal.Round(localValue - localTax, 2)));
+            if (localTax > 0)
+                lines.Add(new JournalLine("2055", 0, localTax));
         }
         if (localCost > 0)
         {
@@ -107,17 +112,22 @@ public class AccountingService : IAccountingService
         => await PostAsync(JournalSource.PurchaseReturn, 0, entryDate, "مرتجع شراء",
             new[] { new JournalLine("2000", amount, 0), new JournalLine("5102", 0, amount) }, user, branchId);
 
-    public async Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+    public async Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, decimal taxAmount = 0m)
     {
         var localValue = decimal.Round(valueAmount * (exchangeRate ?? 1m), 2);
-        await PostAsync(JournalSource.SaleReturn, sourceId, entryDate, "مرتجع بيع",
-            new[]
-            {
-                new JournalLine("5101", localValue, 0),
-                new JournalLine("1200", 0, localValue),
-                new JournalLine("1300", costAmount, 0),
-                new JournalLine("5000", 0, costAmount)
-            }, user, branchId);
+        var localTax = decimal.Round(taxAmount * (exchangeRate ?? 1m), 2);
+        if (localTax < 0.005m) localTax = 0m;
+        if (localTax > localValue - 0.005m) localTax = 0m;
+        var lines = new List<JournalLine>
+        {
+            new("5101", decimal.Round(localValue - localTax, 2), 0),
+            new("1200", 0, localValue)
+        };
+        if (localTax > 0)
+            lines.Add(new JournalLine("2055", localTax, 0));
+        lines.Add(new JournalLine("1300", costAmount, 0));
+        lines.Add(new JournalLine("5000", 0, costAmount));
+        await PostAsync(JournalSource.SaleReturn, sourceId, entryDate, "مرتجع بيع", lines.ToArray(), user, branchId);
     }
 
     // Purchase return (mirror): Dr 2000 (AP) V / Cr 5102 (contra-purchases) V, and stock out at cost:

@@ -947,6 +947,61 @@ public sealed class InventoryServiceTests : IDisposable
         Assert.Equal(110, db.Items.Single(i => i.Id == itemId).CurrentQuantity);
     }
 
+    // ---------- Adjustment delete (M-3) ----------
+
+    [Fact]
+    public async Task DeleteAdjustment_RestoresStockAndRemovesMovement()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var before = await db.Items.SingleAsync(i => i.Id == itemId);
+        Assert.Equal(100m, before.CurrentQuantity);
+
+        var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 150, AdjustmentDate = DateTime.Today };
+        var (cOk, cErr) = await svc.CreateAdjustmentAsync(adjustment, "test");
+        Assert.True(cOk, cErr);
+        Assert.Equal(150m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+
+        var (ok, err) = await svc.DeleteAdjustmentAsync(adjustment.Id, "test");
+        Assert.True(ok, err);
+        Assert.Equal(100m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+        Assert.Equal(0, await db.InventoryAdjustments.CountAsync(a => a.Id == adjustment.Id));
+        Assert.Empty(await db.StockMovements.Where(m => m.DocumentType == DocumentType.Adjustment).ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeleteAdjustment_WithLaterMovementOnSameItem_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+
+        var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 150, AdjustmentDate = new DateTime(2026, 3, 1) };
+        var (cOk, cErr) = await svc.CreateAdjustmentAsync(adjustment, "test");
+        Assert.True(cOk, cErr);
+
+        var invoice = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 3, 15) };
+        await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 50 } }, "test");
+
+        var (ok, err) = await svc.DeleteAdjustmentAsync(adjustment.Id, "test");
+        Assert.False(ok);
+        Assert.Contains("حركات مخزون لاحقة", err);
+        Assert.Equal(160m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+        Assert.Equal(1, await db.InventoryAdjustments.CountAsync(a => a.Id == adjustment.Id));
+    }
+
+    [Fact]
+    public async Task DeleteAdjustment_MissingRecord_ReturnsFalse()
+    {
+        using var db = CreateContext();
+        var svc = new InventoryService(db);
+        var (ok, err) = await svc.DeleteAdjustmentAsync(99999, "test");
+        Assert.False(ok);
+        Assert.Contains("غير موجود", err);
+    }
+
     // ---------- Warehouse snapshot (N-5) ----------
 
     [Fact]

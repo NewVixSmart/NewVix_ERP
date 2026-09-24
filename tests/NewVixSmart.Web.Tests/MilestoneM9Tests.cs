@@ -155,7 +155,7 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Equal(1000m, inv.PaidAmount);
         Assert.True(inv.IsPaid);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
         Assert.Null(allocation.ExchangeRateAtSettlement);
@@ -193,7 +193,7 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Null(payment);
         Assert.Equal(0, await db.Payments.CountAsync());
         Assert.Equal(0, await db.JournalEntries.CountAsync());
-        Assert.Equal(0, await db.PaymentAllocations.CountAsync());
+        Assert.Equal(0, await db.SalePaymentAllocations.CountAsync() + await db.PurchasePaymentAllocations.CountAsync());
         Assert.Equal(0m, (await db.SaleInvoices.SingleAsync()).PaidAmount);
     }
 
@@ -220,7 +220,7 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Equal(1000m, payment!.BaseAmount);
         Assert.Equal(1000m, payment.Amount * payment.ExchangeRate!.Value);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(500m, allocation.ExchangeRateAtSettlement);
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
@@ -253,9 +253,8 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.True(ok, error);
         Assert.Equal(1040m, payment!.BaseAmount);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
-        Assert.Equal(PaymentAllocationInvoiceType.Sales, allocation.InvoiceType);
-        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.SaleInvoiceId);
         Assert.Equal(40m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
 
@@ -294,9 +293,8 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.True(ok, error);
         Assert.Equal(1040m, payment!.BaseAmount);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
-        Assert.Equal(PaymentAllocationInvoiceType.Purchases, allocation.InvoiceType);
-        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        var allocation = await db.PurchasePaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.PurchaseInvoiceId);
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(40m, allocation.FxLoss);
 
@@ -334,8 +332,8 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.True(ok, error);
         Assert.Equal(960m, payment!.BaseAmount);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
-        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.SaleInvoiceId);
         Assert.Equal(0m, allocation.FxGain);
         Assert.Equal(38.40m, allocation.FxLoss);
 
@@ -371,8 +369,8 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.True(ok, error);
         Assert.Equal(960m, payment!.BaseAmount);
 
-        var allocation = await db.PaymentAllocations.SingleAsync();
-        Assert.Equal(invoice.Id, allocation.InvoiceId);
+        var allocation = await db.PurchasePaymentAllocations.SingleAsync();
+        Assert.Equal(invoice.Id, allocation.PurchaseInvoiceId);
         Assert.Equal(38.40m, allocation.FxGain);
         Assert.Equal(0m, allocation.FxLoss);
 
@@ -408,10 +406,9 @@ public sealed class MilestoneM9Tests : IDisposable
 
         var loaded = await svc.GetPaymentAsync(payment!.Id);
         Assert.NotNull(loaded);
-        var allocations = loaded!.PaymentAllocations!.ToList();
+        var allocations = loaded!.SalePaymentAllocations!.ToList();
         Assert.Single(allocations);
         Assert.Equal(40m, allocations[0].FxGain);
-        Assert.Equal(PaymentAllocationInvoiceType.Sales, allocations[0].InvoiceType);
         Assert.NotNull(loaded.Currency);
         Assert.Equal("USD", loaded.Currency!.Code);
     }
@@ -452,7 +449,7 @@ public sealed class MilestoneM9Tests : IDisposable
         Assert.Equal(1040m, response.Data.BaseAmount);
         Assert.Equal(2m, (await db.SaleInvoices.SingleAsync()).PaidAmount); // paid in invoice's own (foreign) units
         Assert.False((await db.SaleInvoices.SingleAsync()).IsPaid); // only 2 of 1000 USD settled
-        Assert.Equal(40m, (await db.PaymentAllocations.SingleAsync()).FxGain);
+        Assert.Equal(40m, (await db.SalePaymentAllocations.SingleAsync()).FxGain);
     }
 
     // (g) Base payment against a foreign invoice is applied in invoice (foreign) units — no unit mixing.
@@ -477,7 +474,7 @@ public sealed class MilestoneM9Tests : IDisposable
         var inv = await db.SaleInvoices.SingleAsync();
         Assert.Equal(2m, inv.PaidAmount); // 1000 SDG @500 covers 2 of 1000 USD
         Assert.False(inv.IsPaid);
-        var allocation = await db.PaymentAllocations.SingleAsync();
+        var allocation = await db.SalePaymentAllocations.SingleAsync();
         Assert.Equal(1000m, allocation.AllocatedBaseAmount);
         Assert.Null(allocation.ExchangeRateAtSettlement);
         Assert.Equal(0m, allocation.FxGain);
@@ -505,7 +502,7 @@ public sealed class MilestoneM9Tests : IDisposable
         var inv = await db.SaleInvoices.SingleAsync();
         Assert.Equal(1000m, inv.PaidAmount);
         Assert.True(inv.IsPaid);
-        Assert.Equal(500000m, (await db.PaymentAllocations.SingleAsync()).AllocatedBaseAmount);
+        Assert.Equal(500000m, (await db.SalePaymentAllocations.SingleAsync()).AllocatedBaseAmount);
     }
 
     // (i) Partial foreign payments accumulate in invoice foreign units across steps.

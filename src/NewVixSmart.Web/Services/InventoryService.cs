@@ -208,21 +208,29 @@ public sealed class InventoryService : IInventoryService
                 var consumed = await ConsumeFifoLayersAsync(stockLines, delivery.DeliveryDate);
                 var costTotal = consumed.DominantTotal;
 
-                decimal value = 0m;
+                decimal rawValue = 0m;
                 foreach (var item in valid)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
                     if (invLine == null) continue;
                     decimal effective = item.Quantity > 0 ? item.Quantity : item.Count;
-                    value += effective * invLine.UnitPrice;
+                    rawValue += effective * invLine.UnitPrice;
                 }
-                if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m && invoice.NetAmount != invoice.TotalAmount)
-                    value = invoice.NetAmount * (value / invoice.TotalAmount);
+                decimal value = rawValue;
+                decimal taxShare = 0m;
+                if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m)
+                {
+                    decimal share = rawValue / invoice.TotalAmount;
+                    value = invoice.NetAmount * share;
+                    if (invoice.Tax > 0m)
+                        taxShare = invoice.Tax * share;
+                }
                 var localValue = decimal.Round(value * (invoice.ExchangeRate ?? 1m), 2);
+                var localTax = decimal.Round(taxShare * (invoice.ExchangeRate ?? 1m), 2);
 
                 if (_accounting != null && (localValue > 0 || costTotal > 0))
                     await _accounting.RecordSaleDeliveryAsync(delivery.DeliveryDate, invoice.CustomerId,
-                        localValue, costTotal, invoice.CurrencyId, invoice.ExchangeRate, user, branchId, delivery.Id);
+                        localValue, costTotal, invoice.CurrencyId, invoice.ExchangeRate, user, branchId, delivery.Id, localTax);
 
                 delivery.Status = DeliveryOrderStatus.Delivered;
                 delivery.DeliveredBy = user;
@@ -332,13 +340,6 @@ public sealed class InventoryService : IInventoryService
                 item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
         }
 
-        var stockLines = ToStockLines(valid);
-        var stockError = await ApplyStockAsync(
-            stockLines, sign: +1,
-            docNumber: invoice.InvoiceNumber, docType: DocumentType.PurchaseInvoice, docId: null,
-            movementDate: invoice.InvoiceDate, user);
-        if (stockError != null) { _db.ChangeTracker.Clear(); return (false, stockError); }
-
         invoice.TotalAmount = valid.Sum(i => i.Total);
         invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
         if (invoice.NetAmount < 0)
@@ -366,6 +367,13 @@ public sealed class InventoryService : IInventoryService
 
         _db.PurchaseInvoices.Add(invoice);
         await _db.SaveChangesAsync();
+
+        var stockLines = ToStockLines(valid);
+        var stockError = await ApplyStockAsync(
+            stockLines, sign: +1,
+            docNumber: invoice.InvoiceNumber, docType: DocumentType.PurchaseInvoice, docId: invoice.Id,
+            movementDate: invoice.InvoiceDate, user);
+        if (stockError != null) { _db.ChangeTracker.Clear(); return (false, stockError); }
 
         await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate, invoice.ExchangeRate);
 
@@ -477,13 +485,24 @@ public sealed class InventoryService : IInventoryService
 
                 var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate, saleReturn.ExchangeRate);
 
+                decimal returnTax = 0m;
+                if (saleReturn.SaleInvoiceId.HasValue && saleReturn.TotalAmount > 0m)
+                {
+                    var invTotals = await _db.SaleInvoices.AsNoTracking()
+                        .Where(i => i.Id == saleReturn.SaleInvoiceId)
+                        .Select(i => new { i.Tax, i.TotalAmount })
+                        .FirstOrDefaultAsync();
+                    if (invTotals != null && invTotals.TotalAmount > 0m && invTotals.Tax > 0m)
+                        returnTax = decimal.Round(saleReturn.TotalAmount * (invTotals.Tax / invTotals.TotalAmount), 2);
+                }
+
                 await _db.SaveChangesAsync();
 
                 if (_accounting != null && saleReturn.TotalAmount > 0)
                     await _accounting.RecordSaleReturnWithCostAsync(
                         saleReturn.ReturnDate, saleReturn.Id, saleReturn.CustomerId,
                         saleReturn.TotalAmount, costTotal,
-                        saleReturn.CurrencyId, saleReturn.ExchangeRate, user, saleReturn.BranchId);
+                        saleReturn.CurrencyId, saleReturn.ExchangeRate, user, saleReturn.BranchId, returnTax);
 
                 saleReturn.Status = ReturnStatus.Posted;
                 saleReturn.PostedBy = user;
@@ -740,6 +759,56 @@ public sealed class InventoryService : IInventoryService
             }
         }
         return (false, "تعذر حفظ الجرد بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteAdjustmentAsync(int adjustmentId, string? user)
+    {
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var adj = await _db.InventoryAdjustments.FirstOrDefaultAsync(a => a.Id == adjustmentId);
+                if (adj == null) return (false, "سجل الجرد غير موجود");
+
+                if (await _db.JournalEntries.AnyAsync(j => j.Source == JournalSource.OpeningStock && j.SourceId == adj.ItemId))
+                    return (false, "لا يمكن حذف هذا الجرد لأن بياناته رُحّلت إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
+
+                var movements = await _db.StockMovements
+                    .Where(s => s.DocumentType == DocumentType.Adjustment && s.DocumentNumber == adj.ReferenceNumber)
+                    .OrderBy(s => s.Id)
+                    .ToListAsync();
+                if (movements.Count > 0)
+                {
+                    var last = movements[^1];
+                    var hasLaterMovements = await _db.StockMovements.AnyAsync(m => m.ItemId == last.ItemId && m.Id > last.Id);
+                    if (hasLaterMovements)
+                        return (false, "لا يمكن حذف هذا الجرد لأن حركات مخزون لاحقة تمت على نفس الصنف؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
+
+                    var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == last.ItemId);
+                    if (item == null) return (false, "الصنف المرتبط بالجرد غير موجود");
+                    item.CurrentCount = movements[0].CountBefore;
+                    item.CurrentQuantity = movements[0].BalanceBefore;
+                    _db.StockMovements.RemoveRange(movements);
+                }
+
+                _db.InventoryAdjustments.Remove(adj);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("حُذف سجل جرد {Owner} رقم {Number} وأُعيد المخزون إلى حالته السابقة",
+                    user, adj.ReferenceNumber);
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await tx.RollbackAsync(); DetachAll();
+            }
+            catch (DbUpdateException)
+            {
+                await tx.RollbackAsync(); DetachAll();
+            }
+        }
+        return (false, "تعذر حذف الجرد بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<ConsumedCostResult?> GetConsumedCostAsync(int itemId, IReadOnlyCollection<StockLine> lines)

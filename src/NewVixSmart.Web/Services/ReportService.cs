@@ -680,13 +680,12 @@ public class ReportService : IReportService
             .GroupBy(r => r.SaleInvoiceId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
 
-        var saleAllocations = await _db.PaymentAllocations
+        var saleAllocations = await _db.SalePaymentAllocations
             .AsNoTracking()
-            .Where(a => a.InvoiceType == PaymentAllocationInvoiceType.Sales)
-            .Select(a => new { a.InvoiceId, a.AllocatedBaseAmount })
+            .Select(a => new { a.SaleInvoiceId, a.AllocatedBaseAmount })
             .ToListAsync();
         var allocatedBySale = saleAllocations
-            .GroupBy(a => a.InvoiceId)
+            .GroupBy(a => a.SaleInvoiceId)
             .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
 
         var receivableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
@@ -741,13 +740,12 @@ public class ReportService : IReportService
             .GroupBy(r => r.PurchaseInvoiceId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
 
-        var purchaseAllocations = await _db.PaymentAllocations
+        var purchaseAllocations = await _db.PurchasePaymentAllocations
             .AsNoTracking()
-            .Where(a => a.InvoiceType == PaymentAllocationInvoiceType.Purchases)
-            .Select(a => new { a.InvoiceId, a.AllocatedBaseAmount })
+            .Select(a => new { a.PurchaseInvoiceId, a.AllocatedBaseAmount })
             .ToListAsync();
         var allocatedByPurchase = purchaseAllocations
-            .GroupBy(a => a.InvoiceId)
+            .GroupBy(a => a.PurchaseInvoiceId)
             .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
 
         var payableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
