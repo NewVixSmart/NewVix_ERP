@@ -90,6 +90,77 @@ public sealed class CashFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task CashFlow_Details_ReconcileToTotals_WithOnReceiptPurchases()
+    {
+        using var db = CreateContext();
+        var supplier = new Supplier { Name = "مورد استلام نقدي" };
+        var customer = new Customer { Name = "عميل نقدي" };
+        db.Suppliers.Add(supplier);
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        db.PurchaseInvoices.Add(new PurchaseInvoice
+        {
+            InvoiceNumber = "OR-1",
+            SupplierId = supplier.Id,
+            InvoiceDate = today.AddDays(-2),
+            PaymentTerms = InvoicePaymentTerms.OnReceipt,
+            PaidAmount = 250m,
+            TotalAmount = 250m,
+            NetAmount = 250m
+        });
+        db.Payments.AddRange(
+            Payment("PY-IN", today.AddDays(-3), PaymentType.Receipt, 200m, PaymentMethod.Cash),
+            Payment("PY-OUT", today, PaymentType.Disbursement, 80m, PaymentMethod.BankTransfer));
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.CashFlowAsync(today.AddDays(-7), today);
+
+        Assert.Equal(200m, vm.TotalReceipts);
+        Assert.Equal(330m, vm.TotalDisbursements);
+        Assert.Equal(3, vm.Details.Count);
+        Assert.Equal(vm.TotalReceipts, vm.Details.Where(d => d.Type == PaymentType.Receipt).Sum(d => d.Amount));
+        Assert.Equal(vm.TotalDisbursements, vm.Details.Where(d => d.Type == PaymentType.Disbursement).Sum(d => d.Amount));
+
+        var auto = Assert.Single(vm.Details, d => d.Doc == "OR-1");
+        Assert.Equal(PaymentType.Disbursement, auto.Type);
+        Assert.Equal(PaymentMethod.Cash, auto.Method);
+        Assert.Equal(250m, auto.Amount);
+        Assert.Equal("مورد استلام نقدي", auto.Party);
+    }
+
+    [Fact]
+    public async Task CashFlow_OnReceiptPurchase_BeforePeriod_CountsInOpeningBalance()
+    {
+        using var db = CreateContext();
+        var supplier = new Supplier { Name = "مورد قديم" };
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        db.PurchaseInvoices.Add(new PurchaseInvoice
+        {
+            InvoiceNumber = "OR-OLD",
+            SupplierId = supplier.Id,
+            InvoiceDate = today.AddDays(-30),
+            PaymentTerms = InvoicePaymentTerms.OnReceipt,
+            PaidAmount = 400m,
+            TotalAmount = 400m,
+            NetAmount = 400m
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.CashFlowAsync(today.AddDays(-7), today);
+
+        Assert.Equal(-400m, vm.OpeningBalance);
+        Assert.Empty(vm.Details);
+        Assert.Equal(0m, vm.TotalDisbursements);
+    }
+
+    [Fact]
     public async Task ExportCashFlowXlsx_ProducesValidWorkbook()
     {
         using var db = CreateContext();

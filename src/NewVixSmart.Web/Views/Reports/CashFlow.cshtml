@@ -90,27 +90,35 @@
                 </tr>
             </thead>
             <tbody>
-                @if (Model.Payments.Count == 0)
+                @if (Model.Details.Count == 0)
                 {
                     <tr><td colspan="7" class="text-center text-muted py-4">لا توجد حركات نقدية في الفترة</td></tr>
                 }
-                @foreach (var p in Model.Payments)
+                @foreach (var d in Model.Details)
                 {
-                    var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
                     <tr>
-                        <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
-                        <td><code>@p.ReceiptNumber</code></td>
+                        <td>@d.Date.ToString("dd/MM/yyyy")</td>
+                        <td><code>@d.Doc</code></td>
                         <td>
-                            @if (p.Type == PaymentType.Receipt) { <span class="badge bg-success">قبض</span> }
+                            @if (d.Type == PaymentType.Receipt) { <span class="badge bg-success">قبض</span> }
                             else { <span class="badge bg-danger">صرف</span> }
                         </td>
-                        <td>@(p.Customer?.Name ?? p.Supplier?.Name ?? "—")</td>
-                        <td>@p.Method.GetDisplayName()</td>
-                        <td>@(p.ReferenceNumber ?? "—")</td>
-                        <td class="text-end fw-bold">@amount.ToString("N2")</td>
+                        <td>@d.Party</td>
+                        <td>@d.Method.GetDisplayName()</td>
+                        <td>@(d.Reference ?? "—")</td>
+                        <td class="text-end fw-bold">@d.Amount.ToString("N2")</td>
                     </tr>
                 }
             </tbody>
+            @if (Model.Details.Count > 0)
+            {
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="6">مجموع التفاصيل</td>
+                        <td class="text-end">قبض: <span class="text-success">@Model.TotalReceipts.ToString("N2")</span> / صرف: <span class="text-danger">@Model.TotalDisbursements.ToString("N2")</span></td>
+                    </tr>
+                </tfoot>
+            }
         </table>
     </div>
 </div>

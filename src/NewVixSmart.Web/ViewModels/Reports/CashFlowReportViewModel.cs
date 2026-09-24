@@ -10,6 +10,15 @@ public class CashFlowMethodTotal
     public decimal Net => Receipts - Disbursements;
 }
 
+public sealed record CashFlowDetailLine(
+    DateTime Date,
+    string Doc,
+    PaymentType Type,
+    string Party,
+    PaymentMethod Method,
+    string Reference,
+    decimal Amount);
+
 public class CashFlowReportViewModel
 {
     public DateTime From { get; set; }
@@ -23,4 +32,5 @@ public class CashFlowReportViewModel
 
     public List<CashFlowMethodTotal> ByMethod { get; set; } = new();
     public List<Payment> Payments { get; set; } = new();
+    public List<CashFlowDetailLine> Details { get; set; } = new();
 }

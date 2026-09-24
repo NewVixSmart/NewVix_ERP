@@ -895,9 +895,16 @@ public class ReportService : IReportService
         var onReceiptPurchases = (await _db.PurchaseInvoices
             .AsNoTracking()
             .Where(p => p.PaymentTerms == InvoicePaymentTerms.OnReceipt && p.PaidAmount > 0)
-            .Select(p => new { p.InvoiceDate, p.NetAmount, p.ExchangeRate })
+            .Select(p => new
+            {
+                p.InvoiceDate,
+                p.NetAmount,
+                p.ExchangeRate,
+                p.InvoiceNumber,
+                SupplierName = p.Supplier != null ? p.Supplier.Name : ""
+            })
             .ToListAsync())
-            .Select(p => new { p.InvoiceDate, Base = decimal.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2) })
+            .Select(p => new { p.InvoiceDate, p.InvoiceNumber, p.SupplierName, Base = decimal.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2) })
             .ToList();
 
         var vm = new CashFlowReportViewModel { From = fromDate, To = toDate };
@@ -956,7 +963,33 @@ public class ReportService : IReportService
         }
         byMethod = byMethod.OrderBy(m => m.Method).ToList();
 
+        var details = new List<CashFlowDetailLine>();
+        foreach (var p in period)
+        {
+            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            details.Add(new CashFlowDetailLine(
+                p.PaymentDate,
+                p.ReceiptNumber,
+                p.Type,
+                p.Customer?.Name ?? p.Supplier?.Name ?? "—",
+                p.Method,
+                p.ReferenceNumber ?? "—",
+                amount));
+        }
+        foreach (var s in onReceiptPurchases.Where(p => p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate))
+        {
+            details.Add(new CashFlowDetailLine(
+                s.InvoiceDate,
+                s.InvoiceNumber,
+                PaymentType.Disbursement,
+                string.IsNullOrWhiteSpace(s.SupplierName) ? "مصروفات عند الاستلام" : s.SupplierName,
+                PaymentMethod.Cash,
+                s.InvoiceNumber,
+                s.Base));
+        }
+
         vm.ByMethod = byMethod;
+        vm.Details = details.OrderBy(d => d.Date).ThenBy(d => d.Doc).ToList();
         return vm;
     }
 
@@ -998,24 +1031,38 @@ public class ReportService : IReportService
 
         ws.Cell(row + 1, 1).Value = "تفاصيل الحركات";
         ws.Cell(row + 1, 1).Style.Font.Bold = true;
-        ws.Range(row + 2, 1, row + 2, 6).Style.Font.Bold = true;
+        ws.Range(row + 2, 1, row + 2, 7).Style.Font.Bold = true;
         ws.Cell(row + 2, 1).Value = "التاريخ";
         ws.Cell(row + 2, 2).Value = "الإيصال";
         ws.Cell(row + 2, 3).Value = "النوع";
         ws.Cell(row + 2, 4).Value = "الطرف";
         ws.Cell(row + 2, 5).Value = "الطريقة";
-        ws.Cell(row + 2, 6).Value = "المبلغ";
+        ws.Cell(row + 2, 6).Value = "المرجع";
+        ws.Cell(row + 2, 7).Value = "المبلغ";
         int detailRow = row + 3;
-        foreach (var p in vm.Payments)
+        foreach (var d in vm.Details)
         {
-            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
-            ws.Cell(detailRow, 1).Value = p.PaymentDate.ToString("dd/MM/yyyy");
-            ws.Cell(detailRow, 2).Value = p.ReceiptNumber;
-            ws.Cell(detailRow, 3).Value = p.Type == PaymentType.Receipt ? "قبض" : "صرف";
-            ws.Cell(detailRow, 4).Value = p.Customer?.Name ?? p.Supplier?.Name ?? "";
-            ws.Cell(detailRow, 5).Value = p.Method.GetDisplayName();
-            ws.Cell(detailRow, 6).Value = (double)amount;
+            ws.Cell(detailRow, 1).Value = d.Date.ToString("dd/MM/yyyy");
+            ws.Cell(detailRow, 2).Value = d.Doc;
+            ws.Cell(detailRow, 3).Value = d.Type == PaymentType.Receipt ? "قبض" : "صرف";
+            ws.Cell(detailRow, 4).Value = d.Party;
+            ws.Cell(detailRow, 5).Value = d.Method.GetDisplayName();
+            ws.Cell(detailRow, 6).Value = d.Reference;
+            ws.Cell(detailRow, 7).Value = (double)d.Amount;
             detailRow++;
+        }
+        if (vm.Details.Count > 0)
+        {
+            ws.Cell(detailRow, 1).Value = "مجموع التفاصيل";
+            ws.Cell(detailRow, 1).Style.Font.Bold = true;
+            ws.Cell(detailRow, 4).Value = "قبض";
+            ws.Cell(detailRow, 5).Value = (double)vm.TotalReceipts;
+            ws.Cell(detailRow, 4).Style.Font.Bold = true;
+            ws.Cell(detailRow, 5).Style.Font.Bold = true;
+            ws.Cell(detailRow, 6).Value = "صرف";
+            ws.Cell(detailRow, 7).Value = (double)vm.TotalDisbursements;
+            ws.Cell(detailRow, 6).Style.Font.Bold = true;
+            ws.Cell(detailRow, 7).Style.Font.Bold = true;
         }
         ws.Columns().AdjustToContents();
 
