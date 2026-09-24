@@ -255,6 +255,8 @@ public static class PrintPdfBuilder
     public static string AmountInWords(decimal value)
     {
         var amount = Math.Round(value, 2, MidpointRounding.AwayFromZero);
+        var negative = amount < 0m;
+        amount = Math.Abs(amount);
         var whole = Math.Truncate(amount);
         var frac = Math.Round(Math.Abs(amount - whole) * 100m, MidpointRounding.AwayFromZero);
         var w = (long)Math.Abs(whole);
@@ -262,7 +264,8 @@ public static class PrintPdfBuilder
         var fracValue = (int)Math.Min(frac, 99);
         if (fracValue > 0) parts.Add(UnderHundred(fracValue) + " من مائة");
         parts.Add("فقط");
-        return string.Join(" و ", parts);
+        var result = string.Join(" و ", parts);
+        return negative && w > 0 ? "ناقص " + result : result;
     }
 
     public static byte[] RenderSaleReturnPdf(SaleReturn entity)

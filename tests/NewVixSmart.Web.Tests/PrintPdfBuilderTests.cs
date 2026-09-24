@@ -31,4 +31,23 @@ public sealed class PrintPdfBuilderTests
         Assert.Contains("مليار", words);
         Assert.Contains("فقط", words);
     }
+
+    [Theory]
+    [InlineData(-500)]
+    [InlineData(-1_250.75)]
+    public void AmountInWords_Negative_PrefixedWithMinusAndKeepsMagnitude(decimal value)
+    {
+        var words = PrintPdfBuilder.AmountInWords(value);
+        Assert.StartsWith("ناقص", words);
+        Assert.Equal(PrintPdfBuilder.AmountInWords(Math.Abs(value)), words["ناقص ".Length..]);
+    }
+
+    [Theory]
+    [InlineData(-500)]
+    [InlineData(0)]
+    [InlineData(1200.40)]
+    public void AmountInWords_AlwaysEndsWithFaqat(decimal value)
+    {
+        Assert.EndsWith("فقط", PrintPdfBuilder.AmountInWords(value));
+    }
 }

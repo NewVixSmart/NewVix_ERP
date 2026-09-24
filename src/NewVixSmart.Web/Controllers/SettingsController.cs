@@ -439,17 +439,19 @@ public class SettingsController : Controller
             profile.LogoFileName = string.IsNullOrWhiteSpace(logoName) ? null : logoName[..Math.Min(logoName.Length, 80)];
         }
 
-        await SetSettingAsync("Theme.Primary", NormalizeHex(vm.Primary));
-        await SetSettingAsync("Theme.Accent", NormalizeHex(vm.Accent));
-        await SetSettingAsync("Theme.SidebarBg", NormalizeHex(vm.SidebarBg));
-        await SetSettingAsync("Theme.PageBg", NormalizeHex(vm.PageBg));
         var presetId = string.IsNullOrWhiteSpace(vm.SelectedPreset) ? null : vm.SelectedPreset.Trim();
         if (presetId != null && !_branding.Presets.Any(p => p.Id == presetId))
         {
             vm.Presets = _branding.Presets;
             ModelState.AddModelError(nameof(vm.SelectedPreset), "قالب الألوان غير صالح");
+            _branding.Invalidate();
             return View("Branding", vm);
         }
+
+        await SetSettingAsync("Theme.Primary", NormalizeHex(vm.Primary));
+        await SetSettingAsync("Theme.Accent", NormalizeHex(vm.Accent));
+        await SetSettingAsync("Theme.SidebarBg", NormalizeHex(vm.SidebarBg));
+        await SetSettingAsync("Theme.PageBg", NormalizeHex(vm.PageBg));
         await SetSettingAsync("Theme.Preset", presetId);
 
         await _db.SaveChangesAsync();
@@ -504,6 +506,12 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> SavePrinting(PrintGroup group, PrintLayoutOptions vm, bool applyToAll)
     {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "بيانات إعدادات الطباعة غير صالحة؛ تحقق من الحقول ثم أعد المحاولة";
+            return RedirectToAction(nameof(Printing));
+        }
+
         var options = PrintSettingsService.Clamp(vm);
         if (applyToAll)
         {
@@ -511,6 +519,7 @@ public class SettingsController : Controller
             foreach (var g in Enum.GetValues<PrintGroup>())
                 await _printSettings.SaveLayoutAsync(g, options);
             await tx.CommitAsync();
+            _printSettings.Invalidate();
         }
         else
         {

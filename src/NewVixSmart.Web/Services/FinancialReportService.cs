@@ -72,6 +72,7 @@ public class FinancialReportService : IFinancialReportService
         var toDate = to.Date;
         if (fromDate > toDate) (fromDate, toDate) = (toDate, fromDate);
         if (toDate > DateTime.Today) toDate = DateTime.Today;
+        if (fromDate > toDate) fromDate = toDate;
 
         var activity = await GetAccountActivityAsync(fromDate, toDate, GLAccountType.Revenue, GLAccountType.Expense);
 

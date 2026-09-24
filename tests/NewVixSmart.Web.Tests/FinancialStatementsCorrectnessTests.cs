@@ -244,4 +244,24 @@ public sealed class FinancialStatementsCorrectnessTests : IDisposable
         Assert.Equal(500m, payable.Total);
         Assert.Equal(500m, vm.ApTotal);
     }
+
+    [Fact]
+    public async Task IncomeStatement_EntirelyFutureRange_ClampsToToday_ValidRange_ZeroTotals()
+    {
+        using var db = CreateContext();
+        SeedChart(db);
+
+        AddEntry(db, JournalSource.SaleInvoice, new DateTime(2026, 6, 30),
+            ("1000", 100, 0), ("4000", 0, 100));
+        await db.SaveChangesAsync();
+
+        var svc = new FinancialReportService(db);
+        var vm = await svc.IncomeStatementAsync(DateTime.Today.AddDays(5), DateTime.Today.AddDays(10));
+
+        Assert.True(vm.From <= vm.To);
+        Assert.Equal(DateTime.Today, vm.To);
+        Assert.Empty(vm.RevenueLines);
+        Assert.Empty(vm.ExpenseLines);
+        Assert.Equal(0m, vm.NetIncome);
+    }
 }

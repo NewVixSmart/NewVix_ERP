@@ -1036,7 +1036,12 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
 
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
-        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+        foreach (var inv in invoices)
+        {
+            lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+        }
         foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
         foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
 
@@ -1055,7 +1060,12 @@ public class ReportService : IReportService
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
 
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
-        foreach (var inv in invoices) lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+        foreach (var inv in invoices)
+        {
+            lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+        }
         foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
         foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.BaseAmount > 0 ? d.BaseAmount : d.Amount));
 

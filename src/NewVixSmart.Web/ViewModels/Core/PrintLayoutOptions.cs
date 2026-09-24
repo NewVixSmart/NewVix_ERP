@@ -1,5 +1,7 @@
 namespace NewVixSmart.Web.ViewModels.Core;
 
+using System.ComponentModel.DataAnnotations;
+
 public enum PrintPageSize { A4, A5, Letter }
 
 public enum PrintOrientation { Portrait, Landscape }
@@ -39,7 +41,10 @@ public sealed class PrintLayoutOptions
     public bool ShowFooter { get; set; } = true;
     public bool ShowSignatureLines { get; set; } = false;
     public bool ShowPageNumbers { get; set; } = true;
+    [StringLength(500)]
     public string FooterNoteText { get; set; } = "شكراً لتعاملكم معنا";
+    [StringLength(200)]
     public string SignatureOne { get; set; } = "إعداد";
+    [StringLength(200)]
     public string SignatureTwo { get; set; } = "اعتماد";
 }

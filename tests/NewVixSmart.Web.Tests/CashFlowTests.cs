@@ -197,6 +197,44 @@ public sealed class CashFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task SupplierStatement_OnReceiptInvoice_AutoPaidLine_KeepsClosingEqualToOpening()
+    {
+        using var db = CreateContext();
+        var supplier = new Supplier { Name = "مورد استلام" };
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+        db.Suppliers.First().OpeningBalance = 100m;
+        db.PurchaseInvoices.Add(new PurchaseInvoice
+        {
+            InvoiceNumber = "PU-R1",
+            SupplierId = supplier.Id,
+            InvoiceDate = DateTime.Today.AddDays(-10),
+            TotalAmount = 400m,
+            NetAmount = 400m,
+            PaymentTerms = InvoicePaymentTerms.OnReceipt,
+            PaidAmount = 400m
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var bytes = await svc.ExportSupplierStatementXlsxAsync(supplier.Id);
+
+        Assert.True(bytes.Length > 0);
+        using var wb = new XLWorkbook(new MemoryStream(bytes));
+        var ws = wb.Worksheet(1);
+        var onReceiptRow = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .FirstOrDefault(n => ws.Cell(n, 2).GetString().Trim() == "مدفوع عند الاستلام");
+        Assert.True(onReceiptRow > 0, "On-receipt auto-paid credit line not found");
+        Assert.Equal((double)400m, ws.Cell(onReceiptRow, 5).GetDouble());
+        var closingRow = ws.RowsUsed()
+            .Select(r => r.RowNumber())
+            .FirstOrDefault(n => ws.Cell(n, 1).GetString().Trim() == "الرصيد الختامي");
+        Assert.True(closingRow > 0, "Closing balance row not found");
+        Assert.Equal((double)100m, ws.Cell(closingRow, 5).GetDouble());
+    }
+
+    [Fact]
     public async Task Statement_UnknownParty_ReturnsEmpty()
     {
         using var db = CreateContext();

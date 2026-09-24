@@ -176,9 +176,9 @@ public class PrintSettingsService : IPrintSettingsService
         o.AccentColor = AsHex(o.AccentColor, "#2e6fd8");
         o.TableHeaderBg = AsHex(o.TableHeaderBg, "#eaf3fc");
         o.TableHeaderText = AsHex(o.TableHeaderText, "#0d1b35");
-        o.FooterNoteText = AsText(o.FooterNoteText, "شكراً لتعاملكم معنا");
-        o.SignatureOne = AsText(o.SignatureOne, "إعداد");
-        o.SignatureTwo = AsText(o.SignatureTwo, "اعتماد");
+        o.FooterNoteText = AsText(o.FooterNoteText, "شكراً لتعاملكم معنا", 500);
+        o.SignatureOne = AsText(o.SignatureOne, "إعداد", 200);
+        o.SignatureTwo = AsText(o.SignatureTwo, "اعتماد", 200);
         return o;
     }
 
@@ -406,8 +406,11 @@ public class PrintSettingsService : IPrintSettingsService
             ? Math.Clamp((int)Math.Round(parsed / (double)step) * step, min, max)
             : fallback;
 
-    private static string AsText(string? value, string fallback) =>
-        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+    private static string AsText(string? value, string fallback, int maxLength = 1000)
+    {
+        var text = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return text.Length > maxLength ? text[..maxLength] : text;
+    }
 
     private static string AsHex(string? value, string fallback)
     {

@@ -151,6 +151,7 @@ public class CustomersController : Controller
         var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
 
         decimal totalInvoices = invoices.Sum(i => i.NetAmount);
+        decimal onReceiptPaid = invoices.Where(i => i.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && i.PaidAmount > 0).Sum(i => i.PaidAmount);
         decimal totalReturns = returns.Sum(r => r.TotalAmount);
         decimal totalPayments = payments.Where(p => p.Type == Models.Accounting.PaymentType.Receipt).Sum(p => p.Amount);
 
@@ -160,7 +161,7 @@ public class CustomersController : Controller
             Invoices = invoices,
             Payments = payments,
             Returns = returns,
-            Balance = customer.OpeningBalance + totalInvoices - totalReturns - totalPayments
+            Balance = customer.OpeningBalance + totalInvoices - onReceiptPaid - totalReturns - totalPayments
         };
         return View(vm);
     }
@@ -186,9 +187,15 @@ public class CustomersController : Controller
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
 
         var lines = new List<StatementLine>();
-        foreach (var inv in invoices) lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", inv.NetAmount, 0));
-        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, r.TotalAmount));
-        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.Amount));
+        foreach (var inv in invoices)
+        {
+            lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            if (inv.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+                lines.Add(new StatementLine(inv.InvoiceDate, $"مدفوع عند الاستلام {inv.InvoiceNumber}", 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+        }
+        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
+        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
+        lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Description).ToList();
 
         var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;
         var to = lines.Count > 0 ? lines.Max(l => l.Date) : DateTime.Today;
