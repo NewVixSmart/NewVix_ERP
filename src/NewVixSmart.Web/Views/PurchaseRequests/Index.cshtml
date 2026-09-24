@@ -35,7 +35,7 @@ else
                             }
                             @if (await Perm.HasAsync("PurchaseRequests.Delete"))
                             {
-                                <form asp-action="Remove" asp-route-id="@q.Id" method="post" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف عرض السعر؟');">
+                                <form asp-action="Remove" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm-delete>
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.Id"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -46,4 +46,16 @@ else
             </tbody>
         </table>
     </div>
+}
+
+@section Scripts {
+<script nonce="@Context.GetCspNonce()">
+document.querySelectorAll('form[data-confirm-delete]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        if (!confirm('هل أنت متأكد من حذف عرض السعر؟')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 }

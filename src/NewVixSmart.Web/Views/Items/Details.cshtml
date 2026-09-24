@@ -75,7 +75,7 @@
             <div class="card-body text-center">
                 <partial name="_Barcode" model="@(Model.Barcode ?? Model.Code ?? $"ITM{Model.Id:D8}")" />
                 <div class="mt-3">
-                    <a asp-action="PrintLabel" asp-route-id="@Model.Id" class="btn btn-outline-primary" target="_blank"><i class="bi bi-printer"></i> طباعة الملصق</a>
+                    <a asp-action="PrintLabel" asp-route-id="@Model.Id" class="btn btn-outline-primary" target="_blank" rel="noopener noreferrer"><i class="bi bi-printer"></i> طباعة الملصق</a>
                 </div>
             </div>
         </div>

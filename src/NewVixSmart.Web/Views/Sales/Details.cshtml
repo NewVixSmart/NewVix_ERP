@@ -9,7 +9,7 @@
         {
             <a asp-controller="DeliveryOrders" asp-action="Create" asp-route-invoiceId="@Model.Id" class="btn btn-success"><i class="bi bi-truck"></i> إنشاء أذن تسليم</a>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-success"><i class="bi bi-printer"></i> طباعة الفاتورة</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success"><i class="bi bi-printer"></i> طباعة الفاتورة</a>
         <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
     </div>
 </div>
