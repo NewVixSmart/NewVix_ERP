@@ -21,7 +21,7 @@ node a11y-gate.cjs
 
 تُشغَّل البوابة أيضًا تلقائيًا في CI ضمن خطوة `Accessibility gate (axe-core, critical/serious)` في مهمة `docker-image` على كل push/PR.
 
-**نتيجة النجاح**: `GATE: PASS` — تعني أن كل مسار مكتشف: يرجع 200، و**صفر انتهاكات Critical/Serious** من axe (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`) في الوضع الفاتح، وبلا انتهاكات Critical/Serious في المسارات الداكنة الممثَّلة.
+**نتيجة النجاح**: `GATE: PASS` — تعني أن كل مسار مكتشف: يرجع 200، و**صفر انتهاكات Critical/Serious** من axe (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`) في الوضع الفاتح، وبلا انتهاكات Critical/Serious في المسارات الداكنة الممثَّلة.
 
 **الفشل**: البوابة تخرج بـ `process.exit(1)` وتطبع قائمة الصفحات المخالفة (الحالة، الانتهاكات). أصلح انتهاكات **Critical/Serious** قبل الدمج. الانتهاكات Moderate/Minor تُعالَج في نفس الدفعة أو تُوثَّق هنا.
 

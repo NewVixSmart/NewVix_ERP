@@ -3,7 +3,7 @@ goal: M8a - Add multi-currency + branches + shipments to New Vix Smart MVC
 version: 1.0
 date_created: 2026-09-03
 owner: Senior ERP Engineer
-status: 'In progress'
+status: 'Shipped'
 tags: feature, multicurrency, branches, shipments, accounting
 ---
 

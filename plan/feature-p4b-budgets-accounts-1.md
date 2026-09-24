@@ -4,7 +4,7 @@ version: 1.0
 date_created: 2026-09-06
 last_updated: 2026-09-06
 owner: AI Agent
-status: 'In progress'
+status: 'Shipped'
 tags: ['feature', 'erp', 'accounts', 'budgets', 'reports']
 ---
 

@@ -1,4 +1,4 @@
-# Deployment Guide — Aspire + Azure / الت经验lightly — الت经验lightly
+# Deployment Guide — Aspire + Azure
 
 <div dir="rtl">
 
@@ -101,7 +101,7 @@ az sql server create --name vix-trading-sql \
     --resource-group vix-trading-rg \
     --location eastus \
     --admin-user sqladmin \
-    --admin-password "YourStr0ng!Password"
+    --admin-password "REPLACE_WITH_StrongPassword_123!"
 
 # Create the database
 az sql db create --name NewVixSmartDb \
@@ -138,7 +138,7 @@ az containerapp create \
     --env-vars \
         ASPNETCORE_ENVIRONMENT="Production" \
         ASPNETCORE_URLS="http://+:80" \
-        ConnectionStrings__DefaultConnection="Server=vix-trading-sql.database.windows.net,1433;Database=NewVixSmartDb;User Id=sqladmin;Password=YourStr0ng!Password;TrustServerCertificate=True"
+        ConnectionStrings__DefaultConnection="Server=vix-trading-sql.database.windows.net,1433;Database=NewVixSmartDb;User Id=sqladmin;Password=REPLACE_WITH_StrongPassword_123!;TrustServerCertificate=True"
 ```
 
 ### Step E: Apply EF Core Migrations on Azure SQL
