@@ -29,8 +29,16 @@ public sealed class SalesQuotesService : ISalesQuotesService
 
     public async Task<(bool Success, string? Error, SaleQuote? Quote)> CreateAsync(SaleQuote quote, List<SaleQuoteItem> items, string? user, int? branchId = null)
     {
-        var valid = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<SaleQuoteItem>();
+        var allItems = items ?? new List<SaleQuoteItem>();
+        if (allItems.Any(i => i.Quantity < 0 || i.Count < 0))
+            return (false, "الكمية لا يمكن أن تكون سالبة", null);
+        if (allItems.Any(i => i.UnitPrice < 0))
+            return (false, "السعر لا يمكن أن يكون سالباً", null);
+
+        var valid = allItems.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", null);
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر", null);
 
         var autoNumber = string.IsNullOrWhiteSpace(quote.QuoteNumber);
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
@@ -69,6 +77,8 @@ public sealed class SalesQuotesService : ISalesQuotesService
 
         var valid = quote.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         if (valid.Count == 0) return (false, "عرض السعر لا يحتوي على أصناف صالحة للتحويل", null);
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "عرض السعر يحتوي على الصنف نفسه في أكثر من سطر", null);
 
         var claimed = await _db.SaleQuotes
             .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Draft)

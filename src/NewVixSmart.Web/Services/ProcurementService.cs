@@ -44,6 +44,8 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
 
         if (await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == order.SupplierId) == null)
             return (false, "المورد غير موجود");
@@ -87,8 +89,13 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
         if (existing == null) return (false, "أمر الشراء غير موجود");
         if (existing.Status != PurchaseOrderStatus.Draft) return (false, "لا يمكن تعديل أمر شراء غير مسودة");
 
-        var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+
+        if (await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == order.SupplierId) == null)
+            return (false, "المورد غير موجود");
 
         existing.SupplierId = order.SupplierId;
         existing.OrderDate = order.OrderDate;
@@ -134,10 +141,13 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
 
     public async Task<(bool Success, string? Error)> CancelOrderAsync(int orderId)
     {
-        var order = await _db.PurchaseOrders.FindAsync(orderId);
+var order = await _db.PurchaseOrders.FindAsync(orderId);
         if (order == null) return (false, "أمر الشراء غير موجود");
-        if (order.Status == PurchaseOrderStatus.Received) return (false, "لا يمكن إلغاء أمر مستلم");
         if (order.Status == PurchaseOrderStatus.Cancelled) return (false, "الأمر ملغي بالفعل");
+        if (order.Status != PurchaseOrderStatus.Draft && order.Status != PurchaseOrderStatus.Approved)
+            return (false, "لا يمكن إلغاء أمر تم استلام أو فوترة جزء منه");
+        if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+            return (false, "لا يمكن إلغاء أمر تمت فوترته");
 
         order.Status = PurchaseOrderStatus.Cancelled;
         await _db.SaveChangesAsync();

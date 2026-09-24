@@ -59,7 +59,8 @@ public class PurchaseRequestsController : Controller
         return View(quote);
     }
 
-    [RequirePerm("PurchaseRequests.View")]
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("PurchaseRequests.Delete")]
     public async Task<IActionResult> Remove(int id)
     {
         var quote = await _db.SupplierQuotes.FindAsync(id);

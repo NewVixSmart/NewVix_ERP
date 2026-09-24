@@ -33,9 +33,12 @@ else
                             {
                                 <a asp-controller="PurchaseOrders" asp-action="Create" asp-route-fromQuoteId="@q.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-repeat"></i> تحويل إلى أمر شراء</a>
                             }
-                            @if (await Perm.HasAsync("PurchaseRequests.Create"))
+                            @if (await Perm.HasAsync("PurchaseRequests.Delete"))
                             {
-                                <a asp-action="Remove" asp-route-id="@q.Id" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.Id"><i class="bi bi-trash"></i></a>
+                                <form asp-action="Remove" asp-route-id="@q.Id" method="post" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف عرض السعر؟');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.Id"><i class="bi bi-trash"></i></button>
+                                </form>
                             }
                         </td>
                     </tr>

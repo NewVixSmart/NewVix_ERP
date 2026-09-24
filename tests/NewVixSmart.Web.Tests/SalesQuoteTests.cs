@@ -81,13 +81,27 @@ public sealed class SalesQuoteTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
+        var second = new Item
+        {
+            Name = "صنف اختبار 2",
+            Category = await db.ItemCategories.SingleAsync(),
+            ItemType = await db.ItemTypes.SingleAsync(),
+            CountUnit = await db.Units.SingleAsync(),
+            QuantityUnit = await db.Units.SingleAsync(),
+            PurchasePrice = 50,
+            SalePrice = 80,
+            CurrentCount = 100,
+            CurrentQuantity = 100
+        };
+        db.Items.Add(second);
+        await db.SaveChangesAsync();
         var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
 
         var quote = new SaleQuote { CustomerId = custId, Discount = 10, Tax = 5 };
         var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
         {
             new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 },
-            new() { ItemId = itemId, Quantity = 0, Count = 3, UnitPrice = 80 }
+            new() { ItemId = second.Id, Quantity = 0, Count = 3, UnitPrice = 80 }
         }, "test");
 
         Assert.True(ok);
@@ -184,6 +198,86 @@ public sealed class SalesQuoteTests : IDisposable
         Assert.Equal(10, (await db.StockLayers.SingleAsync()).RemainingQty);
         Assert.Equal(0, await db.StockMovements.CountAsync());
         Assert.Equal(0, await db.JournalEntries.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateQuote_NegativeQuantity_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId) = await SeedAsync(db);
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+
+        var quote = new SaleQuote { CustomerId = custId };
+        var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
+        {
+            new() { ItemId = itemId, Quantity = -2, Count = 0, UnitPrice = 80 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالب", err);
+        Assert.Null(saved);
+        Assert.Equal(0, await db.SaleQuotes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateQuote_NegativeUnitPrice_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId) = await SeedAsync(db);
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+
+        var quote = new SaleQuote { CustomerId = custId };
+        var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = -80 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("سالب", err);
+        Assert.Null(saved);
+        Assert.Equal(0, await db.SaleQuotes.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateQuote_DuplicateItem_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId) = await SeedAsync(db);
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+
+        var quote = new SaleQuote { CustomerId = custId };
+        var (ok, err, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 },
+            new() { ItemId = itemId, Quantity = 0, Count = 3, UnitPrice = 80 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("نفسه", err);
+        Assert.Null(saved);
+        Assert.Equal(0, await db.SaleQuotes.CountAsync());
+        Assert.Equal(0, await db.SaleQuoteItems.CountAsync());
+    }
+
+    [Fact]
+    public async Task ConvertCurrent_DuplicateItem_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, custId) = await SeedAsync(db);
+        var quote = new SaleQuote { QuoteNumber = "SQ-TEST-DUP-001", CustomerId = custId, QuoteDate = new DateTime(2026, 3, 20) };
+        quote.Items.Add(new SaleQuoteItem { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 });
+        quote.Items.Add(new SaleQuoteItem { ItemId = itemId, Quantity = 0, Count = 1, UnitPrice = 80 });
+        db.SaleQuotes.Add(quote);
+        await db.SaveChangesAsync();
+
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+        var (ok, err, order) = await quotes.ConvertToOrderAsync(quote.Id, "user1");
+
+        Assert.False(ok);
+        Assert.Contains("نفسه", err);
+        Assert.Null(order);
+        Assert.Equal(0, await db.SalesOrders.CountAsync());
+        Assert.Equal(SaleQuoteStatus.Draft, (await db.SaleQuotes.SingleAsync()).Status);
     }
 
     [Fact]

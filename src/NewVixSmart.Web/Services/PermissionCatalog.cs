@@ -23,7 +23,7 @@ public static class PermissionCatalog
         ["Items"] = [View, Create, Edit, Delete],
         ["Purchases"] = [View, Create],
         ["PurchaseOrders"] = [View, Create, Edit, Approve, Receive],
-        ["PurchaseRequests"] = [View, Create],
+        ["PurchaseRequests"] = [View, Create, Delete],
         ["Sales"] = [View, Create],
         ["SaleReturns"] = [View, Create, Post],
         ["SalesQuotes"] = [View, Create, Delete, "Convert"],

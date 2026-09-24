@@ -8,7 +8,7 @@ public static class PermissionDefaults
         [
             "Items.View", "Items.Create", "Items.Edit",
             "PurchaseOrders.View", "PurchaseOrders.Create", "PurchaseOrders.Edit", "PurchaseOrders.Approve", "PurchaseOrders.Receive",
-            "PurchaseRequests.View", "PurchaseRequests.Create",
+            "PurchaseRequests.View", "PurchaseRequests.Create", "PurchaseRequests.Delete",
             "Purchases.View", "Purchases.Create",
             "Sales.View", "Sales.Create",
             "SaleReturns.View", "SaleReturns.Create", "SaleReturns.Post",
@@ -33,7 +33,7 @@ public static class PermissionDefaults
         [
             "Items.View", "Items.Create", "Items.Edit",
             "PurchaseOrders.View", "PurchaseOrders.Create", "PurchaseOrders.Edit", "PurchaseOrders.Approve", "PurchaseOrders.Receive",
-            "PurchaseRequests.View", "PurchaseRequests.Create",
+            "PurchaseRequests.View", "PurchaseRequests.Create", "PurchaseRequests.Delete",
             "Purchases.View", "Purchases.Create",
             "Sales.View", "Sales.Create",
             "SaleReturns.View", "SaleReturns.Create", "SaleReturns.Post",

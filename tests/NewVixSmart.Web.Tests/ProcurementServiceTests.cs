@@ -254,4 +254,111 @@ public sealed class ProcurementServiceTests : IDisposable
         Assert.Single(quotes);
         Assert.Equal(42, quotes[0].UnitPrice);
     }
+
+    [Fact]
+    public async Task CancelOrder_Approved_Succeeds()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var orderId = await CreateApprovedOrderAsync(db, itemId, supId, 10);
+
+        var (ok, err) = await proc.CancelOrderAsync(orderId);
+        Assert.True(ok);
+        Assert.Null(err);
+        Assert.Equal(PurchaseOrderStatus.Cancelled, (await db.PurchaseOrders.FindAsync(orderId))!.Status);
+    }
+
+    [Fact]
+    public async Task CancelOrder_PartiallyReceived_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var orderId = await CreateApprovedOrderAsync(db, itemId, supId, 10);
+        var orderItem = await db.PurchaseOrderItems.FirstAsync(o => o.PurchaseOrderId == orderId);
+        await proc.ReceiveOrderLineAsync(orderId, orderItem.Id, 4, 4);
+
+        var (ok, err) = await proc.CancelOrderAsync(orderId);
+        Assert.False(ok);
+        Assert.Contains("غاء", err);
+        Assert.Equal(PurchaseOrderStatus.PartiallyReceived, (await db.PurchaseOrders.FindAsync(orderId))!.Status);
+    }
+
+    [Fact]
+    public async Task CancelOrder_AfterInvoice_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var orderId = await CreateApprovedOrderAsync(db, itemId, supId, 10);
+        var orderItem = await db.PurchaseOrderItems.FirstAsync(o => o.PurchaseOrderId == orderId);
+        await proc.ReceiveOrderLineAsync(orderId, orderItem.Id, 10, 10);
+        await proc.CreateInvoiceFromOrderAsync(orderId, "test");
+
+        var (ok, err) = await proc.CancelOrderAsync(orderId);
+        Assert.False(ok);
+        Assert.Contains("غاء", err);
+        Assert.Equal(PurchaseOrderStatus.Received, (await db.PurchaseOrders.FindAsync(orderId))!.Status);
+    }
+
+    [Fact]
+    public async Task CreateOrder_DuplicateItem_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var order = new PurchaseOrder { SupplierId = supId };
+        var (ok, err) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
+        {
+            new() { ItemId = itemId, Quantity = 5, Count = 0, UnitPrice = 40 },
+            new() { ItemId = itemId, Quantity = 0, Count = 3, UnitPrice = 40 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("نفسه", err);
+        Assert.Equal(0, await db.PurchaseOrders.CountAsync());
+        Assert.Equal(0, await db.PurchaseOrderItems.CountAsync());
+    }
+
+    [Fact]
+    public async Task UpdateOrder_DuplicateItem_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var order = new PurchaseOrder { SupplierId = supId };
+        var (okC, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 40 } }, "test");
+        Assert.True(okC);
+
+        var (ok, err) = await proc.UpdateOrderAsync(new PurchaseOrder { Id = order.Id, SupplierId = supId }, new List<PurchaseOrderItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 40 },
+            new() { ItemId = itemId, Quantity = 0, Count = 2, UnitPrice = 40 }
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Contains("نفسه", err);
+    }
+
+    [Fact]
+    public async Task UpdateOrder_MissingSupplier_IsRejected()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var order = new PurchaseOrder { SupplierId = supId };
+        var (okC, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 40 } }, "test");
+        Assert.True(okC);
+
+        var (ok, err) = await proc.UpdateOrderAsync(new PurchaseOrder { Id = order.Id, SupplierId = 99999 }, new List<PurchaseOrderItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 40 } }, "test");
+        Assert.False(ok);
+        Assert.Contains("المورد", err);
+    }
 }

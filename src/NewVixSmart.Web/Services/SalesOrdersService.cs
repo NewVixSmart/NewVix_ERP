@@ -48,6 +48,8 @@ public sealed class SalesOrdersService : ISalesOrdersService
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
 
         if (await _db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId) == null)
             return (false, "العميل غير موجود");
@@ -92,6 +94,11 @@ public sealed class SalesOrdersService : ISalesOrdersService
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+            return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+
+        if (await _db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId) == null)
+            return (false, "العميل غير موجود");
 
         existing.CustomerId = order.CustomerId;
         existing.OrderDate = order.OrderDate;
