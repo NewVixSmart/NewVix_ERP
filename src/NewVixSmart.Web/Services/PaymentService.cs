@@ -397,7 +397,7 @@ public sealed class PaymentService : IPaymentService
             : payment.SupplierId.HasValue ? $"S{payment.SupplierId}" : null;
         if (party == null) return null;
         var date = payment.PaymentDate;
-        var bucket = new DateTime(date.Year, date.Month, date.Day, date.Hour, (date.Minute / 2) * 2, 0);
-        return $"{payment.Type}|{party}|{payment.Amount}|{payment.CurrencyId}|{payment.ExchangeRate}|{bucket:yyyyMMddHHmm}";
+        var day = new DateTime(date.Year, date.Month, date.Day);
+        return $"{payment.Type}|{party}|{payment.Amount}|{payment.CurrencyId}|{payment.ExchangeRate}|{payment.Method}|{day:yyyyMMdd}";
     }
 }

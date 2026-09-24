@@ -111,6 +111,20 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
+
+        db.StockLayers.Add(new StockLayer
+        {
+            ItemId = itemId,
+            Qty = 100,
+            Count = 100,
+            RemainingQty = 100,
+            RemainingCount = 100,
+            UnitCost = 25m,
+            CountCost = 25m,
+            DateReceived = new DateTime(2026, 1, 1)
+        });
+        await db.SaveChangesAsync();
+
         var svc = new InventoryService(db);
 
         var saleInv = new SaleInvoice { CustomerId = custId };
@@ -140,9 +154,11 @@ public sealed class ReturnsFixtureTests : IDisposable
         Assert.Equal(94, db.Items.Single().CurrentQuantity);
         Assert.Single(await db.StockMovements.Where(m => m.DocumentType == DocumentType.SaleReturn).ToListAsync());
 
-        var layer = await db.StockLayers.SingleAsync(l => l.ItemId == itemId);
-        Assert.Equal(4, layer.RemainingQty);
-        Assert.Equal(30, layer.UnitCost);
+        var layers = await db.StockLayers.Where(l => l.ItemId == itemId).ToListAsync();
+        var layer = Assert.Single(layers);
+        Assert.Equal(100, layer.Qty);
+        Assert.Equal(94, layer.RemainingQty);
+        Assert.Equal(25, layer.UnitCost);
     }
 
     [Fact]

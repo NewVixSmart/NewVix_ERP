@@ -311,6 +311,49 @@ public sealed class ImportExportCenterTests : IDisposable
     }
 
     [Fact]
+    public async Task Import_Supplier_SemicolonSeparatedCsv_WithDecimalComma_ParsesCorrectly()
+    {
+        using var db = CreateContext();
+        var svc = CreateImportService(db);
+
+        var csv = CsvBytes("الكود;الاسم;الرصيد الافتتاحي\nS-1;مورد الفاصلة المنقوطة;1,5\n");
+        var vm = await svc.ParseAsync("suppliers", "s.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(1, vm.ValidCount);
+        Assert.Equal(0, vm.ErrorCount);
+
+        var result = await svc.ImportAsync("suppliers", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+
+        var supplier = await db.Suppliers.SingleAsync(s => s.Code == "S-1");
+        Assert.Equal("مورد الفاصلة المنقوطة", supplier.Name);
+        Assert.Equal(1.5m, supplier.OpeningBalance);
+    }
+
+    [Fact]
+    public async Task Import_Account_ParentCode_ForwardReference_IsLinked()
+    {
+        using var db = CreateContext();
+        var svc = CreateImportService(db);
+
+        var csv = CsvBytes("كود الحساب,اسم الحساب,نوع الحساب,طبيعة الحساب,الحساب الأب,الحالة\n" +
+                           "520001,خدمات فرعية,مصروف,مدين,520000,نشط\n" +
+                           "520000,الخدمات,مصروف,مدين,,نشط\n");
+        var vm = await svc.ParseAsync("glAccounts", "acc.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(2, vm.ValidCount);
+        Assert.Equal(0, vm.ErrorCount);
+
+        var result = await svc.ImportAsync("glAccounts", vm.Payload, vm.ApplyToken!);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(2, result.Created);
+
+        var child = await db.GLAccounts.Include(a => a.ParentAccount).SingleAsync(a => a.Code == "520001");
+        Assert.NotNull(child.ParentAccount);
+        Assert.Equal("520000", child.ParentAccount.Code);
+    }
+
+    [Fact]
     public async Task Import_SupplierUpdate_BlankCell_KeepsExistingValue()
     {
         using var db = CreateContext();

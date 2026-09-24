@@ -235,4 +235,55 @@ var svc = new ReportService(db, new FinancialReportService(db));
         Assert.Equal(1, vm.OverdueReceivableCount);
         Assert.Equal(300m, vm.OverdueReceivableTotal); // 100 × 3, not a raw mixed-currency 100
     }
+
+    [Fact]
+    public async Task Aging_Includes_OpeningBalance_InOldestBucket()
+    {
+        using var db = CreateContext();
+        var customer = new Customer { Name = "عميل افتتاحي", OpeningBalance = 200m };
+        var supplier = new Supplier { Name = "مورد افتتاحي", OpeningBalance = 150m };
+        db.Customers.Add(customer);
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        db.SaleInvoices.Add(SaleInvoice(customer.Id, "S-OB", today.AddDays(-20), 100, 0, due: today.AddDays(-10)));
+        db.PurchaseInvoices.Add(PurchaseInvoice(supplier.Id, "P-OB", today.AddDays(-20), 120, 0, due: today.AddDays(-10)));
+        await db.SaveChangesAsync();
+        var sx = await db.SaleInvoices.SingleAsync(s => s.InvoiceNumber == "S-OB");
+        await MarkDeliveredAsync(db, sx.Id, customer.Id, "DLV-S-OB");
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+
+        var ar = Assert.Single(vm.Receivables);
+        Assert.Equal("عميل افتتاحي", ar.PartyName);
+        Assert.Equal(100m, ar.Days1To30);
+        Assert.Equal(200m, ar.Days90Plus);
+        Assert.Equal(300m, ar.Total);
+
+        var ap = Assert.Single(vm.Payables);
+        Assert.Equal("مورد افتتاحي", ap.PartyName);
+        Assert.Equal(120m, ap.Days1To30);
+        Assert.Equal(150m, ap.Days90Plus);
+        Assert.Equal(270m, ap.Total);
+    }
+
+    [Fact]
+    public async Task DashboardReport_Overdue_UsesInvoiceDate_WhenNoDueDate()
+    {
+        using var db = CreateContext();
+        var (customerId, _) = await SeedPartiesAsync(db);
+        var today = DateTime.Today;
+
+        db.SaleInvoices.Add(SaleInvoice(customerId, "S-NOD", today.AddDays(-40), 150, 0, due: null));
+        await db.SaveChangesAsync();
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.GetDashboardAsync();
+
+        var row = Assert.Single(vm.OverdueReceivables);
+        Assert.Equal(today.AddDays(-40), row.DueDate);
+        Assert.Equal(150m, row.NetAmount);
+    }
 }

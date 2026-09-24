@@ -37,39 +37,45 @@ public class ReportService : IReportService
         var receivables = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
-            .Where(s => s.DueDate.HasValue
-                && s.DueDate.Value.Date < today
+            .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today
                 && s.PaidAmount < s.NetAmount)
             .ToListAsync();
 
-        vm.OverdueReceivables = receivables.Select(s => new OverdueInvoiceViewModel
+        vm.OverdueReceivables = receivables.Select(s =>
         {
-            Id = s.Id,
-            InvoiceNumber = s.InvoiceNumber,
-            PartyName = s.Customer?.Name ?? "—",
-            InvoiceDate = s.InvoiceDate,
-            DueDate = s.DueDate!.Value,
-            NetAmount = s.NetAmount,
-            PaidAmount = s.PaidAmount
+            var due = s.DueDate ?? s.InvoiceDate;
+            return new OverdueInvoiceViewModel
+            {
+                Id = s.Id,
+                InvoiceNumber = s.InvoiceNumber,
+                PartyName = s.Customer?.Name ?? "—",
+                InvoiceDate = s.InvoiceDate,
+                DueDate = due,
+                NetAmount = s.NetAmount,
+                PaidAmount = s.PaidAmount
+            };
         }).OrderByDescending(x => x.DaysOverdue).ToList();
 
         var payables = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
-            .Where(p => p.DueDate.HasValue
-                && p.DueDate.Value.Date < today
+            .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today
                 && p.PaidAmount < p.NetAmount)
             .ToListAsync();
 
-        vm.OverduePayables = payables.Select(p => new OverdueInvoiceViewModel
+        vm.OverduePayables = payables.Select(p =>
         {
-            Id = p.Id,
-            InvoiceNumber = p.InvoiceNumber,
-            PartyName = p.Supplier?.Name ?? "—",
-            InvoiceDate = p.InvoiceDate,
-            DueDate = p.DueDate!.Value,
-            NetAmount = p.NetAmount,
-            PaidAmount = p.PaidAmount
+            var due = p.DueDate ?? p.InvoiceDate;
+            return new OverdueInvoiceViewModel
+            {
+                Id = p.Id,
+                InvoiceNumber = p.InvoiceNumber,
+                PartyName = p.Supplier?.Name ?? "—",
+                InvoiceDate = p.InvoiceDate,
+                DueDate = due,
+                NetAmount = p.NetAmount,
+                PaidAmount = p.PaidAmount
+            };
         }).OrderByDescending(x => x.DaysOverdue).ToList();
 
         var lowStock = await _db.Items
@@ -705,6 +711,13 @@ public class ReportService : IReportService
         receivableLines.AddRange(standaloneSaleReturns.Select(r =>
             (r.CustomerId, r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
 
+        var customerOpenings = await _db.Customers.AsNoTracking()
+            .Where(c => c.OpeningBalance != 0m)
+            .Select(c => new { c.Id, c.Name, c.OpeningBalance })
+            .ToListAsync();
+        receivableLines.AddRange(customerOpenings.Select(o =>
+            (o.Id, string.IsNullOrWhiteSpace(o.Name) ? "—" : o.Name, DateTime.MinValue, o.OpeningBalance)));
+
         vm.Receivables = receivableLines
             .GroupBy(x => x.PartyId)
             .Select(g => BuildAgingRow(g.First().Name, g.Select(x => (x.Due, x.Amount)), today))
@@ -758,6 +771,13 @@ public class ReportService : IReportService
             .ToListAsync();
         payableLines.AddRange(standalonePurchaseReturns.Select(r =>
             (r.SupplierId, r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+
+        var supplierOpenings = await _db.Suppliers.AsNoTracking()
+            .Where(s => s.OpeningBalance != 0m)
+            .Select(s => new { s.Id, s.Name, s.OpeningBalance })
+            .ToListAsync();
+        payableLines.AddRange(supplierOpenings.Select(o =>
+            (o.Id, string.IsNullOrWhiteSpace(o.Name) ? "—" : o.Name, DateTime.MinValue, o.OpeningBalance)));
 
         vm.Payables = payableLines
             .GroupBy(x => x.PartyId)

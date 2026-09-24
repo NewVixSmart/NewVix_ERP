@@ -493,6 +493,7 @@ public class ImportCenterService : IImportCenterService
 
         string? pendingBaseCode = null;
         var unitParentLinks = new List<(Unit Child, string ParentName)>();
+        var accountParentLinks = new List<(GLAccount Child, string ParentCode)>();
         int created = 0, updated = 0, failed = 0;
 
         await using var tx = await _db.Database.BeginTransactionAsync();
@@ -513,7 +514,7 @@ public class ImportCenterService : IImportCenterService
             else if (def.Key == "currencies") { (c, u) = ApplyCurrency(cells, cache, ref pendingBaseCode); }
             else if (def.Key == "branches") { (c, u) = ApplyBranch(cells, cache); }
             else if (def.Key == "warehouses") { (c, u) = ApplyWarehouse(cells, cache); }
-            else if (def.Key == "glAccounts") { (c, u) = ApplyAccount(def, cells, cache); }
+            else if (def.Key == "glAccounts") { (c, u) = ApplyAccount(def, cells, cache, accountParentLinks); }
             else { c = 0; u = 0; }
 
             created += c;
@@ -531,6 +532,10 @@ public class ImportCenterService : IImportCenterService
         foreach (var (child, parentName) in unitParentLinks)
             if (cache.UnitsByName.TryGetValue(NormKey(parentName), out var parent) && parent != child)
                 child.ParentUnit = parent;
+
+        foreach (var (child, parentCode) in accountParentLinks)
+            if (cache.AccountsByCode.TryGetValue(NormKey(parentCode), out var parent) && parent != child)
+                child.ParentAccount = parent;
 
         try
         {
@@ -1715,7 +1720,8 @@ public class ImportCenterService : IImportCenterService
         return isNew ? (1, 0) : (0, 1);
     }
 
-    private (int Created, int Updated) ApplyAccount(ImportEntityDefinition def, IReadOnlyDictionary<string, string> cells, ReferenceCache cache)
+    private (int Created, int Updated) ApplyAccount(ImportEntityDefinition def, IReadOnlyDictionary<string, string> cells, ReferenceCache cache,
+        List<(GLAccount Child, string ParentCode)> parentLinks)
     {
         var codeRaw = cells.GetValueOrDefault("Code", "").Trim();
         cache.AccountsByCode.TryGetValue(NormKey(codeRaw), out var entity);
@@ -1741,6 +1747,10 @@ public class ImportCenterService : IImportCenterService
                     entity.ParentAccount = parent;
                 else
                     entity.ParentAccountId = null;
+            }
+            else
+            {
+                parentLinks.Add((entity, parentRaw));
             }
         }
 
@@ -2017,10 +2027,19 @@ public class ImportCenterService : IImportCenterService
     {
         var text = Encoding.UTF8.GetString(data);
         if (text.StartsWith('\uFEFF')) text = text[1..];
-        return ParseCsv(text);
+        return ParseCsv(text, DetectDelimiter(text));
     }
 
-    private static List<List<string>> ParseCsv(string text)
+    private static char DetectDelimiter(string text)
+    {
+        var lineEnd = text.IndexOfAny(new[] { '\r', '\n' });
+        var first = lineEnd < 0 ? text : text[..lineEnd];
+        var commas = first.Count(c => c == ',');
+        var semicolons = first.Count(c => c == ';');
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static List<List<string>> ParseCsv(string text, char delimiter)
     {
         var rows = new List<List<string>>();
         var row = new List<string>();
@@ -2048,7 +2067,7 @@ public class ImportCenterService : IImportCenterService
                 {
                     inQuotes = true;
                 }
-                else if (c == ',')
+                else if (c == delimiter)
                 {
                     row.Add(field.ToString());
                     field.Clear();

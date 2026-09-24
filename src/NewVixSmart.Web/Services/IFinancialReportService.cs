@@ -12,4 +12,5 @@ public interface IFinancialReportService
     Task<BalanceSheetReportViewModel> BalanceSheetAsync(DateTime asOf);
     Task<IReadOnlyList<PlAccountActivity>> GetYearlyPlActivityAsync(int year);
     Task<(decimal Debit, decimal Credit)> GetAccountYearlyActivityAsync(int accountId, int year);
+    Task<Dictionary<int, (decimal Debit, decimal Credit)>> GetAccountsYearlyActivityAsync(IEnumerable<int> accountIds, int year);
 }

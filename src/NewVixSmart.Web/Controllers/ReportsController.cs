@@ -338,12 +338,14 @@ public class ReportsController : Controller
 
         var rows = new List<VarianceRow>();
         decimal totalBudgetRev = 0, totalActualRev = 0, totalBudgetExp = 0, totalActualExp = 0;
+        var activityMap = await _financial.GetAccountsYearlyActivityAsync(
+            budgetLines.Select(bl => bl.Account.Id).Distinct(), year.Value);
 
         foreach (var bl in budgetLines)
         {
             var account = bl.Account;
             var amount = bl.Amount;
-            var activity = await _financial.GetAccountYearlyActivityAsync(account.Id, year.Value);
+            (decimal Debit, decimal Credit) activity = activityMap.TryGetValue(account.Id, out var act) ? act : (0m, 0m);
             decimal actual = account.NormalBalance == NormalBalance.Debit
                 ? activity.Debit - activity.Credit
                 : activity.Credit - activity.Debit;
@@ -403,11 +405,13 @@ public class ReportsController : Controller
                 .ToListAsync();
 
         var rows = new List<(string Code, string Name, decimal Budget, decimal Actual, decimal Variance, decimal VariancePct)>();
+        var activityMap = await _financial.GetAccountsYearlyActivityAsync(
+            budgetLines.Select(bl => bl.Account.Id).Distinct(), year);
         foreach (var bl in budgetLines)
         {
             var account = bl.Account;
             var amount = bl.Amount;
-            var activity = await _financial.GetAccountYearlyActivityAsync(account.Id, year);
+            (decimal Debit, decimal Credit) activity = activityMap.TryGetValue(account.Id, out var act) ? act : (0m, 0m);
             decimal actual = account.NormalBalance == NormalBalance.Debit
                 ? activity.Debit - activity.Credit
                 : activity.Credit - activity.Debit;

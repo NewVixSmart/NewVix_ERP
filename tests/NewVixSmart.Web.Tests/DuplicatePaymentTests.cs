@@ -165,4 +165,60 @@ public sealed class DuplicatePaymentTests : IDisposable
             "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'Payments'").ToListAsync();
         Assert.Contains(indexNames, n => n != null && n.Contains("DedupeKey", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task Payment_NextDay_SameAmount_Is_Not_Blocked()
+    {
+        using var db = await SeedCustomerWithDeliveredInvoiceAsync(_options);
+        var customerId = await db.Customers.Select(c => c.Id).SingleAsync();
+        var svc = new PaymentService(db);
+
+        var (ok1, e1, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt,
+            CustomerId = customerId,
+            Amount = 100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = new DateTime(2026, 3, 1)
+        }, "tester");
+        var (ok2, e2, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt,
+            CustomerId = customerId,
+            Amount = 100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = new DateTime(2026, 3, 2)
+        }, "tester");
+
+        Assert.True(ok1, e1);
+        Assert.True(ok2, e2);
+    }
+
+    [Fact]
+    public async Task SameDay_SameAmount_DifferentMethod_Is_Not_Blocked()
+    {
+        using var db = await SeedCustomerWithDeliveredInvoiceAsync(_options);
+        var customerId = await db.Customers.Select(c => c.Id).SingleAsync();
+        var svc = new PaymentService(db);
+
+        var (ok1, e1, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt,
+            CustomerId = customerId,
+            Amount = 100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
+        }, "tester");
+        var (ok2, e2, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt,
+            CustomerId = customerId,
+            Amount = 100m,
+            Method = PaymentMethod.BankTransfer,
+            PaymentDate = DateTime.Today
+        }, "tester");
+
+        Assert.True(ok1, e1);
+        Assert.True(ok2, e2);
+    }
 }

@@ -237,6 +237,32 @@ public class FinancialReportService : IFinancialReportService
         return (result?.Debit ?? 0m, result?.Credit ?? 0m);
     }
 
+    public async Task<Dictionary<int, (decimal Debit, decimal Credit)>> GetAccountsYearlyActivityAsync(IEnumerable<int> accountIds, int year)
+    {
+        var ids = accountIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, (decimal Debit, decimal Credit)>();
+
+        var fromDate = new DateTime(year, 1, 1);
+        var toDate = new DateTime(year, 12, 31);
+
+        var entryIds = _db.JournalEntries
+            .AsNoTracking()
+            .Where(j => j.IsPosted && j.Source != JournalSource.YearEndClose && j.Date >= fromDate && j.Date <= toDate)
+            .Select(j => j.Id);
+
+        var rows = await _db.JournalEntryLines
+            .AsNoTracking()
+            .Where(l => entryIds.Contains(l.JournalEntryId) && ids.Contains(l.AccountId))
+            .GroupBy(l => l.AccountId)
+            .Select(g => new { AccountId = g.Key, Debit = g.Sum(l => l.Debit), Credit = g.Sum(l => l.Credit) })
+            .ToListAsync();
+
+        var result = new Dictionary<int, (decimal Debit, decimal Credit)>();
+        foreach (var r in rows)
+            result[r.AccountId] = (r.Debit, r.Credit);
+        return result;
+    }
+
     private async Task<List<AccountActivity>> GetAccountActivityAsync(DateTime? from, DateTime to, params GLAccountType[] types)
     {
         var query = _db.GLAccounts
