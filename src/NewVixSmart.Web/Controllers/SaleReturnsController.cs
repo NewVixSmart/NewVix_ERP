@@ -34,11 +34,9 @@ public class SaleReturnsController : Controller
     }
 
 [RequirePerm("SaleReturns.Create")]
-    public async Task<IActionResult> Create()
+public async Task<IActionResult> Create()
     {
         await PopulateDropdowns();
-        var next = await _db.SaleReturns.AsNoTracking().CountAsync() + 1;
-        ViewBag.NextNumber = $"SRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
         return View();
     }
 
@@ -132,6 +130,9 @@ if (ModelState.IsValid)
         }
 
         await PopulateDropdowns();
+        var next = await _db.SaleReturns.AsNoTracking().CountAsync() + 1;
+        saleReturn.ReturnNumber = $"SRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        ModelState.Remove("ReturnNumber");
         return View(saleReturn);
     }
 
@@ -193,11 +194,13 @@ if (saleReturn == null) return NotFound();
         return File(bytes, "application/pdf", $"sale-return-{saleReturn.ReturnNumber}.pdf");
     }
 
-    private async Task PopulateDropdowns()
+private async Task PopulateDropdowns()
     {
         ViewBag.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).Where(i => i.IsSellable).AsNoTracking().ToListAsync();
 ViewBag.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
+        var next = await _db.SaleReturns.AsNoTracking().CountAsync() + 1;
+        ViewBag.NextNumber = $"SRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
     }
 
     private async Task<int?> BaseCurrencyIdAsync()

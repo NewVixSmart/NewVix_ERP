@@ -73,7 +73,9 @@ public class SalesQuotesController : Controller
             ModelState.AddModelError("", error ?? "تعذر حفظ عرض السعر");
         }
 
-        await PopulateDropdowns(vm);
+await PopulateDropdowns(vm);
+        vm.Quote.QuoteNumber = await NextNumberPreviewAsync();
+        ModelState.Remove("Quote.QuoteNumber");
         return View(vm);
     }
 

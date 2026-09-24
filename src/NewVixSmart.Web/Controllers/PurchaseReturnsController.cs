@@ -46,11 +46,9 @@ public class PurchaseReturnsController : Controller
     }
 
 [RequirePerm("PurchaseReturns.Create")]
-    public async Task<IActionResult> Create()
+public async Task<IActionResult> Create()
     {
         await PopulateDropdowns();
-        var next = await _db.PurchaseReturns.AsNoTracking().CountAsync() + 1;
-        ViewBag.NextNumber = $"PRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
         return View();
     }
 
@@ -144,6 +142,9 @@ if (ModelState.IsValid)
         }
 
         await PopulateDropdowns();
+        var next = await _db.PurchaseReturns.AsNoTracking().CountAsync() + 1;
+        purchaseReturn.ReturnNumber = $"PRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        ModelState.Remove("ReturnNumber");
         return View(purchaseReturn);
     }
 
@@ -205,11 +206,13 @@ if (purchaseReturn == null) return NotFound();
         return File(bytes, "application/pdf", $"purchase-return-{purchaseReturn.ReturnNumber}.pdf");
     }
 
-    private async Task PopulateDropdowns()
+private async Task PopulateDropdowns()
     {
         ViewBag.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
 ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
+        var next = await _db.PurchaseReturns.AsNoTracking().CountAsync() + 1;
+        ViewBag.NextNumber = $"PRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
     }
 
     private async Task<int?> BaseCurrencyIdAsync()

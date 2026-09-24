@@ -92,6 +92,10 @@ public class SalesController : Controller
             ModelState.AddModelError("", error ?? "تعذر حفظ فاتورة البيع");
         }
 
+var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).FirstOrDefaultAsync();
+        vm.Invoice.InvoiceNumber = $"SI-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
+        ModelState.Remove("Invoice.InvoiceNumber");
+
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync();

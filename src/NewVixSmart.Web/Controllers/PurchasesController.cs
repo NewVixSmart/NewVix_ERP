@@ -78,6 +78,10 @@ public class PurchasesController : Controller
             ModelState.AddModelError("", error ?? "تعذر حفظ فاتورة الشراء");
         }
 
+        var lastInvoice = await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
+        vm.Invoice.InvoiceNumber = $"PO-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
+        ModelState.Remove("Invoice.InvoiceNumber");
+
         vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
