@@ -113,6 +113,45 @@ public sealed class FinancialIntegrityTests : IDisposable
     }
 
     [Fact]
+    public async Task Aging_PartialDelivery_OutstandingMatchesArControl()
+    {
+        using var db = CreateContext();
+        var (itemId, customerId) = await SeedItemAndCustomerAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        var invoice = new SaleInvoice { CustomerId = customerId, InvoiceDate = DateTime.Today, PaymentTerms = InvoicePaymentTerms.Net30 };
+        var (ok, err) = await inventory.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, UnitPrice = 100 }
+        }, "test");
+        Assert.True(ok, err);
+        var created = await db.SaleInvoices.SingleAsync();
+        created.Discount = 20m;
+        created.Tax = 10m;
+        created.NetAmount = 190m;
+        await db.SaveChangesAsync();
+
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (dOk, dErr) = await inventory.CreateDeliveryOrderAsync(delivery,
+            new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1 } }, "test");
+        Assert.True(dOk, dErr);
+        var (dlvOk, dlvErr) = await inventory.DeliverDeliveryOrderAsync(delivery.Id, "test");
+        Assert.True(dlvOk, dlvErr);
+
+        decimal arControl = await db.JournalEntryLines
+            .Include(l => l.Account)
+            .Where(l => l.Account!.Code == "1200")
+            .SumAsync(l => l.Debit - l.Credit);
+        Assert.Equal(95m, arControl);
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+        var row = Assert.Single(vm.Receivables);
+        Assert.Equal(95m, row.Total);
+        Assert.Equal(95m, vm.ArTotal);
+    }
+
+    [Fact]
     public async Task Receipt_OnUndeliveredInvoice_IsRejected_UntilDelivery()
     {
         using var db = CreateContext();

@@ -666,9 +666,20 @@ public class ReportService : IReportService
         var saleInvoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
+            .Include(s => s.Items)
             .Where(s => s.PaidAmount < s.NetAmount)
             .Where(s => _db.DeliveryOrders.Any(d => d.SaleInvoiceId == s.Id && d.Status == NewVixSmart.Web.Models.Sales.DeliveryOrderStatus.Delivered))
             .ToListAsync();
+
+        var deliveredOrders = await _db.DeliveryOrders
+            .AsNoTracking()
+            .Include(d => d.Items)
+            .Where(d => d.Status == NewVixSmart.Web.Models.Sales.DeliveryOrderStatus.Delivered)
+            .ToListAsync();
+        var ordersBySaleInvoice = deliveredOrders
+            .Where(d => d.SaleInvoiceId.HasValue)
+            .GroupBy(d => d.SaleInvoiceId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var saleReturns = await _db.SaleReturns
             .AsNoTracking()
@@ -692,10 +703,33 @@ public class ReportService : IReportService
         foreach (var s in saleInvoices)
         {
             var rate = s.ExchangeRate ?? 1m;
+            decimal deliveredBase = 0m;
+            if (ordersBySaleInvoice.TryGetValue(s.Id, out var orders))
+            {
+                foreach (var order in orders)
+                {
+                    decimal rawValue = 0m;
+                    foreach (var item in order.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)))
+                    {
+                        var invLine = s.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
+                        if (invLine == null) continue;
+                        rawValue += (item.Quantity > 0 ? item.Quantity : item.Count) * invLine.UnitPrice;
+                    }
+                    decimal orderBase;
+                    if (rawValue <= 0m) orderBase = s.NetAmount;
+                    else if (s.TotalAmount > 0m && s.NetAmount >= 0m) orderBase = decimal.Round(s.NetAmount * (rawValue / s.TotalAmount), 2);
+                    else orderBase = rawValue;
+                    deliveredBase += decimal.Round(orderBase * rate, 2);
+                }
+            }
+            else
+            {
+                deliveredBase = decimal.Round(s.NetAmount * rate, 2);
+            }
             var paidBase = allocatedBySale.GetValueOrDefault(s.Id);
             if (paidBase <= 0m && s.PaidAmount > 0m)
                 paidBase = decimal.Round(s.PaidAmount * rate, 2);
-            var outstanding = decimal.Round(s.NetAmount * rate, 2)
+            var outstanding = deliveredBase
                 - paidBase
                 - returnsBySaleInvoice.GetValueOrDefault(s.Id);
             if (outstanding > 0.005m)
