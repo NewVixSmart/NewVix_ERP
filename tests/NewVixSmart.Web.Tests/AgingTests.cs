@@ -358,4 +358,64 @@ var svc = new ReportService(db, new FinancialReportService(db));
         Assert.Equal(today.AddDays(-40), row.DueDate);
         Assert.Equal(150m, row.NetAmount);
     }
+
+    [Fact]
+    public async Task Aging_FxSettlementAtDifferentRate_OutstandingReconcilesToArControl()
+    {
+        using var db = CreateContext();
+        foreach (var (code, name, type, normal) in new (string, string, GLAccountType, NormalBalance)[]
+        {
+            ("1000", "النقد / الصندوق", GLAccountType.Asset, NormalBalance.Debit),
+            ("1200", "المدينون (العملاء)", GLAccountType.Asset, NormalBalance.Debit),
+            ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
+            ("8400", "أرباح فروقات العملة (عملة أجنبية)", GLAccountType.Revenue, NormalBalance.Credit),
+        })
+        {
+            db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
+        }
+        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار أمريكي", Symbol = "$", ExchangeRate = 48.5m, IsBase = false, IsActive = true });
+        var (customerId, _) = await SeedPartiesAsync(db);
+        await db.SaveChangesAsync();
+
+        var invoice = SaleInvoice(customerId, "S-FX", DateTime.Today.AddDays(-5), 100, 0, due: DateTime.Today.AddDays(10));
+        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        invoice.CurrencyId = usd.Id;
+        invoice.ExchangeRate = 48.5m;
+        db.SaleInvoices.Add(invoice);
+        await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, invoice.Id, customerId, "DLV-S-FX");
+
+        await new AccountingService(db).RecordSaleDeliveryAsync(
+            DateTime.Today.AddDays(-5), customerId, 4850m, 0m, usd.Id, 48.5m, "test", deliveryId: invoice.Id);
+
+        var payments = new PaymentService(db, new AccountingService(db));
+        var (ok, err, _) = await payments.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt,
+            CustomerId = customerId,
+            Amount = 50m,
+            CurrencyId = usd.Id,
+            ExchangeRate = 50m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
+        }, "test");
+        Assert.True(ok, err);
+
+        var alloc = await db.SalePaymentAllocations.SingleAsync();
+        Assert.Equal(2425m, alloc.AllocatedBaseAmount);
+        Assert.Equal(75m, alloc.FxGain);
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+
+        decimal arControl = await db.JournalEntryLines
+            .Include(l => l.Account)
+            .Where(l => l.Account!.Code == "1200")
+            .SumAsync(l => l.Debit - l.Credit);
+        Assert.Equal(2425m, arControl);
+
+        var row = Assert.Single(vm.Receivables);
+        Assert.Equal(2425m, row.Total);
+        Assert.Equal(2425m, vm.ArTotal);
+    }
 }
