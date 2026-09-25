@@ -111,15 +111,15 @@ public sealed class InventoryService : IInventoryService
             return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم");
         if (!delivery.SaleInvoiceId.HasValue) return (false, "يجب ربط أذن التسليم بفاتورة بيع");
 
-        var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
-        if (invoice == null) return (false, "فاتورة البيع غير موجودة");
-
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
+                var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
+                if (invoice == null) return (false, "فاتورة البيع غير موجودة");
+
                 delivery.DeliveryNumber = await NextDeliveryNumberAsync();
                 delivery.CustomerId = invoice.CustomerId;
                 delivery.Status = DeliveryOrderStatus.Draft;
@@ -1218,38 +1218,55 @@ public sealed class InventoryService : IInventoryService
     private async Task<bool> IsPeriodClosedAsync(DateTime date)
         => await _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed);
 
+    private static async Task<int> MaxSeriesValueAsync(IQueryable<string> existing, string seriesPrefix)
+    {
+        var values = await existing.Where(n => n.StartsWith(seriesPrefix)).ToListAsync();
+        int max = 0;
+        foreach (var value in values)
+        {
+            if (value == null || value.Length <= seriesPrefix.Length) continue;
+            if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+                max = parsed;
+        }
+        return max;
+    }
+
     private async Task<string> NextInvoiceNumberAsync(IQueryable<string> existing, string prefix)
     {
-        int next = await existing.CountAsync() + 1;
-        string num = $"{prefix}-{next:D5}";
+        var seriesPrefix = $"{prefix}-";
+        int next = await MaxSeriesValueAsync(existing, seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D5}";
         while (await existing.AnyAsync(n => n == num))
         {
             next++;
-            num = $"{prefix}-{next:D5}";
+            num = $"{seriesPrefix}{next:D5}";
         }
         return num;
     }
 
     private async Task<string> NextReturnNumberAsync(IQueryable<string> existing, string prefix)
     {
-        int next = await existing.CountAsync() + 1;
-        string num = $"{prefix}-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var seriesPrefix = $"{prefix}-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(existing, seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D3}";
         while (await existing.AnyAsync(n => n == num))
         {
             next++;
-            num = $"{prefix}-{DateTime.Now:yyyyMMdd}-{next:D3}";
+            num = $"{seriesPrefix}{next:D3}";
         }
         return num;
     }
 
     private async Task<string> NextDeliveryNumberAsync()
     {
-        int next = await _db.DeliveryOrders.CountAsync() + 1;
-        string num = $"DLV-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var seriesPrefix = $"DLV-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(
+            _db.DeliveryOrders.Select(d => d.DeliveryNumber), seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D3}";
         while (await _db.DeliveryOrders.AnyAsync(d => d.DeliveryNumber == num))
         {
             next++;
-            num = $"DLV-{DateTime.Now:yyyyMMdd}-{next:D3}";
+            num = $"{seriesPrefix}{next:D3}";
         }
         return num;
     }
@@ -1539,12 +1556,13 @@ public sealed class InventoryService : IInventoryService
 
     private async Task<string> NextTransferNumberAsync(IQueryable<string> existing)
     {
-        int next = await existing.CountAsync() + 1;
-        string num = $"TRF-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var seriesPrefix = $"TRF-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(existing, seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D3}";
         while (await existing.AnyAsync(n => n == num))
         {
             next++;
-            num = $"TRF-{DateTime.Now:yyyyMMdd}-{next:D3}";
+            num = $"{seriesPrefix}{next:D3}";
         }
         return num;
     }

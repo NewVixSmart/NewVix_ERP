@@ -230,14 +230,29 @@ public class AccountingService : IAccountingService
         throw new InvalidOperationException("تعذر حفظ القيد بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
+    private static async Task<int> MaxSeriesValueAsync(IQueryable<string> existing, string seriesPrefix)
+    {
+        var values = await existing.Where(n => n.StartsWith(seriesPrefix)).ToListAsync();
+        int max = 0;
+        foreach (var value in values)
+        {
+            if (value == null || value.Length <= seriesPrefix.Length) continue;
+            if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+                max = parsed;
+        }
+        return max;
+    }
+
     private async Task<string> NextEntryNumberAsync()
     {
-        int next = await _db.JournalEntries.CountAsync() + 1;
-        string num = $"GL-{DateTime.Now:yyyyMMdd}-{next:D4}";
+        var seriesPrefix = $"GL-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(
+            _db.JournalEntries.Select(j => j.EntryNumber), seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D4}";
         while (await _db.JournalEntries.AnyAsync(j => j.EntryNumber == num))
         {
             next++;
-            num = $"GL-{DateTime.Now:yyyyMMdd}-{next:D4}";
+            num = $"{seriesPrefix}{next:D4}";
         }
         return num;
     }

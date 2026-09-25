@@ -75,7 +75,9 @@ public class InventoryAdjustmentsController : Controller
     {
         ViewBag.Items = new SelectList(await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.ItemsData = await _db.Items.Include(i => i.CountUnit).Include(i => i.QuantityUnit).Where(i => i.IsActive).AsNoTracking().ToListAsync();
-        var next = await _db.InventoryAdjustments.AsNoTracking().CountAsync();
-        ViewBag.NextNumber = $"ADJ-{DateTime.Now:yyyyMMdd}-{next + 1:D3}";
+        var prefix = $"ADJ-{DateTime.Now:yyyyMMdd}-";
+        var taken = await _db.InventoryAdjustments.AsNoTracking().Where(a => a.ReferenceNumber.StartsWith(prefix)).Select(a => a.ReferenceNumber).ToListAsync();
+        var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
+        ViewBag.NextNumber = $"{prefix}{next:D3}";
     }
 }

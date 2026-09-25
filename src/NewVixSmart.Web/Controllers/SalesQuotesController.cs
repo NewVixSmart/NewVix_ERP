@@ -208,7 +208,9 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
 
     private async Task<string> NextNumberPreviewAsync()
     {
-        var next = await _db.SaleQuotes.AsNoTracking().CountAsync() + 1;
-        return $"SQ-{DateTime.Now:yyyyMMdd}-{next:D3}";
+var prefix = $"SQ-{DateTime.Now:yyyyMMdd}-";
+        var taken = await _db.SaleQuotes.AsNoTracking().Where(q => q.QuoteNumber.StartsWith(prefix)).Select(q => q.QuoteNumber).ToListAsync();
+        var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
+        return $"{prefix}{next:D3}";
     }
 }

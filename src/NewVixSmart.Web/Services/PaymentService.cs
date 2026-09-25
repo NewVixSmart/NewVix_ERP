@@ -160,12 +160,11 @@ public sealed class PaymentService : IPaymentService
 
     private async Task<string> NextPaymentNumberAsync()
     {
-        var last = await _db.Payments.AsNoTracking()
+        var taken = await _db.Payments.AsNoTracking()
             .Where(p => p.ReceiptNumber.StartsWith("PAY-"))
-            .OrderByDescending(p => p.ReceiptNumber)
             .Select(p => p.ReceiptNumber)
-            .FirstOrDefaultAsync();
-        int next = last != null && int.TryParse(last.AsSpan(4), out var n) ? n + 1 : 1;
+            .ToListAsync();
+        int next = taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(4), out var v) ? v : 0).Max() + 1 : 1;
         return $"PAY-{next:D5}";
     }
 

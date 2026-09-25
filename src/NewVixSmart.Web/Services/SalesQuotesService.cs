@@ -229,8 +229,10 @@ public sealed class SalesQuotesService : ISalesQuotesService
 
     private async Task<string> NextQuoteNumberAsync()
     {
-        int next = await _db.SaleQuotes.CountAsync() + 1;
-        var num = $"SQ-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var prefix = $"SQ-{DateTime.Now:yyyyMMdd}-";
+        var taken = await _db.SaleQuotes.AsNoTracking().Where(q => q.QuoteNumber.StartsWith(prefix)).Select(q => q.QuoteNumber).ToListAsync();
+        int next = taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() + 1 : 1;
+        var num = $"{prefix}{next:D3}";
         while (await _db.SaleQuotes.AnyAsync(q => q.QuoteNumber == num))
         {
             next++;
