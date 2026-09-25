@@ -175,7 +175,7 @@ The `docker-compose.yml` at the repository root provides a local development env
 
 | Service | Image | Port |
 |---------|-------|------|
-| `db` | `mcr.microsoft.com/mssql/server:2022-latest` | 1433 |
+| `db` | `mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04` | 1433 |
 | `web` | Built from `src/NewVixSmart.Web/Dockerfile` | 8080 |
 
 **Important:** Change the `SA_PASSWORD` value in `docker-compose.yml` before any non-local deployment.
