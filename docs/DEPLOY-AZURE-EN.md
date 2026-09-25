@@ -98,6 +98,10 @@ az containerapp create --name new-vix-smart-web \
 
 EF Core migrations run automatically on startup via `db.Database.Migrate()`.
 
+### F. Host header allow-list
+
+The base `appsettings.json` restricts `AllowedHosts` to `localhost`. Azure host headers use your generated host name, so the committed `appsettings.Production.json` sets `Hosting:AllowedHosts = "*"` (or set `Hosting__AllowedHosts=*` as an env var). `Program.cs` applies `Hosting:AllowedHosts` over the host-level value automatically.
+
 ---
 
 ## 5. Azure SQL Connection String

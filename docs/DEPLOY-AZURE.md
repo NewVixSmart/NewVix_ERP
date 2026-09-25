@@ -146,6 +146,10 @@ az containerapp create \
 The app runs `db.Database.Migrate()` on startup, so migrations are applied automatically.
 Ensure the web app's service identity has `db_owner` permissions on the Azure SQL database.
 
+### Step F: Host header allow-list
+
+The base `appsettings.json` restricts `AllowedHosts` to `localhost`. On Azure App Service / Container Apps the host header is your generated host name, so override it with `appsettings.Production.json` (already committed: `Hosting:AllowedHosts = "*"`), or set the environment variable `Hosting__AllowedHosts=*` in the App Service configuration. `Program.cs` applies `Hosting:AllowedHosts` over the host-level value automatically.
+
 ---
 
 ## 5. إعدادات الاتصال بقاعدة البيانات Azure SQL
