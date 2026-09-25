@@ -31,7 +31,7 @@
             <div class="col-md-3"><strong>فاتورة البيع:</strong>
                 @if (Model.SaleInvoice != null)
                 {
-                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.Id">@Model.SaleInvoice.InvoiceNumber</a>
+                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.PublicId">@Model.SaleInvoice.InvoiceNumber</a>
                 }
                 else
                 {

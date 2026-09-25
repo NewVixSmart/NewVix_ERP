@@ -103,12 +103,21 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
     }
 
     [RequirePerm("Sales.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var invoice = await _db.SaleInvoices.Include(s => s.Customer).Include(s => s.SalesOrder)
+        var query = _db.SaleInvoices.Include(s => s.Customer).Include(s => s.SalesOrder)
             .Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
-            .AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+            .AsNoTracking();
+
+        SaleInvoice? invoice;
+        if (Guid.TryParse(id, out var publicId))
+            invoice = await query.FirstOrDefaultAsync(s => s.PublicId == publicId);
+        else if (int.TryParse(id, out var numericId))
+            invoice = await query.FirstOrDefaultAsync(s => s.Id == numericId);
+        else
+            return NotFound();
+
         if (invoice == null) return NotFound();
         return View(invoice);
     }

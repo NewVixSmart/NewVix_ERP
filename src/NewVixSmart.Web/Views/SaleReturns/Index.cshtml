@@ -32,7 +32,7 @@
                         }
                     </td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-info" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye"></i></a>
                         @if (r.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Draft && await Perm.HasAsync("SaleReturns.Post"))
                         {
                             <form asp-action="Post" asp-route-id="@r.Id" method="post" class="d-inline" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">

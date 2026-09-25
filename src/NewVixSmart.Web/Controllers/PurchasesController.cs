@@ -89,11 +89,20 @@ public class PurchasesController : Controller
     }
 
     [RequirePerm("Purchases.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
+        var query = _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
-            .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            .AsNoTracking();
+
+        PurchaseInvoice? invoice;
+        if (Guid.TryParse(id, out var publicId))
+            invoice = await query.FirstOrDefaultAsync(p => p.PublicId == publicId);
+        else if (int.TryParse(id, out var numericId))
+            invoice = await query.FirstOrDefaultAsync(p => p.Id == numericId);
+        else
+            return NotFound();
+
         if (invoice == null) return NotFound();
         return View(invoice);
     }

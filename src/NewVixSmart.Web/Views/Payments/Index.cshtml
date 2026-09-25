@@ -50,7 +50,7 @@
                     <td>@p.Method.GetDisplayName()</td>
                     <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-info" aria-label="عرض إيصال @p.ReceiptNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@p.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض إيصال @p.ReceiptNumber"><i class="bi bi-eye"></i></a>
                     </td>
                 </tr>
             }

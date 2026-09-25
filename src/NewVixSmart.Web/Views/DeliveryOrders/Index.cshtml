@@ -45,7 +45,7 @@ else
                         <td>
                             @if (d.SaleInvoice != null)
                             {
-                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@d.SaleInvoiceId">@d.SaleInvoice.InvoiceNumber</a>
+                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@d.SaleInvoice.PublicId">@d.SaleInvoice.InvoiceNumber</a>
                             }
                             else
                             {

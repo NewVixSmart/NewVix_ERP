@@ -38,7 +38,7 @@
                     <td>@inv.PaymentTerms.GetDisplayName()@(inv.DueDate.HasValue ? $" حتى {inv.DueDate.Value:dd/MM/yyyy}" : "")</td>
                     <td>@(inv.IsPaid ? "مدفوعة" : "غير مدفوعة")</td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@inv.Id" class="btn btn-sm btn-outline-info" aria-label="عرض فاتورة @inv.InvoiceNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@inv.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض فاتورة @inv.InvoiceNumber"><i class="bi bi-eye"></i></a>
                     </td>
                 </tr>
             }

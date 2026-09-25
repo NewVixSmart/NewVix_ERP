@@ -113,9 +113,28 @@ public class PaymentsController : Controller
     }
 
     [RequirePerm("Payments.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var payment = await _payment.GetPaymentAsync(id);
+        int paymentId;
+        if (Guid.TryParse(id, out var publicId))
+        {
+            var target = await _db.Payments.AsNoTracking()
+                .Where(p => p.PublicId == publicId)
+                .Select(p => (int?)p.Id)
+                .FirstOrDefaultAsync();
+            if (target == null) return NotFound();
+            paymentId = target.Value;
+        }
+        else if (int.TryParse(id, out var numericId))
+        {
+            paymentId = numericId;
+        }
+        else
+        {
+            return NotFound();
+        }
+
+        var payment = await _payment.GetPaymentAsync(paymentId);
         if (payment == null) return NotFound();
         return View(payment);
     }

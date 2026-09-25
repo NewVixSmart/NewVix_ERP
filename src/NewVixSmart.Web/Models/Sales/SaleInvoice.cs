@@ -10,6 +10,8 @@ public class SaleInvoice
     [BindNever]
     public int Id { get; set; }
 
+    public Guid PublicId { get; set; } = Guid.NewGuid();
+
     [Required(ErrorMessage = "رقم الفاتورة مطلوب")]
     [StringLength(50)]
     [Display(Name = "رقم الفاتورة")]

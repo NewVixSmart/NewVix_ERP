@@ -130,8 +130,10 @@ if (ModelState.IsValid)
         }
 
         await PopulateDropdowns();
-        var next = await _db.SaleReturns.AsNoTracking().CountAsync() + 1;
-        saleReturn.ReturnNumber = $"SRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var prefix = $"SRTN-{DateTime.Now:yyyyMMdd}-";
+        var taken = await _db.SaleReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
+        var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
+        saleReturn.ReturnNumber = $"{prefix}{next:D3}";
         ModelState.Remove("ReturnNumber");
         return View(saleReturn);
     }
@@ -152,16 +154,24 @@ if (ModelState.IsValid)
     }
 
     [RequirePerm("SaleReturns.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var saleReturn = await _db.SaleReturns
+        var query = _db.SaleReturns
             .Include(r => r.Customer)
             .Include(r => r.SaleInvoice)
             .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id);
-if (saleReturn == null) return NotFound();
+            .AsNoTracking();
+
+        SaleReturn? saleReturn;
+        if (Guid.TryParse(id, out var publicId))
+            saleReturn = await query.FirstOrDefaultAsync(r => r.PublicId == publicId);
+        else if (int.TryParse(id, out var numericId))
+            saleReturn = await query.FirstOrDefaultAsync(r => r.Id == numericId);
+        else
+            return NotFound();
+
+        if (saleReturn == null) return NotFound();
         return View(saleReturn);
     }
 
@@ -199,8 +209,10 @@ private async Task PopulateDropdowns()
         ViewBag.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).Where(i => i.IsSellable).AsNoTracking().ToListAsync();
 ViewBag.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
-        var next = await _db.SaleReturns.AsNoTracking().CountAsync() + 1;
-        ViewBag.NextNumber = $"SRTN-{DateTime.Now:yyyyMMdd}-{next:D3}";
+        var prefix = $"SRTN-{DateTime.Now:yyyyMMdd}-";
+        var taken = await _db.SaleReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
+        var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
+        ViewBag.NextNumber = $"{prefix}{next:D3}";
     }
 
     private async Task<int?> BaseCurrencyIdAsync()
