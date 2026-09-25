@@ -4,10 +4,12 @@ var sqlServer = builder.AddSqlServer("sql")
     .AddDatabase("DefaultConnection");
 
 // Dev-only fallback; production deployments set Jwt__Key explicitly.
+// The web production guard rejects any Jwt__Key containing "REPLACE_WITH",
+// so this placeholder can never seed a live environment.
 var jwtKey = builder.Configuration["Jwt__Key"]
-    ?? "DEVELOPMENT_ONLY_JwtSecret_ChangeMe_0123456789_ABCDEFGHIJKLMNOP";
+    ?? "REPLACE_WITH_AspireDevJwtSecret_0123456789_ABCDEFGHIJKLMNOP";
 
-builder.AddProject<Projects.NewVixSmart_Web>("webfrontend")
+builder.AddProject("webfrontend", "../../src/NewVixSmart.Web/NewVixSmart.Web.csproj")
     .WithReference(sqlServer)
     .WithEnvironment("Jwt__Key", jwtKey)
     .WaitFor(sqlServer);
