@@ -32,6 +32,12 @@ services:
       Seed__AccountantPassword: "${SEED_ACCOUNTANT_PASSWORD:?SEED_ACCOUNTANT_PASSWORD (strong accountant seed password) must be set in the gitignored .env}"
       Seed__WarehousePassword: "${SEED_WAREHOUSE_PASSWORD:?SEED_WAREHOUSE_PASSWORD (strong warehouse seed password) must be set in the gitignored .env}"
       ConnectionStrings__DefaultConnection: "Server=db,1433;Database=NewVixSmartDb;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   sqlserver-data:
