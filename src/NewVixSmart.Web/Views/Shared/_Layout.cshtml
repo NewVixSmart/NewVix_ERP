@@ -26,9 +26,23 @@
             document.documentElement.setAttribute('data-theme-mode', mode);
             document.documentElement.setAttribute('data-theme', resolved);
             document.documentElement.setAttribute('data-bs-theme', resolved);
+            window.__applyDarkThemeCss = function (apply) {
+                var existing = document.getElementById('dark-theme-css');
+                if (apply) {
+                    if (!existing) {
+                        var link = document.createElement('link');
+                        link.id = 'dark-theme-css';
+                        link.rel = 'stylesheet';
+                        link.href = '@Url.Content("~/css/dark-theme.css")';
+                        document.head.appendChild(link);
+                    }
+                } else if (existing) {
+                    existing.parentNode.removeChild(existing);
+                }
+            };
+            window.__applyDarkThemeCss(resolved === 'dark');
         })();
     </script>
-    <link href="~/css/dark-theme.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
     @Html.AntiForgeryToken()
@@ -496,7 +510,6 @@
     </div>
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

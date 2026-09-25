@@ -813,6 +813,7 @@
         document.querySelectorAll('.theme-mode-btn').forEach(function (btn) {
             btn.setAttribute('aria-pressed', btn.getAttribute('data-theme-value') === mode ? 'true' : 'false');
         });
+        if (window.__applyDarkThemeCss) { window.__applyDarkThemeCss(resolved === 'dark'); }
     }
 
     function initTheme() {
