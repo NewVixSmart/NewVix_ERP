@@ -114,6 +114,9 @@ async function main() {
   console.log(`Routes scanned: light=${Object.keys(summary.light).length}, dark=${Object.keys(summary.dark).length}`);
   console.log('Light non-critical/serious: ' + JSON.stringify(countByImpact(lightAll.filter(v => !isSerious(v)))));
   console.log('Dark  non-critical/serious: ' + JSON.stringify(countByImpact(darkAll.filter(v => !isSerious(v)))));
+  const nonSeriousAll = [...lightAll, ...darkAll].filter(v => !isSerious(v));
+  const countImpact = impact => nonSeriousAll.filter(v => v.impact === impact).length;
+  console.log(`Total moderate: ${countImpact('moderate')}, total minor: ${countImpact('minor')} (reported only - not gate-failing)`);
   for (const [route, r] of Object.entries(summary.dark)) console.log(`  dark ${r.themeApplied} ${route}`);
 
   if (failures.length) {
