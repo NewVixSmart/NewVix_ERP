@@ -80,9 +80,9 @@ await PopulateDropdowns(vm);
     }
 
 [RequirePerm("SalesQuotes.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var quote = await _db.SaleQuotes
+        var query = _db.SaleQuotes
             .Include(q => q.Customer)
             .Include(q => q.Currency)
             .Include(q => q.SaleInvoice)
@@ -90,8 +90,16 @@ await PopulateDropdowns(vm);
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
             .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(q => q.Id == id);
+            .AsNoTracking();
+
+        SaleQuote? quote;
+        if (Guid.TryParse(id, out var publicId))
+            quote = await query.FirstOrDefaultAsync(q => q.PublicId == publicId);
+        else if (int.TryParse(id, out var numericId))
+            quote = await query.FirstOrDefaultAsync(q => q.Id == numericId);
+        else
+            return NotFound();
+
         if (quote == null) return NotFound();
         return View(quote);
     }

@@ -62,7 +62,7 @@ else
                             }
                         </td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@q.Id" class="btn btn-sm btn-outline-info" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye"></i></a>
+                            <a asp-action="Details" asp-route-id="@q.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye"></i></a>
                             <a asp-action="Print" asp-route-id="@q.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" aria-label="طباعة عرض السعر @q.QuoteNumber"><i class="bi bi-printer"></i></a>
                             @if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
                             {

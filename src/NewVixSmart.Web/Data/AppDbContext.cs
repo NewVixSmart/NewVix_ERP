@@ -81,6 +81,8 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(i => i.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             e.HasIndex(i => i.Name).IsUnique();
             e.HasIndex(i => i.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
+            e.HasIndex(i => i.PublicId).IsUnique();
+            e.Property(i => i.PublicId).ValueGeneratedNever();
             e.HasOne(i => i.Category).WithMany(c => c.Items).HasForeignKey(i => i.CategoryId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.ItemType).WithMany(t => t.Items).HasForeignKey(i => i.ItemTypeId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(i => i.CountUnit).WithMany().HasForeignKey(i => i.CountUnitId).OnDelete(DeleteBehavior.Restrict);
@@ -183,6 +185,8 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<SaleQuote>(e =>
         {
             e.HasIndex(s => s.QuoteNumber).IsUnique();
+            e.HasIndex(s => s.PublicId).IsUnique();
+            e.Property(s => s.PublicId).ValueGeneratedNever();
             e.HasOne(s => s.Customer).WithMany().HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
@@ -296,6 +300,8 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<PurchaseOrder>(e =>
         {
             e.HasIndex(o => o.OrderNumber).IsUnique();
+            e.HasIndex(o => o.PublicId).IsUnique();
+            e.Property(o => o.PublicId).ValueGeneratedNever();
             e.HasOne(o => o.Supplier).WithMany(s => s.PurchaseOrders).HasForeignKey(o => o.SupplierId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -314,6 +320,8 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<SalesOrder>(e =>
         {
             e.HasIndex(o => o.OrderNumber).IsUnique();
+            e.HasIndex(o => o.PublicId).IsUnique();
+            e.Property(o => o.PublicId).ValueGeneratedNever();
             e.HasOne(o => o.Customer).WithMany().HasForeignKey(o => o.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(o => o.Currency).WithMany().HasForeignKey(o => o.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(o => o.SaleQuote).WithMany().HasForeignKey(o => o.SaleQuoteId).OnDelete(DeleteBehavior.SetNull);
@@ -329,6 +337,8 @@ public class AppDbContext : IdentityDbContext
         builder.Entity<DeliveryOrder>(e =>
         {
             e.HasIndex(d => d.DeliveryNumber).IsUnique();
+            e.HasIndex(d => d.PublicId).IsUnique();
+            e.Property(d => d.PublicId).ValueGeneratedNever();
             e.Property(d => d.RowVersion).IsRowVersion();
             e.HasOne(d => d.SaleInvoice).WithMany().HasForeignKey(d => d.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(d => d.Customer).WithMany().HasForeignKey(d => d.CustomerId).OnDelete(DeleteBehavior.Restrict);

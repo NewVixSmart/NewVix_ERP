@@ -90,9 +90,28 @@ public class DeliveryOrdersController : Controller
     }
 
     [RequirePerm("DeliveryOrders.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var delivery = await LoadDeliveryAsync(id);
+        int deliveryId;
+        if (Guid.TryParse(id, out var publicId))
+        {
+            var target = await _db.DeliveryOrders.AsNoTracking()
+                .Where(d => d.PublicId == publicId)
+                .Select(d => (int?)d.Id)
+                .FirstOrDefaultAsync();
+            if (target == null) return NotFound();
+            deliveryId = target.Value;
+        }
+        else if (int.TryParse(id, out var numericId))
+        {
+            deliveryId = numericId;
+        }
+        else
+        {
+            return NotFound();
+        }
+
+        var delivery = await LoadDeliveryAsync(deliveryId);
         if (delivery == null) return NotFound();
         return View(delivery);
     }

@@ -140,7 +140,7 @@
                     {
                         <tr>
                             <td><code>@(i.Code ?? "—")</code></td>
-                            <td><a asp-controller="Items" asp-action="Details" asp-route-id="@i.Id" class="fw-bold">@i.Name</a></td>
+                            <td><a asp-controller="Items" asp-action="Details" asp-route-id="@i.PublicId" class="fw-bold">@i.Name</a></td>
                             <td>@i.CategoryName</td>
                             <td class="fw-bold text-danger"><span class="visually-hidden">منخفض: </span>@i.CurrentCount.ToString("N2")</td>
                             <td>@i.MinCount.ToString("N2")</td>

@@ -90,6 +90,7 @@ public class ReportService : IReportService
         vm.LowStockItems = lowStock.Select(i => new LowStockItemViewModel
         {
             Id = i.Id,
+            PublicId = i.PublicId,
             Name = i.Name,
             Code = i.Code,
             Barcode = i.Barcode,

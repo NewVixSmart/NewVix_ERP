@@ -49,7 +49,7 @@
             <div class="col-md-3"><strong>عرض السعر المصدر:</strong>
                 @if (Model.SaleQuoteId.HasValue)
                 {
-                    <a asp-controller="SalesQuotes" asp-action="Details" asp-route-id="@Model.SaleQuoteId.Value">عرض #@Model.SaleQuoteId.Value</a>
+                    <a asp-controller="SalesQuotes" asp-action="Details" asp-route-id="@Model.SaleQuote!.PublicId">عرض #@Model.SaleQuoteId.Value</a>
                 }
                 else
                 {

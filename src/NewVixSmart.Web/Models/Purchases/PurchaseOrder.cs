@@ -9,6 +9,8 @@ public class PurchaseOrder
     [BindNever]
     public int Id { get; set; }
 
+    public Guid PublicId { get; set; } = Guid.NewGuid();
+
     [Required(ErrorMessage = "رقم أمر الشراء مطلوب")]
     [StringLength(50)]
     [Display(Name = "رقم أمر الشراء")]

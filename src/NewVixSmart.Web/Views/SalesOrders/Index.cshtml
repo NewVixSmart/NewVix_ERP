@@ -50,7 +50,7 @@ else
                         <td class="fw-bold">@o.Items.Sum(i => i.Total).ToString("N2")</td>
                         <td><span class="badge @(o.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@o.Status.GetDisplayName()</span></td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-info" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye"></i></a>
+                            <a asp-action="Details" asp-route-id="@o.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye"></i></a>
                             @if (o.Status == SalesOrderStatus.Draft && await Perm.HasAsync("SalesOrders.Edit"))
                             {
                                 <a asp-action="Edit" asp-route-id="@o.Id" class="btn btn-sm btn-outline-secondary" aria-label="تعديل أمر البيع @o.OrderNumber"><i class="bi bi-pencil"></i></a>

@@ -19,6 +19,7 @@ public class OverdueInvoiceViewModel
 public class LowStockItemViewModel
 {
     public int Id { get; set; }
+    public Guid PublicId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Code { get; set; }
     public string? Barcode { get; set; }

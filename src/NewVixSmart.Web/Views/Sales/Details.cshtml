@@ -28,7 +28,7 @@
             <div class="col-md-3"><strong>أمر البيع:</strong>
                 @if (Model.SalesOrder != null)
                 {
-                    <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.Id">@Model.SalesOrder.OrderNumber</a>
+                    <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
                 }
                 else
                 {

@@ -8,6 +8,8 @@ public class Item
 {
     public int Id { get; set; }
 
+    public Guid PublicId { get; set; } = Guid.NewGuid();
+
     [Required(ErrorMessage = "اسم الصنف مطلوب")]
     [StringLength(200)]
     [Display(Name = "اسم الصنف")]

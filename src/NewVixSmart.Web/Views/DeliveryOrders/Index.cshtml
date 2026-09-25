@@ -57,7 +57,7 @@ else
                         <td>@(d.Carrier ?? "—")</td>
                         <td><span class="badge @(d.Status switch { DeliveryOrderStatus.Delivered => "bg-success", DeliveryOrderStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@d.Status.GetDisplayName()</span></td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@d.Id" class="btn btn-sm btn-outline-info" aria-label="عرض أذن التسليم @d.DeliveryNumber"><i class="bi bi-eye"></i></a>
+                            <a asp-action="Details" asp-route-id="@d.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أذن التسليم @d.DeliveryNumber"><i class="bi bi-eye"></i></a>
                         </td>
                     </tr>
                 }

@@ -133,9 +133,28 @@ public class PurchaseOrdersController : Controller
     }
 
     [RequirePerm("PurchaseOrders.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var order = await _procurement.GetOrderAsync(id);
+        int orderId;
+        if (Guid.TryParse(id, out var publicId))
+        {
+            var target = await _db.PurchaseOrders.AsNoTracking()
+                .Where(o => o.PublicId == publicId)
+                .Select(o => (int?)o.Id)
+                .FirstOrDefaultAsync();
+            if (target == null) return NotFound();
+            orderId = target.Value;
+        }
+        else if (int.TryParse(id, out var numericId))
+        {
+            orderId = numericId;
+        }
+        else
+        {
+            return NotFound();
+        }
+
+        var order = await _procurement.GetOrderAsync(orderId);
         if (order == null) return NotFound();
         return View(order);
     }

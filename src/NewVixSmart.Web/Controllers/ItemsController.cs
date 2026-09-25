@@ -163,9 +163,18 @@ public class ItemsController : Controller
     }
 
     [RequirePerm("Items.View")]
-    public async Task<IActionResult> Details(int id)
+    public async Task<IActionResult> Details(string id)
     {
-        var item = await _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType).FirstOrDefaultAsync(i => i.Id == id);
+        var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType);
+
+        Item? item;
+        if (Guid.TryParse(id, out var publicId))
+            item = await query.FirstOrDefaultAsync(i => i.PublicId == publicId);
+        else if (int.TryParse(id, out var numericId))
+            item = await query.FirstOrDefaultAsync(i => i.Id == numericId);
+        else
+            return NotFound();
+
         if (item == null) return NotFound();
         return View(item);
     }

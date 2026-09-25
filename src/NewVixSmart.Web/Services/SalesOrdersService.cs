@@ -38,6 +38,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
         return await _db.SalesOrders
             .Include(o => o.Customer)
             .Include(o => o.Currency)
+            .Include(o => o.SaleQuote)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
