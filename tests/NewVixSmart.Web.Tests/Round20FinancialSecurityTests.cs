@@ -208,6 +208,91 @@ public sealed class Round20FinancialSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task SaleReturn_Post_WithSourceInvoice_IgnoresAbsurdClientPriceAndProratesDiscount()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedBasicAsync(db);
+        var svc = new InventoryService(db, new AccountingService(db));
+
+        // 10 x 80 = 800 gross with a header discount of 80 -> net 720, booked
+        // Dr 1200 720 / Cr 4000 720. Returning 4 of 10 units is f = 320/800 = 0.4.
+        var invoice = new SaleInvoice { CustomerId = custId, InvoiceDate = DateTime.Today };
+        var (okInv, errInv) = await svc.CreateSaleAsync(invoice,
+            new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
+        Assert.True(okInv, errInv);
+        var created = await db.SaleInvoices.SingleAsync();
+        created.Discount = 80m;
+        created.NetAmount = 720m;
+        await db.SaveChangesAsync();
+        await DeliverDirectAsync(db, invoice, itemId, 10);
+
+        var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
+        {
+            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+        }, new List<SaleReturnItem>
+        {
+            new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 999999m }
+        }, "test");
+        Assert.True(ok, err);
+
+        var saved = await db.SaleReturns.Include(r => r.Items).SingleAsync();
+        Assert.Equal(ReturnStatus.Posted, saved.Status);
+        Assert.Equal(80m, saved.Items.Single().UnitPrice);
+        Assert.Equal(320m, saved.TotalAmount);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.SaleReturn);
+        Assert.Equal(288m, entry.Lines.Single(l => l.Account!.Code == "1200").Credit);
+        Assert.Equal(288m, entry.Lines.Single(l => l.Account!.Code == "5101").Debit);
+        Assert.DoesNotContain(entry.Lines, l => l.Account!.Code is "2055" or "4000");
+        Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
+        Assert.All(entry.Lines, l => Assert.True(l.Debit < 999999m && l.Credit < 999999m));
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_Post_WithSourceInvoice_IgnoresAbsurdClientPriceAndProratesDiscount()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supplierId) = await SeedBasicAsync(db);
+        var svc = new InventoryService(db, new AccountingService(db));
+
+        // 10 x 50 = 500 gross with a header discount of 50 -> net 450, booked Dr 1300 450 / Cr 2000 450.
+        // Returning 4 of 10 units is f = 200/500 = 0.4, so the supplier credit is 0.4 * 450 = 180.
+        var invoice = new PurchaseInvoice
+        {
+            SupplierId = supplierId,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.Net30,
+            Discount = 50m
+        };
+        var (okInv, errInv) = await svc.CreatePurchaseAsync(invoice,
+            new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 50 } }, "test");
+        Assert.True(okInv, errInv);
+        Assert.Equal(450m, invoice.NetAmount);
+
+        var (ok, err) = await svc.CreatePurchaseReturnAsync(new PurchaseReturn
+        {
+            PurchaseInvoiceId = invoice.Id, SupplierId = supplierId, ReturnDate = DateTime.Today
+        }, new List<PurchaseReturnItem>
+        {
+            new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 999999m }
+        }, "test");
+        Assert.True(ok, err);
+
+        var saved = await db.PurchaseReturns.Include(r => r.Items).SingleAsync();
+        Assert.Equal(ReturnStatus.Posted, saved.Status);
+        Assert.Equal(50m, saved.Items.Single().UnitPrice);
+        Assert.Equal(200m, saved.TotalAmount);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.PurchaseReturn);
+        Assert.Equal(180m, entry.Lines.Single(l => l.Account!.Code == "2000").Debit);
+        Assert.Equal(180m, entry.Lines.Single(l => l.Account!.Code == "5102").Credit);
+        Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
+        Assert.All(entry.Lines, l => Assert.True(l.Debit < 999999m && l.Credit < 999999m));
+    }
+
+    [Fact]
     public async Task PurchaseOrder_RowVersion_IsConcurrencyTokenGeneratedByStore()
     {
         using var db = CreateContext();
@@ -262,8 +347,12 @@ public sealed class Round20FinancialSecurityTests : IDisposable
         (string Code, string Name, GLAccountType Type, NormalBalance Normal)[] accounts =
         {
             ("1200", "المدينون", GLAccountType.Asset, NormalBalance.Debit),
+            ("2000", "الدائنون", GLAccountType.Liability, NormalBalance.Credit),
+            ("2055", "الضريبة مستحقة", GLAccountType.Liability, NormalBalance.Credit),
             ("4000", "المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
+            ("5101", "مرتجعات البيع", GLAccountType.Revenue, NormalBalance.Credit),
+            ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
             ("1300", "المخزون", GLAccountType.Asset, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)

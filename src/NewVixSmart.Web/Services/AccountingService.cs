@@ -112,38 +112,67 @@ public class AccountingService : IAccountingService
         => await PostAsync(JournalSource.PurchaseReturn, 0, entryDate, "مرتجع شراء",
             new[] { new JournalLine("2000", amount, 0), new JournalLine("5102", 0, amount) }, user, branchId);
 
+    // Sale return = exact proportional mirror of the booking the source invoice produced
+    // (Dr 1200 net / Cr 4000 (net - tax) / Cr 2055 tax), so for a returned fraction f:
+    //   Dr 5101 (contra revenue) f * (net - tax)
+    //   Dr 2055 (tax)           f * tax
+    //   Cr 1200 (AR)           f * (net - tax) + f * tax  == f * net
+    // The tax is NEVER folded into the value leg: valueAmount is the contra-revenue amount
+    // (already net of tax) and taxAmount the tax amount, so the receivable credit is their sum.
     public async Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, decimal taxAmount = 0m)
     {
-        var localValue = decimal.Round(valueAmount * (exchangeRate ?? 1m), 2);
-        var localTax = decimal.Round(taxAmount * (exchangeRate ?? 1m), 2);
-        if (localTax < 0.005m) localTax = 0m;
-        if (localTax > localValue - 0.005m) localTax = 0m;
-        var lines = new List<JournalLine>
+        var rate = exchangeRate ?? 1m;
+        var contraValue = NonNegative(decimal.Round(valueAmount * rate, 2));
+        var tax = NonNegative(decimal.Round(taxAmount * rate, 2));
+        if (tax < 0.005m) tax = 0m;
+        var cost = NonNegative(decimal.Round(costAmount, 2));
+
+        var lines = new List<JournalLine>();
+        // The receivable credit is the largest leg, so it is derived as the balancing figure
+        // (total debits minus the cost credit) and the entry always balances to the cent.
+        var totalDebits = decimal.Round(contraValue + tax + cost, 2);
+        var receivable = decimal.Round(NonNegative(totalDebits - cost), 2);
+        if (contraValue > 0m) lines.Add(new JournalLine("5101", contraValue, 0));
+        if (receivable > 0m) lines.Add(new JournalLine("1200", 0, receivable));
+        if (tax > 0m) lines.Add(new JournalLine("2055", tax, 0));
+        if (cost > 0m)
         {
-            new("5101", decimal.Round(localValue - localTax, 2), 0),
-            new("1200", 0, localValue)
-        };
-        if (localTax > 0)
-            lines.Add(new JournalLine("2055", localTax, 0));
-        lines.Add(new JournalLine("1300", costAmount, 0));
-        lines.Add(new JournalLine("5000", 0, costAmount));
+            lines.Add(new JournalLine("1300", cost, 0));
+            lines.Add(new JournalLine("5000", 0, cost));
+        }
+        if (lines.Count == 0) throw new InvalidOperationException("مرتجع البيع بلا قيمة أو تكلفة");
         await PostAsync(JournalSource.SaleReturn, sourceId, entryDate, "مرتجع بيع", lines.ToArray(), user, branchId);
     }
 
-    // Purchase return (mirror): Dr 2000 (AP) V / Cr 5102 (contra-purchases) V, and stock out at cost:
-    // Cr 1300 (Inventory) C / Dr 5000 (COGS reversal) C. Balanced: Dr(V+C) == Cr(V+C).
+    // Purchase return = exact proportional mirror of RecordPurchaseInvoiceAsync, which books
+    // Dr 1300 (Inventory) net / Cr 2000 (AP) net with no separate tax leg. So for fraction f:
+    //   Dr 2000 (AP)   f * net
+    //   Dr 5102 (contra-purchases) f * net
+    //   Cr 1300 (Inventory) cost / Dr 5000 (COGS reversal) cost
+    // valueAmount is therefore the full net (tax included), not a tax-exclusive amount.
     public async Task RecordPurchaseReturnWithCostAsync(DateTime entryDate, int sourceId, int supplierId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
     {
-        var localValue = decimal.Round(valueAmount * (exchangeRate ?? 1m), 2);
-        await PostAsync(JournalSource.PurchaseReturn, sourceId, entryDate, "مرتجع شراء",
-            new[]
-            {
-                new JournalLine("2000", localValue, 0),
-                new JournalLine("5102", 0, localValue),
-                new JournalLine("1300", 0, costAmount),
-                new JournalLine("5000", costAmount, 0)
-            }, user, branchId);
+        var localValue = NonNegative(decimal.Round(valueAmount * (exchangeRate ?? 1m), 2));
+        var cost = NonNegative(decimal.Round(costAmount, 2));
+        if (localValue <= 0m && cost <= 0m)
+            throw new InvalidOperationException("مرتجع الشراء بلا قيمة أو تكلفة");
+
+        var lines = new List<JournalLine>();
+        // The payable debit is the largest leg, so it is the balancing figure (total credits
+        // minus the cost debit) and the entry always balances to the cent despite per-leg rounding.
+        var totalCredits = decimal.Round(localValue + cost, 2);
+        var payable = decimal.Round(NonNegative(totalCredits - cost), 2);
+        if (payable > 0m) lines.Add(new JournalLine("2000", payable, 0));
+        if (localValue > 0m) lines.Add(new JournalLine("5102", 0, localValue));
+        if (cost > 0m)
+        {
+            lines.Add(new JournalLine("1300", 0, cost));
+            lines.Add(new JournalLine("5000", cost, 0));
+        }
+        await PostAsync(JournalSource.PurchaseReturn, sourceId, entryDate, "مرتجع شراء", lines.ToArray(), user, branchId);
     }
+
+    private static decimal NonNegative(decimal amount) => amount < 0m ? 0m : amount;
 
     public async Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null)
     {

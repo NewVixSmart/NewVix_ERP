@@ -685,12 +685,20 @@ public class ReportService : IReportService
         var saleReturns = await _db.SaleReturns
             .AsNoTracking()
             .Where(r => r.Status == ReturnStatus.Posted)
-            .Select(r => new { r.SaleInvoiceId, r.TotalAmount, r.ExchangeRate })
+            .Select(r => new
+            {
+                r.SaleInvoiceId,
+                r.TotalAmount,
+                r.ExchangeRate,
+                InvoiceGross = r.SaleInvoice != null ? r.SaleInvoice.TotalAmount : 0m,
+                InvoiceNet = r.SaleInvoice != null ? r.SaleInvoice.NetAmount : 0m
+            })
             .ToListAsync();
         var returnsBySaleInvoice = saleReturns
             .Where(r => r.SaleInvoiceId.HasValue)
             .GroupBy(r => r.SaleInvoiceId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
+            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
+                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet) * (r.ExchangeRate ?? 1m), 2)));
 
         var saleAllocations = await _db.SalePaymentAllocations
             .AsNoTracking()
@@ -768,12 +776,20 @@ public class ReportService : IReportService
         var purchaseReturns = await _db.PurchaseReturns
             .AsNoTracking()
             .Where(r => r.Status == ReturnStatus.Posted)
-            .Select(r => new { r.PurchaseInvoiceId, r.TotalAmount, r.ExchangeRate })
+            .Select(r => new
+            {
+                r.PurchaseInvoiceId,
+                r.TotalAmount,
+                r.ExchangeRate,
+                InvoiceGross = r.PurchaseInvoice != null ? r.PurchaseInvoice.TotalAmount : 0m,
+                InvoiceNet = r.PurchaseInvoice != null ? r.PurchaseInvoice.NetAmount : 0m
+            })
             .ToListAsync();
         var returnsByPurchaseInvoice = purchaseReturns
             .Where(r => r.PurchaseInvoiceId.HasValue)
             .GroupBy(r => r.PurchaseInvoiceId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
+            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
+                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet) * (r.ExchangeRate ?? 1m), 2)));
 
         var purchaseAllocations = await _db.PurchasePaymentAllocations
             .AsNoTracking()

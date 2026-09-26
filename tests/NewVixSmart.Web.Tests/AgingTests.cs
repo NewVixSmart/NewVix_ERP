@@ -113,6 +113,42 @@ private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, Da
     }
 
     [Fact]
+    public async Task Aging_ReturnAgainstDiscountedInvoice_NetsTheCreditLikeTheLedger()
+    {
+        using var db = CreateContext();
+        var (customerId, _) = await SeedPartiesAsync(db);
+        var today = DateTime.Today;
+
+        var invoice = SaleInvoice(customerId, "S-DISC", today.AddDays(-5), 190m, 0m, due: today.AddDays(10));
+        invoice.Discount = 20m;
+        invoice.TotalAmount = 200m;
+        db.SaleInvoices.Add(invoice);
+        await db.SaveChangesAsync();
+        await MarkDeliveredAsync(db, invoice.Id, customerId, "DLV-S-DISC");
+
+        db.SaleReturns.Add(new SaleReturn
+        {
+            ReturnNumber = "SRTN-AGE",
+            CustomerId = customerId,
+            SaleInvoiceId = invoice.Id,
+            ReturnDate = today,
+            Status = ReturnStatus.Posted,
+            TotalAmount = 100m
+        });
+        await db.SaveChangesAsync();
+
+        // The ledger credits 1200 with f * net = 0.5 * 190 = 95, not the 100 gross.
+        Assert.Equal(95m, ReturnValuation.ReceivableBase(100m, invoice.TotalAmount, invoice.NetAmount));
+
+        var svc = new ReportService(db, new FinancialReportService(db));
+        var vm = await svc.AgingAsync();
+
+        var row = Assert.Single(vm.Receivables);
+        Assert.Equal(95m, row.Total);
+        Assert.Equal(95m, vm.ArTotal);
+    }
+
+    [Fact]
     public async Task Aging_OnReceipt_Invoice_Uses_InvoiceDateAsDue()
     {
         using var db = CreateContext();

@@ -43,12 +43,34 @@ public sealed class FinancialIntegrityTests : IDisposable
             ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
             ("5101", "مرتجعات البيع", GLAccountType.Revenue, NormalBalance.Credit),
+            ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
         {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
         }
         db.SaveChanges();
+    }
+
+    private static decimal DebitOf(JournalEntry entry, string code)
+        => entry.Lines.Where(l => l.Account!.Code == code).Sum(l => l.Debit);
+
+    private static decimal CreditOf(JournalEntry entry, string code)
+        => entry.Lines.Where(l => l.Account!.Code == code).Sum(l => l.Credit);
+
+    private static void AssertBalanced(JournalEntry entry)
+    {
+        Assert.Equal(decimal.Round(entry.Lines.Sum(l => l.Debit), 2), decimal.Round(entry.Lines.Sum(l => l.Credit), 2));
+    }
+
+    private static async Task<(bool Ok, string? Error)> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal quantity)
+    {
+        var svc = new InventoryService(db, new AccountingService(db));
+        var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
+        var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery,
+            new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = quantity, Count = 0 } }, "test");
+        if (!ok) return (false, err);
+        return await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
     }
 
     private static async Task<(int itemId, int customerId)> SeedItemAndCustomerAsync(AppDbContext db)
@@ -272,6 +294,34 @@ public sealed class FinancialIntegrityTests : IDisposable
         return (item.Id, supplier.Id);
     }
 
+    private static async Task<(int itemId, int supplierId)> PurchaseReturnSeedAsync(AppDbContext db)
+    {
+        var unit = new Unit { Name = "قطعة مرتجع شراء" };
+        var item = new Item
+        {
+            Name = "صنف مرتجع شراء",
+            Category = new ItemCategory { Name = "تصنيف مرتجع شراء" },
+            ItemType = new ItemType { Name = "نوع مرتجع شراء" },
+            CountUnit = unit,
+            QuantityUnit = unit,
+            PurchasePrice = 50,
+            SalePrice = 90,
+            CurrentCount = 20m,
+            CurrentQuantity = 20m
+        };
+        var supplier = new Supplier { Name = "مورد مرتجع" };
+        db.Items.Add(item);
+        db.Suppliers.Add(supplier);
+        await db.SaveChangesAsync();
+        return (item.Id, supplier.Id);
+    }
+
+    // Invoice booked (delivery) as Dr 1200 net / Cr 4000 (net - tax) / Cr 2055 tax.
+    // Invoice: 2 x 100 = 200 gross, header discount 20, tax 10 -> net 190.
+    // Returning 1 of 2 units is f = 100/200 = 0.5, so the exact mirror is
+    //   Cr 1200 = 0.5 * 190 = 95, Dr 5101 = 0.5 * (190 - 10) = 90, Dr 2055 = 0.5 * 10 = 5.
+    // The old behaviour credited AR with the raw returned gross (100) and debited the contra
+    // revenue with 95, so the 20 header discount was never reversed.
     [Fact]
     public async Task SaleReturn_WithTax_PostsValueAndTaxReversal()
     {
@@ -305,17 +355,245 @@ public sealed class FinancialIntegrityTests : IDisposable
 
         var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
             .SingleAsync(e => e.Source == JournalSource.SaleReturn);
-        var htmlLine = entry.Lines.Single(l => l.Account!.Code == "5101");
-        var taxLine = entry.Lines.Single(l => l.Account!.Code == "2055");
-        var arLine = entry.Lines.Single(l => l.Account!.Code == "1200");
-        var stockLine = entry.Lines.Single(l => l.Account!.Code == "1300");
-        var coLine = entry.Lines.Single(l => l.Account!.Code == "5000");
-        Assert.Equal(95m, htmlLine.Debit);
-        Assert.Equal(5m, taxLine.Debit);
-        Assert.Equal(100m, arLine.Credit);
-        Assert.Equal(40m, stockLine.Debit);
-        Assert.Equal(40m, coLine.Credit);
-        Assert.True(entry.Lines.Sum(l => l.Debit) == entry.Lines.Sum(l => l.Credit));
+        Assert.Equal(90m, DebitOf(entry, "5101"));
+        Assert.Equal(5m, DebitOf(entry, "2055"));
+        Assert.Equal(95m, CreditOf(entry, "1200"));
+        Assert.Equal(40m, DebitOf(entry, "1300"));
+        Assert.Equal(40m, CreditOf(entry, "5000"));
+        Assert.Equal(0m, CreditOf(entry, "5101"));
+        Assert.Equal(0m, DebitOf(entry, "1200"));
+        AssertBalanced(entry);
+
+        // The reversal is the exact inverse of the delivery booking, leaving the undelivered
+        // half of the invoice on the ledger: AR 95, revenue 90, tax 5.
+        var delivered = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.SaleDeliveryOrder);
+        Assert.Equal(95m, DebitOf(delivered, "1200") - CreditOf(entry, "1200"));
+        Assert.Equal(90m, CreditOf(delivered, "4000") - DebitOf(entry, "5101"));
+        Assert.Equal(5m, CreditOf(delivered, "2055") - DebitOf(entry, "2055"));
+    }
+
+    [Fact]
+    public async Task SaleReturn_InvoiceWithoutDiscountOrTax_PostsUnchangedGrossAmount()
+    {
+        using var db = CreateContext();
+        var (itemId, customerId) = await SeedItemAndCustomerAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        // 2 x 100 = 200, no header discount, no tax -> net 200. Proration must be a no-op.
+        var invoice = new SaleInvoice { CustomerId = customerId, InvoiceDate = DateTime.Today, PaymentTerms = InvoicePaymentTerms.Net30 };
+        var (ok, err) = await inventory.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, UnitPrice = 100 }
+        }, "test");
+        Assert.True(ok, err);
+
+        var (dlvOk, dlvErr) = await DeliverAsync(db, invoice, itemId, 2);
+        Assert.True(dlvOk, dlvErr);
+
+        var saleReturn = new SaleReturn { SaleInvoiceId = invoice.Id, CustomerId = customerId, ReturnDate = DateTime.Today };
+        var (rOk, rErr) = await inventory.CreateSaleReturnAsync(saleReturn,
+            new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 1, UnitPrice = 100 } }, "test");
+        Assert.True(rOk, rErr);
+
+        var saved = await db.SaleReturns.Include(r => r.Items).SingleAsync();
+        Assert.Equal(100m, saved.TotalAmount);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.SaleReturn);
+        Assert.Equal(100m, DebitOf(entry, "5101"));
+        Assert.Equal(100m, CreditOf(entry, "1200"));
+        Assert.Equal(40m, DebitOf(entry, "1300"));
+        Assert.Equal(40m, CreditOf(entry, "5000"));
+        Assert.DoesNotContain(entry.Lines, l => l.Account!.Code == "2055");
+        AssertBalanced(entry);
+    }
+
+    [Fact]
+    public async Task SaleReturn_PartialQuantity_ProratesHeaderDiscountAndTax()
+    {
+        using var db = CreateContext();
+        var (itemId, customerId) = await SeedItemAndCustomerAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        // 3 x 99.99 = 299.97 gross, header discount 0.01, tax 7.47 -> net 307.43.
+        // Returning 1 of 3 units is f = 99.99 / 299.97 = 1/3, so:
+        //   net    = 307.43 / 3 = 102.4766... -> 102.48
+        //   tax    =   7.47 / 3 =   2.49
+        //   contra = 102.48 - 2.49 = 99.99 and the AR leg absorbs the 0.01 rounding drift.
+        var invoice = new SaleInvoice { CustomerId = customerId, InvoiceDate = DateTime.Today, PaymentTerms = InvoicePaymentTerms.Net30 };
+        var (ok, err) = await inventory.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 3, UnitPrice = 99.99m }
+        }, "test");
+        Assert.True(ok, err);
+        var created = await db.SaleInvoices.SingleAsync();
+        created.Discount = 0.01m;
+        created.Tax = 7.47m;
+        created.NetAmount = 307.43m;
+        await db.SaveChangesAsync();
+
+        var (dlvOk, dlvErr) = await DeliverAsync(db, invoice, itemId, 3);
+        Assert.True(dlvOk, dlvErr);
+
+        var saleReturn = new SaleReturn { SaleInvoiceId = invoice.Id, CustomerId = customerId, ReturnDate = DateTime.Today };
+        var (rOk, rErr) = await inventory.CreateSaleReturnAsync(saleReturn,
+            new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 1 } }, "test");
+        Assert.True(rOk, rErr);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.SaleReturn);
+        Assert.Equal(99.99m, DebitOf(entry, "5101"));
+        Assert.Equal(2.49m, DebitOf(entry, "2055"));
+        Assert.Equal(102.48m, CreditOf(entry, "1200"));
+        Assert.Equal(40m, DebitOf(entry, "1300"));
+        Assert.Equal(40m, CreditOf(entry, "5000"));
+        AssertBalanced(entry);
+
+        var delivered = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.SaleDeliveryOrder);
+        Assert.Equal(307.43m, DebitOf(delivered, "1200"));
+        Assert.Equal(299.96m, CreditOf(delivered, "4000"));
+        Assert.Equal(7.47m, CreditOf(delivered, "2055"));
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_InvoiceWithHeaderDiscount_ReversesNetProportionally()
+    {
+        using var db = CreateContext();
+        var (itemId, supplierId) = await PurchaseReturnSeedAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        // 2 x 50 = 100 gross, header discount 20, tax 10 -> net 90, booked Dr 1300 90 / Cr 2000 90.
+        // Returning 1 of 2 units is f = 50 / 100 = 0.5, so the supplier credit is 0.5 * 90 = 45.
+        var invoice = new PurchaseInvoice
+        {
+            SupplierId = supplierId,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.Net30,
+            Discount = 20m,
+            Tax = 10m
+        };
+        var (ok, err) = await inventory.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 50 }
+        }, "test");
+        Assert.True(ok, err);
+        Assert.Equal(100m, invoice.TotalAmount);
+        Assert.Equal(90m, invoice.NetAmount);
+
+        var purchaseReturn = new PurchaseReturn
+        {
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supplierId,
+            ReturnDate = DateTime.Today
+        };
+        var (rOk, rErr) = await inventory.CreatePurchaseReturnAsync(purchaseReturn,
+            new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }, "test");
+        Assert.True(rOk, rErr);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.PurchaseReturn);
+        // The purchase invoice is booked without a separate tax leg, so the whole 0.5 * net = 45
+        // relieves the payable and contra-purchases. The old raw-gross behaviour released 50
+        // and never reversed the 20 header discount.
+        Assert.Equal(45m, DebitOf(entry, "2000"));
+        Assert.Equal(45m, CreditOf(entry, "5102"));
+        Assert.Equal(50m, CreditOf(entry, "1300"));
+        Assert.Equal(50m, DebitOf(entry, "5000"));
+        AssertBalanced(entry);
+
+        var booked = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.PurchaseInvoice);
+        Assert.Equal(90m, CreditOf(booked, "2000"));
+        Assert.Equal(45m, CreditOf(booked, "2000") - DebitOf(entry, "2000"));
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_InvoiceWithoutDiscountOrTax_PostsUnchangedGrossAmount()
+    {
+        using var db = CreateContext();
+        var (itemId, supplierId) = await PurchaseReturnSeedAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        // 2 x 50 = 100, no header discount, no tax -> net 100. Proration must be a no-op.
+        var invoice = new PurchaseInvoice
+        {
+            SupplierId = supplierId,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.Net30
+        };
+        var (ok, err) = await inventory.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 50 }
+        }, "test");
+        Assert.True(ok, err);
+        Assert.Equal(100m, invoice.NetAmount);
+
+        var purchaseReturn = new PurchaseReturn
+        {
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supplierId,
+            ReturnDate = DateTime.Today
+        };
+        var (rOk, rErr) = await inventory.CreatePurchaseReturnAsync(purchaseReturn,
+            new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }, "test");
+        Assert.True(rOk, rErr);
+
+        var saved = await db.PurchaseReturns.Include(r => r.Items).SingleAsync();
+        Assert.Equal(50m, saved.TotalAmount);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.PurchaseReturn);
+        Assert.Equal(50m, DebitOf(entry, "2000"));
+        Assert.Equal(50m, CreditOf(entry, "5102"));
+        Assert.Equal(50m, CreditOf(entry, "1300"));
+        Assert.Equal(50m, DebitOf(entry, "5000"));
+        AssertBalanced(entry);
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_PartialQuantity_ProratesHeaderDiscount()
+    {
+        using var db = CreateContext();
+        var (itemId, supplierId) = await PurchaseReturnSeedAsync(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        // 3 x 33.33 = 99.99 gross, header discount 0.03, no tax -> net 99.96.
+        // Returning 1 of 3 units is f = 33.33 / 99.99 = 1/3, so the supplier credit is
+        // 99.96 / 3 = 33.32 — the old raw-gross behaviour released 33.33, one piastre too much.
+        var invoice = new PurchaseInvoice
+        {
+            SupplierId = supplierId,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.Net30,
+            Discount = 0.03m
+        };
+        var (ok, err) = await inventory.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
+        {
+            new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 33.33m }
+        }, "test");
+        Assert.True(ok, err);
+        Assert.Equal(99.99m, invoice.TotalAmount);
+        Assert.Equal(99.96m, invoice.NetAmount);
+
+        var purchaseReturn = new PurchaseReturn
+        {
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supplierId,
+            ReturnDate = DateTime.Today
+        };
+        var (rOk, rErr) = await inventory.CreatePurchaseReturnAsync(purchaseReturn,
+            new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }, "test");
+        Assert.True(rOk, rErr);
+
+        var entry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account)
+            .SingleAsync(e => e.Source == JournalSource.PurchaseReturn);
+        Assert.Equal(33.32m, DebitOf(entry, "2000"));
+        Assert.Equal(33.32m, CreditOf(entry, "5102"));
+        Assert.Equal(33.33m, CreditOf(entry, "1300"));
+        Assert.Equal(33.33m, DebitOf(entry, "5000"));
+        AssertBalanced(entry);
     }
 
     [Fact]

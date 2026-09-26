@@ -504,24 +504,28 @@ public sealed class InventoryService : IInventoryService
 
                 var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate, saleReturn.ExchangeRate);
 
-                decimal returnTax = 0m;
-                if (saleReturn.SaleInvoiceId.HasValue && saleReturn.TotalAmount > 0m)
+                // Reverse the source invoice proportionally: f = returned gross / invoice gross.
+                // Without a source invoice there is nothing to prorate, so the return stands on
+                // its own at the item-master price and carries no discount or tax reversal.
+                var mirror = ReturnMirror.ForGross(saleReturn.TotalAmount);
+                if (saleReturn.SaleInvoiceId.HasValue)
                 {
                     var invTotals = await _db.SaleInvoices.AsNoTracking()
                         .Where(i => i.Id == saleReturn.SaleInvoiceId)
-                        .Select(i => new { i.Tax, i.TotalAmount })
+                        .Select(i => new { i.Tax, i.TotalAmount, i.NetAmount })
                         .FirstOrDefaultAsync();
-                    if (invTotals != null && invTotals.TotalAmount > 0m && invTotals.Tax > 0m)
-                        returnTax = decimal.Round(saleReturn.TotalAmount * (invTotals.Tax / invTotals.TotalAmount), 2);
+                    if (invTotals != null)
+                        mirror = ReturnMirror.ProratedAgainst(saleReturn.TotalAmount,
+                            invTotals.TotalAmount, invTotals.NetAmount, invTotals.Tax);
                 }
 
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && saleReturn.TotalAmount > 0)
+                if (_accounting != null && mirror.Receivable > 0m)
                     await _accounting.RecordSaleReturnWithCostAsync(
                         saleReturn.ReturnDate, saleReturn.Id, saleReturn.CustomerId,
-                        saleReturn.TotalAmount, costTotal,
-                        saleReturn.CurrencyId, saleReturn.ExchangeRate, user, saleReturn.BranchId, returnTax);
+                        mirror.ContraValue, costTotal,
+                        saleReturn.CurrencyId, saleReturn.ExchangeRate, user, saleReturn.BranchId, mirror.Tax);
 
                 saleReturn.Status = ReturnStatus.Posted;
                 saleReturn.PostedBy = user;
@@ -647,12 +651,28 @@ public sealed class InventoryService : IInventoryService
                 var consumed = await ConsumeFifoLayersAsync(ToReturnStockLines(valid), purchaseReturn.ReturnDate);
                 var costTotal = consumed.DominantTotal;
 
+                // Reverse the source purchase invoice proportionally: f = returned gross / invoice
+                // gross, applied to the invoice NET so the supplier credit mirrors the original
+                // booking (which credited 2000 with the net, tax included). Without a source
+                // invoice there is nothing to prorate and the return stands at the master price.
+                var mirror = ReturnMirror.ForGross(purchaseReturn.TotalAmount);
+                if (purchaseReturn.PurchaseInvoiceId.HasValue)
+                {
+                    var invTotals = await _db.PurchaseInvoices.AsNoTracking()
+                        .Where(i => i.Id == purchaseReturn.PurchaseInvoiceId)
+                        .Select(i => new { i.Tax, i.TotalAmount, i.NetAmount })
+                        .FirstOrDefaultAsync();
+                    if (invTotals != null)
+                        mirror = ReturnMirror.ProratedAgainst(purchaseReturn.TotalAmount,
+                            invTotals.TotalAmount, invTotals.NetAmount, invTotals.Tax);
+                }
+
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && purchaseReturn.TotalAmount > 0)
+                if (_accounting != null && mirror.Receivable > 0m)
                     await _accounting.RecordPurchaseReturnWithCostAsync(
                         purchaseReturn.ReturnDate, purchaseReturn.Id, purchaseReturn.SupplierId,
-                        purchaseReturn.TotalAmount, costTotal,
+                        mirror.Receivable, costTotal,
                         purchaseReturn.CurrencyId, purchaseReturn.ExchangeRate, user, purchaseReturn.BranchId);
 
                 purchaseReturn.Status = ReturnStatus.Posted;
