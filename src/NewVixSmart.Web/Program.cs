@@ -149,6 +149,13 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddControllersWithViews(options =>
 {
+    // M-2 tradeoff, left as-is on purpose: implicit [Required] on non-nullable reference-type
+    // parameters is suppressed app-wide so legacy endpoints keep accepting null/empty input.
+    // What protects us today: the global AutoValidateAntiforgeryToken filter below (every
+    // mutating request needs a token) plus explicit null/length guards in the controllers.
+    // Re-enabling safely needs: removing this line, annotating/validating every affected
+    // action (explicit [Required], [Bind], ModelState checks) and re-running the full MVC +
+    // API test suites, because the suppression is currently hiding missing validation.
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
 });
@@ -319,18 +326,68 @@ app.Use(async (context, next) =>
     await next();
 });
 
-var forwardedOptions = new ForwardedHeadersOptions
+static string[] SplitForwardedHeaderSetting(string? value) =>
+    (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+// M-1: forwarded headers are strictly opt-in (ForwardedHeaders:Enabled, default false) and are only
+// honoured from the proxies/networks listed in configuration - unknown proxies are never trusted.
+// Registered before UseRouting/UseRateLimiter/UseAuthentication so Connection.RemoteIpAddress (used
+// by the "token" and "login" rate limiter partitions) and the scheme/host checks see the real client
+// instead of the reverse proxy's address.
+var forwardedHeadersEnabled = app.Configuration.GetValue("ForwardedHeaders:Enabled", false);
+if (forwardedHeadersEnabled)
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-};
-foreach (var proxy in (app.Configuration["ForwardedHeaders:KnownProxies"] ?? "")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-    forwardedOptions.KnownProxies.Add(IPAddress.Parse(proxy));
-foreach (var network in (app.Configuration["ForwardedHeaders:KnownNetworks"] ?? "")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
-if (forwardedOptions.KnownProxies.Count > 0 || forwardedOptions.KnownIPNetworks.Count > 0)
+    var forwardedOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = app.Configuration.GetValue("ForwardedHeaders:ForwardLimit", 1)
+    };
+
+    foreach (var proxy in SplitForwardedHeaderSetting(app.Configuration["ForwardedHeaders:KnownProxies"]))
+    {
+        try
+        {
+            forwardedOptions.KnownProxies.Add(IPAddress.Parse(proxy));
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownProxies contains an invalid IP address '{proxy}'. عيّن عنوان IPv4 صحيحًا لكل وسيط موثوق.", ex);
+        }
+    }
+
+    foreach (var network in SplitForwardedHeaderSetting(app.Configuration["ForwardedHeaders:KnownNetworks"]))
+    {
+        try
+        {
+            // IPv4 CIDR, e.g. "10.0.0.0/8".
+            forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException)
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownNetworks contains an invalid network '{network}'. عيّن شبكة بصيغة CIDR مثل 10.0.0.0/8.", ex);
+        }
+    }
+
+    if (forwardedOptions.KnownProxies.Count == 0 && forwardedOptions.KnownIPNetworks.Count == 0)
+    {
+        app.Logger.LogWarning(
+            "ForwardedHeaders:Enabled is true but ForwardedHeaders__KnownProxies / ForwardedHeaders__KnownNetworks are empty; " +
+            "only loopback proxies are trusted, so X-Forwarded-For from the real proxy is ignored and the rate limiter " +
+            "still buckets by the proxy IP. عيّن عناوين الوسائط الموثوقة قبل تفعيل هذا الخيار.");
+    }
+
     app.UseForwardedHeaders(forwardedOptions);
+}
+else if (!app.Environment.IsDevelopment())
+{
+    app.Logger.LogWarning(
+        "ForwardedHeaders:Enabled is false, so X-Forwarded-For / X-Forwarded-Proto are ignored. Behind a reverse proxy or " +
+        "load balancer this means HttpContext.Connection.RemoteIpAddress is the proxy address and the rate limiter " +
+        "(20 requests / 5 minutes on the login policy) is ONE shared bucket for every client. " +
+        "فعّل ForwardedHeaders__Enabled مع ForwardedHeaders__KnownProxies أو KnownNetworks خلف أي وسيط عكسي.");
+}
 
 app.UseRouting();
 
@@ -349,20 +406,35 @@ app.MapControllerRoute(
 
 app.MapHealthChecks("/healthz");
 
+// M-4 production gate. The Seed section is no longer shipped in appsettings.json, so a missing key
+// is a hard failure here exactly like a shipped default or a "REPLACE_WITH" placeholder: production
+// must never fall back to SeedData's generated password. Development stays permissive (it still
+// reads the dev defaults from appsettings.Development.json).
 if (!app.Environment.IsDevelopment())
 {
     string[] insecureSeedDefaults = ["Admin@123", "Acc@12345", "War@12345"];
     string[] seedKeys = ["Seed:AdminPassword", "Seed:AccountantPassword", "Seed:WarehousePassword"];
-    var insecure = seedKeys
-        .Where(key => string.IsNullOrWhiteSpace(app.Configuration[key])
-            || insecureSeedDefaults.Contains(app.Configuration[key], StringComparer.Ordinal)
-            || app.Configuration[key]?.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase) == true)
-        .Select(key => key.Replace(":", "__", StringComparison.Ordinal))
-        .ToList();
-    if (insecure.Count > 0)
+    var seedProblems = new List<string>();
+    if (!app.Configuration.GetSection("Seed").Exists())
+    {
+        seedProblems.Add("Seed section missing entirely (no defaults are shipped any more)");
+    }
+    foreach (var key in seedKeys)
+    {
+        var value = app.Configuration[key];
+        var envVar = key.Replace(":", "__", StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(value))
+            seedProblems.Add($"{envVar} (missing or empty)");
+        else if (insecureSeedDefaults.Contains(value, StringComparer.Ordinal)
+            || value.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase))
+            seedProblems.Add($"{envVar} (shipped default / placeholder value)");
+    }
+    if (seedProblems.Count > 0)
     {
         throw new InvalidOperationException(
-            $"Insecure or missing default seed passwords in production: {string.Join(", ", insecure)}. Set the corresponding environment variables (e.g. {insecure[0]}) to strong passwords and remove the shipped defaults from appsettings.json. لن يُشغَّل النظام في بيئة الإنتاج بكلمات مرور افتراضية غير آمنة؛ عيّن المتغيرات البيئية للصلاحيات الثلاث.");
+            $"Missing or insecure seed passwords in production: {string.Join(", ", seedProblems)}. " +
+            "Set Seed__AdminPassword, Seed__AccountantPassword and Seed__WarehousePassword (environment variables, user secrets or a mounted config file) to strong unique values; no default seed passwords are shipped in the repository any more. " +
+            "لن يبدأ النظام في بيئة الإنتاج ما لم تُعيَّن كلمات مرور قوية للصلاحيات الثلاث عبر المتغيرات البيئية Seed__*.");
     }
 }
 
