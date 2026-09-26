@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using NewVixSmart.Web.Infrastructure;
 using NewVixSmart.Web.Models.Core;
 
 namespace NewVixSmart.Web.Models.Sales;
@@ -40,8 +41,11 @@ public class SaleInvoiceItem
     [Display(Name = "الإجمالي")]
     public decimal Total => (Quantity > 0 ? Quantity : Count) * UnitPrice - Discount;
 
+    public decimal Gross => (Quantity > 0 ? Quantity : Count) * UnitPrice;
+
     [Column(TypeName = "decimal(18,2)")]
     [Display(Name = "الخصم")]
     [Range(0, 999999999, ErrorMessage = "خصم الصنف لا يمكن أن يكون سالباً")]
+    [DiscountWithinTotal(ErrorMessage = "خصم الصنف لا يمكن أن يتجاوز إجمالي السطر")]
     public decimal Discount { get; set; }
 }

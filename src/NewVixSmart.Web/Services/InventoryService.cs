@@ -76,6 +76,12 @@ public sealed class InventoryService : IInventoryService
             _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
         invoice.BranchId = branchId;
 
+        if (valid.Any(i => i.Discount > i.Gross))
+        {
+            _db.ChangeTracker.Clear();
+            return (false, "خصم الصنف لا يمكن أن يتجاوز قيمته الإجمالية");
+        }
+
         invoice.TotalAmount = valid.Sum(i => i.Total);
         invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
         if (invoice.NetAmount < 0)
@@ -216,7 +222,7 @@ public sealed class InventoryService : IInventoryService
                     decimal effective = item.Quantity > 0 ? item.Quantity : item.Count;
                     rawValue += effective * invLine.UnitPrice;
                 }
-                decimal value = rawValue;
+                decimal value = 0m;
                 decimal taxShare = 0m;
                 if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m)
                 {
@@ -340,6 +346,12 @@ public sealed class InventoryService : IInventoryService
                 item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
         }
 
+        if (valid.Any(i => i.Discount > i.Gross))
+        {
+            _db.ChangeTracker.Clear();
+            return (false, "خصم الصنف لا يمكن أن يتجاوز قيمته الإجمالية");
+        }
+
         invoice.TotalAmount = valid.Sum(i => i.Total);
         invoice.NetAmount = invoice.TotalAmount - invoice.Discount - (invoice.Discount2 ?? 0) - (invoice.Discount3 ?? 0) + invoice.Tax;
         if (invoice.NetAmount < 0)
@@ -416,7 +428,7 @@ public sealed class InventoryService : IInventoryService
             {
                 saleReturn.ReturnNumber = await NextReturnNumberAsync(
                     _db.SaleReturns.Select(r => r.ReturnNumber), "SRTN");
-                saleReturn.TotalAmount = valid.Sum(i => i.Total);
+                saleReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
                 saleReturn.CreatedBy = user;
                 saleReturn.Status = ReturnStatus.Draft;
                 saleReturn.PostedBy = null;
@@ -475,7 +487,7 @@ public sealed class InventoryService : IInventoryService
                     var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
                     if (match != null) line.UnitPrice = match.UnitPrice;
                 }
-                saleReturn.TotalAmount = valid.Sum(i => i.Total);
+                saleReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
 
                 var stockError = await ApplyStockAsync(
                     ToReturnStockLines(valid), sign: +1,
@@ -551,7 +563,7 @@ public sealed class InventoryService : IInventoryService
             {
                 purchaseReturn.ReturnNumber = await NextReturnNumberAsync(
                     _db.PurchaseReturns.Select(r => r.ReturnNumber), "PRTN");
-                purchaseReturn.TotalAmount = valid.Sum(i => i.Total);
+                purchaseReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
                 purchaseReturn.CreatedBy = user;
                 purchaseReturn.Status = ReturnStatus.Draft;
                 purchaseReturn.PostedBy = null;
@@ -610,7 +622,7 @@ public sealed class InventoryService : IInventoryService
                     var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
                     if (match != null) line.UnitPrice = match.UnitPrice;
                 }
-                purchaseReturn.TotalAmount = valid.Sum(i => i.Total);
+                purchaseReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
 
                 var stockError = await ApplyStockAsync(
                     ToReturnStockLines(valid), sign: -1,
