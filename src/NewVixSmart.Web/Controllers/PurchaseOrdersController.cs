@@ -118,13 +118,21 @@ public class PurchaseOrdersController : Controller
 
         if (ModelState.IsValid && vm.Items.Any(i => i.ItemId > 0))
         {
-            var (ok, error) = await _procurement.UpdateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
-            if (ok)
+            try
             {
-                TempData["Success"] = "تم تحديث أمر الشراء بنجاح";
-                return RedirectToAction(nameof(Details), new { id = vm.Order.Id });
+                var (ok, error) = await _procurement.UpdateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
+                if (ok)
+                {
+                    TempData["Success"] = "تم تحديث أمر الشراء بنجاح";
+                    return RedirectToAction(nameof(Details), new { id = vm.Order.Id });
+                }
+                ModelState.AddModelError("", error ?? "تعذر تحديث أمر الشراء");
             }
-            ModelState.AddModelError("", error ?? "تعذر تحديث أمر الشراء");
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                ModelState.AddModelError("", "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
+            }
         }
 
         vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
@@ -180,9 +188,17 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.Approve")]
     public async Task<IActionResult> Approve(int id)
     {
-        var (ok, error) = await _procurement.ApproveOrderAsync(id);
-        if (ok) TempData["Success"] = "تم اعتماد أمر الشراء";
-        else TempData["Error"] = error;
+        try
+        {
+            var (ok, error) = await _procurement.ApproveOrderAsync(id);
+            if (ok) TempData["Success"] = "تم اعتماد أمر الشراء";
+            else TempData["Error"] = error;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
+        }
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -190,9 +206,17 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.Approve")]
     public async Task<IActionResult> Cancel(int id)
     {
-        var (ok, error) = await _procurement.CancelOrderAsync(id);
-        if (ok) TempData["Success"] = "تم إلغاء أمر الشراء";
-        else TempData["Error"] = error;
+        try
+        {
+            var (ok, error) = await _procurement.CancelOrderAsync(id);
+            if (ok) TempData["Success"] = "تم إلغاء أمر الشراء";
+            else TempData["Error"] = error;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
+        }
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -213,9 +237,17 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.Receive")]
     public async Task<IActionResult> Receive(int id, int orderItemId, decimal receiveQty, decimal receiveCount)
     {
-        var (ok, error) = await _procurement.ReceiveOrderLineAsync(id, orderItemId, receiveQty, receiveCount);
-        if (ok) TempData["Success"] = "تم تسجيل الاستلام";
-        else TempData["Error"] = error;
+        try
+        {
+            var (ok, error) = await _procurement.ReceiveOrderLineAsync(id, orderItemId, receiveQty, receiveCount);
+            if (ok) TempData["Success"] = "تم تسجيل الاستلام";
+            else TempData["Error"] = error;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
+        }
         return RedirectToAction(nameof(Receive), new { id });
     }
 
@@ -223,13 +255,22 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.Receive")]
     public async Task<IActionResult> CreateInvoice(int id)
     {
-        var (ok, error) = await _procurement.CreateInvoiceFromOrderAsync(id, User.Identity?.Name);
-        if (ok)
+        try
         {
-            TempData["Success"] = "تم إنشاء فاتورة الشراء من أمر الشراء";
-            return RedirectToAction("Index", "Purchases");
+            var (ok, error) = await _procurement.CreateInvoiceFromOrderAsync(id, User.Identity?.Name);
+            if (ok)
+            {
+                TempData["Success"] = "تم إنشاء فاتورة الشراء من أمر الشراء";
+                return RedirectToAction("Index", "Purchases");
+            }
+            TempData["Error"] = error ?? "تعذر إنشاء الفاتورة";
         }
-        TempData["Error"] = error ?? "تعذر إنشاء الفاتورة";
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
+            return RedirectToAction(nameof(Details), new { id });
+        }
         return RedirectToAction(nameof(Details), new { id });
     }
 }

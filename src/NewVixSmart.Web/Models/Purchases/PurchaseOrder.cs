@@ -45,6 +45,9 @@ public class PurchaseOrder
     [BindNever]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
+
     [BindNever]
     public ICollection<PurchaseOrderItem> Items { get; set; } = new List<PurchaseOrderItem>();
 }
