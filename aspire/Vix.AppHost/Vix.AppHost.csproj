@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/NewVixSmart.Web/NewVixSmart.Web.csproj" />
-    <ProjectReference Include="../Vix.ServiceDefaults/Vix.ServiceDefaults.csproj" />
+    <ProjectReference Include="../Vix.ServiceDefaults/Vix.ServiceDefaults.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 
 </Project>
