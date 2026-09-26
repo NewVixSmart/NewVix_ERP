@@ -482,10 +482,17 @@ public sealed class InventoryService : IInventoryService
                     .Where(i => i.SaleInvoiceId == saleReturn.SaleInvoiceId)
                     .Select(i => new { i.ItemId, i.UnitPrice })
                     .ToListAsync();
+                var itemIds = valid.Select(v => v.ItemId).Distinct().ToList();
+                var masterPrices = await _db.Items.AsNoTracking()
+                    .Where(i => itemIds.Contains(i.Id))
+                    .Select(i => new { i.Id, i.SalePrice })
+                    .ToListAsync();
                 foreach (var line in valid)
                 {
                     var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
-                    if (match != null) line.UnitPrice = match.UnitPrice;
+                    line.UnitPrice = match != null
+                        ? match.UnitPrice
+                        : masterPrices.FirstOrDefault(m => m.Id == line.ItemId)?.SalePrice ?? line.UnitPrice;
                 }
                 saleReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
 
@@ -617,10 +624,17 @@ public sealed class InventoryService : IInventoryService
                     .Where(i => i.PurchaseInvoiceId == purchaseReturn.PurchaseInvoiceId)
                     .Select(i => new { i.ItemId, i.UnitPrice })
                     .ToListAsync();
+                var itemIds = valid.Select(v => v.ItemId).Distinct().ToList();
+                var masterPrices = await _db.Items.AsNoTracking()
+                    .Where(i => itemIds.Contains(i.Id))
+                    .Select(i => new { i.Id, i.PurchasePrice })
+                    .ToListAsync();
                 foreach (var line in valid)
                 {
                     var match = invPrices.FirstOrDefault(p => p.ItemId == line.ItemId);
-                    if (match != null) line.UnitPrice = match.UnitPrice;
+                    line.UnitPrice = match != null
+                        ? match.UnitPrice
+                        : masterPrices.FirstOrDefault(m => m.Id == line.ItemId)?.PurchasePrice ?? line.UnitPrice;
                 }
                 purchaseReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
 
