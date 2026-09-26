@@ -9,18 +9,18 @@
 <div class="card">
     <div class="card-body">
         <table class="table table-borderless mb-0">
-            <tr><th scope="col" style="width:30%">رقم الإيصال</th><td><code>@Model.ReceiptNumber</code></td></tr>
-            <tr><th scope="col">النوع</th><td>@Model.Type.GetDisplayName()</td></tr>
-            <tr><th scope="col">العميل/المورد</th><td>@(Model.Customer?.Name ?? Model.Supplier?.Name ?? "—")</td></tr>
-            <tr><th scope="col">العملة</th><td>@(Model.Currency?.Code ?? "ج.م (أساسية)")</td></tr>
-            <tr><th scope="col">سعر الصرف</th><td>@(Model.ExchangeRate.HasValue ? Model.ExchangeRate.Value.ToString("N4") : "—")</td></tr>
-            <tr><th scope="col">المبلغ بالعملة الأساسية</th><td>@Model.BaseAmount.ToString("N2") ج.م</td></tr>
-            <tr><th scope="col">المبلغ</th><td class="fw-bold fs-5">@Model.Amount.ToString("N2") @(Model.Currency?.Code ?? "ج.م")</td></tr>
-            <tr><th scope="col">طريقة الدفع</th><td>@Model.Method.GetDisplayName()</td></tr>
-            <tr><th scope="col">رقم المرجع</th><td>@(Model.ReferenceNumber ?? "—")</td></tr>
-            <tr><th scope="col">التاريخ</th><td>@Model.PaymentDate.ToString("dd/MM/yyyy")</td></tr>
-            <tr><th scope="col">أنشأها</th><td>@(Model.CreatedBy ?? "—")</td></tr>
-            <tr><th scope="col">ملاحظات</th><td>@(Model.Notes ?? "—")</td></tr>
+            <tr><th scope="row" style="width:30%">رقم الإيصال</th><td><code>@Model.ReceiptNumber</code></td></tr>
+            <tr><th scope="row">النوع</th><td>@Model.Type.GetDisplayName()</td></tr>
+            <tr><th scope="row">العميل/المورد</th><td>@(Model.Customer?.Name ?? Model.Supplier?.Name ?? "—")</td></tr>
+            <tr><th scope="row">العملة</th><td>@(Model.Currency?.Code ?? "ج.م (أساسية)")</td></tr>
+            <tr><th scope="row">سعر الصرف</th><td>@(Model.ExchangeRate.HasValue ? Model.ExchangeRate.Value.ToString("N4") : "—")</td></tr>
+            <tr><th scope="row">المبلغ بالعملة الأساسية</th><td>@Model.BaseAmount.ToString("N2") ج.م</td></tr>
+            <tr><th scope="row">المبلغ</th><td class="fw-bold fs-5">@Model.Amount.ToString("N2") @(Model.Currency?.Code ?? "ج.م")</td></tr>
+            <tr><th scope="row">طريقة الدفع</th><td>@Model.Method.GetDisplayName()</td></tr>
+            <tr><th scope="row">رقم المرجع</th><td>@(Model.ReferenceNumber ?? "—")</td></tr>
+            <tr><th scope="row">التاريخ</th><td>@Model.PaymentDate.ToString("dd/MM/yyyy")</td></tr>
+            <tr><th scope="row">أنشأها</th><td>@(Model.CreatedBy ?? "—")</td></tr>
+            <tr><th scope="row">ملاحظات</th><td>@(Model.Notes ?? "—")</td></tr>
         </table>
     </div>
 </div>

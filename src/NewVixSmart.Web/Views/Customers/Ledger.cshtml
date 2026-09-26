@@ -24,20 +24,20 @@
 <div class="row g-4">
     <div class="col-lg-6">
         <div class="card"><div class="card-header"><i class="bi bi-cart-check"></i> فواتير البيع</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><thead><tr><th scope="col">الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>المدفوع</th></tr></thead>
+            <table class="table table-hover mb-0"><thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
             <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td>@i.NetAmount.ToString("N2")</td><td>@i.PaidAmount.ToString("N2")</td></tr> }</tbody></table>
         </div></div>
     </div>
     <div class="col-lg-6">
         <div class="card"><div class="card-header"><i class="bi bi-wallet2"></i> المدفوعات (المقبوضات)</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><thead><tr><th scope="col">الإيصال</th><th>التاريخ</th><th>المبلغ</th><th>الطريقة</th></tr></thead>
+            <table class="table table-hover mb-0"><thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
             <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">@p.Amount.ToString("N2")</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody></table>
         </div></div>
     </div>
 </div>
 
 <div class="card mt-4"><div class="card-header"><i class="bi bi-arrow-counterclockwise"></i> مرتجعات البيع</div><div class="card-body p-0">
-    <table class="table table-hover mb-0"><thead><tr><th scope="col">المرتجع</th><th>التاريخ</th><th>المبلغ</th></tr></thead>
+    <table class="table table-hover mb-0"><thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
     <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">-@r.TotalAmount.ToString("N2")</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody></table>
 </div></div>
 

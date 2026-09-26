@@ -22,17 +22,17 @@
             <div class="card-header"><i class="bi bi-info-circle"></i> معلومات الصنف</div>
             <div class="card-body">
                 <table class="table table-borderless mb-0">
-                    <tr><th scope="col" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
-                    <tr><th scope="col">الاسم</th><td>@Model.Name</td></tr>
+                    <tr><th scope="row" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
+                    <tr><th scope="row">الاسم</th><td>@Model.Name</td></tr>
                     <tr>
-                        <th scope="col">نوع الصنف</th>
+                        <th scope="row">نوع الصنف</th>
                         <td><span class="badge bg-primary">@(Model.ItemType?.Name ?? "—")</span></td>
                     </tr>
-                    <tr><th scope="col">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
-                    <tr><th scope="col">التصنيف</th><td><span class="badge bg-secondary">@Model.Category.Name</span></td></tr>
-                    <tr><th scope="col">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
-                    <tr><th scope="col">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
-                    <tr><th scope="col">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
+                    <tr><th scope="row">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
+                    <tr><th scope="row">التصنيف</th><td><span class="badge bg-secondary">@Model.Category.Name</span></td></tr>
+                    <tr><th scope="row">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
+                    <tr><th scope="row">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
+                    <tr><th scope="row">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
                 </table>
             </div>
         </div>
@@ -43,17 +43,17 @@
             <div class="card-body">
                 <table class="table table-borderless mb-0">
                     <tr>
-                        <th scope="col" style="width:40%">الرصيد الحالي (عدد)</th>
+                        <th scope="row" style="width:40%">الرصيد الحالي (عدد)</th>
                         <td class="fw-bold">@Model.CurrentCount @(Model.CountUnit?.Name ?? "")</td>
                     </tr>
                     <tr>
-                        <th scope="col">الرصيد الحالي (كمية)</th>
+                        <th scope="row">الرصيد الحالي (كمية)</th>
                         <td class="fw-bold">@Model.CurrentQuantity @(Model.QuantityUnit?.Name ?? "")</td>
                     </tr>
-                    <tr><th scope="col">الحد الأدنى (عدد)</th><td>@Model.MinCount @(Model.CountUnit?.Name ?? "")</td></tr>
-                    <tr><th scope="col">الحد الأدنى (كمية)</th><td>@Model.MinQuantity @(Model.QuantityUnit?.Name ?? "")</td></tr>
+                    <tr><th scope="row">الحد الأدنى (عدد)</th><td>@Model.MinCount @(Model.CountUnit?.Name ?? "")</td></tr>
+                    <tr><th scope="row">الحد الأدنى (كمية)</th><td>@Model.MinQuantity @(Model.QuantityUnit?.Name ?? "")</td></tr>
                     <tr>
-                        <th scope="col">الحالة</th>
+                        <th scope="row">الحالة</th>
                         <td>
                             @if (low)
                             { <span class="badge bg-danger">مخزون منخفض!</span> }
@@ -61,7 +61,7 @@
                             { <span class="badge bg-success">مخزون كافٍ</span> }
                         </td>
                     </tr>
-                    <tr><th scope="col">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
+                    <tr><th scope="row">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
                 </table>
             </div>
         </div>
