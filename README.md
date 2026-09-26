@@ -53,10 +53,10 @@ dotnet run --project src/NewVixSmart.Web
 | المستخدم | الدور | الكلمة |
 |---|---|---|
 | `admin` | Admin | `Admin@123` |
-| `accountant` | Accountant | `Accountant@123` |
-| `warehouse` | Warehouse | `Warehouse@123` |
+| `accountant` | Accountant | `Acc@12345` |
+| `warehouse` | Warehouse | `War@12345` |
 
-> ⚠️ للدخول بالإنتاج غيّر كلمات سر الـ seed و `Jwt:Key`؛ الحارس يرفض إقلاع `Production` مع مفتاح placeholder (انظر أدناه).
+> ⚠️ هذه القيم موجودة في `appsettings.Development.json` للتطوير فقط ولا تُشحن مع `appsettings.json`. للإنتاج يجب تمرير `Seed__AdminPassword` و`Seed__AccountantPassword` و`Seed__WarehousePassword` (انظر `.env.example`) — الحارس يرفض إقلاع `Production` عند غيابها أو عند بقاء القيم الافتراضية، ويرفض كذلك `Jwt:Key` إن كان placeholder (انظر أدناه).
 
 ## الإنتاج (Docker + CORS)
 
