@@ -303,6 +303,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCompression();
 
+// Forwarded headers run first so a trusted proxy can set the client scheme via
+// X-Forwarded-Proto before UseHttpsRedirection decides whether to redirect.
+// Skipped entirely when ForwardedHeaders:Enabled is false, so direct (non proxied)
+// deployments keep the default single-host behaviour.
+ConfigureForwardedHeaders(app);
+
 app.UseHttpsRedirection();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -331,12 +337,22 @@ static string[] SplitForwardedHeaderSetting(string? value) =>
 
 // M-1: forwarded headers are strictly opt-in (ForwardedHeaders:Enabled, default false) and are only
 // honoured from the proxies/networks listed in configuration - unknown proxies are never trusted.
-// Registered before UseRouting/UseRateLimiter/UseAuthentication so Connection.RemoteIpAddress (used
-// by the "token" and "login" rate limiter partitions) and the scheme/host checks see the real client
-// instead of the reverse proxy's address.
-var forwardedHeadersEnabled = app.Configuration.GetValue("ForwardedHeaders:Enabled", false);
-if (forwardedHeadersEnabled)
+static void ConfigureForwardedHeaders(WebApplication app)
 {
+    if (!app.Configuration.GetValue("ForwardedHeaders:Enabled", false))
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            app.Logger.LogWarning(
+                "ForwardedHeaders:Enabled is false, so X-Forwarded-For / X-Forwarded-Proto are ignored. Behind a reverse proxy or " +
+                "load balancer this means HttpContext.Connection.RemoteIpAddress is the proxy address and the rate limiter " +
+                "(20 requests / 5 minutes on the login policy) is ONE shared bucket for every client. " +
+                "فعّل ForwardedHeaders__Enabled مع ForwardedHeaders__KnownProxies أو KnownNetworks خلف أي وسيط عكسي.");
+        }
+
+        return;
+    }
+
     var forwardedOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
@@ -379,14 +395,6 @@ if (forwardedHeadersEnabled)
     }
 
     app.UseForwardedHeaders(forwardedOptions);
-}
-else if (!app.Environment.IsDevelopment())
-{
-    app.Logger.LogWarning(
-        "ForwardedHeaders:Enabled is false, so X-Forwarded-For / X-Forwarded-Proto are ignored. Behind a reverse proxy or " +
-        "load balancer this means HttpContext.Connection.RemoteIpAddress is the proxy address and the rate limiter " +
-        "(20 requests / 5 minutes on the login policy) is ONE shared bucket for every client. " +
-        "فعّل ForwardedHeaders__Enabled مع ForwardedHeaders__KnownProxies أو KnownNetworks خلف أي وسيط عكسي.");
 }
 
 app.UseRouting();
