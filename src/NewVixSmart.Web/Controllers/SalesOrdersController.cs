@@ -108,7 +108,7 @@ public class SalesOrdersController : Controller
             Items = order.Items.ToList()
         };
         await Populate(vm);
-        return View(vm);
+        return View("Create", vm);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -131,7 +131,7 @@ public class SalesOrdersController : Controller
         }
 
         await Populate(vm);
-        return View(vm);
+        return View("Create", vm);
     }
 
     [RequirePerm("SalesOrders.View")]
