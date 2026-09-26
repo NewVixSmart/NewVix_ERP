@@ -15,10 +15,12 @@ public class SaleReturnsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
-    public SaleReturnsController(AppDbContext db, IInventoryService inventory)
+    private readonly IPermissionService _permissions;
+    public SaleReturnsController(AppDbContext db, IInventoryService inventory, IPermissionService permissions)
     {
         _db = db;
         _inventory = inventory;
+        _permissions = permissions;
     }
 
 [RequirePerm("SaleReturns.View")]
@@ -108,10 +110,16 @@ else if (invoice.CustomerId != saleReturn.CustomerId)
 
 if (ModelState.IsValid)
         {
+            var submit = Request.Form["submitAction"].ToString();
+            if (submit == "post" && !await _permissions.HasAsync("SaleReturns.Post"))
+            {
+                ModelState.AddModelError("", "ليست لديك صلاحية الترحيل المباشر؛ يمكنك الحفظ كمسودة فقط");
+            }
+            else
+            {
             var (ok, error, returnId) = await _inventory.CreateSaleReturnDraftAsync(saleReturn, items, User.Identity?.Name);
             if (ok)
             {
-                var submit = Request.Form["submitAction"].ToString();
                 if (submit == "post")
                 {
                     var (posted, postError) = await _inventory.PostSaleReturnAsync(returnId, User.Identity?.Name);
@@ -127,6 +135,7 @@ if (ModelState.IsValid)
                 return RedirectToAction(nameof(Details), new { id = returnId });
             }
             ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع البيع");
+            }
         }
 
         await PopulateDropdowns();

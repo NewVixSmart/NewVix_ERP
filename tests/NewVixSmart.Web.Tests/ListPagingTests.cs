@@ -175,7 +175,7 @@ public sealed class ListPagingTests : IDisposable
         await db.SaveChangesAsync();
 
         var inventory = new InventoryService(db, new AccountingService(db));
-        var controller = new PurchaseReturnsController(db, inventory);
+        var controller = new PurchaseReturnsController(db, inventory, new TestPermissionService());
 
         var first = Assert.IsType<ViewResult>(await controller.Index(page: 1));
         Assert.Equal(50, Assert.IsType<List<PurchaseReturn>>(first.Model).Count);

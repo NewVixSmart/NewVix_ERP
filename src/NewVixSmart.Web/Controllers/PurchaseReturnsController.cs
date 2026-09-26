@@ -15,10 +15,12 @@ public class PurchaseReturnsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
-    public PurchaseReturnsController(AppDbContext db, IInventoryService inventory)
+    private readonly IPermissionService _permissions;
+    public PurchaseReturnsController(AppDbContext db, IInventoryService inventory, IPermissionService permissions)
     {
         _db = db;
         _inventory = inventory;
+        _permissions = permissions;
     }
 
 [RequirePerm("PurchaseReturns.View")]
@@ -120,10 +122,16 @@ else if (invoice.SupplierId != purchaseReturn.SupplierId)
 
 if (ModelState.IsValid)
         {
+            var submit = Request.Form["submitAction"].ToString();
+            if (submit == "post" && !await _permissions.HasAsync("PurchaseReturns.Post"))
+            {
+                ModelState.AddModelError("", "ليست لديك صلاحية الترحيل المباشر؛ يمكنك الحفظ كمسودة فقط");
+            }
+            else
+            {
             var (ok, error, returnId) = await _inventory.CreatePurchaseReturnDraftAsync(purchaseReturn, items, User.Identity?.Name);
             if (ok)
             {
-                var submit = Request.Form["submitAction"].ToString();
                 if (submit == "post")
                 {
                     var (posted, postError) = await _inventory.PostPurchaseReturnAsync(returnId, User.Identity?.Name);
@@ -139,6 +147,7 @@ if (ModelState.IsValid)
                 return RedirectToAction(nameof(Details), new { id = returnId });
             }
             ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع الشراء");
+            }
         }
 
         await PopulateDropdowns();

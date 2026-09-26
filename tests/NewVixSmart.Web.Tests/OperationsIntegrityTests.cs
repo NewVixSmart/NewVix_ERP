@@ -421,7 +421,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(okDraft);
 
-        var controller = new SaleReturnsController(db, svc);
+        var controller = new SaleReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
         var result = await controller.Create(new SaleReturn
@@ -457,7 +457,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         var (okPost, errPost) = await svc.PostSaleReturnAsync(postedId, "test");
         Assert.True(okPost, errPost);
 
-        var controller = new SaleReturnsController(db, svc);
+        var controller = new SaleReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
         var result = await controller.Create(new SaleReturn
@@ -493,7 +493,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         var (okPost, errPost) = await svc.PostPurchaseReturnAsync(postedId, "test");
         Assert.True(okPost, errPost);
 
-        var controller = new PurchaseReturnsController(db, svc);
+        var controller = new PurchaseReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
         var result = await controller.Create(new PurchaseReturn
