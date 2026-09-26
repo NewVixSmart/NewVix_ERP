@@ -44,20 +44,20 @@
                 </div>
             }
             <div class="col-md-4">
-                <label asp-for="Payment.CurrencyId" class="form-label"></label>
+                <label for="currencySelect" class="form-label">العملة</label>
                 <select asp-for="Payment.CurrencyId" asp-items="@Model.Currencies" class="form-select" id="currencySelect">
                     <option value="">-- العملة --</option>
                 </select>
                 <span asp-validation-for="Payment.CurrencyId" class="text-danger small"></span>
             </div>
             <div class="col-md-4">
-                <label asp-for="Payment.ExchangeRate" class="form-label"></label>
+                <label for="exchangeRate" class="form-label">سعر الصرف</label>
                 <input asp-for="Payment.ExchangeRate" class="form-control" type="number" step="any" id="exchangeRate" aria-describedby="exchangeRate-help Payment_ExchangeRate-error" />
                 <small class="text-muted" id="exchangeRate-help">وحدات العملة الأساسية لكل وحدة من العملة المختارة</small>
                 <span asp-validation-for="Payment.ExchangeRate" class="text-danger small" id="Payment_ExchangeRate-error"></span>
             </div>
             <div class="col-md-4">
-                <label asp-for="Payment.BaseAmount" class="form-label"></label>
+                <label for="baseAmount" class="form-label">المبلغ بالعملة الأساسية</label>
                 <input asp-for="Payment.BaseAmount" class="form-control" id="baseAmount" readonly />
                 <small class="text-muted">المبلغ بالعملة الأساسية المحتسب</small>
             </div>

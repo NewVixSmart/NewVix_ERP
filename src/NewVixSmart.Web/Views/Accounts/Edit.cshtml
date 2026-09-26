@@ -20,7 +20,7 @@
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <div class="mb-3">
-                <label class="form-label">رمز الحساب</label>
+                <label class="form-label" for="Code">رمز الحساب</label>
                 @{ var codeLocked = (ViewBag.IsPosted == true || ViewBag.IsSystem == true); }
                 @if (codeLocked)
                 {
@@ -36,11 +36,11 @@
                 }
             </div>
             <div class="mb-3">
-                <label class="form-label">اسم الحساب</label>
+                <label class="form-label" for="Name">اسم الحساب</label>
                 <input asp-for="Name" class="form-control" required />
             </div>
             <div class="mb-3">
-                <label class="form-label">نوع الحساب</label>
+                <label class="form-label" for="Type">نوع الحساب</label>
                 <select asp-for="Type" class="form-select">
                     @foreach (var t in Enum.GetValues<NewVixSmart.Web.Models.Accounting.GLAccountType>())
                     {
@@ -49,14 +49,14 @@
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label">طبيعة الحساب</label>
+                <label class="form-label" for="NormalBalance">طبيعة الحساب</label>
                 <select asp-for="NormalBalance" class="form-select">
                     <option value="1">مدين</option>
                     <option value="2">دائن</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label">الحساب الأب (اختياري)</label>
+                <label class="form-label" for="ParentAccountId">الحساب الأب (اختياري)</label>
                 <select asp-for="ParentAccountId" class="form-select" asp-items="ViewBag.ParentList">
                     <option value="">—</option>
                 </select>

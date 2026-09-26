@@ -6,8 +6,8 @@
 <div class="card mb-4"><div class="card-body">
     <form method="get" class="row g-2 align-items-end">
         <div class="col-md-6">
-            <label class="form-label">المورد</label>
-            <select name="supplierId" asp-items="@ViewBag.Suppliers" class="form-select">
+            <label class="form-label" for="supplierId">المورد</label>
+            <select id="supplierId" name="supplierId" asp-items="@ViewBag.Suppliers" class="form-select">
                 <option value="">— الكل —</option>
             </select>
         </div>

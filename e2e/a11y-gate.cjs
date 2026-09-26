@@ -5,10 +5,90 @@ const BASE = process.env.BASE_URL || 'http://localhost:5165';
 const USER = process.env.VIX_USER || 'admin';
 const PASS = process.env.VIX_PASS || 'Admin@123';
 
-// Extra routes reachable from the app but not present as `.sidebar-nav .nav-link` links.
-const EXTRA_ROUTES = [
+// Every GET action that renders a view, enumerated from src/NewVixSmart.Web/Controllers.
+// Excluded: /Account/* (redirects once authenticated), POST-only actions, JSON/Partial
+// results, and file-returning actions (Pdf/Xlsx/Csv/Template/Download/Export*/Ledger*).
+// Parameterised routes use id 1 (Details fall back to the integer key).
+const ROUTE_MANIFEST = [
+  '/',
+  '/Accounts',
+  '/Accounts/Create',
+  '/Accounts/Edit/1',
+  '/Backup',
+  '/Batch',
+  '/Batch/Adjustment',
+  '/Batch/Sales',
+  '/Budgets',
+  '/Budgets/Manage/2026',
+  '/Categories',
+  '/Customers',
+  '/Customers/Create',
+  '/Customers/Edit/1',
+  '/Customers/Ledger/1',
+  '/DeliveryOrders',
+  '/DeliveryOrders/Create',
+  '/ExportCenter',
+  '/Fiscal',
+  '/ImportCenter',
+  '/InventoryAdjustments',
+  '/InventoryAdjustments/Create',
+  '/ItemTypes',
+  '/Items',
+  '/Items/Create',
+  '/Items/Details/1',
+  '/Items/Edit/1',
+  '/Items/PrintLabel/1',
+  '/Payments',
+  '/Payments/Create',
+  '/PurchaseOrders',
+  '/PurchaseOrders/Create',
+  '/PurchaseOrders/Edit/1',
+  '/PurchaseRequests',
+  '/PurchaseRequests/Create',
+  '/PurchaseReturns',
+  '/PurchaseReturns/Create',
+  '/Purchases',
+  '/Purchases/Create',
+  '/Reports',
+  '/Reports/Aging',
+  '/Reports/AuditLedger',
+  '/Reports/BalanceSheet',
+  '/Reports/BudgetVariance',
+  '/Reports/CashFlow',
+  '/Reports/Dashboard',
+  '/Reports/IncomeStatement',
+  '/Reports/Payments',
+  '/Reports/Purchases',
+  '/Reports/Sales',
+  '/Reports/TrialBalance',
+  '/SaleReturns',
+  '/SaleReturns/Create',
+  '/Sales',
   '/Sales/Create',
-  '/Settings/Printing'
+  '/SalesOrders',
+  '/SalesOrders/Create',
+  '/SalesQuotes',
+  '/SalesQuotes/Create',
+  '/SalesQuotes/MassConvert',
+  '/Settings',
+  '/Settings/Branding',
+  '/Settings/PrintPreview?group=sales_invoice',
+  '/Settings/Printing',
+  '/Stock',
+  '/Stock/LowStock',
+  '/Stock/Report',
+  '/StockTransfers',
+  '/StockTransfers/Create',
+  '/Suppliers',
+  '/Suppliers/Create',
+  '/Suppliers/Edit/1',
+  '/Suppliers/Ledger/1',
+  '/Suppliers/Quotes',
+  '/Users',
+  '/Users/Create',
+  '/Warehouses',
+  '/Warehouses/Create',
+  '/Warehouses/Edit/1'
 ];
 
 // Routes scanned again in dark mode (previously failing + chrome-heavy).
@@ -42,19 +122,6 @@ async function login(page, theme) {
   await page.waitForTimeout(1200);
 }
 
-async function discoverRoutes(page) {
-  await page.goto(BASE + '/', { waitUntil: 'load' });
-  const links = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('.sidebar-nav .nav-link'))
-      .map(a => a.getAttribute('href'))
-      .filter(Boolean)
-  );
-  const paths = [...new Set(links.map(h => new URL(h, BASE).pathname))];
-  for (const extra of EXTRA_ROUTES) if (!paths.includes(extra)) paths.push(extra);
-  if (!paths.length) throw new Error('No nav routes discovered — sidebar markup changed?');
-  return paths.sort();
-}
-
 async function axeRun(page) {
   await page.evaluate(src => { (0, eval)(src); }, axeSource);
   return page.evaluate(async (tags) => {
@@ -74,7 +141,7 @@ async function main() {
   const page = await context.newPage();
 
   await login(page, 'light');
-  const routes = await discoverRoutes(page);
+  const routes = ROUTE_MANIFEST;
 
   const failures = [];
   const summary = { light: {}, dark: {} };

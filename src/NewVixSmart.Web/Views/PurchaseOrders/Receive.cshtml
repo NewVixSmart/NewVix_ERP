@@ -34,15 +34,15 @@
                             <form asp-action="Receive" asp-route-id="@Model.Id" method="post" class="row g-1 align-items-center">
                                 <input type="hidden" name="orderItemId" value="@item.Id" />
                                 <div class="col">
-                                    <label class="small d-block">عدد</label>
-                                    <input type="number" name="receiveCount" step="0.01" min="0" max="@remainingCount" class="form-control form-control-sm" value="0" />
+                                    <label class="small d-block" for="receiveCount-@item.Id">عدد</label>
+                                    <input type="number" name="receiveCount" id="receiveCount-@item.Id" step="0.01" min="0" max="@remainingCount" class="form-control form-control-sm" value="0" />
                                 </div>
                                 <div class="col">
-                                    <label class="small d-block">كمية</label>
-                                    <input type="number" name="receiveQty" step="0.01" min="0" max="@remainingQty" class="form-control form-control-sm" value="0" />
+                                    <label class="small d-block" for="receiveQty-@item.Id">كمية</label>
+                                    <input type="number" name="receiveQty" id="receiveQty-@item.Id" step="0.01" min="0" max="@remainingQty" class="form-control form-control-sm" value="0" />
                                 </div>
                                 <div class="col-auto">
-                                    <button type="submit" class="btn btn-sm btn-primary mt-2" aria-label="استلام"><i class="bi bi-box-arrow-in-down"></i></button>
+                                    <button type="submit" class="btn btn-sm btn-primary mt-2" aria-label="استلام الصنف @item.Item.Name (@(item.Item.Code ?? "—"))"><i class="bi bi-box-arrow-in-down"></i></button>
                                 </div>
                             </form>
                         </td>
