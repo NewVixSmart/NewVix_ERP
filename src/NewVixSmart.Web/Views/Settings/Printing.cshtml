@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewData["Title"] = "استوديو الطباعة";
     var studioGroups = new[]
     {
@@ -41,7 +41,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-files" aria-hidden="true"></i> أنواع المستندات</div>
             <div class="card-body p-0">
-                <div class="list-group list-group-flush" id="groupList" role="tablist" aria-label="أنواع المستندات">
+                <div class="list-group list-group-flush" id="groupList" role="tablist" aria-orientation="vertical" aria-label="أنواع المستندات">
                     @foreach (var g in studioGroups)
                     {
                         <button type="button"
