@@ -1,0 +1,86 @@
+version: 2
+
+updates:
+  # ASP.NET Core / EF Core / Aspire packages
+  - package-ecosystem: nuget
+    directory: "/src/NewVixSmart.Web"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 5
+    groups:
+      aspnet-core:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+      ef-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore.*"
+      aspire:
+        patterns:
+          - "Aspire.*"
+    commit-message:
+      prefix: "build(deps)"
+
+  - package-ecosystem: nuget
+    directory: "/tests/NewVixSmart.Web.Tests"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build(deps)"
+
+  - package-ecosystem: nuget
+    directory: "/aspire/Vix.AppHost"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build(deps)"
+
+  - package-ecosystem: nuget
+    directory: "/aspire/Vix.ServiceDefaults"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build(deps)"
+
+  # Playwright / axe-core used by the accessibility gate
+  - package-ecosystem: npm
+    directory: "/e2e"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 3
+    groups:
+      playwright:
+        patterns:
+          - "playwright*"
+          - "@playwright/*"
+    commit-message:
+      prefix: "build(deps)"
+
+  # GitHub Actions pinned by SHA in ci.yml - keep them current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Khartoum
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci(deps)"
