@@ -1,5 +1,12 @@
 # مدقق الجولة السابعة — تقرير النتائج (Round-7 Audit)
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 التاريخ: 2026-09-23
 النطاق: مركز الاستيراد (ImportCenter)، المدفوعات (Payments)، التقارير المالية (Reports/Dashboard)، الطباعة وعروض الأسعار والمرتجعات (Print/Quotes/Returns).
 قاعدة العمل: مراجعة الجولات السابقة مغلقة في `docs/audit-round6-findings.md` (الكمية مهيمنة على التقييم — H-2/M-1).

@@ -1,4 +1,4 @@
-@model NewVixSmart.Web.Models.Sales.DeliveryOrder
+﻿@model NewVixSmart.Web.Models.Sales.DeliveryOrder
 @using NewVixSmart.Web.ViewModels.Core
 @using NewVixSmart.Web.ViewModels.PrintStudio
 @inject IBrandingService BrandingService
@@ -42,7 +42,6 @@
             Tax = 0m,
             GrandTotal = 0m,
             IsPaid = false,
-            CurrencyCode = ""
         }
     };
     foreach (var item in Model.Items)

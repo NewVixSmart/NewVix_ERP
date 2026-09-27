@@ -32,9 +32,9 @@
                     <td><code>@inv.InvoiceNumber</code></td>
                     <td>@(inv.Customer?.Name ?? "—")</td>
                     <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                    <td>@inv.TotalAmount.ToString("N2")</td>
-                    <td>@inv.Discount.ToString("N2")</td>
-                    <td class="fw-bold">@inv.NetAmount.ToString("N2")</td>
+                    <td>@Money.Format(inv.TotalAmount)</td>
+                    <td>@Money.Format(inv.Discount)</td>
+                    <td class="fw-bold">@Money.Format(inv.NetAmount)</td>
                     <td>@inv.PaymentTerms.GetDisplayName()@(inv.DueDate.HasValue ? $" حتى {inv.DueDate.Value:dd/MM/yyyy}" : "")</td>
                     <td>@(inv.IsPaid ? "مدفوعة" : "غير مدفوعة")</td>
                     <td class="text-center">

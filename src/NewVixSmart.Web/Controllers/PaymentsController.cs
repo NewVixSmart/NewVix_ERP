@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +26,7 @@ public class PaymentsController : Controller
     public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
         var query = _db.Payments
-            .Include(p => p.Customer).Include(p => p.Supplier).Include(p => p.Currency)
+            .Include(p => p.Customer).Include(p => p.Supplier)
             .AsNoTracking()
             .AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
@@ -52,21 +52,16 @@ public class PaymentsController : Controller
     [RequirePerm("Payments.Create")]
     public async Task<IActionResult> Create(string type = "receipt")
     {
-        var currencies = await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync();
         var vm = new PaymentFormViewModel
         {
             Type = type,
             Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
             Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
-            Currencies = new SelectList(currencies, "Id", "Code"),
-            CurrencyOptions = currencies,
             Payment = new Payment
             {
                 ReceiptNumber = "يتم التوليد تلقائياً",
                 PaymentDate = DateTime.Today,
-                Type = type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt,
-                CurrencyId = await BaseCurrencyIdAsync(),
-                ExchangeRate = 1m
+                Type = type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt
             }
         };
         return View(vm);
@@ -78,13 +73,6 @@ public class PaymentsController : Controller
     {
         var payment = vm.Payment;
         payment.Type = vm.Type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt;
-
-        var baseCurrencyId = await BaseCurrencyIdAsync();
-        if (payment.CurrencyId.HasValue && payment.CurrencyId.Value != baseCurrencyId
-            && (!payment.ExchangeRate.HasValue || payment.ExchangeRate.Value <= 0))
-        {
-            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للدفعات بالعملة الأجنبية");
-        }
 
         if (ModelState.IsValid)
         {
@@ -104,9 +92,6 @@ public class PaymentsController : Controller
             }
         }
 
-        var currencies = await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync();
-        vm.Currencies = new SelectList(currencies, "Id", "Code");
-        vm.CurrencyOptions = currencies;
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         return View(vm);
@@ -138,8 +123,4 @@ public class PaymentsController : Controller
         if (payment == null) return NotFound();
         return View(payment);
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

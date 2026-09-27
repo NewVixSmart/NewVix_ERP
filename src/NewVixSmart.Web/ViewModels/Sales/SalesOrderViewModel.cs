@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Sales;
 
@@ -9,6 +9,5 @@ public class SalesOrderViewModel
     public SalesOrder Order { get; set; } = new();
     public List<SalesOrderItem> Items { get; set; } = new();
     public IEnumerable<SelectListItem>? Customers { get; set; }
-    public IEnumerable<SelectListItem>? Currencies { get; set; }
     public List<Item> ItemsData { get; set; } = new();
 }

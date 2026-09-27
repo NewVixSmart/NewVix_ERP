@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -54,20 +54,6 @@ if (items.Count == 0)
             ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
         }
 
-        var baseCurrencyId = await BaseCurrencyIdAsync();
-        if (!saleReturn.CurrencyId.HasValue)
-        {
-            saleReturn.CurrencyId = baseCurrencyId;
-            saleReturn.ExchangeRate = baseCurrencyId == null ? null : 1m;
-            ModelState.Remove("CurrencyId");
-            ModelState.Remove("ExchangeRate");
-        }
-        if (saleReturn.CurrencyId.HasValue && saleReturn.CurrencyId.Value != baseCurrencyId
-            && (!saleReturn.ExchangeRate.HasValue || saleReturn.ExchangeRate.Value <= 0))
-        {
-            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للمرتجعات بالعملة الأجنبية");
-        }
-
         if (saleReturn.SaleInvoiceId != null)
         {
             var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
@@ -82,13 +68,6 @@ else if (invoice.CustomerId != saleReturn.CustomerId)
             }
             else
             {
-                if (invoice.CurrencyId.HasValue && saleReturn.SaleInvoiceId != null)
-                {
-                    saleReturn.CurrencyId = invoice.CurrencyId;
-                    saleReturn.ExchangeRate = invoice.ExchangeRate ?? 1m;
-                    ModelState.Remove("CurrencyId");
-                    ModelState.Remove("ExchangeRate");
-                }
                 var alreadyReturned = await _db.SaleReturnItems.Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturnId != saleReturn.Id && r.SaleReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
@@ -223,8 +202,4 @@ ViewBag.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().Orde
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
         ViewBag.NextNumber = $"{prefix}{next:D3}";
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
@@ -266,12 +266,12 @@ public class CustomersController : Controller
         var lines = new List<StatementLine>();
         foreach (var inv in invoices)
         {
-            lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
-                lines.Add(new StatementLine(inv.InvoiceDate, $"مدفوع عند الاستلام {inv.InvoiceNumber}", 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+                lines.Add(new StatementLine(inv.InvoiceDate, $"مدفوع عند الاستلام {inv.InvoiceNumber}", 0, decimal.Round(inv.PaidAmount, 2)));
         }
-        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
-        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
+        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
+        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.Amount));
         lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Description).ToList();
 
         var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;

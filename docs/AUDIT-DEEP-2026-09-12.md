@@ -1,5 +1,12 @@
 # التدقيق العميق الشامل — الجولة الخامسة (كل ملف في المشروع)
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 > **التاريخ:** 2026-09-12
 > **النطاق:** كل ملف مكتوب يدويًا في المستودع — الكود المصدري (تحكمات/خدمات/نماذج/عروض/API)، البيانات والهجرات، الاختبارات، البنية (CI/Docker/Aspire/السكربتات)، والتوثيق والخطط.
 > **المنهجية:** 5 فرق تدقيق متوازية قرأت كل ملف من مشاهدها سطرًا بسطر + **تحقق يدوي شخصي** من كل البنود الحرجة (قراءة مباشرة وإثبات حسابي) + إعادة أدوات التحقق كأدلة.

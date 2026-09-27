@@ -4,7 +4,7 @@
 <div class="page-header d-flex justify-content-between align-items-center">
     <h2><i class="bi bi-journal-bookmark text-primary"></i> دفتر أستاذ: @(Model.Supplier?.Name ?? "—")</h2>
     <div>
-        <span class="badge @(Model.Balance >= 0 ? "bg-danger" : "bg-success") fs-6">الرصيد: @Model.Balance.ToString("N2") ج.م</span>
+        <span class="badge @(Model.Balance >= 0 ? "bg-danger" : "bg-success") fs-6">الرصيد: @Money.Format(Model.Balance)</span>
         <a asp-action="LedgerXlsx" asp-route-id="@Model.Supplier?.Id" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير كشف حساب Excel</a>
         <a asp-action="LedgerPdf" asp-route-id="@Model.Supplier?.Id" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> كشف حساب PDF</a>
         <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>

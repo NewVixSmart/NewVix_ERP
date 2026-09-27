@@ -47,7 +47,6 @@
             <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@Model.Status.GetDisplayName()</span></div>
         </div>
         <div class="row mt-2">
-            <div class="col-md-3"><strong>العملة:</strong> @(Model.Currency?.Code ?? "—") @(Model.ExchangeRate.HasValue ? $"@{Model.ExchangeRate}" : "")</div>
             <div class="col-md-3"><strong>عرض السعر المصدر:</strong>
                 @if (Model.SaleQuoteId.HasValue)
                 {

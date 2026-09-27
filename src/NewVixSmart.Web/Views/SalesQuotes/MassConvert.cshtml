@@ -45,7 +45,7 @@ else
                             <td><strong>@(q.Customer?.Name ?? "—")</strong></td>
                             <td>@q.QuoteDate.ToString("dd/MM/yyyy")</td>
                             <td>@(q.ValidUntil?.ToString("dd/MM/yyyy") ?? "—")</td>
-                            <td class="fw-bold">@q.NetAmount.ToString("N2") ج.م</td>
+                            <td class="fw-bold">@Money.Format(q.NetAmount)</td>
                         </tr>
                     }
                 </tbody>

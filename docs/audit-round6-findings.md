@@ -1,5 +1,12 @@
 # Backend Audit — Round 6 Findings
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 **Date:** 2026-09-23
 **Scope:** Follow-ups from Backend-Audit-Report-Round5.md lines 123-124, plus the three known
 suspicious areas in `InventoryService` (mixed-direction FIFO, movement dates, dual-unit valuation),

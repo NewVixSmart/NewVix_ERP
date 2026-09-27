@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -38,14 +38,11 @@ public class PurchasesController : Controller
         var vm = new PurchaseInvoiceViewModel
         {
             Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
-            Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code"),
             ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync(),
             Invoice = new PurchaseInvoice
             {
                 InvoiceNumber = nextNumber,
                 InvoiceDate = DateTime.Today,
-                CurrencyId = await BaseCurrencyIdAsync(),
-                ExchangeRate = 1m
             }
         };
         return View(vm);
@@ -58,13 +55,6 @@ public class PurchasesController : Controller
         vm.Invoice ??= new PurchaseInvoice();
         var items = vm.Items ?? new List<PurchaseInvoiceItem>();
         ModelState.IgnoreEmptyLineItemRows();
-
-        var baseCurrencyId = await BaseCurrencyIdAsync();
-        if (vm.Invoice.CurrencyId.HasValue && vm.Invoice.CurrencyId.Value != baseCurrencyId
-            && (!vm.Invoice.ExchangeRate.HasValue || vm.Invoice.ExchangeRate.Value <= 0))
-        {
-            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للفواتير بالعملة الأجنبية");
-        }
 
         if (ModelState.IsValid && items.Any(i => i.ItemId > 0))
         {
@@ -83,7 +73,6 @@ public class PurchasesController : Controller
         ModelState.Remove("Invoice.InvoiceNumber");
 
         vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
-        vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
         return View(vm);
     }
@@ -116,8 +105,4 @@ public class PurchasesController : Controller
         if (invoice == null) return NotFound();
         return View(invoice);
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

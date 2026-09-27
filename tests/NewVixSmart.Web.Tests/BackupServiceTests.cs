@@ -261,19 +261,19 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializeAsync_RepairsMissing8400_OnPartialSeed()
+    public async Task InitializeAsync_DoesNotSeedForeignCurrencyAccounts()
     {
+        // The FX gain/loss accounts went away with multi-currency. A fresh seed must not
+        // reintroduce them, otherwise they sit in the chart of accounts posting nothing.
         using var db = CreateContext();
         using var provider = BuildSeedProvider(db);
-        await SeedData.InitializeAsync(provider);
-
-        var missing = await db.GLAccounts.FirstAsync(a => a.Code == "8400");
-        db.GLAccounts.Remove(missing);
-        await db.SaveChangesAsync();
 
         await SeedData.InitializeAsync(provider);
 
-        Assert.NotNull(await db.GLAccounts.AsNoTracking().SingleOrDefaultAsync(a => a.Code == "8400"));
+        Assert.False(await db.GLAccounts.AnyAsync(a => a.Code == "4400"));
+        Assert.False(await db.GLAccounts.AnyAsync(a => a.Code == "8400"));
+        Assert.DoesNotContain("4400", AccountsService.SystemSeedCodes);
+        Assert.DoesNotContain("8400", AccountsService.SystemSeedCodes);
     }
 
     [Fact]

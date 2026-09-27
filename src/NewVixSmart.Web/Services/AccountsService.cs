@@ -23,7 +23,7 @@ public class AccountsService
     private readonly AppDbContext _db;
 
     public static readonly string[] SystemSeedCodes =
-        ["1000", "1100", "1200", "1300", "2000", "3000", "4000", "4100", "5000", "5100", "3001", "4400", "8400", "5101", "5102"];
+        ["1000", "1100", "1200", "1300", "2000", "3000", "4000", "4100", "5000", "5100", "3001", "5101", "5102"];
 
     public AccountsService(AppDbContext db)
     {

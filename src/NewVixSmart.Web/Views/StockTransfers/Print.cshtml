@@ -1,4 +1,4 @@
-@model NewVixSmart.Web.Models.Stock.StockTransfer
+﻿@model NewVixSmart.Web.Models.Stock.StockTransfer
 @using NewVixSmart.Web.ViewModels.Core
 @using NewVixSmart.Web.ViewModels.PrintStudio
 @inject IBrandingService BrandingService
@@ -41,7 +41,6 @@
             Tax = 0m,
             GrandTotal = 0m,
             IsPaid = false,
-            CurrencyCode = ""
         }
     };
     foreach (var item in Model.Items)

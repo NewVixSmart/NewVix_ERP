@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NewVixSmart.Web.Models.Accounting;
@@ -13,93 +13,83 @@ public class SaleQuote
 
     public Guid PublicId { get; set; } = Guid.NewGuid();
 
-    [Required(ErrorMessage = "رقم العرض مطلوب")]
+    [Required(ErrorMessage = "ط±ظ‚ظ… ط§ظ„ط¹ط±ط¶ ظ…ط·ظ„ظˆط¨")]
     [StringLength(50)]
-    [Display(Name = "رقم العرض")]
+    [Display(Name = "ط±ظ‚ظ… ط§ظ„ط¹ط±ط¶")]
     public string QuoteNumber { get; set; } = string.Empty;
 
-    [Display(Name = "العميل")]
+    [Display(Name = "ط§ظ„ط¹ظ…ظٹظ„")]
     public int CustomerId { get; set; }
 
     [BindNever]
     public Customer Customer { get; set; } = null!;
 
-    [Display(Name = "العملة")]
-    public int? CurrencyId { get; set; }
-
-    [BindNever]
-    public Currency? Currency { get; set; }
-
-    [Column(TypeName = "decimal(18,6)")]
-    [Display(Name = "سعر الصرف")]
-    public decimal? ExchangeRate { get; set; }
-
-    [Display(Name = "تاريخ العرض")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„ط¹ط±ط¶")]
     [DataType(DataType.Date)]
     public DateTime QuoteDate { get; set; } = DateTime.Today;
 
-    [Display(Name = "صالح حتى")]
+    [Display(Name = "طµط§ظ„ط­ ط­طھظ‰")]
     [DataType(DataType.Date)]
     public DateTime? ValidUntil { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "الإجمالي")]
-    [Range(0, 999999999, ErrorMessage = "الإجمالي لا يمكن أن يكون سالباً")]
+    [Display(Name = "ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ")]
+    [Range(0, 999999999, ErrorMessage = "ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ط³ط§ظ„ط¨ط§ظ‹")]
     public decimal TotalAmount { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "الخصم")]
-    [Range(0, 999999999, ErrorMessage = "الخصم لا يمكن أن يكون سالباً")]
+    [Display(Name = "ط§ظ„ط®طµظ…")]
+    [Range(0, 999999999, ErrorMessage = "ط§ظ„ط®طµظ… ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ط³ط§ظ„ط¨ط§ظ‹")]
     public decimal Discount { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "الضريبة")]
-    [Range(0, 999999999, ErrorMessage = "الضريبة لا يمكن أن تكون سالبة")]
+    [Display(Name = "ط§ظ„ط¶ط±ظٹط¨ط©")]
+    [Range(0, 999999999, ErrorMessage = "ط§ظ„ط¶ط±ظٹط¨ط© ظ„ط§ ظٹظ…ظƒظ† ط£ظ† طھظƒظˆظ† ط³ط§ظ„ط¨ط©")]
     public decimal Tax { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "المبلغ الصافي")]
-    [Range(0, 999999999, ErrorMessage = "المبلغ الصافي لا يمكن أن يكون سالباً")]
+    [Display(Name = "ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„طµط§ظپظٹ")]
+    [Range(0, 999999999, ErrorMessage = "ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„طµط§ظپظٹ ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ط³ط§ظ„ط¨ط§ظ‹")]
     public decimal NetAmount { get; set; }
 
     [StringLength(500)]
-    [Display(Name = "ملاحظات")]
+    [Display(Name = "ظ…ظ„ط§ط­ط¸ط§طھ")]
     public string? Notes { get; set; }
 
-    [Display(Name = "حالة العرض")]
+    [Display(Name = "ط­ط§ظ„ط© ط§ظ„ط¹ط±ط¶")]
     public SaleQuoteStatus Status { get; set; } = SaleQuoteStatus.Draft;
 
-    [Display(Name = "عرض مورد مرجعي (اختياري)")]
+    [Display(Name = "ط¹ط±ط¶ ظ…ظˆط±ط¯ ظ…ط±ط¬ط¹ظٹ (ط§ط®طھظٹط§ط±ظٹ)")]
     public int? SupplierQuoteId { get; set; }
 
     [BindNever]
     public SupplierQuote? SupplierQuote { get; set; }
 
-    [Display(Name = "فاتورة البيع")]
+    [Display(Name = "ظپط§طھظˆط±ط© ط§ظ„ط¨ظٹط¹")]
     public int? SaleInvoiceId { get; set; }
 
     [BindNever]
     public SaleInvoice? SaleInvoice { get; set; }
 
-    [Display(Name = "أمر البيع")]
+    [Display(Name = "ط£ظ…ط± ط§ظ„ط¨ظٹط¹")]
     public int? SalesOrderId { get; set; }
 
     [BindNever]
     public SalesOrder? SalesOrder { get; set; }
 
-    [Display(Name = "حُوّل بواسطة")]
+    [Display(Name = "ط­ظڈظˆظ‘ظ„ ط¨ظˆط§ط³ط·ط©")]
     [BindNever]
     public string? ConvertedBy { get; set; }
 
-    [Display(Name = "تاريخ التحويل")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„طھط­ظˆظٹظ„")]
     [BindNever]
     public DateTime? ConvertedAt { get; set; }
 
-    [Display(Name = "أنشئ بواسطة")]
+    [Display(Name = "ط£ظ†ط´ط¦ ط¨ظˆط§ط³ط·ط©")]
     [BindNever]
     public string? CreatedBy { get; set; }
 
-    [Display(Name = "تاريخ الإنشاء")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،")]
     [BindNever]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

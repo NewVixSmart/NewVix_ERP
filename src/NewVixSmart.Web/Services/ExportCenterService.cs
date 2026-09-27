@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +28,6 @@ public class ExportCenterService : IExportCenterService
             ["item_categories"] = () => ItemCategoriesXlsxAsync(),
             ["item_types"] = () => ItemTypesXlsxAsync(),
             ["units"] = () => UnitsXlsxAsync(),
-            ["currencies"] = () => CurrenciesXlsxAsync(),
             ["branches"] = () => BranchesXlsxAsync(),
             ["warehouses"] = () => WarehousesXlsxAsync(),
             ["payments"] = () => PaymentsXlsxAsync(),
@@ -58,7 +57,6 @@ public class ExportCenterService : IExportCenterService
             ["item_categories"] = () => ItemCategoriesCsvAsync(),
             ["item_types"] = () => ItemTypesCsvAsync(),
             ["units"] = () => UnitsCsvAsync(),
-            ["currencies"] = () => CurrenciesCsvAsync(),
             ["branches"] = () => BranchesCsvAsync(),
             ["warehouses"] = () => WarehousesCsvAsync(),
             ["payments"] = () => PaymentsCsvAsync(),
@@ -89,7 +87,6 @@ public class ExportCenterService : IExportCenterService
         new("item_categories", "الفئات", "تصنيفات الأصناف الرئيسية", "bi-tags", true),
         new("item_types", "الأنواع", "أنواع الأصناف", "bi-grid", true),
         new("units", "الوحدات", "وحدات القياس ومشتقاتها", "bi-rulers", true),
-        new("currencies", "العملات", "العملات وأسعار الصرف", "bi-currency-exchange", true),
         new("branches", "الفروع", "فروع الشركة", "bi-diagram-3", true),
         new("warehouses", "المخازن", "المخازن والمواقع", "bi-buildings", true),
         new("payments", "الدفعات", "المقبوضات والمصروفات", "bi-wallet2", true),
@@ -130,18 +127,17 @@ public class ExportCenterService : IExportCenterService
     {
         var suppliers = await _db.Suppliers
             .AsNoTracking()
-            .Include(s => s.Currency)
             .OrderBy(s => s.Name)
             .ToListAsync();
 
         var rows = suppliers.Select(s => new object?[]
         {
             s.Code ?? "", s.Name, s.Address ?? "", s.Phone ?? "", s.Email ?? "", s.TaxNumber ?? "",
-            (double)s.OpeningBalance, s.Currency?.Code ?? "", s.Notes ?? "", s.IsActive ? "نشط" : "معطل"
+            (double)s.OpeningBalance,s.Notes ?? "", s.IsActive ? "نشط" : "معطل"
         });
 
         return BuildWorkbook("الموردون", $"تصدير الموردين — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "الكود", "الاسم", "العنوان", "الهاتف", "البريد الإلكتروني", "الرقم الضريبي", "الرصيد الافتتاحي", "العملة", "ملاحظات", "الحالة" },
+            new List<string> { "الكود", "الاسم", "العنوان", "الهاتف", "البريد الإلكتروني", "الرقم الضريبي", "الرصيد الافتتاحي", "ملاحظات", "الحالة" },
             rows);
     }
 
@@ -149,18 +145,17 @@ public class ExportCenterService : IExportCenterService
     {
         var customers = await _db.Customers
             .AsNoTracking()
-            .Include(c => c.Currency)
             .OrderBy(c => c.Name)
             .ToListAsync();
 
         var rows = customers.Select(c => new object?[]
         {
             c.Code ?? "", c.Name, c.Address ?? "", c.Phone ?? "", c.Email ?? "", c.TaxNumber ?? "",
-            (double)c.OpeningBalance, c.Currency?.Code ?? "", c.Notes ?? "", c.IsActive ? "نشط" : "معطل"
+            (double)c.OpeningBalance,c.Notes ?? "", c.IsActive ? "نشط" : "معطل"
         });
 
         return BuildWorkbook("العملاء", $"تصدير العملاء — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "الكود", "الاسم", "العنوان", "الهاتف", "البريد الإلكتروني", "الرقم الضريبي", "الرصيد الافتتاحي", "العملة", "ملاحظات", "الحالة" },
+            new List<string> { "الكود", "الاسم", "العنوان", "الهاتف", "البريد الإلكتروني", "الرقم الضريبي", "الرصيد الافتتاحي", "ملاحظات", "الحالة" },
             rows);
     }
 
@@ -263,23 +258,6 @@ public class ExportCenterService : IExportCenterService
             rows);
     }
 
-    public async Task<byte[]> CurrenciesXlsxAsync()
-    {
-        var currencies = await _db.Currencies
-            .AsNoTracking()
-            .OrderBy(c => c.Code)
-            .ToListAsync();
-
-        var rows = currencies.Select(c => new object?[]
-        {
-            c.Code, c.Name, c.Symbol ?? "", (double)c.ExchangeRate, c.IsBase ? "نعم" : "لا", c.IsActive ? "نشطة" : "معطلة"
-        });
-
-        return BuildWorkbook("العملات", $"تصدير العملات — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "الكود", "الاسم", "رمز العملة", "سعر الصرف", "العملة الأساسية", "الحالة" },
-            rows);
-    }
-
     public async Task<byte[]> BranchesXlsxAsync()
     {
         var branches = await _db.Branches
@@ -320,7 +298,6 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .OrderByDescending(p => p.PaymentDate)
             .ThenBy(p => p.ReceiptNumber)
             .ToListAsync();
@@ -331,9 +308,6 @@ public class ExportCenterService : IExportCenterService
             p.Type == PaymentType.Receipt ? "قبض" : "صرف",
             p.Customer?.Name ?? p.Supplier?.Name ?? "",
             (double)p.Amount,
-            (double)p.BaseAmount,
-            p.Currency?.Code ?? "",
-            p.ExchangeRate.HasValue ? (object?)(double)p.ExchangeRate.Value : null,
             p.Method.GetDisplayName(),
             p.ReferenceNumber ?? "",
             p.PaymentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
@@ -341,7 +315,7 @@ public class ExportCenterService : IExportCenterService
         });
 
         return BuildWorkbook("الدّفعات", $"تصدير الدفعات — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "رقم الإيصال", "النوع", "العميل/المورد", "المبلغ", "المبلغ بالأساس", "العملة", "سعر الصرف", "طريقة الدفع", "رقم المرجع", "التاريخ", "ملاحظات" },
+            new List<string> { "رقم الإيصال", "النوع", "العميل/المورد", "المبلغ", "طريقة الدفع", "رقم المرجع", "التاريخ", "ملاحظات" },
             rows);
     }
 
@@ -350,7 +324,6 @@ public class ExportCenterService : IExportCenterService
         var invoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
-            .Include(s => s.Currency)
             .Include(s => s.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(s => s.InvoiceDate)
@@ -362,8 +335,7 @@ public class ExportCenterService : IExportCenterService
         var invoiceRows = invoices.SelectMany(s => s.Items.Select(i => new object?[]
         {
             s.InvoiceNumber, s.Customer?.Name ?? "",
-            s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), s.Currency?.Code ?? "",
-            s.ExchangeRate.HasValue ? (object?)(double)s.ExchangeRate.Value : null,
+            s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             s.PaymentTerms.GetDisplayName(),
             (double)s.Discount, (double)(s.Discount2 ?? 0), (double)(s.Discount3 ?? 0),
             (double)s.Tax, s.Notes ?? "",
@@ -373,7 +345,7 @@ public class ExportCenterService : IExportCenterService
         WriteSheet(wb, "فواتير المبيعات", $"تصدير فواتير المبيعات — {DateTime.Today:dd/MM/yyyy}",
             new List<string>
             {
-                "رقم الفاتورة", "العميل", "التاريخ", "العملة", "سعر الصرف", "شروط الدفع",
+                "رقم الفاتورة", "العميل", "التاريخ", "شروط الدفع",
                 "خصم الفاتورة", "خصم إضافي 2", "خصم إضافي 3", "الضريبة", "ملاحظات",
                 "اسم الصنف", "الكمية", "العدد", "سعر الوحدة", "خصم الصنف",
                 "إجمالي الصنف", "الصافي", "المدفوع", "الحالة"
@@ -390,7 +362,6 @@ public class ExportCenterService : IExportCenterService
         var invoices = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .Include(p => p.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(p => p.InvoiceDate)
@@ -402,8 +373,7 @@ public class ExportCenterService : IExportCenterService
         var invoiceRows = invoices.SelectMany(p => p.Items.Select(i => new object?[]
         {
             p.InvoiceNumber, p.Supplier?.Name ?? "",
-            p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), p.Currency?.Code ?? "",
-            p.ExchangeRate.HasValue ? (object?)(double)p.ExchangeRate.Value : null,
+            p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             p.PaymentTerms.GetDisplayName(),
             (double)p.Discount, (double)(p.Discount2 ?? 0), (double)(p.Discount3 ?? 0),
             (double)p.Tax, p.Notes ?? "",
@@ -413,7 +383,7 @@ public class ExportCenterService : IExportCenterService
         WriteSheet(wb, "فواتير المشتريات", $"تصدير فواتير المشتريات — {DateTime.Today:dd/MM/yyyy}",
             new List<string>
             {
-                "رقم الفاتورة", "المورد", "التاريخ", "العملة", "سعر الصرف", "شروط الدفع",
+                "رقم الفاتورة", "المورد", "التاريخ", "شروط الدفع",
                 "خصم الفاتورة", "خصم إضافي 2", "خصم إضافي 3", "الضريبة", "ملاحظات",
                 "اسم الصنف", "الكمية", "العدد", "سعر الوحدة", "خصم الصنف",
                 "إجمالي الصنف", "الصافي", "المدفوع", "الحالة"
@@ -442,8 +412,7 @@ public class ExportCenterService : IExportCenterService
         var returnRows = returns.SelectMany(r => r.Items.Select(i => new object?[]
         {
             r.ReturnNumber, r.Customer?.Name ?? "", r.SaleInvoice?.InvoiceNumber ?? "",
-            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), r.Currency?.Code ?? "",
-            r.ExchangeRate.HasValue ? (object?)(double)r.ExchangeRate.Value : null,
+            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             r.Reason ?? "",
             i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitPrice, (double)i.Total,
             r.Status.GetDisplayName()
@@ -451,7 +420,7 @@ public class ExportCenterService : IExportCenterService
         WriteSheet(wb, "مرتجعات المبيعات", $"تصدير مرتجعات المبيعات — {DateTime.Today:dd/MM/yyyy}",
             new List<string>
             {
-                "رقم المرتجع", "العميل", "الفاتورة الأصلية", "التاريخ", "العملة", "سعر الصرف", "سبب المرتجع",
+                "رقم المرتجع", "العميل", "الفاتورة الأصلية", "التاريخ", "سبب المرتجع",
                 "الصنف", "الكمية", "العدد", "سعر الوحدة", "الإجمالي", "الحالة"
             },
             returnRows);
@@ -478,8 +447,7 @@ public class ExportCenterService : IExportCenterService
         var returnRows = returns.SelectMany(r => r.Items.Select(i => new object?[]
         {
             r.ReturnNumber, r.Supplier?.Name ?? "", r.PurchaseInvoice?.InvoiceNumber ?? "",
-            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), r.Currency?.Code ?? "",
-            r.ExchangeRate.HasValue ? (object?)(double)r.ExchangeRate.Value : null,
+            r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             r.Reason ?? "",
             i.Item.Name, (double)i.Quantity, (double)i.Count, (double)i.UnitPrice, (double)i.Total,
             r.Status.GetDisplayName()
@@ -487,7 +455,7 @@ public class ExportCenterService : IExportCenterService
         WriteSheet(wb, "مرتجعات المشتريات", $"تصدير مرتجعات المشتريات — {DateTime.Today:dd/MM/yyyy}",
             new List<string>
             {
-                "رقم المرتجع", "المورد", "الفاتورة الأصلية", "التاريخ", "العملة", "سعر الصرف", "سبب المرتجع",
+                "رقم المرتجع", "المورد", "الفاتورة الأصلية", "التاريخ", "سبب المرتجع",
                 "الصنف", "الكمية", "العدد", "سعر الوحدة", "الإجمالي", "الحالة"
             },
             returnRows);
@@ -502,7 +470,6 @@ public class ExportCenterService : IExportCenterService
         var quotes = await _db.SaleQuotes
             .AsNoTracking()
             .Include(q => q.Customer)
-            .Include(q => q.Currency)
             .Include(q => q.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(q => q.QuoteDate)
@@ -522,12 +489,12 @@ public class ExportCenterService : IExportCenterService
         var quoteRows = quotes.Select(q => new object?[]
         {
             q.QuoteNumber, q.Customer?.Name ?? "", q.QuoteDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-            q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "", q.Currency?.Code ?? "",
+            q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "",
             (double)q.TotalAmount, (double)q.Discount, (double)q.Tax, (double)q.NetAmount,
             q.Status.GetDisplayName(), q.Notes ?? ""
         });
         WriteSheet(wb, "عروض الأسعار", $"تصدير عروض الأسعار — {DateTime.Today:dd/MM/yyyy}",
-            new List<string> { "رقم العرض", "العميل", "التاريخ", "صالح حتى", "العملة", "الإجمالي", "الخصم", "الضريبة", "الصافي", "الحالة", "ملاحظات" },
+            new List<string> { "رقم العرض", "العميل", "التاريخ", "صالح حتى", "الإجمالي", "الخصم", "الضريبة", "الصافي", "الحالة", "ملاحظات" },
             quoteRows);
 
         var itemRows = quotes.SelectMany(q => q.Items.Select(i => new object?[]
@@ -903,13 +870,12 @@ public class ExportCenterService : IExportCenterService
     {
         var suppliers = await _db.Suppliers
             .AsNoTracking()
-            .Include(s => s.Currency)
             .OrderBy(s => s.Name)
             .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الكود,الاسم,العنوان,الهاتف,البريد الإلكتروني,الرقم الضريبي,الرصيد الافتتاحي,العملة,ملاحظات,الحالة");
+        sb.AppendLine("الكود,الاسم,العنوان,الهاتف,البريد الإلكتروني,الرقم الضريبي,الرصيد الافتتاحي,ملاحظات,الحالة");
         foreach (var s in suppliers)
         {
             sb.AppendLine(string.Join(",",
@@ -920,7 +886,6 @@ public class ExportCenterService : IExportCenterService
                 CsvField(s.Email ?? ""),
                 CsvField(s.TaxNumber ?? ""),
                 CsvField(s.OpeningBalance.ToString("0.00", CultureInfo.InvariantCulture)),
-                CsvField(s.Currency?.Code ?? ""),
                 CsvField(s.Notes ?? ""),
                 CsvField(s.IsActive ? "نشط" : "معطل")));
         }
@@ -932,13 +897,12 @@ public class ExportCenterService : IExportCenterService
     {
         var customers = await _db.Customers
             .AsNoTracking()
-            .Include(c => c.Currency)
             .OrderBy(c => c.Name)
             .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الكود,الاسم,العنوان,الهاتف,البريد الإلكتروني,الرقم الضريبي,الرصيد الافتتاحي,العملة,ملاحظات,الحالة");
+        sb.AppendLine("الكود,الاسم,العنوان,الهاتف,البريد الإلكتروني,الرقم الضريبي,الرصيد الافتتاحي,ملاحظات,الحالة");
         foreach (var c in customers)
         {
             sb.AppendLine(string.Join(",",
@@ -949,7 +913,6 @@ public class ExportCenterService : IExportCenterService
                 CsvField(c.Email ?? ""),
                 CsvField(c.TaxNumber ?? ""),
                 CsvField(c.OpeningBalance.ToString("0.00", CultureInfo.InvariantCulture)),
-                CsvField(c.Currency?.Code ?? ""),
                 CsvField(c.Notes ?? ""),
                 CsvField(c.IsActive ? "نشط" : "معطل")));
         }
@@ -1082,26 +1045,6 @@ public class ExportCenterService : IExportCenterService
         return CsvBytes(sb);
     }
 
-    public async Task<byte[]> CurrenciesCsvAsync()
-    {
-        var currencies = await _db.Currencies
-            .AsNoTracking()
-            .OrderBy(c => c.Code)
-            .Take(MaxExportRows)
-            .ToListAsync();
-
-        var sb = new StringBuilder();
-        sb.AppendLine("الكود,الاسم,رمز العملة,سعر الصرف,العملة الأساسية,الحالة");
-        foreach (var c in currencies)
-        {
-            sb.AppendLine(string.Join(",",
-                CsvField(c.Code), CsvField(c.Name), CsvField(c.Symbol ?? ""),
-                c.ExchangeRate.ToString("0.0000", CultureInfo.InvariantCulture),
-                CsvField(c.IsBase ? "نعم" : "لا"), CsvField(c.IsActive ? "نشطة" : "معطلة")));
-        }
-        return CsvBytes(sb);
-    }
-
     public async Task<byte[]> BranchesCsvAsync()
     {
         var branches = await _db.Branches
@@ -1146,14 +1089,13 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .OrderByDescending(p => p.PaymentDate)
             .ThenBy(p => p.ReceiptNumber)
             .Take(MaxExportRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم الإيصال,النوع,العميل/المورد,المبلغ,المبلغ بالأساس,العملة,سعر الصرف,طريقة الدفع,رقم المرجع,التاريخ,ملاحظات");
+        sb.AppendLine("رقم الإيصال,النوع,العميل/المورد,المبلغ,طريقة الدفع,رقم المرجع,التاريخ,ملاحظات");
         foreach (var p in payments)
         {
             sb.AppendLine(string.Join(",",
@@ -1161,9 +1103,6 @@ public class ExportCenterService : IExportCenterService
                 CsvField(p.Type == PaymentType.Receipt ? "قبض" : "صرف"),
                 CsvField(p.Customer?.Name ?? p.Supplier?.Name ?? ""),
                 p.Amount.ToString("0.00", CultureInfo.InvariantCulture),
-                p.BaseAmount.ToString("0.00", CultureInfo.InvariantCulture),
-                CsvField(p.Currency?.Code ?? ""),
-                p.ExchangeRate.HasValue ? p.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
                 CsvField(p.Method.GetDisplayName()),
                 CsvField(p.ReferenceNumber ?? ""),
                 CsvField(p.PaymentDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
@@ -1177,7 +1116,6 @@ public class ExportCenterService : IExportCenterService
         var invoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
-            .Include(s => s.Currency)
             .Include(s => s.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(s => s.InvoiceDate)
@@ -1186,15 +1124,14 @@ public class ExportCenterService : IExportCenterService
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم الفاتورة,العميل,التاريخ,العملة,سعر الصرف,شروط الدفع,خصم الفاتورة,خصم إضافي 2,خصم إضافي 3,الضريبة,ملاحظات,الصنف,الكمية,العدد,سعر الوحدة,خصم الصنف,إجمالي الصنف,الصافي,المدفوع,الحالة");
+        sb.AppendLine("رقم الفاتورة,العميل,التاريخ,شروط الدفع,خصم الفاتورة,خصم إضافي 2,خصم إضافي 3,الضريبة,ملاحظات,الصنف,الكمية,العدد,سعر الوحدة,خصم الصنف,إجمالي الصنف,الصافي,المدفوع,الحالة");
         foreach (var s in invoices)
         {
             foreach (var i in s.Items)
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(s.InvoiceNumber), CsvField(s.Customer?.Name ?? ""),
-                    CsvField(s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(s.Currency?.Code ?? ""),
-                    s.ExchangeRate.HasValue ? s.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
+                    CsvField(s.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(s.PaymentTerms.GetDisplayName()),
                     s.Discount.ToString("0.00", CultureInfo.InvariantCulture),
                     (s.Discount2 ?? 0).ToString("0.00", CultureInfo.InvariantCulture),
@@ -1220,7 +1157,6 @@ public class ExportCenterService : IExportCenterService
         var invoices = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .Include(p => p.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(p => p.InvoiceDate)
@@ -1229,15 +1165,14 @@ public class ExportCenterService : IExportCenterService
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم الفاتورة,المورد,التاريخ,العملة,سعر الصرف,شروط الدفع,خصم الفاتورة,خصم إضافي 2,خصم إضافي 3,الضريبة,ملاحظات,الصنف,الكمية,العدد,سعر الوحدة,خصم الصنف,إجمالي الصنف,الصافي,المدفوع,الحالة");
+        sb.AppendLine("رقم الفاتورة,المورد,التاريخ,شروط الدفع,خصم الفاتورة,خصم إضافي 2,خصم إضافي 3,الضريبة,ملاحظات,الصنف,الكمية,العدد,سعر الوحدة,خصم الصنف,إجمالي الصنف,الصافي,المدفوع,الحالة");
         foreach (var p in invoices)
         {
             foreach (var i in p.Items)
             {
                 sb.AppendLine(string.Join(",",
                     CsvField(p.InvoiceNumber), CsvField(p.Supplier?.Name ?? ""),
-                    CsvField(p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(p.Currency?.Code ?? ""),
-                    p.ExchangeRate.HasValue ? p.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
+                    CsvField(p.InvoiceDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(p.PaymentTerms.GetDisplayName()),
                     p.Discount.ToString("0.00", CultureInfo.InvariantCulture),
                     (p.Discount2 ?? 0).ToString("0.00", CultureInfo.InvariantCulture),
@@ -1272,7 +1207,7 @@ public class ExportCenterService : IExportCenterService
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم المرتجع,العميل,الفاتورة الأصلية,التاريخ,العملة,سعر الصرف,سبب المرتجع,الصنف,الكمية,العدد,سعر الوحدة,الإجمالي,الحالة");
+        sb.AppendLine("رقم المرتجع,العميل,الفاتورة الأصلية,التاريخ,سبب المرتجع,الصنف,الكمية,العدد,سعر الوحدة,الإجمالي,الحالة");
         foreach (var r in returns)
         {
             foreach (var i in r.Items)
@@ -1280,8 +1215,7 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(r.ReturnNumber), CsvField(r.Customer?.Name ?? ""),
                     CsvField(r.SaleInvoice?.InvoiceNumber ?? ""),
-                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(r.Currency?.Code ?? ""),
-                    r.ExchangeRate.HasValue ? r.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
+                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(r.Reason ?? ""),
                     CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
@@ -1308,7 +1242,7 @@ public class ExportCenterService : IExportCenterService
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم المرتجع,المورد,الفاتورة الأصلية,التاريخ,العملة,سعر الصرف,سبب المرتجع,الصنف,الكمية,العدد,سعر الوحدة,الإجمالي,الحالة");
+        sb.AppendLine("رقم المرتجع,المورد,الفاتورة الأصلية,التاريخ,سبب المرتجع,الصنف,الكمية,العدد,سعر الوحدة,الإجمالي,الحالة");
         foreach (var r in returns)
         {
             foreach (var i in r.Items)
@@ -1316,8 +1250,7 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(r.ReturnNumber), CsvField(r.Supplier?.Name ?? ""),
                     CsvField(r.PurchaseInvoice?.InvoiceNumber ?? ""),
-                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)), CsvField(r.Currency?.Code ?? ""),
-                    r.ExchangeRate.HasValue ? r.ExchangeRate.Value.ToString("0.0000", CultureInfo.InvariantCulture) : "",
+                    CsvField(r.ReturnDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
                     CsvField(r.Reason ?? ""),
                     CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
@@ -1335,7 +1268,6 @@ public class ExportCenterService : IExportCenterService
         var quotes = await _db.SaleQuotes
             .AsNoTracking()
             .Include(q => q.Customer)
-            .Include(q => q.Currency)
             .Include(q => q.Items)
             .ThenInclude(i => i.Item)
             .OrderBy(q => q.QuoteDate)
@@ -1344,7 +1276,7 @@ public class ExportCenterService : IExportCenterService
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("رقم العرض,العميل,التاريخ,صالح حتى,العملة,الصنف,الكمية,العدد,سعر الوحدة,إجمالي الصنف,خصم,ضريبة,الصافي,الحالة");
+        sb.AppendLine("رقم العرض,العميل,التاريخ,صالح حتى,الصنف,الكمية,العدد,سعر الوحدة,إجمالي الصنف,خصم,ضريبة,الصافي,الحالة");
         foreach (var q in quotes)
         {
             foreach (var i in q.Items)
@@ -1352,8 +1284,7 @@ public class ExportCenterService : IExportCenterService
                 sb.AppendLine(string.Join(",",
                     CsvField(q.QuoteNumber), CsvField(q.Customer?.Name ?? ""),
                     CsvField(q.QuoteDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)),
-                    CsvField(q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""),
-                    CsvField(q.Currency?.Code ?? ""), CsvField(i.Item.Name),
+                    CsvField(q.ValidUntil?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? ""), CsvField(i.Item.Name),
                     i.Quantity.ToString("0.000", CultureInfo.InvariantCulture),
                     i.Count.ToString("0.000", CultureInfo.InvariantCulture),
                     i.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture),

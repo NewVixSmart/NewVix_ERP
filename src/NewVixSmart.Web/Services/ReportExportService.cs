@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
@@ -24,14 +24,13 @@ public class ReportExportService
         var invoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
-            .Include(s => s.Currency)
             .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to)
             .OrderByDescending(s => s.InvoiceDate)
             .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الفاتورة,العميل,التاريخ,الإجمالي,الخصم,الضريبة,الصافي,العملة,سعر الصرف");
+        sb.AppendLine("الفاتورة,العميل,التاريخ,الإجمالي,الخصم,الضريبة,الصافي");
 
         foreach (var i in invoices)
         {
@@ -42,9 +41,7 @@ public class ReportExportService
                 CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(i.Currency?.Code ?? "—"),
-                CsvField(i.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—")));
+                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -61,14 +58,13 @@ public class ReportExportService
         var invoices = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to)
             .OrderByDescending(p => p.InvoiceDate)
             .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الفاتورة,المورد,التاريخ,الإجمالي,الخصم,الضريبة,الصافي,العملة,سعر الصرف");
+        sb.AppendLine("الفاتورة,المورد,التاريخ,الإجمالي,الخصم,الضريبة,الصافي");
 
         foreach (var i in invoices)
         {
@@ -79,9 +75,7 @@ public class ReportExportService
                 CsvField(i.TotalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Discount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                 CsvField(i.Tax.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(i.Currency?.Code ?? "—"),
-                CsvField(i.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—")));
+                CsvField(i.NetAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))));
         }
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
@@ -99,14 +93,13 @@ public class ReportExportService
             .AsNoTracking()
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
-            .Include(p => p.Currency)
             .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
             .OrderByDescending(p => p.PaymentDate)
             .Take(maxRows)
             .ToListAsync();
 
         var sb = new StringBuilder();
-        sb.AppendLine("الإيصال,النوع,العميل/المورد,المبلغ,المبلغ بالأساس,العملة,سعر الصرف,الطريقة,التاريخ");
+        sb.AppendLine("الإيصال,النوع,العميل/المورد,المبلغ,الطريقة,التاريخ");
 
         foreach (var p in payments)
         {
@@ -119,9 +112,6 @@ public class ReportExportService
                 CsvField(typeLabel),
                 CsvField(partyName),
                 CsvField(p.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(p.BaseAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                CsvField(p.Currency?.Code ?? "—"),
-                CsvField(p.ExchangeRate?.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture) ?? "—"),
                 CsvField(methodLabel),
                 CsvField(p.PaymentDate.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture))));
         }

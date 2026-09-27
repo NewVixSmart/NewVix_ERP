@@ -105,32 +105,12 @@ public static class SeedData
             await db.SaveChangesAsync();
         }
 
-        if (!db.Currencies.Any())
-        {
-            db.Currencies.AddRange(
-                new Currency { Code = "SDG", Name = "جنيه سوداني", Symbol = "ج.س", ExchangeRate = 1m, IsBase = true, IsActive = true },
-                new Currency { Code = "USD", Name = "دولار أمريكي", Symbol = "$", ExchangeRate = 500m, IsBase = false, IsActive = true }
-            );
-            await db.SaveChangesAsync();
-        }
-
         if (!db.Branches.Any())
         {
             db.Branches.AddRange(
-                new Branch { Code = "BR-001", Name = "الفرع الرئيسي", Address = "الخرطوم", IsActive = true, CreatedAt = DateTime.UtcNow },
-                new Branch { Code = "BR-002", Name = "فرع أم درمان", Address = "أم درمان", IsActive = true, CreatedAt = DateTime.UtcNow }
+                new Branch { Code = "BR-001", Name = "الفرع الرئيسي", Address = "القاهرة", IsActive = true, CreatedAt = DateTime.UtcNow },
+                new Branch { Code = "BR-002", Name = "فرع الجيزة", Address = "الجيزة", IsActive = true, CreatedAt = DateTime.UtcNow }
             );
-            await db.SaveChangesAsync();
-        }
-
-        if (!await db.GLAccounts.AnyAsync(a => a.Code == "4400"))
-        {
-            db.GLAccounts.Add(new GLAccount { Code = "4400", Name = "خسائر فروقات العملة (عملة أجنبية)", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
-            await db.SaveChangesAsync();
-        }
-        if (!await db.GLAccounts.AnyAsync(a => a.Code == "8400"))
-        {
-            db.GLAccounts.Add(new GLAccount { Code = "8400", Name = "أرباح فروقات العملة (عملة أجنبية)", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true });
             await db.SaveChangesAsync();
         }
 

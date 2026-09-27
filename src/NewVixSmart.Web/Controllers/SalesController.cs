@@ -52,14 +52,11 @@ public class SalesController : Controller
         var vm = new SaleInvoiceViewModel
         {
             Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
-            Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code"),
             ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync(),
             Invoice = new SaleInvoice
             {
                 InvoiceNumber = nextNumber,
-                InvoiceDate = DateTime.Today,
-                CurrencyId = await BaseCurrencyIdAsync(),
-                ExchangeRate = 1m
+                InvoiceDate = DateTime.Today
             }
         };
         return View(vm);
@@ -72,13 +69,6 @@ public class SalesController : Controller
         vm.Invoice ??= new SaleInvoice();
         var items = vm.Items ?? new List<SaleInvoiceItem>();
         ModelState.IgnoreEmptyLineItemRows();
-
-        var baseCurrencyId = await BaseCurrencyIdAsync();
-        if (vm.Invoice.CurrencyId.HasValue && vm.Invoice.CurrencyId.Value != baseCurrencyId
-            && (!vm.Invoice.ExchangeRate.HasValue || vm.Invoice.ExchangeRate.Value <= 0))
-        {
-            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للفواتير بالعملة الأجنبية");
-        }
 
         if (ModelState.IsValid && items.Any(i => i.ItemId > 0))
         {
@@ -97,7 +87,6 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
         ModelState.Remove("Invoice.InvoiceNumber");
 
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
-        vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync();
         return View(vm);
     }
@@ -131,8 +120,4 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
         if (invoice == null) return NotFound();
         return View(invoice);
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

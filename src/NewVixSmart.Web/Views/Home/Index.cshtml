@@ -70,7 +70,7 @@
                 <div>
                     <div class="text-muted small">تسليمات معلّقة</div>
                     <h3 class="mb-0 mt-1" data-count="@Model.PendingDeliveryCount" data-decimals="0" data-count-formatted="@Model.PendingDeliveryCount.ToString("N0")">@Model.PendingDeliveryCount.ToString("N0")</h3>
-                    <div class="small text-muted">بقيمة @Model.PendingDeliveryValue.ToString("N2") ر.س</div>
+                    <div class="small text-muted">بقيمة @Money.Format(Model.PendingDeliveryValue)</div>
                 </div>
                 <div class="stat-icon bg-info bg-opacity-10 text-info"><i class="bi bi-truck"></i></div>
             </div>

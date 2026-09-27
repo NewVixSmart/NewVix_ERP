@@ -108,35 +108,9 @@ public class ReportsController : Controller
 
     public async Task<IActionResult> Payments(DateTime? from, DateTime? to)
     {
-        var now = DateTime.Today;
-        from ??= new DateTime(now.Year, now.Month, 1);
-        to ??= now;
-
-        var fromDate = from.Value.Date;
-        var toDate = to.Value.Date;
-
-        var query = _db.Payments
-            .AsNoTracking()
-            .Include(p => p.Customer)
-            .Include(p => p.Supplier)
-            .Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate);
-
-        ViewBag.From = fromDate.ToString("yyyy-MM-dd");
-        ViewBag.To = toDate.ToString("yyyy-MM-dd");
-
-        var receipts = query.Where(p => p.Type == Models.Accounting.PaymentType.Receipt);
-        var disbursements = query.Where(p => p.Type == Models.Accounting.PaymentType.Disbursement);
-
-        var vm = new PaymentReportViewModel
-        {
-            From = fromDate,
-            To = toDate,
-            Payments = await query.OrderByDescending(p => p.PaymentDate).ToListAsync(),
-            ReceiptCount = await receipts.CountAsync(),
-            DisbursementCount = await disbursements.CountAsync(),
-            TotalReceipts = await receipts.SumAsync(p => (decimal?)p.Amount) ?? 0,
-            TotalDisbursements = await disbursements.SumAsync(p => (decimal?)p.Amount) ?? 0
-        };
+        var vm = await _report.PaymentsReportAsync(from, to);
+        ViewBag.From = vm.From?.ToString("yyyy-MM-dd");
+        ViewBag.To = vm.To?.ToString("yyyy-MM-dd");
         return View(vm);
     }
 

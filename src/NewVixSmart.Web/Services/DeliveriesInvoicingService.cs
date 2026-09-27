@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Sales;
 
@@ -102,15 +102,6 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
             invoice.SalesOrderId = orderIds[0]!.Value;
             var orderNumber = issues.First(i => i.SalesOrderId == orderIds[0])?.SalesOrder?.OrderNumber;
             invoice.OrderReference = orderNumber ?? invoice.OrderReference;
-            if (!invoice.CurrencyId.HasValue)
-            {
-                var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderIds[0]!.Value);
-                if (order != null)
-                {
-                    invoice.CurrencyId = order.CurrencyId;
-                    invoice.ExchangeRate = order.ExchangeRate;
-                }
-            }
         }
         else
         {
@@ -161,8 +152,7 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
                 // zero value and rolls the whole delivery back.
                 if (_accounting != null && invoice.NetAmount > 0m)
                     await _accounting.RecordSaleInvoiceRevenueAsync(invoice.InvoiceDate, invoice.CustomerId,
-                        invoice.NetAmount, invoice.Tax, invoice.CurrencyId, invoice.ExchangeRate,
-                        user, branchId, invoice.Id);
+                        invoice.NetAmount, invoice.Tax, user, branchId, invoice.Id);
 
                 await tx.CommitAsync();
                 return (true, null, invoice);

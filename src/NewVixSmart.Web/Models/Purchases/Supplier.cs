@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NewVixSmart.Web.Models.Accounting;
@@ -9,49 +9,43 @@ public class Supplier
 {
     public int Id { get; set; }
 
-    [Required(ErrorMessage = "اسم المورد مطلوب")]
+    [Required(ErrorMessage = "ط§ط³ظ… ط§ظ„ظ…ظˆط±ط¯ ظ…ط·ظ„ظˆط¨")]
     [StringLength(200)]
-    [Display(Name = "اسم المورد")]
+    [Display(Name = "ط§ط³ظ… ط§ظ„ظ…ظˆط±ط¯")]
     public string Name { get; set; } = string.Empty;
 
     [StringLength(50)]
-    [Display(Name = "كود المورد")]
+    [Display(Name = "ظƒظˆط¯ ط§ظ„ظ…ظˆط±ط¯")]
     public string? Code { get; set; }
 
     [StringLength(200)]
-    [Display(Name = "العنوان")]
+    [Display(Name = "ط§ظ„ط¹ظ†ظˆط§ظ†")]
     public string? Address { get; set; }
 
     [StringLength(20)]
-    [Display(Name = "التليفون")]
+    [Display(Name = "ط§ظ„طھظ„ظٹظپظˆظ†")]
     [Phone]
     public string? Phone { get; set; }
 
     [StringLength(200)]
-    [Display(Name = "البريد الإلكتروني")]
+    [Display(Name = "ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ")]
     [EmailAddress]
     public string? Email { get; set; }
 
     [StringLength(20)]
-    [Display(Name = "الرقم الضريبي")]
+    [Display(Name = "ط§ظ„ط±ظ‚ظ… ط§ظ„ط¶ط±ظٹط¨ظٹ")]
     public string? TaxNumber { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "الرصيد الافتتاحي")]
-    [Range(0, 999999999, ErrorMessage = "الرصيد الافتتاحي لا يمكن أن يكون سالباً")]
+    [Display(Name = "ط§ظ„ط±طµظٹط¯ ط§ظ„ط§ظپطھطھط§ط­ظٹ")]
+    [Range(0, 999999999, ErrorMessage = "ط§ظ„ط±طµظٹط¯ ط§ظ„ط§ظپطھطھط§ط­ظٹ ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ط³ط§ظ„ط¨ط§ظ‹")]
     public decimal OpeningBalance { get; set; }
 
     [StringLength(500)]
-    [Display(Name = "ملاحظات")]
+    [Display(Name = "ظ…ظ„ط§ط­ط¸ط§طھ")]
     public string? Notes { get; set; }
 
-    [Display(Name = "العملة")]
-    public int? CurrencyId { get; set; }
-
-    [BindNever]
-    public Currency? Currency { get; set; }
-
-    [Display(Name = "نشط")]
+    [Display(Name = "ظ†ط´ط·")]
     public bool IsActive { get; set; } = true;
 
     public ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
 
@@ -10,5 +10,4 @@ public class PurchaseInvoiceViewModel
     public List<PurchaseInvoiceItem> Items { get; set; } = new();
     public IEnumerable<SelectListItem>? Suppliers { get; set; }
     public List<Item> ItemsData { get; set; } = new();
-    public IEnumerable<SelectListItem>? Currencies { get; set; }
 }

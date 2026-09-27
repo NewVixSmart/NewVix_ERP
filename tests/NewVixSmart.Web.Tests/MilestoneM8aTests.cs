@@ -47,13 +47,6 @@ public sealed class MilestoneM8aTests : IDisposable
         db.SaveChanges();
     }
 
-    private async Task SeedCurrenciesAsync(AppDbContext db, bool baseSdg = true)
-    {
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه سوداني", Symbol = "ج.س", ExchangeRate = 1m, IsBase = baseSdg, IsActive = true });
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار أمريكي", Symbol = "$", ExchangeRate = 500m, IsBase = false, IsActive = true });
-        await db.SaveChangesAsync();
-    }
-
     private async Task<(int itemId, int custId, int supId)> SeedSaleAsync(AppDbContext db)
     {
         var cat = new ItemCategory { Name = "تصنيف اختبار" };
@@ -88,62 +81,38 @@ public sealed class MilestoneM8aTests : IDisposable
         ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = price
     };
 
-    // ---------- Currencies ----------
+    // ---------- Single currency ----------
 
     [Fact]
-    public void Currency_Seed_BaseFlag_SingleTrue()
+    public async Task Sale_WithDiscountAndTax_ComputesNetInEgp()
     {
         using var db = CreateContext();
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه", ExchangeRate = 1m, IsBase = true });
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار", ExchangeRate = 500m, IsBase = false });
-        db.SaveChanges();
-        Assert.Equal(1, db.Currencies.Count(c => c.IsBase));
-        Assert.Equal(2, db.Currencies.Count());
-    }
-
-    [Fact]
-    public async Task Sale_WithForeignCurrency_SnapshotsCurrencyAndRate_BaseNetAmountUnchanged()
-    {
-        using var db = CreateContext();
-        await SeedCurrenciesAsync(db);
-        var (itemId, custId, supId) = await SeedSaleAsync(db);
+        var (itemId, custId, _) = await SeedSaleAsync(db);
         var svc = new InventoryService(db);
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        var invoice = new SaleInvoice
-        {
-            CustomerId = custId,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Discount = 10,
-            Tax = 5
-        };
+        var invoice = new SaleInvoice { CustomerId = custId, Discount = 10, Tax = 5 };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) };
 
-        var (ok, _) = await svc.CreateSaleAsync(invoice, lines, "test");
+        var (ok, err) = await svc.CreateSaleAsync(invoice, lines, "test");
 
-        Assert.True(ok);
+        Assert.True(ok, err);
         var saved = await db.SaleInvoices.SingleAsync();
-        Assert.Equal(usd.Id, saved.CurrencyId);
-        Assert.Equal(500m, saved.ExchangeRate);
         Assert.Equal(500m, saved.TotalAmount);
-        Assert.Equal(500 - 10 + 5, saved.NetAmount); // still base currency math
+        Assert.Equal(500 - 10 + 5, saved.NetAmount);
     }
 
     [Fact]
-    public async Task Sale_NoCurrencyOrDefaultBase_StoresNullAndRateNull_WhenNotSet()
+    public async Task Sale_WithNoExplicitDiscountOrTax_StoresFaceAmounts()
     {
         using var db = CreateContext();
-        var (itemId, custId, supId) = await SeedSaleAsync(db);
+        var (itemId, custId, _) = await SeedSaleAsync(db);
         var svc = new InventoryService(db);
 
         var invoice = new SaleInvoice { CustomerId = custId };
-        var (ok, _) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 5, 50) }, "test");
+        var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 5, 50) }, "test");
 
-        Assert.True(ok);
+        Assert.True(ok, err);
         var saved = await db.SaleInvoices.SingleAsync();
-        Assert.Null(saved.CurrencyId);
-        Assert.Null(saved.ExchangeRate);
         Assert.Equal(250m, saved.NetAmount);
     }
 
@@ -223,14 +192,12 @@ public sealed class MilestoneM8aTests : IDisposable
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var svc = new InventoryService(db);
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        var invoice = new SaleInvoice { CustomerId = custId, CurrencyId = usd.Id, ExchangeRate = 500m };
+        var invoice = new SaleInvoice { CustomerId = custId };
 
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 4, 80) }, "test");
         Assert.True(ok);
@@ -250,9 +217,9 @@ public sealed class MilestoneM8aTests : IDisposable
         Assert.Equal(JournalSource.SaleDeliveryOrder, entry.Source);
         Assert.Equal(4, entry.Lines.Count);
         Assert.Equal(entry.Lines.Sum(l => l.Debit), entry.Lines.Sum(l => l.Credit));
-        // value 4 × 80 = 320 USD @500 = 160,000 ; COGS 4 × 40 = 160 base cost (layers are base currency)
-        Assert.Contains(entry.Lines, l => l.Account!.Code == "1200" && l.Debit == 160000m);
-        Assert.Contains(entry.Lines, l => l.Account!.Code == "4000" && l.Credit == 160000m);
+        // value 4 × 80 = 320 EGP ; COGS 4 × 40 = 160 at layer cost
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "1200" && l.Debit == 320m);
+        Assert.Contains(entry.Lines, l => l.Account!.Code == "4000" && l.Credit == 320m);
         Assert.Contains(entry.Lines, l => l.Account!.Code == "5000" && l.Debit == 160m);
         Assert.Contains(entry.Lines, l => l.Account!.Code == "1300" && l.Credit == 160m);
 
@@ -286,7 +253,6 @@ public sealed class MilestoneM8aTests : IDisposable
     public async Task Branch_InUse_CanBeToggledInactive_NotDeleted()
     {
         using var db = CreateContext();
-        await SeedCurrenciesAsync(db);
         var branch = new Branch { Code = "BR-X", Name = "فرع مستخدم", IsActive = true, CreatedAt = DateTime.UtcNow };
         db.Branches.Add(branch);
         await db.SaveChangesAsync();

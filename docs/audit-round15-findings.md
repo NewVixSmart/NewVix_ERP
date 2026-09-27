@@ -1,5 +1,12 @@
 # Audit Round 15 — Adjustment-delete concurrency (M-3) + tax-exclusive revenue (N-01) + FK payment allocations (N-04)
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 Scope: the user-selected "full" round from `SECURITY_AUDIT_FinancialLogic_2026-09-23.md` —
 M-3, N-01, N-04. Build: 0 warnings, 0 errors. Tests: **346/346 pass** (+6).
 `/healthz` = 200 after restart (EF migration applied at startup). Untracked audit doc

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Models.Access;
 using NewVixSmart.Web.Models.Accounting;
@@ -53,7 +53,6 @@ public class AppDbContext : IdentityDbContext
     public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
-    public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
     public DbSet<BudgetLine> BudgetLines => Set<BudgetLine>();
@@ -97,14 +96,12 @@ public class AppDbContext : IdentityDbContext
         {
             e.HasIndex(s => s.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             e.HasIndex(s => s.Name).IsUnique();
-            e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Customer>(e =>
         {
             e.HasIndex(c => c.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             e.HasIndex(c => c.Name).IsUnique();
-            e.HasOne(c => c.Currency).WithMany().HasForeignKey(c => c.CurrencyId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Branch>(e =>
@@ -112,10 +109,6 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(b => b.Code).IsUnique();
         });
 
-        builder.Entity<Currency>(e =>
-        {
-            e.HasIndex(c => c.Code).IsUnique();
-        });
 
         builder.Entity<PurchaseInvoice>(e =>
         {
@@ -124,7 +117,6 @@ public class AppDbContext : IdentityDbContext
             e.Property(p => p.PublicId).ValueGeneratedNever();
             e.HasIndex(p => p.PurchaseOrderId).IsUnique().HasFilter("[PurchaseOrderId] IS NOT NULL");
             e.HasOne(p => p.Supplier).WithMany(s => s.PurchaseInvoices).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(p => p.Currency).WithMany().HasForeignKey(p => p.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Branch).WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -141,7 +133,6 @@ public class AppDbContext : IdentityDbContext
             e.Property(p => p.PublicId).ValueGeneratedNever();
             e.HasOne(p => p.Supplier).WithMany(s => s.PurchaseReturns).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.PurchaseInvoice).WithMany().HasForeignKey(p => p.PurchaseInvoiceId).OnDelete(DeleteBehavior.SetNull);
-            e.HasOne(p => p.Currency).WithMany().HasForeignKey(p => p.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Branch>().WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -158,7 +149,6 @@ public class AppDbContext : IdentityDbContext
             e.Property(s => s.PublicId).ValueGeneratedNever();
             e.HasIndex(s => s.SalesOrderId).HasFilter("[SalesOrderId] IS NOT NULL");
             e.HasOne(s => s.Customer).WithMany(c => c.SaleInvoices).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SalesOrder).WithMany(o => o.Invoices).HasForeignKey(s => s.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
         });
@@ -176,7 +166,6 @@ public class AppDbContext : IdentityDbContext
             e.Property(s => s.PublicId).ValueGeneratedNever();
             e.HasOne(s => s.Customer).WithMany(c => c.SaleReturns).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
-            e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Branch>().WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -192,7 +181,6 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(s => s.PublicId).IsUnique();
             e.Property(s => s.PublicId).ValueGeneratedNever();
             e.HasOne(s => s.Customer).WithMany().HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(s => s.SalesOrder).WithMany().HasForeignKey(s => s.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(s => s.SupplierQuote).WithMany().HasForeignKey(s => s.SupplierQuoteId).OnDelete(DeleteBehavior.SetNull);
@@ -223,7 +211,6 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(p => p.DedupeKey).IsUnique().HasFilter("[DedupeKey] IS NOT NULL");
             e.HasOne(p => p.Customer).WithMany(c => c.Payments).HasForeignKey(p => p.CustomerId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(p => p.Supplier).WithMany(s => s.Payments).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.SetNull);
-            e.HasOne(p => p.Currency).WithMany().HasForeignKey(p => p.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Branch>().WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -327,7 +314,6 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(o => o.PublicId).IsUnique();
             e.Property(o => o.PublicId).ValueGeneratedNever();
             e.HasOne(o => o.Customer).WithMany().HasForeignKey(o => o.CustomerId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(o => o.Currency).WithMany().HasForeignKey(o => o.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(o => o.SaleQuote).WithMany().HasForeignKey(o => o.SaleQuoteId).OnDelete(DeleteBehavior.SetNull);
         });
         builder.Entity<SalesOrderItem>(e =>

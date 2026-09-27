@@ -32,7 +32,7 @@
                     <td><code>@r.ReturnNumber</code></td>
                     <td><strong>@(r.Supplier?.Name ?? "—")</strong></td>
                     <td>@r.ReturnDate.ToString("dd/MM/yyyy")</td>
-                    <td class="fw-bold">@r.TotalAmount.ToString("N2") ج.م</td>
+                    <td class="fw-bold">@Money.Format(r.TotalAmount)</td>
                     <td>
                         @if (r.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Posted)
                         {

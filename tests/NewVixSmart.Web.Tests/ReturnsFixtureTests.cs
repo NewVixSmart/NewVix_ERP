@@ -378,7 +378,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         SeedChart(db);
         var accounting = new AccountingService(db);
 
-        await accounting.RecordSaleReturnWithCostAsync(new DateTime(2026, 2, 2), 9, 1, 100m, 40m, null, null, "test");
+        await accounting.RecordSaleReturnWithCostAsync(new DateTime(2026, 2, 2), 9, 1, 100m, 40m, "test");
 
         var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.SaleReturn && e.SourceId == 9);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).ToListAsync();
@@ -404,7 +404,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         SeedChart(db);
         var accounting = new AccountingService(db);
 
-        await accounting.RecordPurchaseReturnWithCostAsync(new DateTime(2026, 2, 2), 7, 1, 80m, 30m, null, null, "test");
+        await accounting.RecordPurchaseReturnWithCostAsync(new DateTime(2026, 2, 2), 7, 1, 80m, 30m, "test");
 
         var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.PurchaseReturn && e.SourceId == 7);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).ToListAsync();
@@ -424,13 +424,15 @@ public sealed class ReturnsFixtureTests : IDisposable
     }
 
     [Fact]
-    public async Task RecordSaleReturnWithCost_FxConvertsDocumentValue_ToLocal()
+    public async Task RecordSaleReturnWithCost_PostsValueAndCostAtFaceAmount()
     {
+        // Single currency: the contra-revenue and the receivable credit are the same figure,
+        // so no conversion leg can exist between the document value and the local value.
         using var db = CreateContext();
         SeedChart(db);
         var accounting = new AccountingService(db);
 
-        await accounting.RecordSaleReturnWithCostAsync(new DateTime(2026, 2, 3), 10, 1, 100m, 40m, null, 0.9m, "test");
+        await accounting.RecordSaleReturnWithCostAsync(new DateTime(2026, 2, 3), 10, 1, 100m, 40m, "test");
 
         var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.SaleReturn && e.SourceId == 10);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).ToListAsync();
@@ -439,8 +441,8 @@ public sealed class ReturnsFixtureTests : IDisposable
         var a5101 = await db.GLAccounts.SingleAsync(a => a.Code == "5101");
         var a1200 = await db.GLAccounts.SingleAsync(a => a.Code == "1200");
         var a1300 = await db.GLAccounts.SingleAsync(a => a.Code == "1300");
-        Assert.Equal(90m, lines.Where(l => l.AccountId == a5101.Id).Sum(l => l.Debit));
-        Assert.Equal(90m, lines.Where(l => l.AccountId == a1200.Id).Sum(l => l.Credit));
+        Assert.Equal(100m, lines.Where(l => l.AccountId == a5101.Id).Sum(l => l.Debit));
+        Assert.Equal(100m, lines.Where(l => l.AccountId == a1200.Id).Sum(l => l.Credit));
         Assert.Equal(40m, lines.Where(l => l.AccountId == a1300.Id).Sum(l => l.Debit));
     }
 

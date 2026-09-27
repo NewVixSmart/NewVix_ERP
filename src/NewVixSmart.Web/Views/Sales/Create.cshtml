@@ -47,17 +47,6 @@
                     <label class="form-label d-block">&nbsp;</label>
                     <div class="alert alert-info py-1 px-2 mb-0 small">فاتورة غير مسدّدة؛ أذن التسليم هو ما يُرحّل المخزون والأستاذ</div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="currencySelect">العملة</label>
-                    <select asp-for="Invoice.CurrencyId" asp-items="@Model.Currencies" class="form-select" id="currencySelect">
-                        <option value="">-- العملة --</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="exchangeRate">سعر الصرف</label>
-                    <input asp-for="Invoice.ExchangeRate" class="form-control" type="number" step="any" id="exchangeRate" />
-                    <small class="text-muted">للعرض فقط؛ حسابات الأستاذ بالعملة الأساسية</small>
-                </div>
             </div>
         </div>
     </div>

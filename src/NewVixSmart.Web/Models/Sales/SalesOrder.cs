@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NewVixSmart.Web.Models.Accounting;
@@ -12,53 +12,43 @@ public class SalesOrder
 
     public Guid PublicId { get; set; } = Guid.NewGuid();
 
-    [Required(ErrorMessage = "رقم الأمر مطلوب")]
+    [Required(ErrorMessage = "ط±ظ‚ظ… ط§ظ„ط£ظ…ط± ظ…ط·ظ„ظˆط¨")]
     [StringLength(50)]
-    [Display(Name = "رقم الأمر")]
+    [Display(Name = "ط±ظ‚ظ… ط§ظ„ط£ظ…ط±")]
     public string OrderNumber { get; set; } = string.Empty;
 
-    [Display(Name = "العميل")]
+    [Display(Name = "ط§ظ„ط¹ظ…ظٹظ„")]
     public int CustomerId { get; set; }
 
     [BindNever]
     public Customer Customer { get; set; } = null!;
 
-    [Display(Name = "العملة")]
-    public int? CurrencyId { get; set; }
-
-    [BindNever]
-    public Currency? Currency { get; set; }
-
-    [Column(TypeName = "decimal(18,6)")]
-    [Display(Name = "سعر الصرف")]
-    public decimal? ExchangeRate { get; set; }
-
-    [Display(Name = "تاريخ الأمر")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„ط£ظ…ط±")]
     [DataType(DataType.Date)]
     public DateTime OrderDate { get; set; } = DateTime.Today;
 
-    [Display(Name = "تاريخ التنفيذ المتوقع")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„طھظ†ظپظٹط° ط§ظ„ظ…طھظˆظ‚ط¹")]
     [DataType(DataType.Date)]
     public DateTime? ExpectedDate { get; set; }
 
-    [Display(Name = "حالة الأمر")]
+    [Display(Name = "ط­ط§ظ„ط© ط§ظ„ط£ظ…ط±")]
     public SalesOrderStatus Status { get; set; } = SalesOrderStatus.Draft;
 
     [StringLength(500)]
-    [Display(Name = "ملاحظات")]
+    [Display(Name = "ظ…ظ„ط§ط­ط¸ط§طھ")]
     public string? Notes { get; set; }
 
-    [Display(Name = "عرض السعر المصدر")]
+    [Display(Name = "ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط§ظ„ظ…طµط¯ط±")]
     public int? SaleQuoteId { get; set; }
 
     [BindNever]
     public SaleQuote? SaleQuote { get; set; }
 
-    [Display(Name = "أنشئ بواسطة")]
+    [Display(Name = "ط£ظ†ط´ط¦ ط¨ظˆط§ط³ط·ط©")]
     [BindNever]
     public string? CreatedBy { get; set; }
 
-    [Display(Name = "تاريخ الإنشاء")]
+    [Display(Name = "طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،")]
     [BindNever]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

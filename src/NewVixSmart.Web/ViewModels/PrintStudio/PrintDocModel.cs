@@ -1,4 +1,4 @@
-using NewVixSmart.Web.ViewModels.Core;
+﻿using NewVixSmart.Web.ViewModels.Core;
 
 namespace NewVixSmart.Web.ViewModels.PrintStudio;
 
@@ -22,7 +22,6 @@ public sealed class PrintDocTotals
     public decimal Tax;
     public decimal GrandTotal;
     public bool IsPaid;
-    public string CurrencyCode = null!;
 }
 
 public sealed class PrintDocModel

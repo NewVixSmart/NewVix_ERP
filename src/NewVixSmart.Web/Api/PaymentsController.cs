@@ -47,8 +47,6 @@ public class PaymentsController : ControllerBase
             CustomerId = request.CustomerId,
             SupplierId = request.SupplierId,
             Amount = request.Amount,
-            CurrencyId = request.CurrencyId,
-            ExchangeRate = request.ExchangeRate,
             Method = Enum.TryParse<PaymentMethod>(request.Method, true, out var m) ? m : PaymentMethod.Cash,
             PaymentDate = request.PaymentDate,
             Notes = request.Notes
@@ -69,10 +67,6 @@ public class PaymentsController : ControllerBase
         CustomerName = p.Customer?.Name,
         SupplierId = p.SupplierId,
         SupplierName = p.Supplier?.Name,
-        CurrencyId = p.CurrencyId,
-        CurrencyCode = p.Currency?.Code,
-        ExchangeRate = p.ExchangeRate,
-        BaseAmount = p.BaseAmount,
         Amount = p.Amount,
         Method = p.Method.GetDisplayName(),
         PaymentDate = p.PaymentDate,
@@ -96,8 +90,6 @@ public class PaymentsController : ControllerBase
             return "عميل المقبوض مطلوب";
         if (disbursement && (request.SupplierId is null or <= 0))
             return "مورد المصروف مطلوب";
-        if (request.ExchangeRate is <= 0)
-            return "سعر الصرف يجب أن يكون أكبر من صفر";
         var year = request.PaymentDate.Year;
         if (year < 2000 || year > 2100)
             return "تاريخ الدفعة خارج النطاق المسموح";

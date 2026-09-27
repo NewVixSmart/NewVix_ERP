@@ -1,0 +1,32 @@
+# owners for .github/CODEOWNERS
+#
+# Owner handles are the repository owners, so an unreviewed change to a sensitive
+# path always needs a second pair of eyes. Sensitive paths:
+#   - anything that can move money or post a journal entry,
+#   - anything that decides who is allowed to do it,
+#   - anything that runs in CI with credentials.
+#
+# Replace the org/team handles below if the project adopts teams; they are
+# deliberately minimal so the file never silently claims ownership it does not have.
+
+# default owners for everything not matched below
+*                       @NewVixSmart
+
+# --- money movement and the ledger
+/src/NewVixSmart.Web/Services/AccountingService.cs   @NewVixSmart
+/src/NewVixSmart.Web/Services/PaymentService.cs       @NewVixSmart
+/src/NewVixSmart.Web/Services/InventoryService.cs     @NewVixSmart
+/src/NewVixSmart.Web/Services/FiscalService.cs        @NewVixSmart
+/src/NewVixSmart.Web/Services/FinancialReportService.cs @NewVixSmart
+/src/NewVixSmart.Web/Models/Accounting/              @NewVixSmart
+/src/NewVixSmart.Web/Views/Payments/                 @NewVixSmart
+
+# --- authorization, identity, seed data, migrations
+/src/NewVixSmart.Web/Infrastructure/                 @NewVixSmart
+/src/NewVixSmart.Web/Data/AppDbContext.cs            @NewVixSmart
+/src/NewVixSmart.Web/Data/SeedData.cs                @NewVixSmart
+/src/NewVixSmart.Web/Migrations/                     @NewVixSmart
+
+# --- supply chain and CI credentials
+/.github/                                              @NewVixSmart
+/e2e/                                                  @NewVixSmart

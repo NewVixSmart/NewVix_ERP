@@ -155,20 +155,19 @@ public sealed class SecurityHardeningTests : IDisposable
     }
 
     [Fact]
-    public async Task AddCurrency_ClientSuppliedIsBaseIgnored()
+    public async Task SettingsController_ExposesNoCurrencyMutationActions()
     {
-        using var db = CreateContext();
-        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
-        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService());
-        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+        // The ledger is single-currency (EGP), so the former mass-assignment hole in
+        // AddCurrency is gone with the feature: there must be no action left to reach.
+        var actions = typeof(SettingsController)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Select(m => m.Name)
+            .Where(n => n.Contains("Currency", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        var request = new AddCurrencyRequest { Code = "EUR", Name = "يورو", Symbol = "€", ExchangeRate = 1.1m, IsActive = true };
-        var result = await controller.AddCurrency(request);
-
-        Assert.IsType<RedirectToActionResult>(result);
-        var currency = await db.Currencies.FirstOrDefaultAsync(c => c.Code == "EUR");
-        Assert.NotNull(currency);
-        Assert.False(currency.IsBase);
+        Assert.True(actions.Count == 0,
+            $"SettingsController must not expose currency actions but declares: {string.Join(", ", actions)}");
+        await Task.CompletedTask;
     }
 
     [Fact]

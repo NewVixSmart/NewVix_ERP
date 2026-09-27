@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using ClosedXML.Excel;
@@ -47,7 +47,6 @@ public class ImportCenterService : IImportCenterService
                 Col("Email", "البريد الإلكتروني", ImportValueType.Text, maxLength: 200),
                 Col("TaxNumber", "الرقم الضريبي", ImportValueType.Text, maxLength: 20),
                 Col("OpeningBalance", "الرصيد الافتتاحي", ImportValueType.Decimal, minInclusive: 0),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
                 Col("Notes", "ملاحظات", ImportValueType.Text, maxLength: 500),
                 Col("IsActive", "نشط", ImportValueType.Bool, aliases: "الحالة")
             ]),
@@ -61,7 +60,6 @@ public class ImportCenterService : IImportCenterService
                 Col("Email", "البريد الإلكتروني", ImportValueType.Text, maxLength: 200),
                 Col("TaxNumber", "الرقم الضريبي", ImportValueType.Text, maxLength: 20),
                 Col("OpeningBalance", "الرصيد الافتتاحي", ImportValueType.Decimal, minInclusive: 0),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
                 Col("Notes", "ملاحظات", ImportValueType.Text, maxLength: 500),
                 Col("IsActive", "نشط", ImportValueType.Bool, aliases: "الحالة")
             ]),
@@ -108,16 +106,6 @@ public class ImportCenterService : IImportCenterService
                 Col("ParentUnitName", "وحدة فرعية من", ImportValueType.Lookup, lookupKey: "units", aliases: "الوحدة الأم"),
                 Col("IsActive", "نشط", ImportValueType.Bool, aliases: "الحالة")
             ]),
-        new("currencies", "العملات", "العملات وأسعار الصرف", "bi-currency-exchange", "currencies",
-            "تُحدَّث العملة إن وُجدت بالرمز", "Code", null, "Code",
-            [
-                Col("Code", "الكود", ImportValueType.Text, isRequired: true, maxLength: 10, aliases: "الرمز"),
-                Col("Name", "الاسم", ImportValueType.Text, isRequired: true, maxLength: 100),
-                Col("Symbol", "رمز العملة", ImportValueType.Text, maxLength: 10),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
-                Col("IsBase", "العملة الأساسية", ImportValueType.Bool, aliases: ["عملة أساسية", "العملة الرئيسية"]),
-                Col("IsActive", "الحالة", ImportValueType.Bool, aliases: ["نشطة", "نشط"])
-            ]),
         new("branches", "الفروع", "فروع الشركة", "bi-diagram-3", "branches",
             "يُحدَّث الفرع إن وُجد بالرمز", "Code", null, "Code",
             [
@@ -154,9 +142,6 @@ public class ImportCenterService : IImportCenterService
                 Col("Type", "النوع", ImportValueType.Enum, isRequired: true, enumMap: "قبض=1;صرف=2"),
                 Col("PartyName", "العميل/المورد", ImportValueType.Lookup, isRequired: true, lookupKey: "parties"),
                 Col("Amount", "المبلغ", ImportValueType.Decimal, isRequired: true, minInclusive: 0.01m),
-                Col("BaseAmount", "المبلغ بالأساس", ImportValueType.Decimal, minInclusive: 0),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
                 Col("Method", "طريقة الدفع", ImportValueType.Enum, isRequired: true, enumMap: "نقداً=1;شيك=2;تحويل بنكي=3;بطاقة ائتمان=4"),
                 Col("PaymentDate", "التاريخ", ImportValueType.Date, isRequired: true),
                 Col("ReferenceNumber", "رقم المرجع", ImportValueType.Text, maxLength: 50),
@@ -181,8 +166,6 @@ public class ImportCenterService : IImportCenterService
                 Col("InvoiceNumber", "رقم الفاتورة", ImportValueType.Text, isRequired: true, maxLength: 50),
                 Col("CustomerName", "اسم العميل", ImportValueType.Lookup, isRequired: true, lookupKey: "customers", aliases: "العميل"),
                 Col("InvoiceDate", "تاريخ الفاتورة", ImportValueType.Date, isRequired: true, aliases: "التاريخ"),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
                 Col("PaymentTerms", "شروط الدفع", ImportValueType.Enum, enumMap: "عند الاستلام=0;7 أيام=1;15 يوم=2;30 يوم=3;60 يوم=4"),
                 Col("Discount", "خصم الفاتورة", ImportValueType.Decimal, minInclusive: 0),
                 Col("Discount2", "خصم إضافي 2", ImportValueType.Decimal, minInclusive: 0),
@@ -203,8 +186,6 @@ public class ImportCenterService : IImportCenterService
                 Col("InvoiceNumber", "رقم الفاتورة", ImportValueType.Text, isRequired: true, maxLength: 50),
                 Col("SupplierName", "اسم المورد", ImportValueType.Lookup, isRequired: true, lookupKey: "suppliers", aliases: "المورد"),
                 Col("InvoiceDate", "تاريخ الفاتورة", ImportValueType.Date, isRequired: true, aliases: "التاريخ"),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
                 Col("PaymentTerms", "شروط الدفع", ImportValueType.Enum, enumMap: "عند الاستلام=0;7 أيام=1;15 يوم=2;30 يوم=3;60 يوم=4"),
                 Col("Discount", "خصم الفاتورة", ImportValueType.Decimal, minInclusive: 0),
                 Col("Discount2", "خصم إضافي 2", ImportValueType.Decimal, minInclusive: 0),
@@ -226,8 +207,6 @@ public class ImportCenterService : IImportCenterService
                 Col("CustomerName", "اسم العميل", ImportValueType.Lookup, isRequired: true, lookupKey: "customers", aliases: "العميل"),
                 Col("SaleInvoiceNumber", "فاتورة البيع الأصلية", ImportValueType.Lookup, lookupKey: "saleInvoices", aliases: "الفاتورة الأصلية"),
                 Col("ReturnDate", "تاريخ المرتجع", ImportValueType.Date, isRequired: true, aliases: "التاريخ"),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
                 Col("Reason", "سبب المرتجع", ImportValueType.Text, maxLength: 500),
                 Col("ItemName", "اسم الصنف", ImportValueType.Lookup, isRequired: true, lookupKey: "items", isLineOnly: true, aliases: "الصنف"),
                 Col("Quantity", "الكمية", ImportValueType.Decimal, minInclusive: 0, isLineOnly: true),
@@ -243,8 +222,6 @@ public class ImportCenterService : IImportCenterService
                 Col("SupplierName", "اسم المورد", ImportValueType.Lookup, isRequired: true, lookupKey: "suppliers", aliases: "المورد"),
                 Col("PurchaseInvoiceNumber", "فاتورة الشراء الأصلية", ImportValueType.Lookup, lookupKey: "purchaseInvoices", aliases: "الفاتورة الأصلية"),
                 Col("ReturnDate", "تاريخ المرتجع", ImportValueType.Date, isRequired: true, aliases: "التاريخ"),
-                Col("CurrencyCode", "العملة", ImportValueType.Lookup, lookupKey: "currencies", lookupUseCode: true),
-                Col("ExchangeRate", "سعر الصرف", ImportValueType.Decimal, minInclusive: 0.000001m),
                 Col("Reason", "سبب المرتجع", ImportValueType.Text, maxLength: 500),
                 Col("ItemName", "اسم الصنف", ImportValueType.Lookup, isRequired: true, lookupKey: "items", isLineOnly: true, aliases: "الصنف"),
                 Col("Quantity", "الكمية", ImportValueType.Decimal, minInclusive: 0, isLineOnly: true),
@@ -491,7 +468,6 @@ public class ImportCenterService : IImportCenterService
                 if (v.Length > 0) applySeen.Add(NormKey(v));
             }
 
-        string? pendingBaseCode = null;
         var unitParentLinks = new List<(Unit Child, string ParentName)>();
         var accountParentLinks = new List<(GLAccount Child, string ParentCode)>();
         int created = 0, updated = 0, failed = 0;
@@ -511,7 +487,6 @@ public class ImportCenterService : IImportCenterService
             else if (def.Key == "itemCategories") { (c, u) = ApplyCategory(cells, cache); }
             else if (def.Key == "itemTypes") { (c, u) = ApplyItemType(cells, cache); }
             else if (def.Key == "units") { (c, u) = ApplyUnit(cells, cache, unitParentLinks); }
-            else if (def.Key == "currencies") { (c, u) = ApplyCurrency(cells, cache, ref pendingBaseCode); }
             else if (def.Key == "branches") { (c, u) = ApplyBranch(cells, cache); }
             else if (def.Key == "warehouses") { (c, u) = ApplyWarehouse(cells, cache); }
             else if (def.Key == "glAccounts") { (c, u) = ApplyAccount(def, cells, cache, accountParentLinks); }
@@ -519,14 +494,6 @@ public class ImportCenterService : IImportCenterService
 
             created += c;
             updated += u;
-        }
-
-        if (pendingBaseCode is not null)
-        {
-            foreach (var cur in cache.CurrenciesByCode.Values)
-                if (cur.IsBase) cur.IsBase = false;
-            if (cache.CurrenciesByCode.TryGetValue(pendingBaseCode, out var baseCurrency))
-                baseCurrency.IsBase = true;
         }
 
         foreach (var (child, parentName) in unitParentLinks)
@@ -824,13 +791,9 @@ public class ImportCenterService : IImportCenterService
             Amount = CellDecimal(header, "Amount"),
             Method = (PaymentMethod)EnumValue(def, header, "Method", (int)PaymentMethod.Cash),
             PaymentDate = CellDate(header, "PaymentDate", DateTime.Today),
-            ExchangeRate = CellOptionalDecimal(header, "ExchangeRate"),
             ReferenceNumber = OptNull(header, "ReferenceNumber"),
             Notes = OptNull(header, "Notes")
         };
-        var currencyRaw = header.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (currencyRaw.Length > 0 && cache.CurrenciesByCode.TryGetValue(NormKey(currencyRaw), out var currency))
-            payment.CurrencyId = currency.Id;
 
         var customerRaw = header.GetValueOrDefault("PartyName", "").Trim();
         if (payment.Type == PaymentType.Receipt
@@ -882,12 +845,6 @@ public class ImportCenterService : IImportCenterService
             Tax = CellDecimal(header, "Tax"),
             Notes = OptNull(header, "Notes")
         };
-        var currencyRaw = header.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (currencyRaw.Length > 0 && cache.CurrenciesByCode.TryGetValue(NormKey(currencyRaw), out var currency))
-        {
-            invoice.CurrencyId = currency.Id;
-            invoice.ExchangeRate = CellOptionalDecimal(header, "ExchangeRate") ?? 1m;
-        }
 
         var items = new List<SaleInvoiceItem>();
         foreach (var row in rows)
@@ -927,12 +884,6 @@ public class ImportCenterService : IImportCenterService
             Tax = CellDecimal(header, "Tax"),
             Notes = OptNull(header, "Notes")
         };
-        var currencyRaw = header.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (currencyRaw.Length > 0 && cache.CurrenciesByCode.TryGetValue(NormKey(currencyRaw), out var currency))
-        {
-            invoice.CurrencyId = currency.Id;
-            invoice.ExchangeRate = CellOptionalDecimal(header, "ExchangeRate") ?? 1m;
-        }
 
         var items = new List<PurchaseInvoiceItem>();
         foreach (var row in rows)
@@ -970,12 +921,6 @@ public class ImportCenterService : IImportCenterService
         var invoiceRaw = header.GetValueOrDefault("SaleInvoiceNumber", "").Trim();
         if (invoiceRaw.Length > 0 && cache.SaleInvoicesByNumber.TryGetValue(NormKey(invoiceRaw), out var saleInvoice))
             saleReturn.SaleInvoiceId = saleInvoice.Id;
-        var currencyRaw = header.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (currencyRaw.Length > 0 && cache.CurrenciesByCode.TryGetValue(NormKey(currencyRaw), out var currency))
-        {
-            saleReturn.CurrencyId = currency.Id;
-            saleReturn.ExchangeRate = CellOptionalDecimal(header, "ExchangeRate") ?? 1m;
-        }
 
         var items = new List<SaleReturnItem>();
         foreach (var row in rows)
@@ -1012,12 +957,6 @@ public class ImportCenterService : IImportCenterService
         var invoiceRaw = header.GetValueOrDefault("PurchaseInvoiceNumber", "").Trim();
         if (invoiceRaw.Length > 0 && cache.PurchaseInvoicesByNumber.TryGetValue(NormKey(invoiceRaw), out var purchaseInvoice))
             purchaseReturn.PurchaseInvoiceId = purchaseInvoice.Id;
-        var currencyRaw = header.GetValueOrDefault("CurrencyCode", "").Trim();
-        if (currencyRaw.Length > 0 && cache.CurrenciesByCode.TryGetValue(NormKey(currencyRaw), out var currency))
-        {
-            purchaseReturn.CurrencyId = currency.Id;
-            purchaseReturn.ExchangeRate = CellOptionalDecimal(header, "ExchangeRate") ?? 1m;
-        }
 
         var items = new List<PurchaseReturnItem>();
         foreach (var row in rows)
@@ -1372,7 +1311,6 @@ public class ImportCenterService : IImportCenterService
         "units" => "الوحدات",
         "itemTypes" => "أنواع الأصناف",
         "categories" => "التصنيفات",
-        "currencies" => "العملات",
         "glAccounts" => "الحسابات",
         "items" => "الأصناف",
         "suppliers" => "الموردون",
@@ -1433,12 +1371,6 @@ public class ImportCenterService : IImportCenterService
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
-        if (cells.ContainsKey("CurrencyCode"))
-        {
-            var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
-            if (curRaw.Length == 0) entity.CurrencyId = null;
-            else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
-        }
 
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
@@ -1473,12 +1405,6 @@ public class ImportCenterService : IImportCenterService
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
-        if (cells.ContainsKey("CurrencyCode"))
-        {
-            var curRaw = cells.GetValueOrDefault("CurrencyCode", "").Trim();
-            if (curRaw.Length == 0) entity.CurrencyId = null;
-            else if (cache.CurrenciesByCode.TryGetValue(NormKey(curRaw), out var currency)) entity.CurrencyId = currency.Id;
-        }
 
         var active = OptionalBool(cells, "IsActive");
         if (active.HasValue) entity.IsActive = active.Value;
@@ -1646,40 +1572,6 @@ public class ImportCenterService : IImportCenterService
         return isNew ? (1, 0) : (0, 1);
     }
 
-    private (int Created, int Updated) ApplyCurrency(
-        IReadOnlyDictionary<string, string> cells, ReferenceCache cache, ref string? pendingBaseCode)
-    {
-        var codeRaw = cells.GetValueOrDefault("Code", "").Trim();
-        cache.CurrenciesByCode.TryGetValue(NormKey(codeRaw), out var entity);
-        var isNew = entity is null;
-        entity ??= new Currency();
-        if (isNew) _db.Currencies.Add(entity);
-
-        entity.Code = codeRaw;
-        entity.Name = cells.GetValueOrDefault("Name", "").Trim();
-        entity.Symbol = OptKeep(cells, "Symbol", entity.Symbol);
-        if (TryCellDecimal(cells, "ExchangeRate", out var exchangeRate)) entity.ExchangeRate = exchangeRate;
-        else if (isNew) entity.ExchangeRate = 1m;
-
-        var isBase = OptionalBool(cells, "IsBase");
-        if (isBase.HasValue)
-        {
-            entity.IsBase = isBase.Value;
-            if (isBase.Value) pendingBaseCode = NormKey(codeRaw);
-        }
-        else if (isNew)
-        {
-            entity.IsBase = false;
-        }
-
-        var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
-
-        cache.CurrenciesByCode[NormKey(codeRaw)] = entity;
-        return isNew ? (1, 0) : (0, 1);
-    }
-
     private (int Created, int Updated) ApplyBranch(IReadOnlyDictionary<string, string> cells, ReferenceCache cache)
     {
         var codeRaw = cells.GetValueOrDefault("Code", "").Trim();
@@ -1772,8 +1664,6 @@ public class ImportCenterService : IImportCenterService
             if (!string.IsNullOrWhiteSpace(cat.Name)) cache.CategoriesByName[NormKey(cat.Name)] = cat;
         foreach (var t in await _db.ItemTypes.ToListAsync())
             if (!string.IsNullOrWhiteSpace(t.Name)) cache.ItemTypesByName[NormKey(t.Name)] = t;
-        foreach (var cur in await _db.Currencies.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(cur.Code)) cache.CurrenciesByCode[NormKey(cur.Code)] = cur;
         foreach (var b in await _db.Branches.ToListAsync())
             if (!string.IsNullOrWhiteSpace(b.Code)) cache.BranchesByCode[NormKey(b.Code)] = b;
         foreach (var w in await _db.Warehouses.ToListAsync())
@@ -2129,7 +2019,6 @@ public class ImportCenterService : IImportCenterService
         public readonly Dictionary<string, Unit> UnitsByName = new(StringComparer.OrdinalIgnoreCase);
         public readonly Dictionary<string, ItemCategory> CategoriesByName = new(StringComparer.OrdinalIgnoreCase);
         public readonly Dictionary<string, ItemType> ItemTypesByName = new(StringComparer.OrdinalIgnoreCase);
-        public readonly Dictionary<string, Currency> CurrenciesByCode = new(StringComparer.OrdinalIgnoreCase);
         public readonly Dictionary<string, Branch> BranchesByCode = new(StringComparer.OrdinalIgnoreCase);
         public readonly Dictionary<string, Warehouse> WarehousesByCode = new(StringComparer.OrdinalIgnoreCase);
         public readonly Dictionary<string, Warehouse> WarehousesByName = new(StringComparer.OrdinalIgnoreCase);
@@ -2152,7 +2041,6 @@ public class ImportCenterService : IImportCenterService
             "itemCategories" => CategoriesByName.ContainsKey(normKey),
             "itemTypes" => ItemTypesByName.ContainsKey(normKey),
             "units" => UnitsByName.ContainsKey(normKey),
-            "currencies" => CurrenciesByCode.ContainsKey(normKey),
 "branches" => BranchesByCode.ContainsKey(normKey),
                     "warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),
             "glAccounts" => AccountsByCode.ContainsKey(normKey),
@@ -2164,7 +2052,6 @@ public class ImportCenterService : IImportCenterService
             if (useCode)
                 return lookupKey switch
                 {
-                    "currencies" => CurrenciesByCode.ContainsKey(normKey),
                     "glAccounts" => AccountsByCode.ContainsKey(normKey),
                     "branches" => BranchesByCode.ContainsKey(normKey),
 "warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),

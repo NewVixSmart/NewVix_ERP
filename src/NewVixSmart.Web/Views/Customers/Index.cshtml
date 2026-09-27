@@ -33,7 +33,7 @@
                     <td><strong>@c.Name</strong></td>
                     <td>@(c.Phone ?? "—")</td>
                     <td>@(c.Address ?? "—")</td>
-                    <td>@c.OpeningBalance.ToString("N2") ج.م</td>
+                    <td>@Money.Format(c.OpeningBalance)</td>
                     <td class="text-center">
                         <a asp-action="Ledger" asp-route-id="@c.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ العميل @c.Name"><i class="bi bi-journal-bookmark"></i></a>
                         <a asp-action="PendingDeliveries" asp-route-id="@c.Id" class="btn btn-sm btn-outline-info" aria-label="تسليمات معلّقة للعميل @c.Name"><i class="bi bi-truck"></i></a>

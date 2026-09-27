@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
@@ -36,133 +36,10 @@ public class SettingsController : Controller
             Units = await _db.Units.AsNoTracking().OrderBy(u => u.Name).ToListAsync(),
             Categories = await _db.ItemCategories.Include(c => c.Items).AsNoTracking().OrderBy(c => c.Name).ToListAsync(),
             ItemTypes = await _db.ItemTypes.Include(t => t.Items).AsNoTracking().OrderBy(t => t.Name).ToListAsync(),
-            Currencies = await _db.Currencies.AsNoTracking().OrderByDescending(c => c.IsBase).ThenBy(c => c.Code).ToListAsync(),
             Branches = await _db.Branches.AsNoTracking().OrderBy(b => b.Code).ToListAsync(),
             CurrentBranchId = _http.GetCurrentBranchId()
         };
         return View(vm);
-    }
-
-    // ---------- Currencies ----------
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> AddCurrency(AddCurrencyRequest request)
-    {
-        if (!ModelState.IsValid)
-        {
-            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
-            return RedirectToAction(nameof(Index));
-        }
-        var code = request.Code.Trim().ToUpperInvariant();
-        if (await _db.Currencies.AnyAsync(c => c.Code == code))
-        {
-            TempData["Error"] = "عملة بهذا الرمز موجودة بالفعل";
-            return RedirectToAction(nameof(Index));
-        }
-        _db.Currencies.Add(new Currency
-        {
-            Code = code,
-            Name = request.Name.Trim(),
-            Symbol = request.Symbol,
-            ExchangeRate = request.ExchangeRate,
-            IsActive = request.IsActive,
-            IsBase = false
-        });
-        await _db.SaveChangesAsync();
-        TempData["Success"] = "تم إضافة العملة بنجاح";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> UpdateCurrency(Currency currency)
-    {
-        if (!ModelState.IsValid)
-        {
-            TempData["Error"] = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Distinct());
-            return RedirectToAction(nameof(Index));
-        }
-        var existing = await _db.Currencies.FindAsync(currency.Id);
-        if (existing == null) return NotFound();
-
-        if (!string.IsNullOrWhiteSpace(currency.Code) && !string.IsNullOrWhiteSpace(currency.Name) &&
-            currency.ExchangeRate > 0)
-        {
-            if (await _db.Currencies.AnyAsync(c => c.Id != currency.Id && c.Code == currency.Code.Trim().ToUpperInvariant()))
-                TempData["Error"] = "عملة بهذا الرمز موجودة بالفعل";
-            else
-            {
-                existing.Code = currency.Code.Trim().ToUpperInvariant();
-                existing.Name = currency.Name.Trim();
-                existing.Symbol = currency.Symbol;
-                existing.ExchangeRate = currency.ExchangeRate;
-                existing.IsActive = currency.IsActive;
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم تعديل العملة بنجاح";
-            }
-        }
-        else
-        {
-            TempData["Error"] = "تحقق من بيانات العملة وسعر الصرف";
-        }
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> DeleteCurrency(int id)
-    {
-        var currency = await _db.Currencies.FindAsync(id);
-        if (currency == null) return NotFound();
-        if (currency.IsBase)
-        {
-            TempData["Error"] = "لا يمكن حذف العملة الأساسية؛ اختر أساسًا آخر أولاً";
-            return RedirectToAction(nameof(Index));
-        }
-        bool inUse = await _db.SaleInvoices.AnyAsync(s => s.CurrencyId == id) ||
-                     await _db.PurchaseInvoices.AnyAsync(p => p.CurrencyId == id) ||
-                     await _db.Customers.AnyAsync(c => c.CurrencyId == id) ||
-                     await _db.Suppliers.AnyAsync(s => s.CurrencyId == id);
-        if (inUse)
-        {
-            currency.IsActive = false;
-            await _db.SaveChangesAsync();
-            TempData["Error"] = "لا يمكن حذف العملة لأنها مستخدمة؛ تم تعطيلها بدلاً من ذلك";
-        }
-        else
-        {
-            _db.Currencies.Remove(currency);
-            await _db.SaveChangesAsync();
-            TempData["Success"] = "تم حذف العملة بنجاح";
-        }
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> SetBaseCurrency(int id)
-    {
-        var currency = await _db.Currencies.FindAsync(id);
-        if (currency == null) return NotFound();
-
-        var factor = currency.ExchangeRate > 0 && !currency.IsBase ? currency.ExchangeRate : 1m;
-        var others = await _db.Currencies.Where(c => c.Id != id).ToListAsync();
-        foreach (var c in others)
-        {
-            c.IsBase = false;
-            c.ExchangeRate = decimal.Round(c.ExchangeRate / factor, 6);
-        }
-
-        currency.IsBase = true;
-        currency.ExchangeRate = 1m;
-        await _db.SaveChangesAsync();
-        TempData["Success"] = $"أُعيدت إلى العملة الأساسية: {currency.Name}";
-        return RedirectToAction(nameof(Index));
     }
 
     // ---------- Branches ----------
@@ -645,23 +522,4 @@ public class SettingsController : Controller
         }
         return false;
     }
-}
-
-public class AddCurrencyRequest
-{
-    [Required(ErrorMessage = "رمز العملة مطلوب")]
-    [StringLength(10)]
-    public string Code { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "اسم العملة مطلوب")]
-    [StringLength(100)]
-    public string Name { get; set; } = string.Empty;
-
-    [StringLength(10)]
-    public string? Symbol { get; set; }
-
-    [Range(0.000001, 999999999, ErrorMessage = "سعر الصرف يجب أن يكون أكبر من صفر")]
-    public decimal ExchangeRate { get; set; } = 1m;
-
-    public bool IsActive { get; set; } = true;
 }

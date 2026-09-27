@@ -242,24 +242,18 @@ var svc = new ReportService(db, new FinancialReportService(db));
     }
 
     [Fact]
-    public async Task Dashboard_DueAlerts_ConvertsForeignCurrenciesToBase()
+    public async Task Dashboard_DueAlerts_SumsInvoiceAmountsDirectly()
     {
         using var db = CreateContext();
         var (customerId, _) = await SeedPartiesAsync(db);
 
-        db.Currencies.Add(new Currency { Code = "EUR", Name = "يورو", Symbol = "€", ExchangeRate = 3m, IsBase = false });
-        await db.SaveChangesAsync();
-        var currency = await db.Currencies.SingleAsync(c => c.Code == "EUR");
-
         var today = DateTime.Today;
         db.SaleInvoices.Add(new SaleInvoice
         {
-            InvoiceNumber = "S-FX",
+            InvoiceNumber = "S-EGP",
             CustomerId = customerId,
             InvoiceDate = today.AddDays(-20),
             DueDate = today.AddDays(-10),
-            CurrencyId = currency.Id,
-            ExchangeRate = 3m,
             TotalAmount = 100m,
             NetAmount = 100m,
             PaidAmount = 0m
@@ -269,7 +263,7 @@ var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await new DashboardService(db).GetDashboardAsync();
 
         Assert.Equal(1, vm.OverdueReceivableCount);
-        Assert.Equal(300m, vm.OverdueReceivableTotal); // 100 × 3, not a raw mixed-currency 100
+        Assert.Equal(100m, vm.OverdueReceivableTotal);
     }
 
     [Fact]
@@ -396,7 +390,97 @@ var svc = new ReportService(db, new FinancialReportService(db));
     }
 
     [Fact]
-    public async Task Aging_FxSettlementAtDifferentRate_OutstandingReconcilesToArControl()
+    public async Task Aging_IncludesInvoiceDeliveredThroughDeliveryIssue_NotDeliveryOrder()
+    {
+        using var db = CreateContext();
+        var (customerId, _) = await SeedPartiesAsync(db);
+        var today = DateTime.Today;
+
+        // Invoice-after-delivery: the DeliveryOrder belongs to the sales order, so its
+        // SaleInvoiceId stays null and the invoice's only delivery link is the issue.
+        // The AR report used to filter on DeliveryOrders alone, which silently dropped this
+        // receivable from aging while account 1200 still carried it.
+        var invoice = SaleInvoice(customerId, "S-ISSUE", today.AddDays(-12), 900m, 0m, due: today.AddDays(-2));
+        invoice.PostingMode = SalesPostingMode.AtInvoice;
+        db.SaleInvoices.Add(invoice);
+        await db.SaveChangesAsync();
+
+        var order = new DeliveryOrder
+        {
+            DeliveryNumber = "DLV-ORDER-1",
+            CustomerId = customerId,
+            DeliveryDate = today,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        };
+        db.DeliveryOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        db.DeliveryIssues.Add(new DeliveryIssue
+        {
+            IssueNumber = "ISS-AGE-1",
+            DeliveryOrderId = order.Id,
+            CustomerId = customerId,
+            SaleInvoiceId = invoice.Id,
+            IssueDate = today,
+            Status = DeliveryIssueStatus.Issued,
+            IssuedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        Assert.False(await db.DeliveryOrders.AnyAsync(d => d.SaleInvoiceId == invoice.Id));
+
+        var vm = await new ReportService(db, new FinancialReportService(db)).AgingAsync();
+
+        var row = Assert.Single(vm.Receivables);
+        Assert.Equal(900m, row.Total);
+        Assert.Equal(900m, row.Days1To30);
+        Assert.Equal(900m, vm.ArTotal);
+        Assert.Equal(900m, vm.ArOverdue);
+    }
+
+    [Fact]
+    public async Task Aging_ExcludesInvoiceWhoseDeliveryIssueIsStillDraft()
+    {
+        using var db = CreateContext();
+        var (customerId, _) = await SeedPartiesAsync(db);
+        var today = DateTime.Today;
+
+        // The widened lookup must not let a not-yet-delivered invoice age: the issue status
+        // gate is the whole reason the DeliveryIssue branch is safe.
+        var invoice = SaleInvoice(customerId, "S-DRAFTISSUE", today.AddDays(-12), 900m, 0m, due: today.AddDays(-2));
+        db.SaleInvoices.Add(invoice);
+        await db.SaveChangesAsync();
+
+        var order = new DeliveryOrder
+        {
+            DeliveryNumber = "DLV-ORDER-2",
+            CustomerId = customerId,
+            DeliveryDate = today,
+            Status = DeliveryOrderStatus.Draft
+        };
+        db.DeliveryOrders.Add(order);
+        await db.SaveChangesAsync();
+
+        db.DeliveryIssues.Add(new DeliveryIssue
+        {
+            IssueNumber = "ISS-AGE-2",
+            DeliveryOrderId = order.Id,
+            CustomerId = customerId,
+            SaleInvoiceId = invoice.Id,
+            IssueDate = today,
+            Status = DeliveryIssueStatus.Draft
+        });
+        await db.SaveChangesAsync();
+
+        var vm = await new ReportService(db, new FinancialReportService(db)).AgingAsync();
+
+        Assert.Empty(vm.Receivables);
+        Assert.Equal(0m, vm.ArTotal);
+    }
+
+    [Fact]
+    public async Task Aging_PartialSettlement_OutstandingReconcilesToArControl()
     {
         using var db = CreateContext();
         foreach (var (code, name, type, normal) in new (string, string, GLAccountType, NormalBalance)[]
@@ -404,42 +488,34 @@ var svc = new ReportService(db, new FinancialReportService(db));
             ("1000", "النقد / الصندوق", GLAccountType.Asset, NormalBalance.Debit),
             ("1200", "المدينون (العملاء)", GLAccountType.Asset, NormalBalance.Debit),
             ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
-            ("8400", "أرباح فروقات العملة (عملة أجنبية)", GLAccountType.Revenue, NormalBalance.Credit),
         })
         {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
         }
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار أمريكي", Symbol = "$", ExchangeRate = 48.5m, IsBase = false, IsActive = true });
         var (customerId, _) = await SeedPartiesAsync(db);
         await db.SaveChangesAsync();
 
-        var invoice = SaleInvoice(customerId, "S-FX", DateTime.Today.AddDays(-5), 100, 0, due: DateTime.Today.AddDays(10));
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        invoice.CurrencyId = usd.Id;
-        invoice.ExchangeRate = 48.5m;
+        var invoice = SaleInvoice(customerId, "S-EGP", DateTime.Today.AddDays(-5), 100, 0, due: DateTime.Today.AddDays(10));
         db.SaleInvoices.Add(invoice);
         await db.SaveChangesAsync();
-        await MarkDeliveredAsync(db, invoice.Id, customerId, "DLV-S-FX");
+        await MarkDeliveredAsync(db, invoice.Id, customerId, "DLV-S-EGP");
 
         await new AccountingService(db).RecordSaleDeliveryAsync(
-            DateTime.Today.AddDays(-5), customerId, 4850m, 0m, usd.Id, 48.5m, "test", deliveryId: invoice.Id);
+            DateTime.Today.AddDays(-5), customerId, 100m, 0m, "test", deliveryId: invoice.Id);
 
         var payments = new PaymentService(db, new AccountingService(db));
         var (ok, err, _) = await payments.CreatePaymentAsync(new Payment
         {
             Type = PaymentType.Receipt,
             CustomerId = customerId,
-            Amount = 50m,
-            CurrencyId = usd.Id,
-            ExchangeRate = 50m,
+            Amount = 40m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok, err);
 
         var alloc = await db.SalePaymentAllocations.SingleAsync();
-        Assert.Equal(2425m, alloc.AllocatedBaseAmount);
-        Assert.Equal(75m, alloc.FxGain);
+        Assert.Equal(40m, alloc.AllocatedAmount);
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await svc.AgingAsync();
@@ -448,10 +524,10 @@ var svc = new ReportService(db, new FinancialReportService(db));
             .Include(l => l.Account)
             .Where(l => l.Account!.Code == "1200")
             .SumAsync(l => l.Debit - l.Credit);
-        Assert.Equal(2425m, arControl);
+        Assert.Equal(60m, arControl);
 
         var row = Assert.Single(vm.Receivables);
-        Assert.Equal(2425m, row.Total);
-        Assert.Equal(2425m, vm.ArTotal);
+        Assert.Equal(60m, row.Total);
+        Assert.Equal(60m, vm.ArTotal);
     }
 }

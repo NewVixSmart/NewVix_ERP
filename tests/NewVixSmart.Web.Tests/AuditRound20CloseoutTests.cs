@@ -45,92 +45,63 @@ public sealed class AuditRound20CloseoutTests : IDisposable
 
     private AppDbContext CreateContext() => new(_options);
 
-    // M-6: the interactive path copies the source invoice's currency and rate in the
-    // controller, but the CSV import applies the row's own values and posts through the
-    // same service method. Without the service-level backstop an imported return could
-    // name its source invoice and still book the receivable credit at an unrelated rate.
+    // M-6 originally guarded the reconciliation between a return's own currency and its
+    // source invoice's. The ledger is single-currency (EGP), so that whole class of
+    // mismatch is unrepresentable: a return can only ever book EGP, exactly like the
+    // invoice it names. These two tests lock that in — one on the posting behaviour, one
+    // on the model itself so multi-currency columns cannot quietly come back.
     [Fact]
-    public async Task SaleReturn_Post_WithSourceInvoice_AdoptsInvoiceCurrencyAndRate()
+    public async Task SaleReturn_Post_WithSourceInvoice_CreditsReceivable_AtInvoiceAmount()
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedBasicAsync(db);
-        var baseCurrency = new Currency { Code = "CUR1", Name = "العملة الأساسية", ExchangeRate = 1m };
-        var invoiceCurrency = new Currency { Code = "CUR2", Name = "عملة الفاتورة", ExchangeRate = 3.5m };
-        db.Currencies.AddRange(baseCurrency, invoiceCurrency);
-        await db.SaveChangesAsync();
-
         var svc = new InventoryService(db, new AccountingService(db));
-        var invoice = new SaleInvoice { CustomerId = custId, CurrencyId = invoiceCurrency.Id, ExchangeRate = 3.5m };
+        var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice,
             new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(okInv, errInv);
         Assert.True(await DeliverDirectAsync(db, invoice, itemId, 10));
 
-        // The import resolved a real currency, but a different one from the source invoice,
-        // at a rate that contradicts it. This is the shape the CSV path can actually produce.
         var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
         {
             SaleInvoiceId = invoice.Id,
             CustomerId = custId,
-            CurrencyId = baseCurrency.Id,
-            ExchangeRate = 1m,
             ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok, err);
 
         var saved = await db.SaleReturns.AsNoTracking().SingleAsync();
-        Assert.Equal(invoiceCurrency.Id, saved.CurrencyId);
-        Assert.Equal(3.5m, saved.ExchangeRate);
+        Assert.Equal(invoice.Id, saved.SaleInvoiceId);
+        Assert.Equal(320m, saved.TotalAmount);
+
+        // The credit to receivables is the returned value itself - no re-conversion step
+        // exists, so there is nothing left to disagree with the invoice.
+        var credit = await db.JournalEntryLines.Include(l => l.Account)
+            .Where(l => l.Account!.Code == "1200" && l.Credit > 0)
+            .Select(l => l.Credit).FirstAsync();
+        Assert.Equal(320m, credit);
     }
 
     [Fact]
-    public async Task PurchaseReturn_Post_WithSourceInvoice_AdoptsInvoiceCurrencyAndRate()
+    public void TransactionEntities_ExposeNoCurrencyOrRateMembers()
     {
-        using var db = CreateContext();
-        var (itemId, _, supplierId) = await SeedBasicAsync(db);
-        var baseCurrency = new Currency { Code = "CUR1", Name = "العملة الأساسية", ExchangeRate = 1m };
-        var invoiceCurrency = new Currency { Code = "CUR2", Name = "عملة الفاتورة", ExchangeRate = 2.25m };
-        db.Currencies.AddRange(baseCurrency, invoiceCurrency);
-        await db.SaveChangesAsync();
+        Type[] entities =
+        [
+            typeof(Payment), typeof(SalePaymentAllocation), typeof(PurchasePaymentAllocation),
+            typeof(SaleInvoice), typeof(SaleReturn), typeof(SaleQuote), typeof(SalesOrder),
+            typeof(PurchaseInvoice), typeof(PurchaseReturn), typeof(Customer), typeof(Supplier),
+        ];
+        string[] forbidden = ["Currency", "ExchangeRate", "BaseAmount", "AllocatedBaseAmount", "FxGain", "FxLoss"];
 
-        var svc = new InventoryService(db, new AccountingService(db));
-        var invoice = new PurchaseInvoice { SupplierId = supplierId, CurrencyId = invoiceCurrency.Id, ExchangeRate = 2.25m };
-        var (okInv, errInv) = await svc.CreatePurchaseAsync(invoice,
-            new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 50 } }, "test");
-        Assert.True(okInv, errInv);
-
-        var (ok, err) = await svc.CreatePurchaseReturnAsync(new PurchaseReturn
+        foreach (var entity in entities)
         {
-            PurchaseInvoiceId = invoice.Id,
-            SupplierId = supplierId,
-            CurrencyId = baseCurrency.Id,
-            ExchangeRate = 1m,
-            ReturnDate = DateTime.Today
-        }, new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 50 } }, "test");
-        Assert.True(ok, err);
-
-        var saved = await db.PurchaseReturns.AsNoTracking().SingleAsync();
-        Assert.Equal(invoiceCurrency.Id, saved.CurrencyId);
-        Assert.Equal(2.25m, saved.ExchangeRate);
-    }
-
-    // M-6: an invoice-less return is a deliberate, tested feature (standalone credit note),
-    // so the reconciliation must leave it alone rather than force a null invoice's values.
-    [Fact]
-    public async Task SaleReturn_Post_WithoutSourceInvoice_KeepsCallerCurrency()
-    {
-        using var db = CreateContext();
-        var (itemId, custId, _) = await SeedBasicAsync(db);
-        var svc = new InventoryService(db, new AccountingService(db));
-
-        var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
-        {
-            CustomerId = custId, ExchangeRate = 2m, ReturnDate = DateTime.Today
-        }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 80 } }, "test");
-        Assert.True(ok, err);
-
-        var saved = await db.SaleReturns.AsNoTracking().SingleAsync();
-        Assert.Equal(2m, saved.ExchangeRate);
+            var offenders = entity.GetProperties()
+                .Where(p => forbidden.Any(f => p.Name.Contains(f, StringComparison.OrdinalIgnoreCase)))
+                .Select(p => p.Name)
+                .ToList();
+            Assert.True(offenders.Count == 0,
+                $"{entity.Name} must not carry multi-currency members but declares: {string.Join(", ", offenders)}");
+        }
     }
 
     // M-2: the audit claimed SuppressImplicitRequiredAttributeForNonNullableReferenceTypes

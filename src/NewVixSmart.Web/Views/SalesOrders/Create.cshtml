@@ -41,17 +41,6 @@
                         <span class="badge @(Model.Order.Status == SalesOrderStatus.Draft ? "bg-secondary" : "bg-success")">@Model.Order.Status.GetDisplayName()</span>
                     }
                 </div>
-                <div class="col-md-3">
-                    <label for="currencySelect" class="form-label">العملة</label>
-                    <select asp-for="Order.CurrencyId" asp-items="@Model.Currencies" class="form-select" id="currencySelect">
-                        <option value="">-- العملة --</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label asp-for="Order.ExchangeRate" class="form-label"></label>
-                    <input asp-for="Order.ExchangeRate" class="form-control" type="number" step="any" />
-                    <small class="text-muted">حسابات الأستاذ بالعملة الأساسية</small>
-                </div>
             </div>
             <div class="col-12 mt-3">
                 <label asp-for="Order.Notes" class="form-label"></label>

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
@@ -27,7 +27,6 @@ public sealed class SalesOrdersService : ISalesOrdersService
     {
         var query = _db.SalesOrders
             .Include(o => o.Customer)
-            .Include(o => o.Currency)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
@@ -43,7 +42,6 @@ public sealed class SalesOrdersService : ISalesOrdersService
     {
         return await _db.SalesOrders
             .Include(o => o.Customer)
-            .Include(o => o.Currency)
             .Include(o => o.SaleQuote)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
@@ -116,8 +114,6 @@ public sealed class SalesOrdersService : ISalesOrdersService
         existing.OrderDate = order.OrderDate;
         existing.ExpectedDate = order.ExpectedDate;
         existing.Notes = order.Notes;
-        existing.CurrencyId = order.CurrencyId;
-        existing.ExchangeRate = order.ExchangeRate;
 
         var oldItemIds = existing.Items.Select(i => i.Id).ToHashSet();
         var newItemIds = valid.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
@@ -254,8 +250,6 @@ public sealed class SalesOrdersService : ISalesOrdersService
                     PaymentTerms = InvoicePaymentTerms.OpenTerm,
                     SalesOrderId = order.Id,
                     OrderReference = order.OrderNumber,
-                    CurrencyId = order.CurrencyId,
-                    ExchangeRate = order.ExchangeRate,
                     Notes = order.Notes
                 };
 

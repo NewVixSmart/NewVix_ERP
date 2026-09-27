@@ -38,17 +38,6 @@
                         <label asp-for="Invoice.IsPaid" class="form-check-label">مدفوعة</label>
                     </div>
                 </div>
-                <div class="col-md-2">
-                    <label asp-for="Invoice.CurrencyId" class="form-label"></label>
-                    <select asp-for="Invoice.CurrencyId" asp-items="@Model.Currencies" class="form-select">
-                        <option value="">-- العملة --</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label asp-for="Invoice.ExchangeRate" class="form-label"></label>
-                    <input asp-for="Invoice.ExchangeRate" class="form-control" type="number" step="any" />
-                    <small class="text-muted">للعرض فقط؛ حسابات الأستاذ بالعملة الأساسية</small>
-                </div>
             </div>
         </div>
     </div>

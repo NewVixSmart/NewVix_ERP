@@ -84,6 +84,12 @@ Prior-audit outcome: **all five High items are now fixed at code level** (two wi
 - Fix: record a `Payment` (+ optional allocation) for on-receipt purchases, or reconcile explicitly.
 
 ### N-06 — MEDIUM — FX conversion-timing mismatch between ledger and aging/reports
+> **Superseded (2026-09-27):** multi-currency was removed entirely, so the conversion-timing
+> mismatch cannot occur. There is no `ExchangeRate`, no `AllocatedBaseAmount`, and no
+> 8400/4400 posting; the single settlement basis is the document value itself (EGP).
+> See [`docs/DECISION-EGP-ONLY.md`](docs/DECISION-EGP-ONLY.md). The text below is kept as
+> the original round record.
+
 - Files: `Services\ReportService.cs:655+` (aging), `Services\PaymentService.cs:158-260`
 - Issue: the ledger converts at posting/delivery time using each invoice's `ExchangeRate`; the aging
   report re-converts outstanding via `NetAmount × ExchangeRate` at report time and settles using
@@ -137,8 +143,11 @@ Prior-audit outcome: **all five High items are now fixed at code level** (two wi
 5. Fiscal close/reopen: latest-year-only, retained-earnings 3001, contra-revenue-aware reversal;
    reopen removes close entries and restores P&L; balance sheet re-injects closed retained earnings and
    income statement excludes YearEndClose (`FiscalService.cs:41-163`, `FinancialReportService.cs:155-208`).
-6. FX settlement accounted with gain/loss accounts (8400/4400), rounding tolerance 0.005, foreign-rate
-   default 1 (`PaymentService.cs:39-44, 68-72, 85-102`; `AccountingService.cs:80-100`).
+6. ~~FX settlement accounted with gain/loss accounts (8400/4400)~~ — **removed 2026-09-27**;
+   multi-currency is gone, so there is no FX leg to account for. The remaining guard is the
+   single overpayment rejection inside the payment transaction (`PaymentService.cs`;
+   tests `AuditN15SettlementTests.Receipt_OverPayment_Rejected_NoSideEffects`,
+   `Receipt_PennyOver_IsAbsorbedByRoundingTolerance`).
 7. Duplicate-payment window + unique ReceiptNumber + retries with fresh reads (`PaymentService.cs`).
 8. Unique document numbers enforced by unique indexes + replay for invoices, returns, deliveries,
    transfers, adjustments, journal entries, orders, quotes (`Data\AppDbContext.cs`; number helpers).

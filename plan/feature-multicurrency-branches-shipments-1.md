@@ -9,6 +9,13 @@ tags: feature, multicurrency, branches, shipments, accounting
 
 # Introduction
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 Add light-weight multi-currency and multi-branch support on top of the existing single-currency double-entry GL, plus a shipments (delivery notes) log. Keep pragmatic and non-breaking. GL math remains base-currency only; foreign amounts are informational snapshots.
 
 ## 1. Requirements & Constraints

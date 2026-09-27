@@ -9,6 +9,4 @@ public class PaymentFormViewModel
     public string Type { get; set; } = "receipt";
     public IEnumerable<SelectListItem>? Customers { get; set; }
     public IEnumerable<SelectListItem>? Suppliers { get; set; }
-    public IEnumerable<SelectListItem>? Currencies { get; set; }
-    public IEnumerable<Currency>? CurrencyOptions { get; set; }
 }

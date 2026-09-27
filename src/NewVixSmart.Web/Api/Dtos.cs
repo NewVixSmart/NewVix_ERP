@@ -1,4 +1,4 @@
-namespace NewVixSmart.Web.Api.Dtos;
+﻿namespace NewVixSmart.Web.Api.Dtos;
 
 public record TokenRequest(string Username, string Password);
 
@@ -73,8 +73,6 @@ public class CreatePaymentRequest
     public int? CustomerId { get; set; }
     public int? SupplierId { get; set; }
     public decimal Amount { get; set; }
-    public int? CurrencyId { get; set; }
-    public decimal? ExchangeRate { get; set; }
     public string Method { get; set; } = "Cash";
     public DateTime PaymentDate { get; set; } = DateTime.Today;
     public string? Notes { get; set; }
@@ -89,10 +87,6 @@ public class PaymentResponse
     public string? CustomerName { get; set; }
     public int? SupplierId { get; set; }
     public string? SupplierName { get; set; }
-    public int? CurrencyId { get; set; }
-    public string? CurrencyCode { get; set; }
-    public decimal? ExchangeRate { get; set; }
-    public decimal BaseAmount { get; set; }
     public decimal Amount { get; set; }
     public string Method { get; set; } = string.Empty;
     public DateTime PaymentDate { get; set; }

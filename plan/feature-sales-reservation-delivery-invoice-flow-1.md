@@ -8,6 +8,12 @@ status: 'Complete'
 tags: feature, sales, inventory, reservation, delivery, accounting, migration
 ---
 
+> **Currency update (2026-09-27):** TASK-041 still says to set `invoice.CurrencyId` /
+> `invoice.ExchangeRate` from the order. Those columns were removed with the rest of
+> multi-currency — see [`docs/DECISION-EGP-ONLY.md`](../docs/DECISION-EGP-ONLY.md). The row is
+> kept verbatim as the historical record; its FX clause is obsolete, and the invoice is now
+> booked directly in EGP.
+
 # Introduction
 
 ![Status: Complete](https://img.shields.io/badge/status-Complete-brightgreen)

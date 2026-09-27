@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 
@@ -15,9 +15,9 @@ public class AccountingService : IAccountingService
     }
 
     public async Task RecordSaleInvoiceAsync(DateTime entryDate, int customerId, decimal netAmount, decimal costAmount,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+        string? user, int? branchId = null)
     {
-        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
+        var localValue = decimal.Round(netAmount, 2);
         var localCost = decimal.Round(costAmount, 2);
         var lines = new List<JournalLine>();
         if (localValue > 0)
@@ -35,10 +35,10 @@ public class AccountingService : IAccountingService
     }
 
     public async Task RecordSaleInvoiceRevenueAsync(DateTime entryDate, int customerId, decimal netAmount, decimal taxAmount,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? invoiceId = null)
+        string? user, int? branchId = null, int? invoiceId = null)
     {
-        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
-        var localTax = decimal.Round(taxAmount * (exchangeRate ?? 1m), 2);
+        var localValue = decimal.Round(netAmount, 2);
+        var localTax = decimal.Round(taxAmount, 2);
         if (localTax < 0.005m) localTax = 0m;
         if (localTax > localValue - 0.005m) localTax = 0m;
         if (localValue <= 0) throw new InvalidOperationException("فاتورة البيع بلا قيمة");
@@ -52,16 +52,16 @@ public class AccountingService : IAccountingService
     }
 
     public async Task RecordSaleIssueCostAsync(DateTime entryDate, int issueId, decimal costAmount,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+        string? user, int? branchId = null)
     {
-        var localCost = decimal.Round(costAmount * (exchangeRate ?? 1m), 2);
+        var localCost = decimal.Round(costAmount, 2);
         if (localCost <= 0) return;
         await PostAsync(JournalSource.SaleDeliveryIssue, issueId, entryDate, "تكلفة تسليم بيع",
             new[] { new JournalLine("5000", localCost, 0), new JournalLine("1300", 0, localCost) }, user, branchId);
     }
 
     public async Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null, decimal taxAmount = 0m)
+        string? user, int? branchId = null, int? deliveryId = null, decimal taxAmount = 0m)
     {
         var localValue = decimal.Round(value, 2);
         var localCost = decimal.Round(cost, 2);
@@ -86,10 +86,10 @@ public class AccountingService : IAccountingService
     }
 
     public async Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount,
-        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+        string? user, int? branchId = null)
     {
         if (netAmount <= 0) throw new InvalidOperationException("فاتورة الشراء بلا قيمة");
-        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
+        var localValue = decimal.Round(netAmount, 2);
         await PostAsync(JournalSource.PurchaseInvoice, supplierId, entryDate, "فاتورة شراء",
             new[] { new JournalLine("1300", localValue, 0), new JournalLine("2000", 0, localValue) }, user, branchId);
     }
@@ -108,28 +108,6 @@ public class AccountingService : IAccountingService
             new[] { new JournalLine("2000", amount, 0), new JournalLine(creditCode, 0, amount) }, user, branchId);
     }
 
-    public async Task RecordFxSettlementAsync(DateTime entryDate, decimal cashAmount, decimal receivablePayableReduction,
-        decimal fxGain, decimal fxLoss, PaymentMethod method, JournalSource source, int sourceId, string? user, int? branchId = null)
-    {
-        var cashCode = method == PaymentMethod.Cash ? "1000" : "1100";
-        var lines = new List<JournalLine>();
-        if (source == JournalSource.Receipt)
-        {
-            lines.Add(new JournalLine(cashCode, cashAmount, 0));
-            lines.Add(new JournalLine("1200", 0, receivablePayableReduction));
-            if (fxGain > 0.01m) lines.Add(new JournalLine("8400", 0, fxGain));
-            if (fxLoss > 0.01m) lines.Add(new JournalLine("4400", fxLoss, 0));
-        }
-        else
-        {
-            lines.Add(new JournalLine("2000", receivablePayableReduction, 0));
-            lines.Add(new JournalLine(cashCode, 0, cashAmount));
-            if (fxLoss > 0.01m) lines.Add(new JournalLine("4400", fxLoss, 0));
-            if (fxGain > 0.01m) lines.Add(new JournalLine("8400", 0, fxGain));
-        }
-        await PostAsync(source, sourceId, entryDate, "فروقات عملة أجنبية عند التسوية", lines.ToArray(), user, branchId);
-    }
-
     public async Task RecordSaleReturnAsync(DateTime entryDate, decimal amount, string? user, int? branchId = null)
         => await PostAsync(JournalSource.SaleReturn, 0, entryDate, "مرتجع بيع",
             new[] { new JournalLine("5101", amount, 0), new JournalLine("1200", 0, amount) }, user, branchId);
@@ -145,11 +123,10 @@ public class AccountingService : IAccountingService
     //   Cr 1200 (AR)           f * (net - tax) + f * tax  == f * net
     // The tax is NEVER folded into the value leg: valueAmount is the contra-revenue amount
     // (already net of tax) and taxAmount the tax amount, so the receivable credit is their sum.
-    public async Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, decimal taxAmount = 0m)
+    public async Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, string? user, int? branchId = null, decimal taxAmount = 0m)
     {
-        var rate = exchangeRate ?? 1m;
-        var contraValue = NonNegative(decimal.Round(valueAmount * rate, 2));
-        var tax = NonNegative(decimal.Round(taxAmount * rate, 2));
+        var contraValue = NonNegative(decimal.Round(valueAmount, 2));
+        var tax = NonNegative(decimal.Round(taxAmount, 2));
         if (tax < 0.005m) tax = 0m;
         var cost = NonNegative(decimal.Round(costAmount, 2));
 
@@ -176,9 +153,9 @@ public class AccountingService : IAccountingService
     //   Dr 5102 (contra-purchases) f * net
     //   Cr 1300 (Inventory) cost / Dr 5000 (COGS reversal) cost
     // valueAmount is therefore the full net (tax included), not a tax-exclusive amount.
-    public async Task RecordPurchaseReturnWithCostAsync(DateTime entryDate, int sourceId, int supplierId, decimal valueAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+    public async Task RecordPurchaseReturnWithCostAsync(DateTime entryDate, int sourceId, int supplierId, decimal valueAmount, decimal costAmount, string? user, int? branchId = null)
     {
-        var localValue = NonNegative(decimal.Round(valueAmount * (exchangeRate ?? 1m), 2));
+        var localValue = NonNegative(decimal.Round(valueAmount, 2));
         var cost = NonNegative(decimal.Round(costAmount, 2));
         if (localValue <= 0m && cost <= 0m)
             throw new InvalidOperationException("مرتجع الشراء بلا قيمة أو تكلفة");

@@ -6,6 +6,7 @@ public interface IReportService
 {
     Task<DashboardReportViewModel> GetDashboardAsync();
     Task<AgingReportViewModel> AgingAsync();
+    Task<PaymentReportViewModel> PaymentsReportAsync(DateTime? from, DateTime? to);
     Task<CashFlowReportViewModel> CashFlowAsync(DateTime from, DateTime to);
     Task<TrialBalanceReportViewModel> TrialBalanceAsync(DateTime asOf);
     Task<IncomeStatementReportViewModel> IncomeStatementAsync(DateTime from, DateTime to);

@@ -305,45 +305,6 @@ namespace NewVixSmart.Web.Migrations
                     b.ToTable("BudgetYears");
                 });
 
-            modelBuilder.Entity("NewVixSmart.Web.Models.Accounting.Currency", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<decimal>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsBase")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Symbol")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("Currencies");
-                });
-
             modelBuilder.Entity("NewVixSmart.Web.Models.Accounting.FiscalPeriod", b =>
                 {
                     b.Property<int>("Id")
@@ -529,9 +490,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("BaseAmount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int?>("BranchId")
                         .HasColumnType("int");
 
@@ -541,17 +499,11 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<string>("DedupeKey")
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<int>("Method")
                         .HasColumnType("int");
@@ -585,8 +537,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.HasIndex("BranchId");
 
-                    b.HasIndex("CurrencyId");
-
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("DedupeKey")
@@ -612,20 +562,11 @@ namespace NewVixSmart.Web.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("AllocatedBaseAmount")
+                    b.Property<decimal>("AllocatedAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("ExchangeRateAtSettlement")
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<decimal>("FxGain")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("FxLoss")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("PaymentId")
                         .HasColumnType("int");
@@ -651,20 +592,11 @@ namespace NewVixSmart.Web.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("AllocatedBaseAmount")
+                    b.Property<decimal>("AllocatedAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("ExchangeRateAtSettlement")
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<decimal>("FxGain")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("FxLoss")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("PaymentId")
                         .HasColumnType("int");
@@ -1016,9 +948,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("Discount")
                         .HasColumnType("decimal(18,2)");
 
@@ -1030,9 +959,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
@@ -1085,8 +1011,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("InvoiceNumber")
                         .IsUnique();
@@ -1254,12 +1178,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
-
                     b.Property<DateTime?>("PostedAt")
                         .HasColumnType("datetime2");
 
@@ -1296,8 +1214,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("PublicId")
                         .IsUnique();
@@ -1360,9 +1276,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1395,8 +1308,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasIndex("Code")
                         .IsUnique()
                         .HasFilter("[Code] IS NOT NULL");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -1454,9 +1365,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1489,8 +1397,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasIndex("Code")
                         .IsUnique()
                         .HasFilter("[Code] IS NOT NULL");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -1750,9 +1656,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
@@ -1767,9 +1670,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("datetime2");
@@ -1822,8 +1722,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("CustomerId");
 
@@ -1894,17 +1792,11 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Discount")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<decimal>("NetAmount")
                         .HasColumnType("decimal(18,2)");
@@ -1951,8 +1843,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("CustomerId");
 
@@ -2020,14 +1910,8 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<DateTime?>("PostedAt")
                         .HasColumnType("datetime2");
@@ -2062,8 +1946,6 @@ namespace NewVixSmart.Web.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("CustomerId");
 
@@ -2124,14 +2006,8 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("CurrencyId")
-                        .HasColumnType("int");
-
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("ExchangeRate")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<DateTime?>("ExpectedDate")
                         .HasColumnType("datetime2");
@@ -2163,8 +2039,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CurrencyId");
 
                     b.HasIndex("CustomerId");
 
@@ -2713,11 +2587,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
                         .WithMany("Payments")
                         .HasForeignKey("CustomerId")
@@ -2727,8 +2596,6 @@ namespace NewVixSmart.Web.Migrations
                         .WithMany("Payments")
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Currency");
 
                     b.Navigation("Customer");
 
@@ -2823,11 +2690,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Purchases.PurchaseOrder", "PurchaseOrder")
                         .WithMany()
                         .HasForeignKey("PurchaseOrderId")
@@ -2840,8 +2702,6 @@ namespace NewVixSmart.Web.Migrations
                         .IsRequired();
 
                     b.Navigation("Branch");
-
-                    b.Navigation("Currency");
 
                     b.Navigation("PurchaseOrder");
 
@@ -2904,11 +2764,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Purchases.PurchaseInvoice", "PurchaseInvoice")
                         .WithMany()
                         .HasForeignKey("PurchaseInvoiceId")
@@ -2919,8 +2774,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Currency");
 
                     b.Navigation("PurchaseInvoice");
 
@@ -2946,16 +2799,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Navigation("PurchaseReturn");
                 });
 
-            modelBuilder.Entity("NewVixSmart.Web.Models.Purchases.Supplier", b =>
-                {
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Currency");
-                });
-
             modelBuilder.Entity("NewVixSmart.Web.Models.Purchases.SupplierQuote", b =>
                 {
                     b.HasOne("NewVixSmart.Web.Models.Core.Item", "Item")
@@ -2973,16 +2816,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("Supplier");
-                });
-
-            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.Customer", b =>
-                {
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Currency");
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssue", b =>
@@ -3110,11 +2943,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
                         .WithMany("SaleInvoices")
                         .HasForeignKey("CustomerId")
@@ -3127,8 +2955,6 @@ namespace NewVixSmart.Web.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Branch");
-
-                    b.Navigation("Currency");
 
                     b.Navigation("Customer");
 
@@ -3156,11 +2982,6 @@ namespace NewVixSmart.Web.Migrations
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.SaleQuote", b =>
                 {
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3181,8 +3002,6 @@ namespace NewVixSmart.Web.Migrations
                         .WithMany()
                         .HasForeignKey("SupplierQuoteId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Currency");
 
                     b.Navigation("Customer");
 
@@ -3219,11 +3038,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
                         .WithMany("SaleReturns")
                         .HasForeignKey("CustomerId")
@@ -3234,8 +3048,6 @@ namespace NewVixSmart.Web.Migrations
                         .WithMany()
                         .HasForeignKey("SaleInvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Currency");
 
                     b.Navigation("Customer");
 
@@ -3263,11 +3075,6 @@ namespace NewVixSmart.Web.Migrations
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.SalesOrder", b =>
                 {
-                    b.HasOne("NewVixSmart.Web.Models.Accounting.Currency", "Currency")
-                        .WithMany()
-                        .HasForeignKey("CurrencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -3278,8 +3085,6 @@ namespace NewVixSmart.Web.Migrations
                         .WithMany()
                         .HasForeignKey("SaleQuoteId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Currency");
 
                     b.Navigation("Customer");
 

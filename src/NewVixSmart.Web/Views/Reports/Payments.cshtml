@@ -45,7 +45,7 @@
                         { <span class="badge bg-danger">صرف</span> }
                     </td>
                     <td>@(p.Customer?.Name ?? p.Supplier?.Name ?? "—")</td>
-                    <td class="fw-bold @(p.Type == PaymentType.Receipt ? "text-success" : "text-danger")">@p.Amount.ToString("N2") ج.م</td>
+                    <td class="fw-bold @(p.Type == PaymentType.Receipt ? "text-success" : "text-danger")">@Money.Format(p.Amount)</td>
                     <td>@p.Method.GetDisplayName()</td>
                     <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
                 </tr>

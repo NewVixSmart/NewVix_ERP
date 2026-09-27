@@ -1,4 +1,4 @@
-@model NewVixSmart.Web.Models.Sales.SaleReturn
+﻿@model NewVixSmart.Web.Models.Sales.SaleReturn
 @using NewVixSmart.Web.ViewModels.Core
 @using NewVixSmart.Web.ViewModels.PrintStudio
 @inject IBrandingService BrandingService
@@ -40,7 +40,6 @@
             Tax = 0m,
             GrandTotal = Model.TotalAmount,
             IsPaid = true,
-            CurrencyCode = ""
         }
     };
     foreach (var item in Model.Items)

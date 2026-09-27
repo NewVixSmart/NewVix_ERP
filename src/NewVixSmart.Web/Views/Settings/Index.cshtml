@@ -1,4 +1,4 @@
-@model NewVixSmart.Web.ViewModels.Core.SettingsViewModel
+﻿@model NewVixSmart.Web.ViewModels.Core.SettingsViewModel
 @{ ViewData["Title"] = "الإعدادات"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
@@ -106,49 +106,6 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-currency-exchange"></i> العملات</span>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCurrencyModal"><i class="bi bi-plus-lg"></i> عملة جديدة</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <thead><tr><th scope="col">الرمز</th><th scope="col">الاسم</th><th scope="col">سعر الصرف</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
-                    <tbody>
-                        @foreach (var c in Model.Currencies)
-                        {
-                            <tr>
-                                <td><strong>@c.Code</strong> @if (c.IsBase) { <span class="badge bg-primary">الأساسية</span> }</td>
-                                <td>@c.Name</td>
-                                <td>@c.ExchangeRate.ToString("N2")</td>
-                                <td>@(c.IsActive ? "نشطة" : "معطلة")</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-currency" data-id="@c.Id" data-code="@c.Code" data-name="@c.Name" data-symbol="@c.Symbol" data-rate="@c.ExchangeRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-active="@c.IsActive.ToString().ToLower()" aria-label="تعديل عملة @c.Code"><i class="bi bi-pencil"></i></button>
-                                    @if (!c.IsBase)
-                                    {
-                                        <form asp-action="SetBaseCurrency" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="جعل @c.Name العملة الأساسية؟" data-confirm-ok="تعيين">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تعيين @c.Name كعملة أساسية"><i class="bi bi-star"></i></button>
-                                        </form>
-                                    }
-                                    <form asp-action="DeleteCurrency" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="حذف هذه العملة؟" data-confirm-ok="حذف">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عملة @c.Code"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                        @if (!Model.Currencies.Any())
-                        {
-                            <tr><td colspan="5" class="text-center text-muted py-4">لا توجد عملات بعد</td></tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-diagram-3"></i> الفروع</span>
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal"><i class="bi bi-plus-lg"></i> فرع جديد</button>
             </div>
@@ -246,65 +203,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="addCurrencyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form asp-action="AddCurrency" method="post" class="modal-content">
-            @Html.AntiForgeryToken()
-            <div class="modal-header"><h5 class="modal-title">عملة جديدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
-            <div class="modal-body">
-                <div class="mb-3"><label class="form-label" for="addCurCode">رمز العملة</label><input name="Code" id="addCurCode" class="form-control" required maxlength="10" placeholder="مثل: USD" /></div>
-                <div class="mb-3"><label class="form-label" for="addCurName">اسم العملة</label><input name="Name" id="addCurName" class="form-control" required maxlength="100" placeholder="مثل: دولار أمريكي" /></div>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label" for="addCurSymbol">الرمز</label>
-                        <input name="Symbol" id="addCurSymbol" class="form-control" maxlength="10" placeholder="$" />
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label" for="addCurRate">سعر الصرف</label>
-                        <input type="number" step="any" name="ExchangeRate" id="addCurRate" class="form-control" value="1" min="0.000001" />
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="modal fade" id="editCurrencyModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form asp-action="UpdateCurrency" method="post" class="modal-content">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="Id" id="editCurrencyId" />
-            <div class="modal-header"><h5 class="modal-title">تعديل العملة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
-            <div class="modal-body">
-                <div class="mb-3"><label class="form-label" for="editCurrencyCode">رمز العملة</label><input name="Code" id="editCurrencyCode" class="form-control" required maxlength="10" /></div>
-                <div class="mb-3"><label class="form-label" for="editCurrencyName">اسم العملة</label><input name="Name" id="editCurrencyName" class="form-control" required maxlength="100" /></div>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label" for="editCurrencySymbol">الرمز</label>
-                        <input name="Symbol" id="editCurrencySymbol" class="form-control" maxlength="10" />
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label" for="editCurrencyRate">سعر الصرف</label>
-                        <input type="number" step="any" name="ExchangeRate" id="editCurrencyRate" class="form-control" min="0.000001" />
-                    </div>
-                </div>
-                <div class="form-check form-switch mt-3">
-                    <input type="checkbox" name="IsActive" value="true" class="form-check-input" id="editCurrencyActive" checked />
-                    <label class="form-check-label" for="editCurrencyActive">نشطة</label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="modal fade" id="addBranchModal" tabindex="-1">
     <div class="modal-dialog">
         <form asp-action="AddBranch" method="post" class="modal-content">
@@ -358,16 +256,6 @@
             parent.value = (this.dataset.parent && this.dataset.parent !== '') ? this.dataset.parent : '';
             document.getElementById('editUnitActive').checked = this.dataset.active === 'true';
             new bootstrap.Modal(document.getElementById('editUnitModal')).show();
-        }));
-
-        document.querySelectorAll('.btn-edit-currency').forEach(btn => btn.addEventListener('click', function() {
-            document.getElementById('editCurrencyId').value = this.dataset.id;
-            document.getElementById('editCurrencyCode').value = this.dataset.code;
-            document.getElementById('editCurrencyName').value = this.dataset.name;
-            document.getElementById('editCurrencySymbol').value = this.dataset.symbol || '';
-            document.getElementById('editCurrencyRate').value = this.dataset.rate || '1';
-            document.getElementById('editCurrencyActive').checked = this.dataset.active === 'true';
-            new bootstrap.Modal(document.getElementById('editCurrencyModal')).show();
         }));
 
         document.querySelectorAll('.btn-edit-branch').forEach(btn => btn.addEventListener('click', function() {

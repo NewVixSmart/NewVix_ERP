@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -40,8 +40,6 @@ public class SalesQuotesController : Controller
                 QuoteNumber = await NextNumberPreviewAsync(),
                 QuoteDate = DateTime.Today,
                 ValidUntil = DateTime.Today.AddDays(7),
-                CurrencyId = await BaseCurrencyIdAsync(),
-                ExchangeRate = 1m
             }
         });
         return View(vm);
@@ -84,7 +82,6 @@ await PopulateDropdowns(vm);
     {
         var query = _db.SaleQuotes
             .Include(q => q.Customer)
-            .Include(q => q.Currency)
             .Include(q => q.SaleInvoice)
             .Include(q => q.SalesOrder)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
@@ -109,7 +106,6 @@ await PopulateDropdowns(vm);
     {
         var quote = await _db.SaleQuotes
             .Include(q => q.Customer)
-            .Include(q => q.Currency)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
             .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
@@ -124,7 +120,6 @@ await PopulateDropdowns(vm);
     {
         var quote = await _db.SaleQuotes
             .Include(q => q.Customer)
-            .Include(q => q.Currency)
             .Include(q => q.SupplierQuote).ThenInclude(sq => sq!.Supplier)
             .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
@@ -201,7 +196,6 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
     private async Task<SaleQuoteViewModel> PopulateDropdowns(SaleQuoteViewModel vm)
     {
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
-        vm.Currencies = new SelectList(await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.SupplierQuotes = new SelectList(await _db.SupplierQuotes.AsNoTracking()
             .Select(sq => new { sq.Id, Label = sq.Supplier.Name + " — " + sq.Item.Name + " (" + sq.UnitPrice.ToString("N2") + ")" })
             .OrderByDescending(x => x.Id)
@@ -209,10 +203,6 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
         vm.ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync();
         return vm;
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 
     private async Task<string> NextNumberPreviewAsync()
     {

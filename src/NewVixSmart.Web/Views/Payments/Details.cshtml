@@ -9,13 +9,11 @@
 <div class="card">
     <div class="card-body">
         <table class="table table-borderless mb-0">
+            <caption class="visually-hidden">بيانات الدفعة</caption>
             <tr><th scope="row" style="width:30%">رقم الإيصال</th><td><code>@Model.ReceiptNumber</code></td></tr>
             <tr><th scope="row">النوع</th><td>@Model.Type.GetDisplayName()</td></tr>
             <tr><th scope="row">العميل/المورد</th><td>@(Model.Customer?.Name ?? Model.Supplier?.Name ?? "—")</td></tr>
-            <tr><th scope="row">العملة</th><td>@(Model.Currency?.Code ?? "ج.م (أساسية)")</td></tr>
-            <tr><th scope="row">سعر الصرف</th><td>@(Model.ExchangeRate.HasValue ? Model.ExchangeRate.Value.ToString("N4") : "—")</td></tr>
-            <tr><th scope="row">المبلغ بالعملة الأساسية</th><td>@Model.BaseAmount.ToString("N2") ج.م</td></tr>
-            <tr><th scope="row">المبلغ</th><td class="fw-bold fs-5">@Model.Amount.ToString("N2") @(Model.Currency?.Code ?? "ج.م")</td></tr>
+            <tr><th scope="row">المبلغ</th><td class="fw-bold fs-5">@Money.Format(Model.Amount)</td></tr>
             <tr><th scope="row">طريقة الدفع</th><td>@Model.Method.GetDisplayName()</td></tr>
             <tr><th scope="row">رقم المرجع</th><td>@(Model.ReferenceNumber ?? "—")</td></tr>
             <tr><th scope="row">التاريخ</th><td>@Model.PaymentDate.ToString("dd/MM/yyyy")</td></tr>
@@ -31,14 +29,12 @@
         <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3 text-primary"></i> توزيع المبالغ على الفواتير</h5></div>
         <div class="card-body table-responsive">
             <table class="table table-sm table-striped align-middle mb-0">
+                <caption class="visually-hidden">توزيع مبلغ الدفعة على الفواتير المرتبطة بها</caption>
                 <thead>
                     <tr>
                         <th scope="col">رقم الفاتورة</th>
                         <th scope="col">النوع</th>
-                        <th scope="col">المبلغ المخصص (أساسي)</th>
-                        <th scope="col">سعر الصرف عند التسوية</th>
-                        <th scope="col">أرباح فرق العملة</th>
-                        <th scope="col">خسائر فرق العملة</th>
+                        <th scope="col">المبلغ المخصص</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,10 +43,7 @@
                         <tr>
                             <td>@(a.SaleInvoice?.InvoiceNumber ?? ("فاتورة بيع #" + a.SaleInvoiceId))</td>
                             <td>مبيعات</td>
-                            <td>@a.AllocatedBaseAmount.ToString("N2") ج.م</td>
-                            <td>@(a.ExchangeRateAtSettlement?.ToString("N4") ?? "—")</td>
-                            <td class="text-success">@(a.FxGain > 0 ? a.FxGain.ToString("N2") + " ج.م" : "—")</td>
-                            <td class="text-danger">@(a.FxLoss > 0 ? a.FxLoss.ToString("N2") + " ج.م" : "—")</td>
+                            <td>@Money.Format(a.AllocatedAmount)</td>
                         </tr>
                     }
                     @foreach (var a in Model.PurchasePaymentAllocations ?? [])
@@ -58,10 +51,7 @@
                         <tr>
                             <td>@(a.PurchaseInvoice?.InvoiceNumber ?? ("فاتورة شراء #" + a.PurchaseInvoiceId))</td>
                             <td>مشتريات</td>
-                            <td>@a.AllocatedBaseAmount.ToString("N2") ج.م</td>
-                            <td>@(a.ExchangeRateAtSettlement?.ToString("N4") ?? "—")</td>
-                            <td class="text-success">@(a.FxGain > 0 ? a.FxGain.ToString("N2") + " ج.م" : "—")</td>
-                            <td class="text-danger">@(a.FxLoss > 0 ? a.FxLoss.ToString("N2") + " ج.م" : "—")</td>
+                            <td>@Money.Format(a.AllocatedAmount)</td>
                         </tr>
                     }
                 </tbody>

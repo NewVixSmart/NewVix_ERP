@@ -85,7 +85,6 @@ public sealed class SalesQuotesEnhancementsTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه سوداني", Symbol = "ج.س", ExchangeRate = 1m, IsBase = true, IsActive = true });
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 50, Count = 0, UnitCost = 40m, RemainingQty = 50, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 

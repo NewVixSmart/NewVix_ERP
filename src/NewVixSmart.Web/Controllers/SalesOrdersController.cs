@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -48,13 +48,10 @@ public class SalesOrdersController : Controller
         var vm = new SalesOrderViewModel
         {
             Customers = new SelectList(await CustomersAsync(), "Id", "Name"),
-            Currencies = new SelectList(await CurrenciesAsync(), "Id", "Code"),
             ItemsData = await ItemsAsync(),
             Order = new SalesOrder
             {
                 OrderDate = DateTime.Today,
-                CurrencyId = await BaseCurrencyIdAsync(),
-                ExchangeRate = 1m
             }
         };
 
@@ -64,8 +61,6 @@ public class SalesOrdersController : Controller
             if (quote != null)
             {
                 vm.Order.CustomerId = quote.CustomerId;
-                vm.Order.CurrencyId = quote.CurrencyId;
-                vm.Order.ExchangeRate = quote.ExchangeRate;
                 vm.Order.Notes = quote.Notes;
                 vm.Order.SaleQuoteId = quote.Id;
                 foreach (var l in quote.Items)
@@ -222,23 +217,15 @@ public class SalesOrdersController : Controller
     private async Task Populate(SalesOrderViewModel vm)
     {
         vm.Customers = new SelectList(await CustomersAsync(), "Id", "Name", vm.Order.CustomerId);
-        vm.Currencies = new SelectList(await CurrenciesAsync(), "Id", "Code", vm.Order.CurrencyId);
         vm.ItemsData = await ItemsAsync();
     }
 
     private async Task<List<Customer>> CustomersAsync()
         => await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync();
 
-    private async Task<List<Currency>> CurrenciesAsync()
-        => await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync();
-
     private async Task<List<Item>> ItemsAsync()
         => await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking()
             .Include(i => i.CountUnit).Include(i => i.QuantityUnit).ToListAsync();
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 
     private async Task<SaleQuote?> GetQuoteAsync(int id)
         => await _db.SaleQuotes.AsNoTracking().Include(q => q.Items)

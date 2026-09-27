@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -72,7 +72,7 @@ public sealed class FiscalCloseTests : IDisposable
 
         await fiscal.EnsurePeriodAsync(2026);
 
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, "test");
         await accounting.PostAsync(JournalSource.PurchaseInvoice, 2, new DateTime(2026, 3, 11), "فاتورة شراء",
             new[] { new JournalLine("5000", 40m, 0m), new JournalLine("2000", 0m, 40m) }, "test");
 
@@ -129,7 +129,7 @@ public sealed class FiscalCloseTests : IDisposable
         var fiscal = CreateFiscalService(db);
 
         await fiscal.EnsurePeriodAsync(2026);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 2, 1), 1, 100m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 2, 1), 1, 100m, 0m, "test");
         await accounting.RecordSaleReturnAsync(new DateTime(2026, 2, 2), 30m, "test");
 
         var summary = await fiscal.CloseYearAsync(2026, "admin");
@@ -156,7 +156,7 @@ public sealed class FiscalCloseTests : IDisposable
         var fiscal = CreateFiscalService(db);
 
         await fiscal.EnsurePeriodAsync(2026);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, "test");
 
         var financing = await db.GLAccounts.SingleAsync(a => a.Code == "4000");
         financing.IsActive = false;
@@ -184,11 +184,11 @@ public sealed class FiscalCloseTests : IDisposable
         await CloseYearAsync(db);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            accounting.RecordSaleInvoiceAsync(new DateTime(2026, 6, 1), 1, 50m, 0m, null, null, "test"));
+            accounting.RecordSaleInvoiceAsync(new DateTime(2026, 6, 1), 1, 50m, 0m, "test"));
         Assert.Contains("مغلقة", ex.Message);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 6, 1), 2, 20m, null, null, "test"));
+            accounting.RecordPurchaseInvoiceAsync(new DateTime(2026, 6, 1), 2, 20m, "test"));
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class FiscalCloseTests : IDisposable
 
         await CloseYearAsync(db);
 
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2027, 1, 5), 1, 50m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2027, 1, 5), 1, 50m, 0m, "test");
         Assert.Equal(1, await db.JournalEntries.CountAsync(j => j.Date.Year == 2027));
     }
 
@@ -310,7 +310,7 @@ public sealed class FiscalCloseTests : IDisposable
         var fiscal = CreateFiscalService(db);
 
         await fiscal.EnsurePeriodAsync(2026);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 3, 10), 1, 100m, 0m, "test");
         await accounting.PostAsync(JournalSource.PurchaseInvoice, 2, new DateTime(2026, 3, 11), "فاتورة شراء",
             new[] { new JournalLine("5000", 40m, 0m), new JournalLine("2000", 0m, 40m) }, "test");
 

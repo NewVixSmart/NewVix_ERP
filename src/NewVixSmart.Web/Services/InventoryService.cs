@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
@@ -477,7 +477,7 @@ public sealed class InventoryService : IInventoryService
 
                 if (_accounting != null && costTotal > 0)
                     await _accounting.RecordSaleIssueCostAsync(issue.IssueDate, issue.Id, costTotal,
-                        null, null, user, branchId);
+                        user, branchId);
 
                 issue.Status = DeliveryIssueStatus.Issued;
                 issue.IssuedBy = user;
@@ -677,12 +677,9 @@ public sealed class InventoryService : IInventoryService
                     if (invoice.Tax > 0m)
                         taxShare = invoice.Tax * share;
                 }
-                var localValue = decimal.Round(value * (invoice.ExchangeRate ?? 1m), 2);
-                var localTax = decimal.Round(taxShare * (invoice.ExchangeRate ?? 1m), 2);
-
-                if (_accounting != null && (localValue > 0 || costTotal > 0))
+                if (_accounting != null && (value > 0 || costTotal > 0))
                     await _accounting.RecordSaleDeliveryAsync(delivery.DeliveryDate, invoice.CustomerId,
-                        localValue, costTotal, invoice.CurrencyId, invoice.ExchangeRate, user, branchId, delivery.Id, localTax);
+                        value, costTotal, user, branchId, delivery.Id, taxShare);
 
                 delivery.Status = DeliveryOrderStatus.Delivered;
                 delivery.DeliveredBy = user;
@@ -690,7 +687,7 @@ public sealed class InventoryService : IInventoryService
                 await _db.SaveChangesAsync();
                 await tx.CommitAsync();
                 _logger?.LogInformation("رحّل أذن تسليم {Owner} رقم {Number} بقيمة {Val:C} وكلفة {Cost:C} فخصم المخزون ورصيد العميل",
-                    user, delivery.DeliveryNumber, localValue, costTotal);
+                    user, delivery.DeliveryNumber, value, costTotal);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
@@ -791,7 +788,7 @@ public sealed class InventoryService : IInventoryService
             if (item == null) continue;
             var priceLine = group.LastOrDefault(l => l.Quantity > 0);
             if (priceLine != null)
-                item.PurchasePrice = decimal.Round(priceLine.UnitPrice * (invoice.ExchangeRate ?? 1m), 2);
+                item.PurchasePrice = priceLine.UnitPrice;
         }
 
         if (valid.Any(i => i.Discount > i.Gross))
@@ -835,14 +832,14 @@ public sealed class InventoryService : IInventoryService
             movementDate: invoice.InvoiceDate, user);
         if (stockError != null) { _db.ChangeTracker.Clear(); return (false, stockError); }
 
-        await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate, invoice.ExchangeRate);
+        await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate);
 
         if (_accounting != null && invoice.NetAmount > 0)
-            await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, invoice.CurrencyId, invoice.ExchangeRate, user, branchId);
+            await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, user, branchId);
 
         if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
             await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
-                decimal.Round(invoice.NetAmount * (invoice.ExchangeRate ?? 1m), 2),
+                invoice.NetAmount,
                 PaymentMethod.Cash, invoice.SupplierId, user, branchId);
 
         _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
@@ -926,8 +923,6 @@ public sealed class InventoryService : IInventoryService
                 var returnError = await ValidateSaleReturnQuantitiesAsync(saleReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
 
-                await ReconcileSaleReturnCurrencyAsync(saleReturn);
-
                 var invPrices = await _db.SaleInvoiceItems.AsNoTracking()
                     .Where(i => i.SaleInvoiceId == saleReturn.SaleInvoiceId)
                     .Select(i => new { i.ItemId, i.UnitPrice })
@@ -952,7 +947,7 @@ public sealed class InventoryService : IInventoryService
                     movementDate: saleReturn.ReturnDate, user);
                 if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
 
-                var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate, saleReturn.ExchangeRate);
+                var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate);
 
                 // Reverse the source invoice proportionally: f = returned gross / invoice gross.
                 // Without a source invoice there is nothing to prorate, so the return stands on
@@ -975,7 +970,7 @@ public sealed class InventoryService : IInventoryService
                     await _accounting.RecordSaleReturnWithCostAsync(
                         saleReturn.ReturnDate, saleReturn.Id, saleReturn.CustomerId,
                         mirror.ContraValue, costTotal,
-                        saleReturn.CurrencyId, saleReturn.ExchangeRate, user, saleReturn.BranchId, mirror.Tax);
+                        user, saleReturn.BranchId, mirror.Tax);
 
                 saleReturn.Status = ReturnStatus.Posted;
                 saleReturn.PostedBy = user;
@@ -1074,8 +1069,6 @@ public sealed class InventoryService : IInventoryService
                 var returnError = await ValidatePurchaseReturnQuantitiesAsync(purchaseReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
 
-                await ReconcilePurchaseReturnCurrencyAsync(purchaseReturn);
-
                 var invPrices = await _db.PurchaseInvoiceItems.AsNoTracking()
                     .Where(i => i.PurchaseInvoiceId == purchaseReturn.PurchaseInvoiceId)
                     .Select(i => new { i.ItemId, i.UnitPrice })
@@ -1125,7 +1118,7 @@ public sealed class InventoryService : IInventoryService
                     await _accounting.RecordPurchaseReturnWithCostAsync(
                         purchaseReturn.ReturnDate, purchaseReturn.Id, purchaseReturn.SupplierId,
                         mirror.Receivable, costTotal,
-                        purchaseReturn.CurrencyId, purchaseReturn.ExchangeRate, user, purchaseReturn.BranchId);
+                        user, purchaseReturn.BranchId);
 
                 purchaseReturn.Status = ReturnStatus.Posted;
                 purchaseReturn.PostedBy = user;
@@ -1453,20 +1446,19 @@ public sealed class InventoryService : IInventoryService
         return new ConsumedCostResult(qtyCost, countCost, qtyCost > 0 ? qtyCost : countCost);
     }
 
-    private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived, decimal? exchangeRate)
+    private async Task ReplenishFifoLayersAsync(List<PurchaseInvoiceItem> lines, DateTime dateReceived)
     {
-        var rate = exchangeRate ?? 1m;
         foreach (var line in lines)
         {
             if (line.Quantity <= 0 && line.Count <= 0) continue;
-            var baseUnitCost = decimal.Round(line.UnitPrice * rate, 2);
+            var unitCost = decimal.Round(line.UnitPrice, 2);
             CreateOrTopUpLayer(line.ItemId, line.Quantity, line.Count,
-                baseUnitCost, baseUnitCost, dateReceived);
+                unitCost, unitCost, dateReceived);
         }
         await _db.SaveChangesAsync();
     }
 
-    private async Task<decimal> RestoreSaleReturnLayersAsync(List<SaleReturnItem> items, DateTime returnDate, decimal? exchangeRate)
+    private async Task<decimal> RestoreSaleReturnLayersAsync(List<SaleReturnItem> items, DateTime returnDate)
     {
         var totalCost = 0m;
         var returnItemIds = items.Select(i => i.ItemId).Distinct().ToList();
@@ -1518,7 +1510,7 @@ public sealed class InventoryService : IInventoryService
             {
                 var price = itemsById.TryGetValue(item.ItemId, out var it)
                     ? it.PurchasePrice
-                    : decimal.Round(item.UnitPrice * (exchangeRate ?? 1m), 2);
+                    : decimal.Round(item.UnitPrice, 2);
                 totalCost += (quantityDriven ? remainingQty : remainingCount) * price;
                 CreateOrTopUpLayer(item.ItemId, remainingQty, remainingCount, price, price, returnDate);
             }
@@ -1561,36 +1553,6 @@ public sealed class InventoryService : IInventoryService
         }
     }
 
-    // The interactive path already copies the source invoice's currency and rate onto the
-    // return (SaleReturnsController), but ImportCenterService applies a CSV row's own
-    // CurrencyId/ExchangeRate and then posts through this same method. Without a backstop
-    // here an imported return could name its source invoice and still book the receivable
-    // credit at an unrelated rate, because the accounting entry multiplies the gross by this
-    // rate. Reconciling in the service covers every caller. A return with no source invoice
-    // has nothing to reconcile against and deliberately keeps the caller's values.
-    private async Task ReconcileSaleReturnCurrencyAsync(SaleReturn saleReturn)
-    {
-        if (saleReturn.SaleInvoiceId is not int invoiceId) return;
-        var source = await _db.SaleInvoices.AsNoTracking()
-            .Where(i => i.Id == invoiceId)
-            .Select(i => new { i.CurrencyId, i.ExchangeRate })
-            .FirstOrDefaultAsync();
-        if (source?.CurrencyId == null) return;
-        saleReturn.CurrencyId = source.CurrencyId;
-        saleReturn.ExchangeRate = source.ExchangeRate is > 0 ? source.ExchangeRate : 1m;
-    }
-
-    private async Task ReconcilePurchaseReturnCurrencyAsync(PurchaseReturn purchaseReturn)
-    {
-        if (purchaseReturn.PurchaseInvoiceId is not int invoiceId) return;
-        var source = await _db.PurchaseInvoices.AsNoTracking()
-            .Where(i => i.Id == invoiceId)
-            .Select(i => new { i.CurrencyId, i.ExchangeRate })
-            .FirstOrDefaultAsync();
-        if (source?.CurrencyId == null) return;
-        purchaseReturn.CurrencyId = source.CurrencyId;
-        purchaseReturn.ExchangeRate = source.ExchangeRate is > 0 ? source.ExchangeRate : 1m;
-    }
 
     private async Task<string?> ValidateSaleReturnQuantitiesAsync(SaleReturn saleReturn, List<SaleReturnItem> valid)
     {

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -38,8 +38,6 @@ public class BatchController : Controller
     {
         var vm = new BatchSalesViewModel
         {
-            CurrencyId = await BaseCurrencyIdAsync(),
-            ExchangeRate = 1m
         };
         await PopulateSalesAsync(vm);
         return View(vm);
@@ -63,8 +61,6 @@ public class BatchController : Controller
                 vm.CustomerId,
                 vm.InvoiceDate,
                 vm.PaymentTerms,
-                vm.CurrencyId,
-                vm.ExchangeRate,
                 vm.Discount,
                 vm.Discount2,
                 vm.Discount3,
@@ -142,16 +138,10 @@ public class BatchController : Controller
     {
         vm.Customers = new SelectList(
             await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
-        vm.Currencies = new SelectList(
-            await _db.Currencies.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Code");
         vm.ItemsData = await ItemsDataAsync();
     }
 
     private Task<List<NewVixSmart.Web.Models.Core.Item>> ItemsDataAsync() =>
         _db.Items.Include(i => i.CountUnit).Include(i => i.QuantityUnit)
             .Where(i => i.IsActive).AsNoTracking().ToListAsync();
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

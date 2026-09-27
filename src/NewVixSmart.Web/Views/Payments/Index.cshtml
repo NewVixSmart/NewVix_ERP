@@ -27,11 +27,11 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
-        <thead><tr><th scope="col">الإيصال</th><th scope="col">النوع</th><th scope="col">العميل/المورد</th><th scope="col">المبلغ</th><th scope="col">العملة</th><th scope="col">سعر الصرف</th><th scope="col">المبلغ الأساسي</th><th scope="col">الطريقة</th><th scope="col">التاريخ</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+        <caption class="visually-hidden">قائمة الدفعات مقبوضة ومصروفة</caption>
+        <thead><tr><th scope="col">الإيصال</th><th scope="col">النوع</th><th scope="col">العميل/المورد</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th><th scope="col">التاريخ</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
         <tbody>
             @foreach (var p in Model)
             {
-                var isForeign = p.CurrencyId.HasValue && p.ExchangeRate.HasValue;
                 <tr>
                     <td><code>@p.ReceiptNumber</code></td>
                     <td>
@@ -42,11 +42,8 @@
                     </td>
                     <td>@(p.Customer?.Name ?? p.Supplier?.Name ?? "—")</td>
                     <td class="fw-bold @(p.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt ? "text-success" : "text-danger")">
-                        @p.Amount.ToString("N2") @(p.Currency?.Code ?? "ج.م")
+                        @Money.Format(p.Amount)
                     </td>
-                    <td>@(p.Currency?.Code ?? "—")</td>
-                    <td>@(isForeign ? p.ExchangeRate?.ToString("N4") : "—")</td>
-                    <td>@(isForeign ? p.BaseAmount.ToString("N2") + " ج.م" : "—")</td>
                     <td>@p.Method.GetDisplayName()</td>
                     <td>@p.PaymentDate.ToString("dd/MM/yyyy")</td>
                     <td class="text-center">

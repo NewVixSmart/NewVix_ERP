@@ -1,4 +1,4 @@
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
@@ -390,13 +390,42 @@ public class ReportService : IReportService
         return ms.ToArray();
     }
 
+    public async Task<PaymentReportViewModel> PaymentsReportAsync(DateTime? from, DateTime? to)
+    {
+        var today = DateTime.Today;
+        var fromDate = from?.Date ?? new DateTime(today.Year, today.Month, 1);
+        var toDate = to?.Date ?? today;
+
+        // The upper bound is exclusive at the next midnight, not "<= toDate". PaymentDate keeps a
+        // time component, so comparing against to.Date (= midnight) silently dropped every
+        // receipt taken on the end date - including the one the user just recorded.
+        var payments = await _db.Payments
+            .AsNoTracking()
+            .Include(p => p.Customer)
+            .Include(p => p.Supplier)
+            .Where(p => p.PaymentDate >= fromDate && p.PaymentDate < toDate.AddDays(1))
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync();
+
+        return new PaymentReportViewModel
+        {
+            From = fromDate,
+            To = toDate,
+            Payments = payments,
+            ReceiptCount = payments.Count(p => p.Type == PaymentType.Receipt),
+            DisbursementCount = payments.Count(p => p.Type == PaymentType.Disbursement),
+            TotalReceipts = payments.Where(p => p.Type == PaymentType.Receipt).Sum(p => p.Amount),
+            TotalDisbursements = payments.Where(p => p.Type == PaymentType.Disbursement).Sum(p => p.Amount)
+        };
+    }
+
     public async Task<byte[]> ExportPaymentsXlsxAsync(DateTime from, DateTime to)
     {
         var payments = await _db.Payments
             .AsNoTracking()
             .Include(p => p.Customer)
             .Include(p => p.Supplier)
-            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to)
+            .Where(p => p.PaymentDate >= from && p.PaymentDate < to.Date.AddDays(1))
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync();
 
@@ -675,12 +704,18 @@ public class ReportService : IReportService
         var today = DateTime.Today;
         var vm = new AgingReportViewModel { AsOf = today };
 
+        // Match the collectable set used by PaymentService: an invoice ages once it is
+        // delivered, whether that happened through a DeliveryOrder (invoice-first) or through
+        // the delivery issues that carry the invoice (order-first). Filtering on
+        // DeliveryOrders alone silently dropped the order-first invoices from the AR report
+        // even though the GL had already booked the receivable.
         var saleInvoices = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
             .Include(s => s.Items)
             .Where(s => s.PaidAmount < s.NetAmount)
-            .Where(s => _db.DeliveryOrders.Any(d => d.SaleInvoiceId == s.Id && d.Status == NewVixSmart.Web.Models.Sales.DeliveryOrderStatus.Delivered))
+            .Where(s => _db.DeliveryOrders.Any(d => d.SaleInvoiceId == s.Id && d.Status == NewVixSmart.Web.Models.Sales.DeliveryOrderStatus.Delivered)
+                     || _db.DeliveryIssues.Any(i => i.SaleInvoiceId == s.Id && i.Status == NewVixSmart.Web.Models.Sales.DeliveryIssueStatus.Issued))
             .ToListAsync();
 
         var deliveredOrders = await _db.DeliveryOrders
@@ -700,7 +735,6 @@ public class ReportService : IReportService
             {
                 r.SaleInvoiceId,
                 r.TotalAmount,
-                r.ExchangeRate,
                 InvoiceGross = r.SaleInvoice != null ? r.SaleInvoice.TotalAmount : 0m,
                 InvoiceNet = r.SaleInvoice != null ? r.SaleInvoice.NetAmount : 0m
             })
@@ -709,20 +743,19 @@ public class ReportService : IReportService
             .Where(r => r.SaleInvoiceId.HasValue)
             .GroupBy(r => r.SaleInvoiceId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
-                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet) * (r.ExchangeRate ?? 1m), 2)));
+                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet), 2)));
 
         var saleAllocations = await _db.SalePaymentAllocations
             .AsNoTracking()
-            .Select(a => new { a.SaleInvoiceId, a.AllocatedBaseAmount })
+            .Select(a => new { a.SaleInvoiceId, a.AllocatedAmount })
             .ToListAsync();
         var allocatedBySale = saleAllocations
             .GroupBy(a => a.SaleInvoiceId)
-            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount));
 
         var receivableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var s in saleInvoices)
         {
-            var rate = s.ExchangeRate ?? 1m;
             decimal deliveredBase = 0m;
             if (ordersBySaleInvoice.TryGetValue(s.Id, out var orders))
             {
@@ -739,16 +772,16 @@ public class ReportService : IReportService
                     if (rawValue <= 0m) orderBase = s.NetAmount;
                     else if (s.TotalAmount > 0m && s.NetAmount >= 0m) orderBase = decimal.Round(s.NetAmount * (rawValue / s.TotalAmount), 2);
                     else orderBase = rawValue;
-                    deliveredBase += decimal.Round(orderBase * rate, 2);
+                    deliveredBase += decimal.Round(orderBase, 2);
                 }
             }
             else
             {
-                deliveredBase = decimal.Round(s.NetAmount * rate, 2);
+                deliveredBase = decimal.Round(s.NetAmount, 2);
             }
             var paidBase = allocatedBySale.GetValueOrDefault(s.Id);
             if (paidBase <= 0m && s.PaidAmount > 0m)
-                paidBase = decimal.Round(s.PaidAmount * rate, 2);
+                paidBase = decimal.Round(s.PaidAmount, 2);
             var outstanding = deliveredBase
                 - paidBase
                 - returnsBySaleInvoice.GetValueOrDefault(s.Id);
@@ -762,7 +795,7 @@ public class ReportService : IReportService
             .Where(r => r.Status == ReturnStatus.Posted && r.SaleInvoiceId == null)
             .ToListAsync();
         receivableLines.AddRange(standaloneSaleReturns.Select(r =>
-            (r.CustomerId, r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+            (r.CustomerId, r.Customer?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount, 2))));
 
         var customerOpenings = await _db.Customers.AsNoTracking()
             .Where(c => c.OpeningBalance != 0m)
@@ -791,7 +824,6 @@ public class ReportService : IReportService
             {
                 r.PurchaseInvoiceId,
                 r.TotalAmount,
-                r.ExchangeRate,
                 InvoiceGross = r.PurchaseInvoice != null ? r.PurchaseInvoice.TotalAmount : 0m,
                 InvoiceNet = r.PurchaseInvoice != null ? r.PurchaseInvoice.NetAmount : 0m
             })
@@ -800,24 +832,23 @@ public class ReportService : IReportService
             .Where(r => r.PurchaseInvoiceId.HasValue)
             .GroupBy(r => r.PurchaseInvoiceId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
-                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet) * (r.ExchangeRate ?? 1m), 2)));
+                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet), 2)));
 
         var purchaseAllocations = await _db.PurchasePaymentAllocations
             .AsNoTracking()
-            .Select(a => new { a.PurchaseInvoiceId, a.AllocatedBaseAmount })
+            .Select(a => new { a.PurchaseInvoiceId, a.AllocatedAmount })
             .ToListAsync();
         var allocatedByPurchase = purchaseAllocations
             .GroupBy(a => a.PurchaseInvoiceId)
-            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedBaseAmount));
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount));
 
         var payableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var p in purchaseInvoices)
         {
-            var rate = p.ExchangeRate ?? 1m;
             var paidBase = allocatedByPurchase.GetValueOrDefault(p.Id);
             if (paidBase <= 0m && p.PaidAmount > 0m)
-                paidBase = decimal.Round(p.PaidAmount * rate, 2);
-            var outstanding = decimal.Round(p.NetAmount * rate, 2)
+                paidBase = decimal.Round(p.PaidAmount, 2);
+            var outstanding = decimal.Round(p.NetAmount, 2)
                 - paidBase
                 - returnsByPurchaseInvoice.GetValueOrDefault(p.Id);
             if (outstanding > 0.005m)
@@ -830,7 +861,7 @@ public class ReportService : IReportService
             .Where(r => r.Status == ReturnStatus.Posted && r.PurchaseInvoiceId == null)
             .ToListAsync();
         payableLines.AddRange(standalonePurchaseReturns.Select(r =>
-            (r.SupplierId, r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2))));
+            (r.SupplierId, r.Supplier?.Name ?? "—", r.ReturnDate, -decimal.Round(r.TotalAmount, 2))));
 
         var supplierOpenings = await _db.Suppliers.AsNoTracking()
             .Where(s => s.OpeningBalance != 0m)
@@ -959,12 +990,11 @@ public class ReportService : IReportService
             {
                 p.InvoiceDate,
                 p.NetAmount,
-                p.ExchangeRate,
                 p.InvoiceNumber,
                 SupplierName = p.Supplier != null ? p.Supplier.Name : ""
             })
             .ToListAsync())
-            .Select(p => new { p.InvoiceDate, p.InvoiceNumber, p.SupplierName, Base = decimal.Round(p.NetAmount * (p.ExchangeRate ?? 1m), 2) })
+            .Select(p => new { p.InvoiceDate, p.InvoiceNumber, p.SupplierName, Base = decimal.Round(p.NetAmount, 2) })
             .ToList();
 
         var vm = new CashFlowReportViewModel { From = fromDate, To = toDate };
@@ -972,7 +1002,7 @@ public class ReportService : IReportService
         foreach (var p in payments)
         {
             if (p.PaymentDate >= fromDate) break;
-            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            var amount = p.Amount;
             vm.OpeningBalance += p.Type == PaymentType.Receipt ? amount : -amount;
         }
         foreach (var s in onReceiptPurchases)
@@ -984,7 +1014,7 @@ public class ReportService : IReportService
         vm.Payments = period;
         foreach (var p in period)
         {
-            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            var amount = p.Amount;
             if (p.Type == PaymentType.Receipt) vm.TotalReceipts += amount;
             else vm.TotalDisbursements += amount;
         }
@@ -998,8 +1028,8 @@ public class ReportService : IReportService
             .Select(g => new CashFlowMethodTotal
             {
                 Method = g.Key,
-                Receipts = g.Where(p => p.Type == PaymentType.Receipt).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount),
-                Disbursements = g.Where(p => p.Type == PaymentType.Disbursement).Sum(p => p.BaseAmount > 0 ? p.BaseAmount : p.Amount)
+                Receipts = g.Where(p => p.Type == PaymentType.Receipt).Sum(p => p.Amount),
+                Disbursements = g.Where(p => p.Type == PaymentType.Disbursement).Sum(p => p.Amount)
             })
             .ToList();
 
@@ -1026,7 +1056,7 @@ public class ReportService : IReportService
         var details = new List<CashFlowDetailLine>();
         foreach (var p in period)
         {
-            var amount = p.BaseAmount > 0 ? p.BaseAmount : p.Amount;
+            var amount = p.Amount;
             details.Add(new CashFlowDetailLine(
                 p.PaymentDate,
                 p.ReceiptNumber,
@@ -1206,7 +1236,6 @@ public class ReportService : IReportService
                 && i.SalesOrder.Status != SalesOrderStatus.Cancelled)
             .Select(i => new
             {
-                Base = i.SalesOrder.ExchangeRate ?? 1m,
                 i.UnitPrice,
                 i.Quantity,
                 i.Count,
@@ -1217,7 +1246,7 @@ public class ReportService : IReportService
 
         return decimal.Round(rows
             .Where(r => r.Quantity - r.DeliveredQty > 0 || r.Count - r.DeliveredCount > 0)
-            .Sum(r => (r.Quantity - r.DeliveredQty > 0 ? r.Quantity - r.DeliveredQty : r.Count - r.DeliveredCount) * r.UnitPrice * r.Base), 2);
+            .Sum(r => (r.Quantity - r.DeliveredQty > 0 ? r.Quantity - r.DeliveredQty : r.Count - r.DeliveredCount) * r.UnitPrice), 2);
     }
 
     public async Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId)
@@ -1234,12 +1263,12 @@ public class ReportService : IReportService
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
         foreach (var inv in invoices)
         {
-            lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
-                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount, 2)));
         }
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
-        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.Amount));
 
         var pendingValue = await GetPendingDeliveriesValueAsync(customerId);
 
@@ -1260,12 +1289,12 @@ public class ReportService : IReportService
         var lines = new List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)>();
         foreach (var inv in invoices)
         {
-            lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount * (inv.ExchangeRate ?? 1m), 2), 0));
+            lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
-                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount * (inv.ExchangeRate ?? 1m), 2)));
+                lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount, 2)));
         }
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
-        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.BaseAmount > 0 ? d.BaseAmount : d.Amount));
+        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.Amount));
 
         return BuildStatementWorkbook($"كشف حساب — {supplier.Name}", supplier.OpeningBalance, lines);
     }

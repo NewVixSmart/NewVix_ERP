@@ -11,12 +11,18 @@ using Xunit;
 
 namespace NewVixSmart.Web.Tests;
 
-public sealed class AuditN15FxTests : IDisposable
+/// <summary>
+/// Settlement invariants in the single-currency (EGP) ledger. These replace the
+/// former N15 foreign-exchange suite; the point of the original cases — no unit
+/// mixing, exact application, FIFO across invoices, and full rollback of a
+/// rejected overpayment — still has to hold, only without a second currency.
+/// </summary>
+public sealed class AuditN15SettlementTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _options;
 
-    public AuditN15FxTests()
+    public AuditN15SettlementTests()
     {
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
@@ -39,22 +45,13 @@ public sealed class AuditN15FxTests : IDisposable
             ("1300", "المخزون", GLAccountType.Asset, NormalBalance.Debit),
             ("2000", "الدائنون (الموردون)", GLAccountType.Liability, NormalBalance.Credit),
             ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
-            ("4400", "خسائر فروقات العملة (عملة أجنبية)", GLAccountType.Expense, NormalBalance.Debit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
-            ("8400", "أرباح فروقات العملة (عملة أجنبية)", GLAccountType.Revenue, NormalBalance.Credit),
         };
         foreach (var (code, name, type, normal) in accounts)
         {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
         }
         db.SaveChanges();
-    }
-
-    private async Task SeedCurrenciesAsync(AppDbContext db)
-    {
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه سوداني", Symbol = "ج.س", ExchangeRate = 1m, IsBase = true, IsActive = true });
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار أمريكي", Symbol = "$", ExchangeRate = 500m, IsBase = false, IsActive = true });
-        await db.SaveChangesAsync();
     }
 
     private async Task<int> SeedCustomerAsync(AppDbContext db)
@@ -71,7 +68,7 @@ public sealed class AuditN15FxTests : IDisposable
         return (await db.Suppliers.SingleAsync()).Id;
     }
 
-    private static async Task<SaleInvoice> SeedBaseSaleInvoiceAsync(AppDbContext db, int customerId, decimal net, DateTime date)
+    private static async Task<SaleInvoice> SeedSaleInvoiceAsync(AppDbContext db, int customerId, decimal net, DateTime date)
     {
         var inv = new SaleInvoice
         {
@@ -97,7 +94,7 @@ public sealed class AuditN15FxTests : IDisposable
         return inv;
     }
 
-    private static async Task<Models.Purchases.PurchaseInvoice> SeedBasePurchaseInvoiceAsync(AppDbContext db, int supplierId, decimal net, DateTime date)
+    private static async Task<Models.Purchases.PurchaseInvoice> SeedPurchaseInvoiceAsync(AppDbContext db, int supplierId, decimal net, DateTime date)
     {
         var inv = new Models.Purchases.PurchaseInvoice
         {
@@ -113,103 +110,120 @@ public sealed class AuditN15FxTests : IDisposable
         return inv;
     }
 
-    // (1) Foreign payment settles a base (local-currency) invoice entirely in base units:
-    //     100 USD @500 = 50,000 SDG against a 50,000 SDG invoice, no phantom FX, no unit mixing.
+    // (1) A receipt clears its invoice exactly, with no unit mixing and no FX leg.
     [Fact]
-    public async Task ForeignPayment_SettlesBaseInvoice_Exactly_InBaseUnits()
+    public async Task Receipt_SettlesInvoice_Exactly()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var cust = await SeedCustomerAsync(db);
-        await SeedBaseSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
+        await SeedSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
             ReceiptNumber = "PAY-N15-1",
             Type = PaymentType.Receipt,
             CustomerId = cust,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Amount = 100m,
+            Amount = 50000m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
 
         Assert.True(ok, error);
-        Assert.Equal(50000m, payment!.BaseAmount);
+        Assert.Equal(50000m, payment!.Amount);
         var inv = await db.SaleInvoices.SingleAsync();
         Assert.Equal(50000m, inv.PaidAmount);
         Assert.True(inv.IsPaid);
         Assert.Equal(0m, inv.PaidAmount - inv.NetAmount);
 
         var allocation = await db.SalePaymentAllocations.SingleAsync();
-        Assert.Equal(50000m, allocation.AllocatedBaseAmount);
-        Assert.Equal(0m, allocation.FxGain);
-        Assert.Equal(0m, allocation.FxLoss);
-        Assert.Equal(500m, allocation.ExchangeRateAtSettlement);
+        Assert.Equal(50000m, allocation.AllocatedAmount);
 
         var lines = await db.JournalEntryLines.Include(l => l.Account).ToListAsync();
         Assert.Equal(2, lines.Count);
         Assert.Contains(lines, l => l.Account!.Code == "1000" && l.Debit == 50000m);
         Assert.Contains(lines, l => l.Account!.Code == "1200" && l.Credit == 50000m);
-        Assert.False(await db.JournalEntryLines.Include(l => l.Account).AnyAsync(l => l.Account!.Code == "8400"));
-        Assert.False(await db.JournalEntryLines.Include(l => l.Account).AnyAsync(l => l.Account!.Code == "4400"));
     }
 
-    // (2) Partial foreign payment against a base invoice leaves the remaining balance owed.
+    // (2) A partial receipt leaves the remaining balance owed.
     [Fact]
-    public async Task ForeignPayment_PartiallySettlesBaseInvoice()
+    public async Task Receipt_PartiallySettlesInvoice()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var cust = await SeedCustomerAsync(db);
-        await SeedBaseSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
+        await SeedSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        var (ok, _, _) = await svc.CreatePaymentAsync(new Payment
+        var (ok, error, _) = await svc.CreatePaymentAsync(new Payment
         {
             ReceiptNumber = "PAY-N15-2",
             Type = PaymentType.Receipt,
             CustomerId = cust,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Amount = 50m,
+            Amount = 20000m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
 
-        Assert.True(ok);
+        Assert.True(ok, error);
         var inv = await db.SaleInvoices.SingleAsync();
-        Assert.Equal(25000m, inv.PaidAmount);
+        Assert.Equal(20000m, inv.PaidAmount);
         Assert.False(inv.IsPaid);
-        Assert.Equal(25000m, (await db.SalePaymentAllocations.SingleAsync()).AllocatedBaseAmount);
+        Assert.Equal(20000m, (await db.SalePaymentAllocations.SingleAsync()).AllocatedAmount);
     }
 
-    // (3) Foreign overpayment against a base invoice is rejected and fully rolled back.
+    // (3) A one-piastre overpayment is rejected: the GL posts the full Amount against the
+    // receivable, so any residue the allocation cannot absorb would break the tie between
+    // account 1100 and the AR sub-ledger. Single currency means there is no rounding dust
+    // to forgive, so the payment must be refused instead of half-posted.
     [Fact]
-    public async Task ForeignPayment_OnBaseInvoice_OverPayment_Rejected_NoSideEffects()
+    public async Task Receipt_PennyOver_Rejected_BecauseGlWouldDriftFromArSubledger()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var cust = await SeedCustomerAsync(db);
-        await SeedBaseSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
+        await SeedSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
+        var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
+        {
+            ReceiptNumber = "PAY-N15-3A",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 50000.01m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
+        }, "test");
+
+        Assert.False(ok);
+        Assert.Null(payment);
+        Assert.Contains("أكبر من إجمالي المستحق", error);
+        // Nothing may survive the rollback: no payment row, no partial allocation on the
+        // invoice, and no journal entry that credits the receivable by the whole 50000.01.
+        Assert.False(await db.Payments.AnyAsync(p => p.ReceiptNumber == "PAY-N15-3A"));
+        var inv = await db.SaleInvoices.SingleAsync();
+        Assert.Equal(0m, inv.PaidAmount);
+        Assert.False(inv.IsPaid);
+        Assert.False(await db.SalePaymentAllocations.AnyAsync());
+        Assert.False(await db.JournalEntries.AnyAsync(e => e.Source == JournalSource.Receipt));
+    }
+
+    [Fact]
+    public async Task Receipt_OverPayment_Rejected_NoSideEffects()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        var cust = await SeedCustomerAsync(db);
+        await SeedSaleInvoiceAsync(db, cust, 50000m, DateTime.Today.AddDays(-5));
+        var svc = new PaymentService(db, new AccountingService(db));
+
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
             ReceiptNumber = "PAY-N15-3",
             Type = PaymentType.Receipt,
             CustomerId = cust,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Amount = 110m,
+            Amount = 50050m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
@@ -225,76 +239,66 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.False(inv.IsPaid);
     }
 
-    // (4) Foreign payment spreads across multiple base invoices oldest-first.
+    // (4) One receipt spreads across multiple invoices oldest-first.
     [Fact]
-    public async Task ForeignPayment_SettlesMultipleBaseInvoices_Fifo()
+    public async Task Receipt_SettlesMultipleInvoices_Fifo()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var cust = await SeedCustomerAsync(db);
-        await SeedBaseSaleInvoiceAsync(db, cust, 30000m, DateTime.Today.AddDays(-10));
-        await SeedBaseSaleInvoiceAsync(db, cust, 20000m, DateTime.Today.AddDays(-3));
+        await SeedSaleInvoiceAsync(db, cust, 30000m, DateTime.Today.AddDays(-10));
+        await SeedSaleInvoiceAsync(db, cust, 20000m, DateTime.Today.AddDays(-3));
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        var (ok, _, _) = await svc.CreatePaymentAsync(new Payment
+        var (ok, error, _) = await svc.CreatePaymentAsync(new Payment
         {
             ReceiptNumber = "PAY-N15-4",
             Type = PaymentType.Receipt,
             CustomerId = cust,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Amount = 100m,
+            Amount = 50000m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
 
-        Assert.True(ok);
+        Assert.True(ok, error);
         var invoices = await db.SaleInvoices.OrderBy(i => i.InvoiceDate).ToListAsync();
         Assert.Equal(30000m, invoices[0].PaidAmount);
         Assert.Equal(20000m, invoices[1].PaidAmount);
         Assert.All(invoices, i => Assert.True(i.IsPaid));
         var allocations = await db.SalePaymentAllocations.OrderBy(a => a.SaleInvoiceId).ToListAsync();
         Assert.Equal(2, allocations.Count);
-        Assert.Equal(30000m, allocations[0].AllocatedBaseAmount);
-        Assert.Equal(20000m, allocations[1].AllocatedBaseAmount);
+        Assert.Equal(30000m, allocations[0].AllocatedAmount);
+        Assert.Equal(20000m, allocations[1].AllocatedAmount);
     }
 
-    // (5) Foreign disbursement settles a base purchase invoice (mirror of the receipt path).
+    // (5) A disbursement settles a purchase invoice (mirror of the receipt path).
     [Fact]
-    public async Task ForeignDisbursement_SettlesBasePurchaseInvoice_InBaseUnits()
+    public async Task Disbursement_SettlesPurchaseInvoice()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var sup = await SeedSupplierAsync(db);
-        await SeedBasePurchaseInvoiceAsync(db, sup, 4000m, DateTime.Today.AddDays(-5));
+        await SeedPurchaseInvoiceAsync(db, sup, 4000m, DateTime.Today.AddDays(-5));
         var svc = new PaymentService(db, new AccountingService(db));
 
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
             ReceiptNumber = "PAY-N15-5",
             Type = PaymentType.Disbursement,
             SupplierId = sup,
-            CurrencyId = usd.Id,
-            ExchangeRate = 500m,
-            Amount = 8m,
+            Amount = 4000m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
         }, "test");
 
         Assert.True(ok, error);
-        Assert.Equal(4000m, payment!.BaseAmount);
+        Assert.Equal(4000m, payment!.Amount);
         var inv = await db.PurchaseInvoices.SingleAsync();
         Assert.Equal(4000m, inv.PaidAmount);
         Assert.True(inv.IsPaid);
 
         var allocation = await db.PurchasePaymentAllocations.SingleAsync();
-        Assert.Equal(4000m, allocation.AllocatedBaseAmount);
-        Assert.Equal(0m, allocation.FxGain);
-        Assert.Equal(0m, allocation.FxLoss);
+        Assert.Equal(4000m, allocation.AllocatedAmount);
 
         var lines = await db.JournalEntryLines.Include(l => l.Account).ToListAsync();
         Assert.Equal(2, lines.Count);
@@ -302,14 +306,13 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.Contains(lines, l => l.Account!.Code == "1000" && l.Credit == 4000m);
     }
 
-    // (6) End-to-end foreign invoice lifecycle: create the sale (posts value + COGS at base),
-    //     then settle at a higher rate (posts the FX gain and clears the receivable).
+    // (6) End-to-end lifecycle: the sale posts value + COGS at delivery, then the
+    //     receipt clears the receivable exactly, leaving the ledger balanced.
     [Fact]
-    public async Task ForeignInvoice_Lifecycle_CreateThenSettle_AtHigherRate()
+    public async Task SaleLifecycle_DeliverThenSettle_LeavesLedgerBalanced()
     {
         using var db = CreateContext();
         SeedChartOfAccounts(db);
-        await SeedCurrenciesAsync(db);
         var cat = new ItemCategory { Name = "تصنيف اختبار" };
         var type = new ItemType { Name = "نوع اختبار" };
         var unit = new Unit { Name = "قطعة" };
@@ -338,8 +341,7 @@ public sealed class AuditN15FxTests : IDisposable
 
         var accounting = new AccountingService(db);
         var inventory = new InventoryService(db, accounting);
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        var (ok, err) = await inventory.CreateSaleAsync(new SaleInvoice { CustomerId = customer.Id, CurrencyId = usd.Id, ExchangeRate = 500m, InvoiceDate = invDate, PaymentTerms = InvoicePaymentTerms.Net30 },
+        var (ok, err) = await inventory.CreateSaleAsync(new SaleInvoice { CustomerId = customer.Id, InvoiceDate = invDate, PaymentTerms = InvoicePaymentTerms.Net30 },
             new List<SaleInvoiceItem> { new() { ItemId = item.Id, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok, err);
         Assert.Equal(0, await db.JournalEntries.CountAsync()); // invoice alone posts nothing
@@ -352,8 +354,8 @@ public sealed class AuditN15FxTests : IDisposable
 
         var saleEntry = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).SingleAsync();
         Assert.Equal(320m, (await db.SaleInvoices.SingleAsync()).NetAmount);
-        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1200" && l.Debit == 160000m);
-        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "4000" && l.Credit == 160000m);
+        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1200" && l.Debit == 320m);
+        Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "4000" && l.Credit == 320m);
         Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "5000" && l.Debit == 160m);
         Assert.Contains(saleEntry.Lines, l => l.Account!.Code == "1300" && l.Credit == 160m);
 
@@ -363,8 +365,6 @@ public sealed class AuditN15FxTests : IDisposable
             ReceiptNumber = "PAY-N15-6",
             Type = PaymentType.Receipt,
             CustomerId = customer.Id,
-            CurrencyId = usd.Id,
-            ExchangeRate = 520m,
             Amount = 320m,
             Method = PaymentMethod.Cash,
             PaymentDate = DateTime.Today
@@ -376,18 +376,14 @@ public sealed class AuditN15FxTests : IDisposable
         Assert.True(settled.IsPaid);
 
         var allocation = await db.SalePaymentAllocations.SingleAsync();
-        Assert.Equal(160000m, allocation.AllocatedBaseAmount);
-        Assert.Equal(6400m, allocation.FxGain);
-        Assert.Equal(0m, allocation.FxLoss);
-        Assert.Equal(520m, allocation.ExchangeRateAtSettlement);
+        Assert.Equal(320m, allocation.AllocatedAmount);
 
         var entries = await db.JournalEntries.Include(e => e.Lines).ThenInclude(l => l.Account).ToListAsync();
         Assert.Equal(2, entries.Count);
         var settleEntry = entries.Single(e => e.Source == JournalSource.Receipt);
-        Assert.Contains(settleEntry.Lines, l => l.Account!.Code == "1000" && l.Debit == 166400m);
-        Assert.Contains(settleEntry.Lines, l => l.Account!.Code == "1200" && l.Credit == 160000m);
-        Assert.Contains(settleEntry.Lines, l => l.Account!.Code == "8400" && l.Credit == 6400m);
-        Assert.Null(settleEntry.Lines.FirstOrDefault(l => l.Account!.Code == "4400"));
+        Assert.Contains(settleEntry.Lines, l => l.Account!.Code == "1000" && l.Debit == 320m);
+        Assert.Contains(settleEntry.Lines, l => l.Account!.Code == "1200" && l.Credit == 320m);
+        Assert.Equal(2, settleEntry.Lines.Count);
 
         var allLines = entries.SelectMany(e => e.Lines).ToList();
         Assert.Equal(allLines.Sum(l => l.Debit), allLines.Sum(l => l.Credit));

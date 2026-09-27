@@ -122,7 +122,7 @@
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <span><i class="bi bi-truck text-primary"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
             <span class="badge bg-info text-dark fs-6">
-                @pending.Lines.Count سطراً · @pending.TotalQty.ToString("N0") كمية · @pending.TotalCount.ToString("N0") عدد · @pending.TotalValue.ToString("N2") ر.س
+                @pending.Lines.Count سطراً · @pending.TotalQty.ToString("N0") كمية · @pending.TotalCount.ToString("N0") عدد · @pending.TotalValue.ToString("N2") @Money.Symbol
             </span>
         </div>
         <div class="card-body p-0">

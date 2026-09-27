@@ -27,7 +27,7 @@
                     <td><strong>@s.Name</strong></td>
                     <td>@(s.Phone ?? "—")</td>
                     <td>@(s.Address ?? "—")</td>
-                    <td>@s.OpeningBalance.ToString("N2") ج.م</td>
+                    <td>@Money.Format(s.OpeningBalance)</td>
                     <td class="text-center">
                         <a asp-action="Ledger" asp-route-id="@s.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ المورد @s.Name"><i class="bi bi-journal-bookmark"></i></a>
                         @if (await Perm.HasAsync("Suppliers.Edit"))

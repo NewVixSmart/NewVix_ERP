@@ -1,4 +1,4 @@
-using NewVixSmart.Web.ViewModels.Core;
+﻿using NewVixSmart.Web.ViewModels.Core;
 using NewVixSmart.Web.ViewModels.PrintStudio;
 
 namespace NewVixSmart.Web.Services;
@@ -30,7 +30,6 @@ public static class PrintSampleDocs
                 Tax = 615m,
                 GrandTotal = 5722m,
                 IsPaid = false,
-                CurrencyCode = "ج.م"
             }
         };
 
@@ -70,7 +69,6 @@ public static class PrintSampleDocs
                     Tax = 0m,
                     GrandTotal = 850m,
                     IsPaid = true,
-                    CurrencyCode = ""
                 };
                 model.Lines.Add(new PrintDocLine
                 {
@@ -99,7 +97,6 @@ public static class PrintSampleDocs
                     Tax = 0m,
                     GrandTotal = 379000m,
                     IsPaid = false,
-                    CurrencyCode = "ج.م"
                 };
                 AddAccountLines(model);
                 break;
@@ -116,7 +113,6 @@ public static class PrintSampleDocs
                     Tax = 0m,
                     GrandTotal = 3300m,
                     IsPaid = false,
-                    CurrencyCode = "ج.م"
                 };
                 AddStatementLines(model);
                 break;
@@ -135,7 +131,6 @@ public static class PrintSampleDocs
                     Tax = 0m,
                     GrandTotal = 3300m,
                     IsPaid = false,
-                    CurrencyCode = "ج.م"
                 };
                 AddStatementLines(model);
                 break;
@@ -150,7 +145,6 @@ public static class PrintSampleDocs
                     Tax = 0m,
                     GrandTotal = 30m,
                     IsPaid = false,
-                    CurrencyCode = ""
                 };
                 AddTransferLines(model);
                 break;

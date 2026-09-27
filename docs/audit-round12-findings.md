@@ -1,5 +1,12 @@
 # Audit Round 12 — Statements (FX / on-receipt) + Print & Settings
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 Scope: financial-statement HIGHs (XLSX / PDF / web ledger) and print & settings MEDIUMs, per
 user instruction to run both streams in parallel. Build: 0 warnings, 0 errors.
 Tests: **330/330 pass** (+7). `/healthz` = 200. Untracked audit doc (kept out of commit).

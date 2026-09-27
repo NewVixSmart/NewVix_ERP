@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -65,7 +65,7 @@ public sealed class AccountingServiceTests : IDisposable
     {
         using var db = CreateContext();
         var svc = new AccountingService(db);
-        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, 0m, null, null, "test");
+        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 5), 1, 500m, 0m, "test");
 
         var entryNo = await LastEntryNumberAsync(db);
         var (deb, cred, count) = await BalancesAsync(db, entryNo);
@@ -83,7 +83,7 @@ public sealed class AccountingServiceTests : IDisposable
     {
         using var db = CreateContext();
         var svc = new AccountingService(db);
-        await svc.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 6), 2, 300m, null, null, "test");
+        await svc.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 6), 2, 300m, "test");
 
         var entryNo = await LastEntryNumberAsync(db);
         var (deb, cred, _) = await BalancesAsync(db, entryNo);
@@ -164,7 +164,7 @@ public sealed class AccountingServiceTests : IDisposable
     {
         using var db = CreateContext();
         var svc = new AccountingService(db);
-        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 10), 1, 100m, 40m, null, null, "test");
+        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 10), 1, 100m, 40m, "test");
 
         var entryNo = await LastEntryNumberAsync(db);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntry!.EntryNumber == entryNo).Include(l => l.Account).ToListAsync();
@@ -181,7 +181,7 @@ public sealed class AccountingServiceTests : IDisposable
     {
         using var db = CreateContext();
         var svc = new AccountingService(db);
-        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 11), 1, 100m, 0m, null, null, "test");
+        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 11), 1, 100m, 0m, "test");
 
         var (deb, cred, count) = await BalancesAsync(db, await LastEntryNumberAsync(db));
         Assert.Equal(deb, cred);
@@ -189,45 +189,39 @@ public sealed class AccountingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SaleInvoice_ForeignWithCost_ConvertsValueAndCostToBase()
+    public async Task SaleInvoice_PostsValueAndCostInTheSameCurrency()
     {
+        // The ledger is single-currency, so the value and the cost legs are posted at the
+        // same face amount - there is no conversion step that could split them.
         using var db = CreateContext();
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه", ExchangeRate = 1m, IsBase = true, IsActive = true });
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار", ExchangeRate = 500m, IsBase = false, IsActive = true });
-        await db.SaveChangesAsync();
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
         var svc = new AccountingService(db);
 
-        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 12), 1, 100m, 40m, usd.Id, 500m, "test");
+        await svc.RecordSaleInvoiceAsync(new DateTime(2026, 1, 12), 1, 100m, 40m, "test");
 
         var entryNo = await LastEntryNumberAsync(db);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntry!.EntryNumber == entryNo).Include(l => l.Account).ToListAsync();
         Assert.Equal(4, lines.Count);
         Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
-        Assert.Contains(lines, l => l.Account!.Code == "1200" && l.Debit == 50000m);
-        Assert.Contains(lines, l => l.Account!.Code == "4000" && l.Credit == 50000m);
+        Assert.Contains(lines, l => l.Account!.Code == "1200" && l.Debit == 100m);
+        Assert.Contains(lines, l => l.Account!.Code == "4000" && l.Credit == 100m);
         Assert.Contains(lines, l => l.Account!.Code == "5000" && l.Debit == 40m);
         Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Credit == 40m);
     }
 
     [Fact]
-    public async Task PurchaseInvoice_Foreign_ConvertsToBase()
+    public async Task PurchaseInvoice_PostsAtFaceAmount()
     {
         using var db = CreateContext();
-        db.Currencies.Add(new Currency { Code = "SDG", Name = "جنيه", ExchangeRate = 1m, IsBase = true, IsActive = true });
-        db.Currencies.Add(new Currency { Code = "USD", Name = "دولار", ExchangeRate = 500m, IsBase = false, IsActive = true });
-        await db.SaveChangesAsync();
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
         var svc = new AccountingService(db);
 
-        await svc.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 13), 2, 300m, usd.Id, 500m, "test");
+        await svc.RecordPurchaseInvoiceAsync(new DateTime(2026, 1, 13), 2, 300m, "test");
 
         var entryNo = await LastEntryNumberAsync(db);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntry!.EntryNumber == entryNo).Include(l => l.Account).ToListAsync();
         Assert.Equal(2, lines.Count);
         Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
-        Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Debit == 150000m);
-        Assert.Contains(lines, l => l.Account!.Code == "2000" && l.Credit == 150000m);
+        Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Debit == 300m);
+        Assert.Contains(lines, l => l.Account!.Code == "2000" && l.Credit == 300m);
     }
 
     [Fact]
@@ -237,7 +231,7 @@ public sealed class AccountingServiceTests : IDisposable
         var svc = new AccountingService(db);
         for (int i = 0; i < 5; i++)
         {
-            await svc.RecordSaleInvoiceAsync(DateTime.UtcNow, 1, 100m + i, 0m, null, null, "test");
+            await svc.RecordSaleInvoiceAsync(DateTime.UtcNow, 1, 100m + i, 0m, "test");
         }
         var numbers = await db.JournalEntries.Select(j => j.EntryNumber).ToListAsync();
         Assert.Equal(numbers.Count, numbers.Distinct().Count());

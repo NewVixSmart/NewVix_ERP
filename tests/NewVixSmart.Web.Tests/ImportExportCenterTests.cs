@@ -100,26 +100,18 @@ public sealed class ImportExportCenterTests : IDisposable
     }
 
     [Fact]
-    public async Task Import_Currencies_CodeColumnAlias_RoundTrip()
+    public async Task Import_Currencies_IsRejectedAsUnknownDataset()
     {
+        // The currency dataset is gone with the feature, so the importer must refuse it
+        // instead of silently accepting rows it can no longer store.
         using var db = CreateContext();
         var svc = CreateImportService(db);
 
         var csv = CsvBytes("الرمز,الاسم,رمز العملة,سعر الصرف,الحالة\n" +
                            "USD,دولار أمريكي,$,3.75,نشط\n");
         var vm = await svc.ParseAsync("currencies", "cur.csv", csv);
-        Assert.Null(vm.FatalError);
-        Assert.Equal(1, vm.ValidCount);
 
-        var result = await svc.ImportAsync("currencies", vm.Payload, vm.ApplyToken!);
-        Assert.True(result.Success, result.Message);
-        Assert.Equal(1, result.Created);
-
-        var currency = Assert.Single(await db.Currencies.ToListAsync());
-        Assert.Equal("USD", currency.Code);
-        Assert.Equal("دولار أمريكي", currency.Name);
-        Assert.Equal(3.75m, currency.ExchangeRate);
-        Assert.Equal("$", currency.Symbol);
+        Assert.NotNull(vm.FatalError);
     }
 
     [Fact]
@@ -231,7 +223,7 @@ public sealed class ImportExportCenterTests : IDisposable
         using var wb = new XLWorkbook(new MemoryStream(bytes));
         var ws = wb.Worksheets.First();
         var nameCell = ws.Cell(2, 2);
-        var notesCell = ws.Cell(2, 9);
+        var notesCell = ws.Cell(2, 8);
         Assert.Equal(XLDataType.Text, nameCell.DataType);
         Assert.Equal(XLDataType.Text, notesCell.DataType);
         Assert.Contains("+cmd", nameCell.GetString());
@@ -268,7 +260,6 @@ public sealed class ImportExportCenterTests : IDisposable
             CustomerId = customer.Id,
             ReceiptNumber = "RP-INJ-1",
             Amount = 50m,
-            BaseAmount = 50m,
             PaymentDate = DateTime.Today,
             Method = NewVixSmart.Web.Models.Accounting.PaymentMethod.Cash
         });

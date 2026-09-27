@@ -398,7 +398,7 @@
                 {
                     <div class="t-row grand">
                         <span class="lbl">الصافي (الإجمالي)</span>
-                        <span class="val">@Fmt(Model.Totals.GrandTotal, _dec)@(string.IsNullOrWhiteSpace(Model.Totals.CurrencyCode) ? "" : " " + Model.Totals.CurrencyCode)</span>
+                        <span class="val">@Fmt(Model.Totals.GrandTotal, _dec)@Money.Suffix</span>
                     </div>
                 }
                 @if (_invoiceDoc && Model.Layout.ShowPaidBadge)
@@ -416,7 +416,7 @@
                 {
                     <div class="amount-words">
                         <span class="lbl">المبلغ كتابةً:</span>
-                        <span>@ArabicAmountWords(Model.Totals.GrandTotal, _dec)@(string.IsNullOrWhiteSpace(Model.Totals.CurrencyCode) ? "" : " " + Model.Totals.CurrencyCode)</span>
+                        <span>@ArabicAmountWords(Model.Totals.GrandTotal, _dec)@Money.Suffix</span>
                     </div>
                 }
             </div>

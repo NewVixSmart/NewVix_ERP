@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -258,8 +258,8 @@ public sealed class BudgetAndAccountsTests : IDisposable
         var (budget, rev, _) = await SeedBudgetYearAsync(db, 2026);
 
         var accounting = new AccountingService(db);
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 4, 15), 1, 100m, 0m, null, null, "test");
-        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 6, 1), 1, 50m, 0m, null, null, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 4, 15), 1, 100m, 0m, "test");
+        await accounting.RecordSaleInvoiceAsync(new DateTime(2026, 6, 1), 1, 50m, 0m, "test");
 
         db.BudgetLines.Add(new BudgetLine { BudgetYearId = budget.Id, AccountId = rev.Id, AnnualAmount = 120m });
         await db.SaveChangesAsync();

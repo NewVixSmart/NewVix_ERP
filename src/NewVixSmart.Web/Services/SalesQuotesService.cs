@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -89,8 +89,6 @@ public sealed class SalesQuotesService : ISalesQuotesService
         var order = new SalesOrder
         {
             CustomerId = quote.CustomerId,
-            CurrencyId = quote.CurrencyId,
-            ExchangeRate = quote.ExchangeRate,
             OrderDate = quote.QuoteDate,
             Notes = quote.Notes,
             SaleQuoteId = quote.Id

@@ -413,6 +413,14 @@ static void ConfigureForwardedHeaders(WebApplication app)
     app.UseForwardedHeaders(forwardedOptions);
 }
 
+// Renders 4xx/5xx through Home/StatusCode so error responses keep lang + title (WCAG 3.1.1, 2.4.2).
+// This must sit BEFORE UseRouting: a re-execute continues the pipeline from the position of this
+// middleware, so registering it after UseAuthentication/UseAuthorization skipped authorization on
+// the re-executed request and EndpointMiddleware threw "a middleware was not found that supports
+// authorization" — every error page answered with a 500 developer page instead of the titled,
+// Arabic error view this line exists to produce.
+app.UseStatusCodePagesWithReExecute("/Home/StatusCode", "?code={0}");
+
 app.UseRouting();
 
 app.UseRateLimiter();
@@ -422,9 +430,6 @@ app.UseCors("ApiCors");
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Renders 4xx/5xx through Home/StatusCode so error responses keep lang + title (WCAG 3.1.1, 2.4.2).
-app.UseStatusCodePagesWithReExecute("/Home/StatusCode", "?code={0}");
 
 app.MapControllerRoute(
     name: "default",

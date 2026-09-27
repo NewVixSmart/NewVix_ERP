@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
@@ -20,12 +20,6 @@ public class BatchSalesViewModel
 
     [Display(Name = "شروط الدفع")]
     public InvoicePaymentTerms PaymentTerms { get; set; } = InvoicePaymentTerms.OnReceipt;
-
-    [Display(Name = "العملة")]
-    public int? CurrencyId { get; set; }
-
-    [Display(Name = "سعر الصرف")]
-    public decimal? ExchangeRate { get; set; }
 
     [Range(0, 999999999, ErrorMessage = "الخصم لا يمكن أن يكون سالبًا")]
     [Display(Name = "الخصم")]
@@ -51,7 +45,6 @@ public class BatchSalesViewModel
 
     public IEnumerable<SelectListItem>? Customers { get; set; }
     public List<Item> ItemsData { get; set; } = new();
-    public IEnumerable<SelectListItem>? Currencies { get; set; }
 }
 
 public class BatchInvoiceBlock

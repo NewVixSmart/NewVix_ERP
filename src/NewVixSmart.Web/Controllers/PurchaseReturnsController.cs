@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -66,20 +66,6 @@ if (items.Count == 0)
             ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
         }
 
-        var baseCurrencyId = await BaseCurrencyIdAsync();
-        if (!purchaseReturn.CurrencyId.HasValue)
-        {
-            purchaseReturn.CurrencyId = baseCurrencyId;
-            purchaseReturn.ExchangeRate = baseCurrencyId == null ? null : 1m;
-            ModelState.Remove("CurrencyId");
-            ModelState.Remove("ExchangeRate");
-        }
-        if (purchaseReturn.CurrencyId.HasValue && purchaseReturn.CurrencyId.Value != baseCurrencyId
-            && (!purchaseReturn.ExchangeRate.HasValue || purchaseReturn.ExchangeRate.Value <= 0))
-        {
-            ModelState.AddModelError("", "سعر الصرف يجب أن يكون أكبر من صفر للمرتجعات بالعملة الأجنبية");
-        }
-
         if (purchaseReturn.PurchaseInvoiceId != null)
         {
             var invoice = await _db.PurchaseInvoices.Include(i => i.Items).AsNoTracking()
@@ -94,13 +80,6 @@ else if (invoice.SupplierId != purchaseReturn.SupplierId)
             }
             else
             {
-                if (invoice.CurrencyId.HasValue && purchaseReturn.PurchaseInvoiceId != null)
-                {
-                    purchaseReturn.CurrencyId = invoice.CurrencyId;
-                    purchaseReturn.ExchangeRate = invoice.ExchangeRate ?? 1m;
-                    ModelState.Remove("CurrencyId");
-                    ModelState.Remove("ExchangeRate");
-                }
                 var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id && r.PurchaseReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
@@ -235,8 +214,4 @@ ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTrackin
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
         ViewBag.NextNumber = $"{prefix}{next:D3}";
     }
-
-    private async Task<int?> BaseCurrencyIdAsync()
-        => await _db.Currencies.AsNoTracking().Where(c => c.IsActive).OrderByDescending(c => c.IsBase)
-            .Select(c => (int?)c.Id).FirstOrDefaultAsync();
 }

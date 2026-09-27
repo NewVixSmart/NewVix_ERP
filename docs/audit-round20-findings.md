@@ -6,6 +6,13 @@ Method: 5 parallel read-only sub-audits (Security / EF Core + DB integrity / Fin
 
 > **Status:** all Critical and High items are now closed — see [Resolution log](#resolution-log-added-after-the-fact) at the end. The findings below are kept verbatim as the round-20 record; the trailing "stays untracked" note is a historical artifact, this file is now committed.
 
+> **Currency update (2026-09-27):** findings **H-5** and **M-6** describe currency/rate/
+> base-amount fields (`Payment.CurrencyId`, `ExchangeRate`, `BaseAmount`,
+> `ReconcileSaleReturnCurrencyAsync`) that no longer exist. Multi-currency was removed
+> entirely — see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). Those two findings are
+> resolved by removal, not by the fixes described in them; the accessibility label
+> mismatch they cite was fixed under a different code path.
+
 ## Dependency scan results (independent)
 - `dotnet list package --vulnerable --include-transitive` (Web + Tests): **no vulnerable packages**.
 - `npm audit --omit=dev` (e2e): **0 vulnerabilities** (0 critical / 0 high / 0 moderate / 0 low).

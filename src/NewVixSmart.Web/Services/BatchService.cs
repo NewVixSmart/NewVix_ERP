@@ -39,8 +39,6 @@ public sealed class BatchService : IBatchService
                 CustomerId = request.CustomerId,
                 InvoiceDate = request.InvoiceDate,
                 PaymentTerms = request.PaymentTerms,
-                CurrencyId = request.CurrencyId,
-                ExchangeRate = request.ExchangeRate,
                 Discount = request.Discount,
                 Discount2 = request.Discount2,
                 Discount3 = request.Discount3,

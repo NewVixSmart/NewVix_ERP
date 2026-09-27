@@ -3,6 +3,17 @@
 نظام **New Vix Smart**: ASP.NET Core 10 MVC + EF Core + SQL Server، واجهة عربية RTL، محاسبة قيد مزدوج.
 اقرأ `README.md` (بنية المشروع والتشغيل) و`ACCESSIBILITY.md` (بوابة الإتاحة) **قبل** أي تعديل.
 
+## العملة: جنيه مصري واحد (EGP-only)
+
+- النظام **بلعملة واحدة فقط**. لا تضيف `CurrencyId` ولا `ExchangeRate` ولا `BaseAmount` ولا أعمدة
+  FX ولا جدول `Currencies` ولا شاشة عملات. الاعتماد على `Services/Money.cs` للعرض فقط
+  (`Money.Format`، الرمز `L.E`).
+- `AllocatedAmount` في جدولي التوزيعات هو المبلغ المُسوّى بالجنيه المصري (أُعيدت تسميته من
+  `AllocatedBaseAmount` في هجة `DropMultiCurrency_EgpOnly`).
+- حسابات فروق العملة `4400`/`8400` ملغاة: لا ت.seedها، و`AccountsService.SystemSeedCodes`
+  لا تحتويها.
+- قرار المعمارية الكامل: `docs/DECISION-EGP-ONLY.md`.
+
 ## أوامر التحقق الإلزامية
 
 ```bash
@@ -20,7 +31,7 @@ dotnet test  NewVixSmart.slnx -c Release     # يجب: Failed: 0 (لا تخطِ�
 - **لا تغيّر جسم الملف عند التعديل.** استخدم `apply_patch` / أداة التحرير: أي حذف وإعادة كتابة كامل يفسد التغييرات المتوازية. استثناء واحد: تنسيق mechanically بحت يُعيد نفس البنية (شريط فاصل مسافاتSoft wrap).
 - **DDL**: أي تغيير في مخطط الجداول يحتاج migration جديدًا بالأسماء snake_case و`IX_` للفهارس، مع حذف الـmigration إن كان التطبيق فشل للتو. لا تغيّر migration مُطبَّقة بالفعل.
 - **الخصائص المحسوبة لا تُستخدم في `Where` داخل EF**: الحقول المحسوبة في النماذج (مثل `PendingQty`, `UninvoicedQty`, `Available`) ليست mapped، فاستخدم الفروق الحقيقية للأعمدة داخل الاستعلام أو احسب بعد `ToListAsync()`.
-- **المحاسبة**: قيد مزدوج إلزامي. التسليم في مسار `AtInvoice` يرحّل التكلفة فقط (`Dr 5000 / Cr 1300`); الفاتورة ترحّل الذمم والإيراد والضريبة. راجع `PrintPdfBuilder`/`AccountingService` قبل تغيير أي قيد.
+- **المحاسبة**: قيد مزدوج إلزامي. التسليم في مسار `AtInvoice` يرحّل التكلفة فقط (`Dr 5000 / Cr 1300`); الفاتورة ترحّل الذمم والإيراد والضريبة. راجع `PrintPdfBuilder`/`AccountingService` قبل تغيير أي قيد. التوزيع في `PaymentService` oldest-first بنسبة 1:1 على `NetAmount` المتبقي، مع **تسامح صفر**: أي residuum أكبر من `0` يُرفض، لأن القيد يرحّل `Payment.Amount` كاملًا على الذمم بينما التوزيع يحدّ بـ`NetAmount` — فتسامح哪怕 الجنيه الواحد يجعل دفتر الأستاذ يختلف عن سجل الذمم الفرعي. عتبات `0.005` ممنوعة في التوزيع أيضًا. الفاتورة تصبح قابلة للتحصيل/تظهر في أعمار الذمم عبر `DeliveryOrder` مسلَّم **أو** `DeliveryIssue` بحالة `Issued` (مسار الفوترة بعد التسليم لا ينشئ `DeliveryOrder` مرتبطًا).
 - **الأذونات**: كل إجراء جديد يحتاج `[RequirePerm("Module.Action")]` و`[Authorize]` عبر الـfilter. أضف الوحدة إلى `PermissionCatalog` (actions + `MenuModule`)، وإلى أدوار `PermissionDefaults`، ورابطًا في `_Layout.cshtml`. دور `Warehouse` يملك حجز/تسليم دون الحاجة إلى `Sales.Create`.
 - **الاختبارات**: أضف اختبارًا في `tests/NewVixSmart.Web.Tests/` لكل حالة عمل/قيد جديد. اختبار الـround sweeps في `AuthorizationSweepTests.cs` يجب أن يبقى أخضرًا (كل إجراء محمي، وكل وحدة في الكتالوج).
 

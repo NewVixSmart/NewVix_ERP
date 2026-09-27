@@ -20,8 +20,6 @@ public sealed record BatchSalesBatchRequest(
     int CustomerId,
     DateTime InvoiceDate,
     InvoicePaymentTerms PaymentTerms,
-    int? CurrencyId,
-    decimal? ExchangeRate,
     decimal Discount,
     decimal? Discount2,
     decimal? Discount3,

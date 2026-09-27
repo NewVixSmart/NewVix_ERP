@@ -51,6 +51,10 @@ Included internal `DedupeKey` (dedup fingerprint), `CreatedBy`, and full navigat
 
 **Tests updated:** `ApiCreatePayment_ReceiptNumber_AssignedByService`, `ApiCreatePayment_WithCurrency_MapsAndSettles` now assert `ApiResponse<PaymentResponse>`.
 
+> **Superseded (2026-09-27):** `ApiCreatePayment_WithCurrency_MapsAndSettles` was removed with
+> the multi-currency feature; the settlement is covered by
+> `PaymentServiceSingleCurrencyTests`. See [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md).
+
 ---
 
 ## Deferred (with rationale)

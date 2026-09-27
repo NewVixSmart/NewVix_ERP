@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -96,8 +96,6 @@ public sealed class BatchOperationsTests : IDisposable
             CustomerId: customerId,
             InvoiceDate: new DateTime(2026, 3, 1),
             PaymentTerms: InvoicePaymentTerms.OnReceipt,
-            CurrencyId: null,
-            ExchangeRate: 1m,
             Discount: 0, Discount2: null, Discount3: null,
             Tax: 0, Notes: "دفعة اختبار",
             Invoices: [
@@ -152,7 +150,6 @@ public sealed class BatchOperationsTests : IDisposable
             CustomerId: customerId,
             InvoiceDate: DateTime.Today,
             PaymentTerms: InvoicePaymentTerms.OnReceipt,
-            CurrencyId: null, ExchangeRate: 1m,
             Discount: 0, Discount2: null, Discount3: null, Tax: 0, Notes: null,
             Invoices: [
                 new BatchSalesInvoice([new BatchSalesLine(item1.Id, Quantity: 150, Count: 0, UnitPrice: 50, Discount: 0)]),
@@ -275,7 +272,7 @@ public sealed class BatchOperationsTests : IDisposable
 
         var salesResult = await svc.RunSalesBatchAsync(
             new BatchSalesBatchRequest(1, DateTime.Today, InvoicePaymentTerms.OnReceipt,
-                null, 1m, 0, null, null, 0, null,
+                0, null, null, 0, null,
                 [new BatchSalesInvoice([new BatchSalesLine(0, 0, 0, 0, 0)])]),
             "tester");
 

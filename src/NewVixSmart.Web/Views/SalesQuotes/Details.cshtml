@@ -55,7 +55,6 @@
             <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
         </div>
         <div class="row mt-2">
-            <div class="col-md-3"><strong>العملة:</strong> @(Model.Currency?.Code ?? "—") @(Model.ExchangeRate.HasValue ? $"@{Model.ExchangeRate}" : "")</div>
             <div class="col-md-9"><strong>أمر البيع:</strong>
                 @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted && Model.SalesOrder != null)
                 {
@@ -104,7 +103,7 @@
     <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.TotalAmount.ToString("N2")</h4></div></div></div>
     <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الخصم</div><h4 class="text-danger">@Model.Discount.ToString("N2")</h4></div></div></div>
     <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الضريبة</div><h4>@Model.Tax.ToString("N2")</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الصافي</div><h4 class="text-success">@Model.NetAmount.ToString("N2") ج.م</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الصافي</div><h4 class="text-success">@Money.Format(Model.NetAmount)</h4></div></div></div>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Notes))

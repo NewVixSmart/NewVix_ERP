@@ -1,5 +1,12 @@
 # Hard Audit — الجولة السادسة: تحقق عدائي من كل نتائج التدقيق العميق
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 > **التاريخ:** 2026-09-12
 > **البروتوكول:** 6 فرق تدقيق عدائية مستقلة (المصادقة/الأمان، النواة المحاسبية، العملات والمدفوعات، العمليات والمخزون، الواجهات والبنية والاختبارات، دفتر الأستاذ وسطح الاحتيال) أعادت قراءة كل ملف مصدر **مباشرة**، وتحدّت كل بند من تقرير الجولة الخامسة، وحكمت عليه بـ **CONFIRMED / PARTIALLY / REFUTED** مع إثبات `file:line`، دون اعتماد على الملخص. مهمة قراءة فقط — لا تغييرات على الكود.
 > **الأدوات (غير متغيرة):** Debug/Release 0W/0E • 128/128 (Debug وRelease) • 0 CVEs • axe 40 صفحة PASS • 19 تصديرًا = 200.

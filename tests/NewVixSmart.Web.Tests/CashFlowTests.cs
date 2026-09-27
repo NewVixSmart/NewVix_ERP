@@ -36,8 +36,7 @@ public sealed class CashFlowTests : IDisposable
             PaymentDate = date,
             Type = type,
             Method = method,
-            Amount = amount,
-            BaseAmount = amount
+            Amount = amount
         };
 
     [Fact]

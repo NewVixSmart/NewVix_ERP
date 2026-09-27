@@ -139,14 +139,6 @@ public sealed class OperationsIntegrityTests : IDisposable
         await db.SaveChangesAsync();
     }
 
-    private static async Task SeedCurrenciesAsync(AppDbContext db)
-    {
-        db.Currencies.AddRange(
-            new Currency { Code = "SDG", Name = "جنيه", ExchangeRate = 1m, IsBase = true, IsActive = true },
-            new Currency { Code = "USD", Name = "دولار", ExchangeRate = 500m, IsBase = false, IsActive = true });
-        await db.SaveChangesAsync();
-    }
-
     private static async Task SeedSaleInvoiceAsync(AppDbContext db, int customerId, decimal net)
     {
         var invoice = new SaleInvoice
@@ -529,50 +521,29 @@ public sealed class OperationsIntegrityTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatePayment_SameAmountDifferentCurrency_NotDuplicate()
+    public async Task CreatePayment_DifferentAmountSameDay_IsNotDuplicate()
     {
+        // With one currency the duplicate key is amount + party + date + type. It must still
+        // discriminate on the amount, otherwise two real instalments would be refused.
         using var db = CreateContext();
-        var custId = await AddCustomerAsync(db, "عميل عملات");
-        await SeedCurrenciesAsync(db);
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        await SeedSaleInvoiceAsync(db, custId, 2000m);
+        var custId = await AddCustomerAsync(db, "عميل أقساط");
+        await SeedSaleInvoiceAsync(db, custId, 1000m);
         var svc = new PaymentService(db);
 
-        var basePay = new Payment { Type = PaymentType.Receipt, CustomerId = custId, Amount = 300m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today };
-        var (ok1, e1, _) = await svc.CreatePaymentAsync(basePay, "test");
+        var (ok1, e1, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt, CustomerId = custId, Amount = 200m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
         Assert.True(ok1, e1);
 
-        var usdPay1 = new Payment { Type = PaymentType.Receipt, CustomerId = custId, Amount = 300m, CurrencyId = usd.Id, ExchangeRate = 2m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today };
-        var (ok2, e2, _) = await svc.CreatePaymentAsync(usdPay1, "test");
+        var (ok2, e2, _) = await svc.CreatePaymentAsync(new Payment
+        {
+            Type = PaymentType.Receipt, CustomerId = custId, Amount = 300m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+        }, "test");
         Assert.True(ok2, e2);
 
-        var usdPay2 = new Payment { Type = PaymentType.Receipt, CustomerId = custId, Amount = 300m, CurrencyId = usd.Id, ExchangeRate = 3m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today };
-        var (ok3, e3, _) = await svc.CreatePaymentAsync(usdPay2, "test");
-        Assert.True(ok3, e3);
-
-        Assert.Equal(3, await db.Payments.CountAsync());
-    }
-
-    [Fact]
-    public async Task ForeignPayment_RateEqualsOne_StillForeign()
-    {
-        using var db = CreateContext();
-        await SeedCurrenciesAsync(db);
-        var custId = await AddCustomerAsync(db, "عميل دولاري");
-        var usd = await db.Currencies.SingleAsync(c => c.Code == "USD");
-        await SeedSaleInvoiceAsync(db, custId, 500m);
-        var svc = new PaymentService(db);
-
-        var (ok, err, payment) = await svc.CreatePaymentAsync(new Payment
-        {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 100m,
-            CurrencyId = usd.Id, ExchangeRate = 1m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
-        }, "test");
-
-        Assert.True(ok, err);
-        Assert.Equal(100m, payment!.BaseAmount);
-        var allocation = await db.SalePaymentAllocations.SingleAsync();
-        Assert.Equal(1m, allocation.ExchangeRateAtSettlement);
+        Assert.Equal(2, await db.Payments.CountAsync());
+        Assert.Equal(500m, (await db.SaleInvoices.SingleAsync()).PaidAmount);
     }
 
     [Fact]

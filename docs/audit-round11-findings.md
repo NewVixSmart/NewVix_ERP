@@ -1,5 +1,12 @@
 # Audit Round 11 — Procurement & Order-Lifecycle (Agent-Assisted Audit)
 
+
+> **Currency update (2026-09-27):** the fields and rules described below (`CurrencyId`,
+> `ExchangeRate`, `BaseAmount`, `ExchangeRateAtSettlement`, `FxGain`/`FxLoss`, foreign-currency
+> allocation and rate-based posting) no longer exist. Multi-currency was removed entirely —
+> see [`DECISION-EGP-ONLY.md`](DECISION-EGP-ONLY.md). The findings are kept verbatim as the
+> historical record of that round; they are resolved by removal, not by the fixes proposed here.
+
 Date: 2026-09-24 · Baseline: 308/308 (Round-10 `303f2cb`) → Result: **323/323** passing, 0 warnings, `/healthz` 200.
 
 Method: 3 explore agents re-run successfully this round (they were offline in Round 10):
