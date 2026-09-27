@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/aspire/">
+    <Project Path="aspire/Vix.AppHost/Vix.AppHost.csproj" />
+    <Project Path="aspire/Vix.ServiceDefaults/Vix.ServiceDefaults.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/NewVixSmart.Web/NewVixSmart.Web.csproj" />
   </Folder>
