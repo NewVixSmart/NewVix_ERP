@@ -69,5 +69,5 @@
 
 <div class="row g-3">
     <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">السبب</div><h6>@(Model.Reason ?? "—")</h6></div></div></div>
-    <div class="col-md-8"><div class="card text-center bg-danger text-white"><div class="card-body"><div class="small">إجمالي المرتجع</div><h4>@Model.TotalAmount.ToString("N2") ج.م</h4></div></div></div>
+    <div class="col-md-8"><div class="card text-center"><div class="card-body"><div class="text-muted small">إجمالي المرتجع</div><h4 class="text-danger">@Model.TotalAmount.ToString("N2") ج.م</h4></div></div></div>
 </div>

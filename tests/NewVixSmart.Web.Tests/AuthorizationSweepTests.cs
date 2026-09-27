@@ -12,9 +12,12 @@ public sealed class AuthorizationSweepTests
     [
         (nameof(NewVixSmart.Web.Controllers.AccountController), nameof(NewVixSmart.Web.Controllers.AccountController.Login)),
         (nameof(NewVixSmart.Web.Controllers.AccountController), nameof(NewVixSmart.Web.Controllers.AccountController.AccessDenied)),
-        (nameof(NewVixSmart.Web.Controllers.HomeController), nameof(NewVixSmart.Web.Controllers.HomeController.Error)),
-        ("TokensController", "CreateToken")
-    ];
+   (nameof(NewVixSmart.Web.Controllers.HomeController), nameof(NewVixSmart.Web.Controllers.HomeController.Error)),
+   // Reached only through UseStatusCodePagesWithReExecute; it must render for anonymous
+   // requests too, otherwise a 404 to an unauthenticated caller loses its lang and title.
+   (nameof(NewVixSmart.Web.Controllers.HomeController), nameof(NewVixSmart.Web.Controllers.HomeController.StatusCode)),
+   ("TokensController", "CreateToken")
+   ];
 
     private static IEnumerable<Type> Controllers() =>
         typeof(NewVixSmart.Web.Controllers.HomeController).Assembly.GetTypes()

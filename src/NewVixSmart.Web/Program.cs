@@ -409,6 +409,9 @@ app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Renders 4xx/5xx through Home/StatusCode so error responses keep lang + title (WCAG 3.1.1, 2.4.2).
+app.UseStatusCodePagesWithReExecute("/Home/StatusCode", "?code={0}");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")

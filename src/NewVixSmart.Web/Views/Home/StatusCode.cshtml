@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = ViewData["Title"] ?? "الصفحة غير موجودة";
+    var code = Context.Response.StatusCode;
+    var (heading, hint, icon) = code switch
+    {
+        404 => ("الصفحة غير موجودة", "تحقق من الرابط أو ابحث عن السجل من القائمة الرئيسية.", "bi-search"),
+        403 => ("لا تملك صلاحية الوصول", "هذه الصفحة تتطلب صلاحية إضافية. راجع مدير النظام إن كنت تحتاجها.", "bi-shield-lock"),
+        401 => ("يلزم تسجيل الدخول", "سجّل الدخول ثم أعد فتح الصفحة.", "bi-box-arrow-in-right"),
+        >= 500 => ("خطأ في الخادم", "حدث خطأ أثناء تنفيذ الطلب. حاول مرة أخرى أو راجع سجل الأخطاء.", "bi-exclamation-octagon"),
+        _ => ("طلب غير صالح", "تعذّر تنفيذ الطلب. عدّل المدخلات وأعد المحاولة.", "bi-exclamation-triangle")
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card text-center">
+            <div class="card-body py-5">
+                <i class="bi @icon text-warning" style="font-size:3rem" aria-hidden="true"></i>
+                <p class="display-6 mb-1 mt-3">@code</p>
+                <h2 class="h4">@heading</h2>
+                <p class="text-muted mb-4">@hint</p>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-primary">العودة إلى لوحة القيادة</a>
+            </div>
+        </div>
+    </div>
+</div>

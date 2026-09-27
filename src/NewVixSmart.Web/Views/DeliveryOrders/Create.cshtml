@@ -32,7 +32,7 @@
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcOrder" value="Order" @(Model.Source == "Order" ? "checked" : "") />
                         <label class="form-check-label" for="srcOrder">من أمر بيع</label>
                     </div>
-                    <select asp-for="Delivery.SalesOrderId" asp-items="@Model.SalesOrders" class="form-select form-select-sm mt-2" id="salesOrderSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                    <select asp-for="Delivery.SalesOrderId" asp-items="@Model.SalesOrders" class="form-select form-select-sm mt-2" id="salesOrderSelect" aria-label="اختر أمر البيع المرتبط" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر أمر بيع --</option>
                     </select>
                 </div>
@@ -41,7 +41,7 @@
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcInvoice" value="Invoice" @(Model.Source == "Invoice" ? "checked" : "") />
                         <label class="form-check-label" for="srcInvoice">من فاتورة (المسار القديم)</label>
                     </div>
-                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select form-select-sm mt-2" id="invoiceSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select form-select-sm mt-2" id="invoiceSelect" aria-label="اختر فاتورة البيع المرتبطة" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر فاتورة بيع --</option>
                     </select>
                 </div>
@@ -50,7 +50,7 @@
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcFree" value="Free" @(Model.Source != "Order" && Model.Source != "Invoice" ? "checked" : "") />
                         <label class="form-check-label" for="srcFree">إدخال حر (بدون أمر أو فاتورة)</label>
                     </div>
-                    <select asp-for="Delivery.CustomerId" asp-items="@Model.Customers" class="form-select form-select-sm mt-2" id="customerSelect">
+                    <select asp-for="Delivery.CustomerId" asp-items="@Model.Customers" class="form-select form-select-sm mt-2" id="customerSelect" aria-label="اختر العميل المستلم">
                         <option value="">-- اختر العميل --</option>
                     </select>
                 </div>
