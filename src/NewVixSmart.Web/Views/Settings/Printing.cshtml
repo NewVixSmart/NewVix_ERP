@@ -49,6 +49,7 @@
                                 id="group-@g.Slug"
                                 role="tab"
                                 aria-selected="@(g.Index == 0 ? "true" : "false")"
+                                tabindex="@(g.Index == 0 ? "0" : "-1")"
                                 aria-controls="panel-@g.Slug"
                                 data-slug="@g.Slug"
                                 data-index="@g.Index">
@@ -450,6 +451,9 @@
                 var on = btn.dataset.slug === slug;
                 btn.classList.toggle('active', on);
                 btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                // Roving tabindex: the tablist is a single tab stop, so Tab leaves it for the
+                // panel and arrow keys move between tabs. Without this every tab is a tab stop.
+                btn.tabIndex = on ? 0 : -1;
             });
             document.querySelectorAll('.studio-panel').forEach(function (panel) {
                 var on = panel.dataset.slug === slug;
@@ -481,12 +485,32 @@
         }
 
         function init() {
+            var tabs = Array.prototype.slice.call(document.querySelectorAll('.studio-group-button'));
             document.querySelectorAll('.studio-group-button').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     setActiveGroup(btn.dataset.slug, parseInt(btn.dataset.index, 10));
                     refreshPreview();
                 });
             });
+
+            // Vertical tablist (aria-orientation="vertical"): Up/Down move, Home/End jump.
+            var tabList = document.getElementById('groupList');
+            if (tabList) {
+                tabList.addEventListener('keydown', function (e) {
+                    var keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+                    if (keys.indexOf(e.key) === -1) return;
+                    var current = tabs.indexOf(document.activeElement);
+                    if (current === -1) return;
+                    e.preventDefault();
+                    var next = e.key === 'Home' ? 0
+                        : e.key === 'End' ? tabs.length - 1
+                        : e.key === 'ArrowDown' ? (current + 1) % tabs.length
+                        : (current - 1 + tabs.length) % tabs.length;
+                    tabs[next].focus();
+                    setActiveGroup(tabs[next].dataset.slug, parseInt(tabs[next].dataset.index, 10));
+                    refreshPreview();
+                });
+            }
             form.addEventListener('input', schedulePreview);
             form.addEventListener('change', schedulePreview);
             pdfBtn.addEventListener('click', function () {
