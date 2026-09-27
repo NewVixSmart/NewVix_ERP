@@ -4,6 +4,8 @@ Date: 2026-09-26
 Scope: full-codebase deep audit — ~88,815 LOC C#, 113 Razor views, 39 controllers, 67 migration files, 4 csproj, 1 slnx, 1 e2e suite.
 Method: 5 parallel read-only sub-audits (Security / EF Core + DB integrity / Financial business logic / Frontend + a11y / CI-buil d-deploy) + orchestrator manual re-verification of every Critical/High claim on source + independent dependency scans.
 
+> **Status:** all Critical and High items are now closed — see [Resolution log](#resolution-log-added-after-the-fact) at the end. The findings below are kept verbatim as the round-20 record; the trailing "stays untracked" note is a historical artifact, this file is now committed.
+
 ## Dependency scan results (independent)
 - `dotnet list package --vulnerable --include-transitive` (Web + Tests): **no vulnerable packages**.
 - `npm audit --omit=dev` (e2e): **0 vulnerabilities** (0 critical / 0 high / 0 moderate / 0 low).
@@ -72,3 +74,42 @@ Method: 5 parallel read-only sub-audits (Security / EF Core + DB integrity / Fin
 5. M-items: configure forward proxies, add CI dependency-scanning (gitleaks/dependabot/CodeQL), add `global.json`/`.editorconfig`.
 
 No items were closed in this round; this document is the audit deliverable and stays untracked.
+
+---
+
+# Resolution log (added after the fact)
+
+Added 2026-09-27. The tables above are preserved exactly as the round-20 audit wrote them, including
+the "stays untracked" line at the end. Every Critical and High item below was re-checked against
+`main` rather than taken on trust, because several had already been remediated by intervening work
+and some rested on a wrong premise.
+
+| # | Round-20 claim | Status on `main` | Evidence |
+|---|---|---|---|
+| C-1 | Zero-net invoice books full list-price revenue + AR at delivery | Stale as written, but it led to a worse adjacent bug — now fixed | `InventoryService.cs:85-97` already caps line discount at gross, rejects over-discount and negative net. Verifying it exposed `DeliveriesInvoicingService.cs:158` calling `RecordSaleInvoiceRevenueAsync` unguarded, which throws on a zero value, escaped the `DbUpdate*` catches and rolled an accepted delivery back into a 500. Guarded with `NetAmount > 0m` to match the purchase path. `ae6c769` + `InvoiceFromIssues_FullyDiscountedInvoice_PostsCostOnlyAndNoRevenue` |
+| C-2 | Return valuation ignores original invoice discounts | Already fixed | `ReturnMirror.ProratedAgainst` in `InventoryService.cs:958-967`; covered by `ReturnAgainstAtInvoiceInvoice_MirrorsGrossRevenueAndReleasesCost` |
+| H-1 | `SaleReturns.Create` can post without `SaleReturns.Post` | False premise | `SaleReturnsController.cs:114-117` checks `_permissions.HasAsync("SaleReturns.Post")` before posting |
+| H-2 | Same for `PurchaseReturns` | False premise | `PurchaseReturnsController.cs:126` checks `PurchaseReturns.Post` |
+| H-3 | `PurchaseOrder` has no `RowVersion` | False premise | `[Timestamp] RowVersion` present on `PurchaseOrder`, `SaleInvoice`, `PurchaseInvoice`, `SalesOrder` |
+| H-4 | `role="status"` around a 60fps count-up stat | Already fixed | No `role="status"` and no animation loop left in `Views/Reports/Dashboard.cshtml` |
+| H-5 | `label for` / control `id` mismatch on the Payments form | False premise | Labels are hand-written and match: `for="currencySelect"` / `id="currencySelect"`, same for `exchangeRate` and `baseAmount` |
+| H-6 | Unlabelled controls in `Accounts/Edit`, `PurchaseOrders/Receive`, `Suppliers/Quotes` | False premise (all three) | `Accounts/Edit.cshtml:25-32` are mutually exclusive `if`/`else` branches, so only one `id="Code"` ever renders; `PurchaseOrders/Receive.cshtml:45` gives each receive button a unique `aria-label` naming the item and code; `Suppliers/Quotes.cshtml:9-10` labels the select |
+| H-7 | Gate scans ~48 of 113 views, so High issues ship | **Fixed** | `d315031`: `A11yGateManifestTests` reflects over every view-rendering GET action and fails when one is absent from the manifest (plus a stale-entry check). Manifest 80 → 99 light routes, dark subset gained `StockReservations` and `DeliveryIssues`, `Users/Permissions` GUID resolved from the Users list. Widening the gate then exposed three real defects, all fixed in the same commit |
+| M-1 | `UseForwardedHeaders` registered only when proxies configured | Already fixed | `Program.cs:352-399`: explicit `ForwardedHeaders:Enabled`, validated proxy/CIDR parsing, hard-fails when enabled with no known proxies |
+| M-5 | Unhandled `DbUpdateConcurrencyException` | Already fixed | 27 catch sites across `InventoryService`, `DeliveriesInvoicingService`, `ProcurementService`, `SalesOrdersService`, `PaymentService`, `StockReservationsService` |
+| M-7 | 90 `<th>` without `scope` across 19 views | Already fixed | Every `<th>` in every view carries `scope` (verified by scan across `Views/**/*.cshtml`) |
+| M-8 | `tablist` without roving `tabindex` | **Fixed** | `7f2910b`: `Views/Settings/Printing.cshtml` renders `tabindex="0"` on the active tab, `setActiveGroup` keeps the roving value, and a keydown handler drives `ArrowUp`/`ArrowDown`/`Home`/`End` with wraparound. Verified in a real browser: 11 tabs, exactly one tab stop, arrows move and select, panel follows focus |
+
+### Defects found while widening the gate (H-7 work)
+
+None of these appear in the round-20 tables, because the gate could not see them:
+
+- `Views/DeliveryOrders/Create.cshtml` — three selects had no accessible name; their labels pointed at the adjacent radio inputs. Fixed with `aria-label`.
+- `Views/Sales/Details.cshtml`, `Views/SalesQuotes/Details.cshtml`, `Views/PurchaseReturns/Details.cshtml` — the `.small` label rendered white on `bg-success`/`bg-danger` (~4.0:1), failing WCAG 1.4.3. Switched to the pattern neighbouring details pages already pass with: `text-muted small` plus a coloured `h4`, no hardcoded colours.
+- Every `NotFound()` (102 call sites) answered with a body declaring no language and no title, failing WCAG 3.1.1 and 2.4.2. `Home/StatusCode` now renders 404/403/401/500 through the layout via `UseStatusCodePagesWithReExecute`.
+
+### Not re-checked in this pass
+
+M-2, M-3, M-4, M-6, L-1…L-5, and the CI gaps (AppHost absent from `NewVixSmart.slnx`, no
+`Dockerfile` / `global.json` / `.editorconfig` / `dependabot.yml` / `CODEOWNERS` / gitleaks / CodeQL)
+remain open. Treat this log as covering Critical, High, and M-1/M-5/M-7/M-8 only.
