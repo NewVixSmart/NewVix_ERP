@@ -1,0 +1,120 @@
+@model NewVixSmart.Web.Models.Stock.StockReservation
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Stock
+@using NewVixSmart.Web.Extensions
+@{
+    ViewData["Title"] = "تفاصيل الحجز";
+    var availability = ViewBag.Availability as Dictionary<int, NewVixSmart.Web.Services.ItemAvailability>;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-bookmark-check text-primary"></i> حجز <code>@Model.ReservationNumber</code></h2>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+        @if (Model.Status == StockReservationStatus.Active && await Perm.HasAsync("StockReservations.Release"))
+        {
+            <form method="post" asp-action="Release" asp-route-id="@Model.PublicId" class="d-inline"
+                  onsubmit="return confirm('هل تريد تحرير هذا الحجز؟');">
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> تحرير الحجز</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">بيانات الحجز</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">الحالة</dt>
+            <dd class="col-sm-9"><span class="badge @(Model.Status switch { StockReservationStatus.Released => "bg-secondary", StockReservationStatus.Consumed => "bg-success", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span></dd>
+
+            <dt class="col-sm-3">أمر البيع</dt>
+            <dd class="col-sm-9">
+                @if (Model.SalesOrder != null)
+                {
+                    <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
+                }
+                else
+                {
+                    <span>حجز مستقل</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">العميل</dt>
+            <dd class="col-sm-9">@(Model.Customer?.Name ?? "—")</dd>
+
+            <dt class="col-sm-3">السبب</dt>
+            <dd class="col-sm-9">@(Model.Reason ?? "—")</dd>
+
+            <dt class="col-sm-3">ملاحظات</dt>
+            <dd class="col-sm-9">@(Model.Notes ?? "—")</dd>
+
+            <dt class="col-sm-3">أُنشئ</dt>
+            <dd class="col-sm-9">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") بواسطة @(Model.CreatedBy ?? "—")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">أصناف الحجز</div>
+    <div class="card-body">
+        <div class="table-container">
+            <table class="table table-hover mb-0">
+                <caption class="visually-hidden">أصناف الحجز والكميات المحجوزة والمستهلكة والمتبقية</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">الصنف</th>
+                        <th scope="col">الكمية المحجوزة</th>
+                        <th scope="col">العدد المحجوز</th>
+                        <th scope="col">المستهلك</th>
+                        <th scope="col">المتبقي</th>
+                        <th scope="col">رصيد الصنف</th>
+                        <th scope="col">المتاح الآن</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Items)
+                    {
+                        var avail = availability != null && availability.TryGetValue(line.ItemId, out var a) ? a : (NewVixSmart.Web.Services.ItemAvailability?)null;
+                        <tr>
+                            <th scope="row">@line.Item?.Name</th>
+                            <td>@line.Quantity.ToString("N2")</td>
+                            <td>@line.Count.ToString("N2")</td>
+                            <td>@line.ConsumedQuantity.ToString("N2") / @line.ConsumedCount.ToString("N2")</td>
+                            <td>@line.RemainingQuantity.ToString("N2") / @line.RemainingCount.ToString("N2")</td>
+                            <td>
+                                @if (avail.HasValue)
+                                {
+                                    <span>@avail.Value.CurrentQuantity.ToString("N2") / @avail.Value.CurrentCount.ToString("N2")</span>
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (avail.HasValue)
+                                {
+                                    <span>@avail.Value.AvailableQuantity.ToString("N2") / @avail.Value.AvailableCount.ToString("N2")</span>
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

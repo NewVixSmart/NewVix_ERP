@@ -1,0 +1,146 @@
+@model NewVixSmart.Web.ViewModels.Stock.StockReservationViewModel
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@{ ViewData["Title"] = "حجز مخزون جديد"; }
+
+<div class="page-header">
+    <h2><i class="bi bi-bookmark-plus text-primary"></i> حجز مخزون جديد</h2>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+}
+
+<form method="post" asp-action="Create">
+    <div class="card mb-3">
+        <div class="card-header">بيانات الحجز</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="CustomerId" class="form-label">العميل (اختياري)</label>
+                    <select id="CustomerId" name="Reservation.CustomerId" class="form-select" asp-items="Model.Customers">
+                        <option value="">— بدون عميل —</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="Reason" class="form-label">السبب</label>
+                    <input id="Reason" name="Reservation.Reason" class="form-control" value="@Model.Reservation.Reason" />
+                </div>
+                <div class="col-12">
+                    <label for="Notes" class="form-label">ملاحظات</label>
+                    <textarea id="Notes" name="Reservation.Notes" class="form-control" rows="2">@Model.Reservation.Notes</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">الأصناف المحجوزة</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-2">
+                    <caption class="visually-hidden">أصناف الحجز مع الكمية والعدد، والرصيد المتاح لكل صنف</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">الصنف</th>
+                            <th scope="col">المتاح كمية</th>
+                            <th scope="col">المتاح عدد</th>
+                            <th scope="col">الكمية المطلوبة</th>
+                            <th scope="col">العدد المطلوب</th>
+                            <th scope="col"><span class="visually-hidden">إزالة</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="reservation-lines">
+                        @for (var i = 0; i < 3; i++)
+                        {
+                            var idx = i;
+                            var avail = i < Model.Availability.Count ? Model.Availability[i] : default;
+                            <tr class="reservation-line">
+                                <td>
+                                    <select name="StandaloneItems[@idx].ItemId" class="form-select form-select-sm" data-role="item" required>
+                                        <option value="">— اختر الصنف —</option>
+                                        @foreach (var a in Model.Availability)
+                                        {
+                                            <option value="@a.ItemId" data-current-qty="@a.CurrentQuantity" data-reserved-qty="@a.ReservedQuantity"
+                                                    data-current-count="@a.CurrentCount" data-reserved-count="@a.ReservedCount">@a.ItemName</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="text-end" data-role="available-qty">@(avail.ItemId == 0 ? "—" : avail.AvailableQuantity.ToString("N2"))</td>
+                                <td class="text-end" data-role="available-count">@(avail.ItemId == 0 ? "—" : avail.AvailableCount.ToString("N2"))</td>
+                                <td><input name="StandaloneItems[@idx].Quantity" class="form-control form-control-sm text-end" type="number" step="0.01" min="0" value="0" data-role="qty" /></td>
+                                <td><input name="StandaloneItems[@idx].Count" class="form-control form-control-sm text-end" type="number" step="0.01" min="0" value="0" data-role="count" /></td>
+                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" data-role="remove" aria-label="حذف السطر"><i class="bi bi-x-lg"></i></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-line"><i class="bi bi-plus-lg"></i> إضافة صنف</button>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ الحجز</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        var body = document.getElementById('reservation-lines');
+        var add = document.getElementById('add-line');
+        if (!body || !add) return;
+
+        function refreshAvailable(tr) {
+            var sel = tr.querySelector('[data-role="item"]');
+            var opt = sel && sel.selectedOptions[0];
+            var qty = tr.querySelector('[data-role="available-qty"]');
+            var count = tr.querySelector('[data-role="available-count"]');
+            if (!opt || !opt.value) {
+                qty.textContent = '—';
+                count.textContent = '—';
+                return;
+            }
+            var aq = (parseFloat(opt.dataset.currentQty) || 0) - (parseFloat(opt.dataset.reservedQty) || 0);
+            var ac = (parseFloat(opt.dataset.currentCount) || 0) - (parseFloat(opt.dataset.reservedCount) || 0);
+            qty.textContent = aq.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            count.textContent = ac.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        body.addEventListener('change', function (e) {
+            if (e.target.matches('[data-role="item"]')) refreshAvailable(e.target.closest('tr'));
+        });
+
+        body.addEventListener('click', function (e) {
+            if (!e.target.closest('[data-role="remove"]')) return;
+            var rows = body.querySelectorAll('tr');
+            if (rows.length <= 1) return;
+            e.target.closest('tr').remove();
+            renumber();
+        });
+
+        add.addEventListener('click', function () {
+            var first = body.querySelector('tr');
+            var clone = first.cloneNode(true);
+            clone.querySelector('[data-role="item"]').value = '';
+            clone.querySelectorAll('[data-role="qty"],[data-role="count"]').forEach(function (i) { i.value = '0'; });
+            clone.querySelector('[data-role="available-qty"]').textContent = '—';
+            clone.querySelector('[data-role="available-count"]').textContent = '—';
+            body.appendChild(clone);
+            renumber();
+        });
+
+        function renumber() {
+            body.querySelectorAll('tr').forEach(function (tr, i) {
+                tr.querySelectorAll('[name]').forEach(function (el) {
+                    el.name = el.name.replace(/StandaloneItems\[\d+\]/, 'StandaloneItems[' + i + ']');
+                });
+            });
+        }
+
+        body.querySelectorAll('tr').forEach(refreshAvailable);
+    })();
+</script>
+}

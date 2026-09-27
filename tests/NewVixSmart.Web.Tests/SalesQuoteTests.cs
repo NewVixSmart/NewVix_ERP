@@ -192,9 +192,17 @@ public sealed class SalesQuoteTests : IDisposable
         Assert.Equal(320m, salesOrder.Items.Sum(i => i.Total));
         Assert.StartsWith("SO-", salesOrder.OrderNumber);
         Assert.Equal(quote.Id, salesOrder.SaleQuoteId);
-        Assert.Equal(SalesOrderStatus.Draft, salesOrder.Status);
+        Assert.Equal(SalesOrderStatus.Approved, salesOrder.Status);
 
-        Assert.Equal(100, db.Items.Single().CurrentQuantity);
+        var reservation = await db.StockReservations.Include(r => r.Items).SingleAsync();
+        Assert.Equal(StockReservationStatus.Active, reservation.Status);
+        Assert.Equal(salesOrder.Id, reservation.SalesOrderId);
+        Assert.Equal(4m, reservation.Items.Single().Quantity);
+
+        var item = await db.Items.SingleAsync();
+        Assert.Equal(100, item.CurrentQuantity);
+        Assert.Equal(4m, item.ReservedQuantity);
+        Assert.Equal(96m, item.AvailableQuantity);
         Assert.Equal(10, (await db.StockLayers.SingleAsync()).RemainingQty);
         Assert.Equal(0, await db.StockMovements.CountAsync());
         Assert.Equal(0, await db.JournalEntries.CountAsync());

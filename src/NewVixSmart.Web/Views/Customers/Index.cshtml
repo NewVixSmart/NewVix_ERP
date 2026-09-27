@@ -36,6 +36,7 @@
                     <td>@c.OpeningBalance.ToString("N2") ج.م</td>
                     <td class="text-center">
                         <a asp-action="Ledger" asp-route-id="@c.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ العميل @c.Name"><i class="bi bi-journal-bookmark"></i></a>
+                        <a asp-action="PendingDeliveries" asp-route-id="@c.Id" class="btn btn-sm btn-outline-info" aria-label="تسليمات معلّقة للعميل @c.Name"><i class="bi bi-truck"></i></a>
                         @if (await Perm.HasAsync("Customers.Edit"))
                         {
                             <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل العميل @c.Name"><i class="bi bi-pencil"></i></a>

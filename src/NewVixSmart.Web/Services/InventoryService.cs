@@ -14,6 +14,7 @@ public sealed class InventoryService : IInventoryService
     private readonly AppDbContext _db;
     private readonly ILogger<InventoryService>? _logger;
     private readonly IAccountingService? _accounting;
+    private readonly IStockReservationsService _reservations;
 
     public InventoryService(AppDbContext db) : this(db, null, null) { }
 
@@ -21,11 +22,16 @@ public sealed class InventoryService : IInventoryService
 
     public InventoryService(AppDbContext db, IAccountingService? accounting) : this(db, null, accounting) { }
 
-    public InventoryService(AppDbContext db, ILogger<InventoryService>? logger, IAccountingService? accounting)
+    public InventoryService(AppDbContext db, IAccountingService? accounting, IStockReservationsService? reservations)
+        : this(db, null, accounting, reservations) { }
+
+    public InventoryService(AppDbContext db, ILogger<InventoryService>? logger, IAccountingService? accounting,
+        IStockReservationsService? reservations = null)
     {
         _db = db;
         _logger = logger;
         _accounting = accounting;
+        _reservations = reservations ?? new StockReservationsService(db);
     }
 
     public async Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true)
@@ -168,6 +174,442 @@ public sealed class InventoryService : IInventoryService
         return (false, "تعذر حفظ أذن التسليم بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
+    public async Task<(bool Success, string? Error, DeliveryOrder? Delivery)> CreateSalesDeliveryNoteAsync(
+        int? salesOrderId, int? saleInvoiceId, int? customerId, List<DeliveryOrderItem> items, string? user,
+        DateTime? deliveryDate = null, string? notes = null)
+    {
+        if (salesOrderId.HasValue && saleInvoiceId.HasValue)
+            return (false, "لا يمكن ربط أذن التسليم بأمر بيع وفاتورة في نفس الوقت", null);
+
+        var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
+        if (valid.Any(i => i.Quantity < 0 || i.Count < 0)) return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate != null) return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم", null);
+
+        var unknownItem = valid.Select(i => i.ItemId).FirstOrDefault(id => !_db.Items.Any(i => i.Id == id));
+        if (unknownItem > 0) return (false, $"الصنف رقم {unknownItem} غير موجود", null);
+
+        if (salesOrderId.HasValue)
+        {
+            var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == salesOrderId.Value);
+            if (order == null) return (false, "أمر البيع غير موجود", null);
+            if (order.Status == SalesOrderStatus.Draft) return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع مسودة", null);
+            if (order.Status == SalesOrderStatus.Cancelled) return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع ملغي", null);
+            customerId = order.CustomerId;
+        }
+        else if (saleInvoiceId.HasValue)
+        {
+            var invoice = await _db.SaleInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == saleInvoiceId.Value);
+            if (invoice == null) return (false, "فاتورة البيع غير موجودة", null);
+            customerId = invoice.CustomerId;
+        }
+
+        if (!customerId.HasValue || customerId.Value <= 0) return (false, "يرجى اختيار العميل", null);
+        if (!await _db.Customers.AnyAsync(c => c.Id == customerId.Value)) return (false, "العميل غير موجود", null);
+
+        if (salesOrderId.HasValue)
+        {
+            var open = await OpenQuantitiesAsync(salesOrderId.Value, null);
+            var orderLines = await _db.SalesOrderItems.AsNoTracking()
+                .Where(i => i.SalesOrderId == salesOrderId.Value).ToListAsync();
+            foreach (var line in valid)
+            {
+                var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
+                if (orderLine == null) return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع", null);
+                var remainingQty = orderLine.Quantity - orderLine.DeliveredQty - (open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m);
+                var remainingCount = orderLine.Count - orderLine.DeliveredCount - (open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m);
+                if (line.Quantity > remainingQty || line.Count > remainingCount)
+                    return (false, $"الكمية في أذن التسليم أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}", null);
+            }
+        }
+
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var delivery = new DeliveryOrder
+                {
+                    DeliveryNumber = await NextDeliveryNumberAsync(),
+                    SalesOrderId = salesOrderId,
+                    SaleInvoiceId = saleInvoiceId,
+                    CustomerId = customerId.Value,
+                    DeliveryDate = deliveryDate ?? DateTime.Today,
+                    Status = DeliveryOrderStatus.Draft,
+                    Notes = notes,
+                    CreatedBy = user,
+                    CreatedAt = DateTime.UtcNow,
+                    Items = valid
+                };
+
+                _db.DeliveryOrders.Add(delivery);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("أُنشئ أذن تسليم {Owner} رقم {Number} للأمر {OrderId}",
+                    user, delivery.DeliveryNumber, salesOrderId);
+                return (true, null, delivery);
+            }
+            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); DetachAll(); }
+            catch (DbUpdateException) { await tx.RollbackAsync(); DetachAll(); }
+        }
+        return (false, "تعذر حفظ أذن التسليم بسبب تعارض في البيانات، حاول مرة أخرى", null);
+    }
+
+    public async Task<(bool Success, string? Error, DeliveryIssue? Issue)> CreateDeliveryIssueAsync(
+        int deliveryId, List<DeliveryIssueItem> items, string? user, DateTime? issueDate = null, string? notes = null,
+        string? carrier = null, string? trackingNumber = null)
+    {
+        var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
+        if (valid.Any(i => i.Quantity < 0 || i.Count < 0)) return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate != null) return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أمر التسليم", null);
+
+        var delivery = await _db.DeliveryOrders.AsNoTracking().FirstOrDefaultAsync(d => d.Id == deliveryId);
+        if (delivery == null) return (false, "أذن التسليم غير موجود", null);
+        if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "لا يمكن إنشاء أمر تسليم من أذن ملغي", null);
+
+        foreach (var line in valid)
+        {
+            if (!await _db.DeliveryOrderItems.AnyAsync(x => x.DeliveryOrderId == deliveryId && x.ItemId == line.ItemId))
+                return (false, $"الصنف رقم {line.ItemId} غير موجود في أذن التسليم", null);
+            if (line.DeliveryOrderItemId <= 0)
+            {
+                line.DeliveryOrderItemId = await _db.DeliveryOrderItems
+                    .Where(x => x.DeliveryOrderId == deliveryId && x.ItemId == line.ItemId)
+                    .Select(x => x.Id).FirstAsync();
+            }
+        }
+
+        if (delivery.SalesOrderId.HasValue)
+        {
+            var open = await OpenQuantitiesAsync(delivery.SalesOrderId.Value, null, delivery.Id);
+            var orderLines = await _db.SalesOrderItems.AsNoTracking()
+                .Where(i => i.SalesOrderId == delivery.SalesOrderId.Value).ToListAsync();
+            var noteLines = await _db.DeliveryOrderItems.AsNoTracking()
+                .Where(i => i.DeliveryOrderId == deliveryId).ToListAsync();
+            var issuedHere = await _db.DeliveryIssueItems.AsNoTracking()
+                .Where(x => x.DeliveryIssue.DeliveryOrderId == deliveryId && x.DeliveryIssue.Status != DeliveryIssueStatus.Cancelled)
+                .ToListAsync();
+
+            foreach (var line in valid)
+            {
+                var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
+                var noteLine = noteLines.FirstOrDefault(i => i.ItemId == line.ItemId);
+                if (orderLine == null || noteLine == null)
+                    return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع أو أذن التسليم", null);
+
+                var openQty = open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m;
+                var openCount = open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m;
+                if (noteLine.Quantity + orderLine.DeliveredQty + openQty > orderLine.Quantity ||
+                    noteLine.Count + orderLine.DeliveredCount + openCount > orderLine.Count)
+                    return (false, $"الكمية في أذن التسليم أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}", null);
+
+                var issuedQty = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
+                var issuedCount = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
+                if (line.Quantity + issuedQty > noteLine.Quantity || line.Count + issuedCount > noteLine.Count)
+                    return (false, $"الكمية أكبر من المتبقي في أذن التسليم للصنف رقم {line.ItemId}", null);
+            }
+        }
+
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var issue = new DeliveryIssue
+                {
+                    IssueNumber = await NextIssueNumberAsync(),
+                    DeliveryOrderId = deliveryId,
+                    CustomerId = delivery.CustomerId,
+                    SalesOrderId = delivery.SalesOrderId,
+                    SaleInvoiceId = delivery.SaleInvoiceId,
+                    IssueDate = issueDate ?? delivery.DeliveryDate,
+                    Status = DeliveryIssueStatus.Draft,
+                    Notes = notes,
+                    Carrier = carrier,
+                    TrackingNumber = trackingNumber,
+                    CreatedBy = user,
+                    CreatedAt = DateTime.UtcNow,
+                    Items = valid
+                };
+
+                _db.DeliveryIssues.Add(issue);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("أُنشئ أمر تسليم {Owner} رقم {Number} لأذن {DeliveryNumber}",
+                    user, issue.IssueNumber, delivery.DeliveryNumber);
+                return (true, null, issue);
+            }
+            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); DetachAll(); }
+            catch (DbUpdateException) { await tx.RollbackAsync(); DetachAll(); }
+        }
+        return (false, "تعذر حفظ أمر التسليم بسبب تعارض في البيانات، حاول مرة أخرى", null);
+    }
+
+    public async Task<(bool Success, string? Error)> IssueDeliveryAsync(int issueId, string? user, int? branchId = null)
+    {
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var issue = await _db.DeliveryIssues.Include(i => i.Items)
+                    .FirstOrDefaultAsync(i => i.Id == issueId);
+                if (issue == null) return (false, "أمر التسليم غير موجود");
+                if (issue.Status != DeliveryIssueStatus.Draft) return (false, "أمر التسليم مرحّل أو ملغي بالفعل");
+                if (await IsPeriodClosedAsync(issue.IssueDate))
+                    return (false, $"السنة المالية {issue.IssueDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
+
+                var delivery = await _db.DeliveryOrders.AsNoTracking()
+                    .FirstOrDefaultAsync(d => d.Id == issue.DeliveryOrderId);
+                if (delivery == null) return (false, "أذن التسليم غير موجود");
+                if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "أذن التسليم ملغي");
+
+                if (delivery.SalesOrderId.HasValue)
+                {
+                    var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == delivery.SalesOrderId.Value);
+                    if (order == null) return (false, "أمر البيع غير موجود");
+                    if (order.Status == SalesOrderStatus.Cancelled) return (false, "أمر البيع ملغي — لا يمكن التسليم");
+                }
+                if (delivery.SaleInvoiceId.HasValue &&
+                    !await _db.SaleInvoices.AnyAsync(i => i.Id == delivery.SaleInvoiceId.Value))
+                    return (false, "فاتورة البيع المرتبطة غير موجودة");
+
+                var valid = issue.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+                if (valid.Count == 0) return (false, "أمر التسليم لا يحتوي على أصناف صالحة للتسليم");
+
+                if (delivery.SalesOrderId.HasValue)
+                {
+                    var open = await OpenQuantitiesAsync(delivery.SalesOrderId.Value, issue.Id, delivery.Id);
+                    var orderLines = await _db.SalesOrderItems
+                        .Where(i => i.SalesOrderId == delivery.SalesOrderId.Value).ToListAsync();
+                    foreach (var line in valid)
+                    {
+                        var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
+                        if (orderLine == null) return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع");
+                        var remainingQty = orderLine.Quantity - orderLine.DeliveredQty - (open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m);
+                        var remainingCount = orderLine.Count - orderLine.DeliveredCount - (open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m);
+                        if (line.Quantity > remainingQty || line.Count > remainingCount)
+                        {
+                            await tx.RollbackAsync(); DetachAll();
+                            return (false, $"الكمية أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}");
+                        }
+                    }
+                }
+                else if (delivery.SaleInvoiceId.HasValue)
+                {
+                    var invoice = await _db.SaleInvoices.AsNoTracking()
+                        .Include(i => i.Items)
+                        .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
+                    if (invoice == null) return (false, "فاتورة البيع المرتبطة غير موجودة");
+                    var delivered = await _db.DeliveryIssues.AsNoTracking()
+                        .Where(i => i.SaleInvoiceId == invoice.Id && i.Id != issue.Id && i.Status != DeliveryIssueStatus.Cancelled)
+                        .SelectMany(i => i.Items)
+                        .ToListAsync();
+                    foreach (var line in valid)
+                    {
+                        var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
+                        if (invLine == null)
+                        {
+                            await tx.RollbackAsync(); DetachAll();
+                            return (false, $"الصنف رقم {line.ItemId} غير موجود في فاتورة البيع الأصلية");
+                        }
+                        var deliveredQty = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
+                        var deliveredCount = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
+                        if (line.Quantity + deliveredQty > invLine.Quantity || line.Count + deliveredCount > invLine.Count)
+                        {
+                            await tx.RollbackAsync(); DetachAll();
+                            return (false, $"الكمية المسلّمة أكبر من المتبقي في فاتورة البيع للصنف رقم {line.ItemId}");
+                        }
+                    }
+                }
+
+                var itemIds = valid.Select(i => i.ItemId).Distinct().ToList();
+                var stockItems = await _db.Items.Where(i => itemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id);
+                var ownReserved = await OwnReservationRemainingAsync(delivery.SalesOrderId);
+                var shortages = new List<string>();
+                foreach (var line in valid)
+                {
+                    if (!stockItems.TryGetValue(line.ItemId, out var item))
+                    {
+                        shortages.Add($"الصنف رقم {line.ItemId} غير موجود");
+                        continue;
+                    }
+                    ownReserved.TryGetValue(line.ItemId, out var held);
+                    var allowedQty = item.AvailableQuantity + held.Qty;
+                    var allowedCount = item.AvailableCount + held.Count;
+                    if (line.Quantity > allowedQty)
+                        shortages.Add($"«{item.Name}»: المطلوب {line.Quantity:N2} كمية والمتاح {allowedQty:N2}");
+                    if (line.Count > allowedCount)
+                        shortages.Add($"«{item.Name}»: المطلوب {line.Count:N2} عدد والمتاح {allowedCount:N2}");
+                }
+                if (shortages.Count > 0)
+                {
+                    await tx.RollbackAsync(); DetachAll();
+                    return (false, "الرصيد المتاح غير كافٍ للتسليم — " + string.Join(" — ", shortages));
+                }
+
+                var reservationLines = valid
+                    .Select(line => new DeliveryIssueItemLine(
+                        line.ItemId,
+                        line.SalesOrderItemId,
+                        line.Quantity,
+                        line.Count))
+                    .ToList();
+                var consumedReservation = await _reservations.ConsumeForIssuesAsync(
+                    reservationLines, issue.CustomerId, issue.IssueDate, beginOwnTransaction: false);
+                if (!consumedReservation.Success)
+                {
+                    await tx.RollbackAsync(); DetachAll();
+                    return (false, consumedReservation.Error);
+                }
+
+                var stockLines = ToIssueStockLines(valid);
+                var stockError = await ApplyStockAsync(stockLines, sign: -1,
+                    docNumber: issue.IssueNumber, docType: DocumentType.SalesDeliveryIssue, docId: issue.Id,
+                    movementDate: issue.IssueDate, user);
+                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
+
+                var consumed = await ConsumeFifoLayersAsync(stockLines, issue.IssueDate);
+                var costTotal = consumed.DominantTotal;
+
+                if (_accounting != null && costTotal > 0)
+                    await _accounting.RecordSaleIssueCostAsync(issue.IssueDate, issue.Id, costTotal,
+                        null, null, user, branchId);
+
+                issue.Status = DeliveryIssueStatus.Issued;
+                issue.IssuedBy = user;
+                issue.IssuedAt = DateTime.UtcNow;
+
+                foreach (var line in valid)
+                {
+                    if (line.SalesOrderItemId is int orderLineId)
+                    {
+                        var orderLine = await _db.SalesOrderItems.FirstOrDefaultAsync(i => i.Id == orderLineId);
+                        if (orderLine == null)
+                            orderLine = await _db.SalesOrderItems.FirstOrDefaultAsync(
+                                i => i.SalesOrderId == delivery.SalesOrderId && i.ItemId == line.ItemId);
+                        if (orderLine != null)
+                        {
+                            orderLine.DeliveredQty += line.Quantity;
+                            orderLine.DeliveredCount += line.Count;
+                        }
+                    }
+                }
+
+                await _db.SaveChangesAsync();
+                await RefreshDeliveryStatusAsync(delivery.Id);
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger?.LogInformation("رحّل أمر تسليم {Owner} رقم {Number} بكلفة {Cost:C} وخصم المخزون واستهلاك الحجز",
+                    user, issue.IssueNumber, costTotal);
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); DetachAll(); }
+            catch (DbUpdateException) { await tx.RollbackAsync(); DetachAll(); }
+        }
+        return (false, "تعذر ترحيل أمر التسليم بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error)> CancelDeliveryIssueAsync(int issueId, string? user)
+    {
+        var issue = await _db.DeliveryIssues.FirstOrDefaultAsync(i => i.Id == issueId);
+        if (issue == null) return (false, "أمر التسليم غير موجود");
+        if (issue.Status == DeliveryIssueStatus.Issued) return (false, "لا يمكن إلغاء أمر تسليم مرحّل — استخدم المرتجع");
+        if (issue.Status == DeliveryIssueStatus.Cancelled) return (false, "أمر التسليم ملغي بالفعل");
+
+        issue.Status = DeliveryIssueStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        await RefreshDeliveryStatusAsync(issue.DeliveryOrderId);
+        await _db.SaveChangesAsync();
+        _logger?.LogInformation("أُلغي أمر تسليم {Number}", issue.IssueNumber);
+        return (true, null);
+    }
+
+    private async Task RefreshDeliveryStatusAsync(int deliveryId)
+    {
+        var delivery = await _db.DeliveryOrders.FirstOrDefaultAsync(d => d.Id == deliveryId);
+        if (delivery == null || delivery.Status == DeliveryOrderStatus.Cancelled) return;
+
+        var issues = await _db.DeliveryIssues.AsNoTracking()
+            .Include(i => i.Items)
+            .Where(i => i.DeliveryOrderId == deliveryId && i.Status == DeliveryIssueStatus.Issued)
+            .ToListAsync();
+        if (issues.Count == 0)
+        {
+            delivery.Status = DeliveryOrderStatus.Draft;
+            return;
+        }
+
+        var lines = await _db.DeliveryOrderItems.AsNoTracking()
+            .Where(i => i.DeliveryOrderId == deliveryId).ToListAsync();
+        var issued = issues.SelectMany(i => i.Items).ToList();
+        var fullyIssued = lines.All(l => issued
+            .Where(x => x.ItemId == l.ItemId)
+            .Sum(x => x.Quantity) >= l.Quantity - 0.005m
+            && issued.Where(x => x.ItemId == l.ItemId).Sum(x => x.Count) >= l.Count - 0.005m);
+
+        delivery.Status = fullyIssued ? DeliveryOrderStatus.Delivered : DeliveryOrderStatus.PartiallyIssued;
+    }
+
+    private async Task<Dictionary<int, (decimal Qty, decimal Count)>> OwnReservationRemainingAsync(int? salesOrderId)
+    {
+        if (!salesOrderId.HasValue)
+            return new Dictionary<int, (decimal Qty, decimal Count)>();
+        var reservation = await _reservations.GetForOrderAsync(salesOrderId.Value);
+        if (reservation == null) return new Dictionary<int, (decimal Qty, decimal Count)>();
+        return reservation.Items
+            .GroupBy(l => l.ItemId)
+            .ToDictionary(g => g.Key, g => (Qty: g.Sum(l => l.RemainingQuantity), Count: g.Sum(l => l.RemainingCount)));
+    }
+
+    private async Task<Dictionary<int, (decimal Qty, decimal Count)>> OpenQuantitiesAsync(
+        int salesOrderId, int? excludeIssueId, int? excludeDeliveryId = null)
+    {
+        var noted = await _db.DeliveryOrders.AsNoTracking()
+            .Where(d => d.SalesOrderId == salesOrderId
+                && d.Status != DeliveryOrderStatus.Cancelled
+                && (!excludeDeliveryId.HasValue || d.Id != excludeDeliveryId.Value))
+            .SelectMany(d => d.Items)
+            .GroupBy(x => x.ItemId)
+            .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity), Cnt = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.ItemId, x => (Qty: x.Qty, Cnt: x.Cnt));
+
+        var issued = await _db.DeliveryIssues.AsNoTracking()
+            .Where(i => i.SalesOrderId == salesOrderId
+                && i.Status == DeliveryIssueStatus.Issued
+                && (!excludeIssueId.HasValue || i.Id != excludeIssueId.Value)
+                && (!excludeDeliveryId.HasValue || i.DeliveryOrderId != excludeDeliveryId.Value))
+            .SelectMany(i => i.Items)
+            .GroupBy(x => x.ItemId)
+            .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity), Cnt = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.ItemId, x => (Qty: x.Qty, Cnt: x.Cnt));
+
+        if (excludeIssueId.HasValue)
+        {
+            var excluded = await _db.DeliveryIssueItems.AsNoTracking()
+                .Where(x => x.DeliveryIssueId == excludeIssueId.Value)
+                .GroupBy(x => x.ItemId)
+                .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity), Cnt = g.Sum(x => x.Count) })
+                .ToDictionaryAsync(x => x.ItemId, x => (Qty: x.Qty, Cnt: x.Cnt));
+            foreach (var (itemId, value) in excluded)
+            {
+                if (noted.TryGetValue(itemId, out var current))
+                    noted[itemId] = (current.Qty - value.Qty, current.Cnt - value.Cnt);
+            }
+        }
+
+        var result = new Dictionary<int, (decimal Qty, decimal Count)>();
+        foreach (var (itemId, value) in noted)
+        {
+            var issuedValue = issued.TryGetValue(itemId, out var i) ? i : (Qty: 0m, Cnt: 0m);
+            result[itemId] = (value.Qty - issuedValue.Qty, value.Cnt - issuedValue.Cnt);
+        }
+        return result;
+    }
+
     public async Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null)
     {
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
@@ -179,6 +621,10 @@ public sealed class InventoryService : IInventoryService
                     .FirstOrDefaultAsync(d => d.Id == deliveryId);
                 if (delivery == null) return (false, "أذن التسليم غير موجود");
                 if (delivery.Status != DeliveryOrderStatus.Draft) return (false, "أذن التسليم مرحّل أو ملغي بالفعل");
+                if (delivery.IsOrderBacked)
+                    return (false, "أذن التسليم مرتبط بأمر بيع — سلّمه عبر أمر التسليم");
+                if (await _db.DeliveryIssues.AnyAsync(i => i.DeliveryOrderId == deliveryId && i.Status != DeliveryIssueStatus.Cancelled))
+                    return (false, "يوجد أمر تسليم مرحّل لهذا الأذن — لا يمكن ترحيل الأذن مرة أخرى");
                 if (await IsPeriodClosedAsync(delivery.DeliveryDate))
                     return (false, $"السنة المالية {delivery.DeliveryDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
 
@@ -270,6 +716,8 @@ public sealed class InventoryService : IInventoryService
                 if (delivery == null) return (false, "أذن التسليم غير موجود");
                 if (delivery.Status == DeliveryOrderStatus.Delivered) return (false, "لا يمكن إلغاء أذن تسليم تم ترحيله");
                 if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "أذن التسليم ملغي بالفعل");
+                if (await _db.DeliveryIssues.AnyAsync(i => i.DeliveryOrderId == deliveryId && i.Status != DeliveryIssueStatus.Cancelled))
+                    return (false, "يوجد أمر تسليم مرحّل لهذا الأذن — ألغِ أمر التسليم أولاً");
 
                 delivery.Status = DeliveryOrderStatus.Cancelled;
                 await _db.SaveChangesAsync();
@@ -1129,11 +1577,25 @@ public sealed class InventoryService : IInventoryService
                 && r.SaleReturn.Status == ReturnStatus.Posted)
             .ToListAsync();
 
-        var deliveredItems = await _db.DeliveryOrders
+        // المسار القديم (AtDelivery) يربط أذون التسليم بالفاتورة عبر DeliveryOrder.SaleInvoiceId،
+        // بينما المسار الجديد (AtInvoice) يربط أوامر التسليم بالفاتورة عبر DeliveryIssue.SaleInvoiceId.
+        // نجمع الطرفين معاً كي لا يُحظر المرتجع في أي من المسارين.
+        var legacyDelivered = await _db.DeliveryOrders
             .Where(d => d.SaleInvoiceId == invoice.Id && d.Status == DeliveryOrderStatus.Delivered)
             .SelectMany(d => d.Items)
             .AsNoTracking()
             .ToListAsync();
+
+        var issueDelivered = await _db.DeliveryIssues
+            .Where(i => i.SaleInvoiceId == invoice.Id && i.Status == DeliveryIssueStatus.Issued)
+            .SelectMany(i => i.Items)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var deliveredItems = legacyDelivered
+            .Select(d => new { d.ItemId, d.Quantity, d.Count })
+            .Concat(issueDelivered.Select(i => new { i.ItemId, i.Quantity, i.Count }))
+            .ToList();
 
         foreach (var line in valid)
         {
@@ -1245,6 +1707,29 @@ public sealed class InventoryService : IInventoryService
 
     private static List<StockLine> ToStockLines(IEnumerable<DeliveryOrderItem> items) =>
         items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();
+
+    private static List<StockLine> ToIssueStockLines(IEnumerable<DeliveryIssueItem> items) =>
+        items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();
+
+    private async Task<string> NextIssueNumberAsync()
+    {
+        var seriesPrefix = $"ISS-{DateTime.Now:yyyyMMdd}-";
+        var existing = await _db.DeliveryIssues.Select(i => i.IssueNumber).ToListAsync();
+        int next = 1;
+        foreach (var value in existing)
+        {
+            if (value != null && value.Length > seriesPrefix.Length &&
+                int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed >= next)
+                next = parsed + 1;
+        }
+        string num = $"{seriesPrefix}{next:D3}";
+        while (await _db.DeliveryIssues.AnyAsync(i => i.IssueNumber == num))
+        {
+            next++;
+            num = $"{seriesPrefix}{next:D3}";
+        }
+        return num;
+    }
 
     private static List<StockLine> ToReturnStockLines(IEnumerable<SaleReturnItem> items) =>
         items.Select(i => new StockLine(i.ItemId, i.Count, i.Quantity)).ToList();

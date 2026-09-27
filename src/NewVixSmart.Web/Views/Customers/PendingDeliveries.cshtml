@@ -1,0 +1,71 @@
+@model NewVixSmart.Web.ViewModels.Sales.CustomerPendingDeliveriesViewModel
+@{ ViewData["Title"] = $"تسليمات معلّقة - {Model.Customer?.Name ?? ""}"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-truck text-primary"></i> تسليمات معلّقة: @(Model.Customer?.Name ?? "—")</h2>
+    <div>
+        <span class="badge bg-info text-dark fs-6">إجمالي غير المسلَّم: @Model.TotalValue.ToString("N2") ر.س</span>
+        <a asp-action="Ledger" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-primary"><i class="bi bi-journal-bookmark"></i> كشف الحساب</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+    </div>
+</div>
+
+<div class="alert alert-info" role="note">
+    <i class="bi bi-info-circle"></i>
+    هذه الكميات متعاقد عليها في أوامر بيع معتمدة ولم تُسلَّم بعد.
+    قيمتها <strong>لا تدخل</strong> في رصيد ذمم العميل؛ الرصيد يبقى محسوباً من الفواتير فقط.
+</div>
+
+@if (!Model.Lines.Any())
+{
+    <div class="alert alert-success">
+        <i class="bi bi-check2-circle"></i> لا توجد التزامات تسليم معلّقة لهذا العميل — كل الكميات المتعاقد عليها سُلِّمت أو فُوترت.
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover mb-0">
+            <caption class="visually-hidden">أصناف أوامر البيع الملتزم بها وغير المسلَّمة للعميل</caption>
+            <thead><tr>
+                <th scope="col">الأمر</th>
+                <th scope="col">التاريخ</th>
+                <th scope="col">المتوقع</th>
+                <th scope="col">الصنف</th>
+                <th scope="col">مطلوب</th>
+                <th scope="col">مسلَّم</th>
+                <th scope="col">مفوتر</th>
+                <th scope="col">محجوز</th>
+                <th scope="col">متبقٍ</th>
+                <th scope="col">سعر الوحدة</th>
+                <th scope="col">القيمة</th>
+                <th scope="col">أذون التسليم</th>
+            </tr></thead>
+            <tbody>
+                @foreach (var l in Model.Lines)
+                {
+                    <tr>
+                        <th scope="row"><a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@l.OrderPublicId">@l.OrderNumber</a></th>
+                        <td>@l.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td>@(l.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td>@l.ItemName</td>
+                        <td>@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
+                        <td>@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
+                        <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
+                        <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
+                        <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
+                        <td>@l.UnitPrice.ToString("N2")</td>
+                        <td>@l.PendingValue.ToString("N2")</td>
+                        <td>@(string.IsNullOrWhiteSpace(l.DeliveryNoteNumbers) ? "—" : l.DeliveryNoteNumbers)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot><tr class="fw-bold">
+                <th scope="row" colspan="10">الإجمالي (@Model.Lines.Count سطراً)</th>
+                <td>@Model.TotalValue.ToString("N2")</td>
+                <td>—</td>
+            </tr></tfoot>
+        </table>
+    </div>
+    <p class="text-muted small mt-2 mb-0">الأرقام معروضة بالترتيب: كمية / عدد.</p>
+}

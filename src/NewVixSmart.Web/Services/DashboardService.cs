@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.ViewModels.Dashboard;
 
 namespace NewVixSmart.Web.Services;
@@ -74,6 +75,30 @@ public class DashboardService : IDashboardService
         };
 
         vm.LowStockItems = await GetLowStockItemsAsync();
+
+        var pending = await _db.SalesOrderItems
+            .AsNoTracking()
+            .Where(i => i.SalesOrder.Status != SalesOrderStatus.Cancelled
+                && (i.Quantity - i.DeliveredQty > 0 || i.Count - i.DeliveredCount > 0))
+            .Select(i => new
+            {
+                i.SalesOrderId,
+                Base = i.SalesOrder.ExchangeRate ?? 1m,
+                i.UnitPrice,
+                PendingQty = i.Quantity - i.DeliveredQty,
+                PendingCount = i.Count - i.DeliveredCount
+            })
+            .ToListAsync();
+
+        vm.PendingDeliveryCount = pending
+            .Select(p => p.SalesOrderId)
+            .Distinct()
+            .Count();
+        vm.PendingDeliveryValue = decimal.Round(pending
+            .Sum(p => (p.PendingQty > 0 ? p.PendingQty : p.PendingCount) * p.UnitPrice * p.Base), 2);
+        vm.ActiveReservationCount = await _db.StockReservations
+            .AsNoTracking()
+            .CountAsync(r => r.Status == StockReservationStatus.Active);
 
         var recentPurchases = await _db.PurchaseInvoices
             .AsNoTracking()

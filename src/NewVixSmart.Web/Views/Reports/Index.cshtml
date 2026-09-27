@@ -112,3 +112,73 @@
             </div>
         </div>
 </div>
+
+@{
+    var pending = ViewBag.PendingDeliveries as NewVixSmart.Web.ViewModels.Reports.PendingDeliveryReportViewModel;
+}
+@if (pending != null)
+{
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="bi bi-truck text-primary"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
+            <span class="badge bg-info text-dark fs-6">
+                @pending.Lines.Count سطراً · @pending.TotalQty.ToString("N0") كمية · @pending.TotalCount.ToString("N0") عدد · @pending.TotalValue.ToString("N2") ر.س
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <caption class="visually-hidden">الكميات المتعاقد عليها وغير المسلّمة لكل عميل</caption>
+                    <thead><tr>
+                        <th scope="col">العميل</th>
+                        <th scope="col">الأمر</th>
+                        <th scope="col">المتوقع</th>
+                        <th scope="col">الصنف</th>
+                        <th scope="col">مطلوب</th>
+                        <th scope="col">مسلَّم</th>
+                        <th scope="col">مفوتر</th>
+                        <th scope="col">محجوز</th>
+                        <th scope="col">متبقٍ</th>
+                        <th scope="col">القيمة</th>
+                    </tr></thead>
+                    <tbody>
+                        @if (!pending.Lines.Any())
+                        {
+                            <tr><td colspan="10" class="text-center text-muted">لا توجد تسليمات معلّقة</td></tr>
+                        }
+                        @foreach (var l in pending.Lines.Take(15))
+                        {
+                            <tr>
+                                <th scope="row"><a asp-controller="Customers" asp-action="PendingDeliveries" asp-route-id="@l.CustomerId">@l.CustomerName</a></th>
+                                <td><a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@l.OrderPublicId">@l.OrderNumber</a></td>
+                                <td>@(l.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>@l.ItemName</td>
+                                <td>@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
+                                <td>@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
+                                <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
+                                <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
+                                <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
+                                <td>@l.PendingValue.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    @if (pending.Lines.Any())
+                    {
+                        <tfoot><tr class="fw-bold">
+                            <th scope="row" colspan="9">الإجمالي</th>
+                            <td>@pending.TotalValue.ToString("N2")</td>
+                        </tr></tfoot>
+                    }
+                </table>
+            </div>
+            @if (pending.Lines.Count > 15)
+            {
+                <div class="card-footer text-muted small">تُعرض أول 15 سطراً من @pending.Lines.Count. للقائمة الكاملة راجع صفحة كل عميل.</div>
+            }
+            else
+            {
+                <div class="card-footer text-muted small">الأرقام معروضة بالترتيب: كمية / عدد. القيمة غير محسوبة في ذمم العميل.</div>
+            }
+        </div>
+    </div>
+}

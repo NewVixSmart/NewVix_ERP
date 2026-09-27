@@ -102,6 +102,9 @@ public class SaleInvoice
     [Display(Name = "مرجع الأمر")]
     public string? OrderReference { get; set; }
 
+    [Display(Name = "موضع الترحيل المحاسبي")]
+    public SalesPostingMode PostingMode { get; set; } = SalesPostingMode.AtDelivery;
+
     [Display(Name = "أنشئ بواسطة")]
     [BindNever]
     public string? CreatedBy { get; set; }
@@ -115,4 +118,7 @@ public class SaleInvoice
 
     [BindNever]
     public ICollection<SaleInvoiceItem> Items { get; set; } = new List<SaleInvoiceItem>();
+
+    [BindNever]
+    public ICollection<DeliveryIssue> DeliveryIssues { get; set; } = new List<DeliveryIssue>();
 }

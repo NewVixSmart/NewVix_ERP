@@ -42,7 +42,35 @@ public class SalesOrderItem
     [Display(Name = "العدد المفوتَر")]
     public decimal InvoicedCount { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "الكمية المحجوزة")]
+    public decimal ReservedQty { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "العدد المحجوز")]
+    public decimal ReservedCount { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "الكمية المسلّمة")]
+    public decimal DeliveredQty { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "العدد المسلّم")]
+    public decimal DeliveredCount { get; set; }
+
     public decimal Total => (Quantity > 0 ? Quantity : Count) * UnitPrice;
+
+    [NotMapped]
+    public decimal PendingQty => Quantity - DeliveredQty;
+
+    [NotMapped]
+    public decimal PendingCount => Count - DeliveredCount;
+
+    [NotMapped]
+    public decimal UninvoicedQty => DeliveredQty - InvoicedQty;
+
+    [NotMapped]
+    public decimal UninvoicedCount => DeliveredCount - InvoicedCount;
 
     [Timestamp]
     public byte[]? RowVersion { get; set; }

@@ -34,6 +34,32 @@ public class AccountingService : IAccountingService
         await PostAsync(JournalSource.SaleInvoice, customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
     }
 
+    public async Task RecordSaleInvoiceRevenueAsync(DateTime entryDate, int customerId, decimal netAmount, decimal taxAmount,
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? invoiceId = null)
+    {
+        var localValue = decimal.Round(netAmount * (exchangeRate ?? 1m), 2);
+        var localTax = decimal.Round(taxAmount * (exchangeRate ?? 1m), 2);
+        if (localTax < 0.005m) localTax = 0m;
+        if (localTax > localValue - 0.005m) localTax = 0m;
+        if (localValue <= 0) throw new InvalidOperationException("فاتورة البيع بلا قيمة");
+        var lines = new List<JournalLine>
+        {
+            new("1200", localValue, 0),
+            new("4000", 0, decimal.Round(localValue - localTax, 2))
+        };
+        if (localTax > 0) lines.Add(new JournalLine("2055", 0, localTax));
+        await PostAsync(JournalSource.SaleInvoice, invoiceId ?? customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
+    }
+
+    public async Task RecordSaleIssueCostAsync(DateTime entryDate, int issueId, decimal costAmount,
+        int? currencyId, decimal? exchangeRate, string? user, int? branchId = null)
+    {
+        var localCost = decimal.Round(costAmount * (exchangeRate ?? 1m), 2);
+        if (localCost <= 0) return;
+        await PostAsync(JournalSource.SaleDeliveryIssue, issueId, entryDate, "تكلفة تسليم بيع",
+            new[] { new JournalLine("5000", localCost, 0), new JournalLine("1300", 0, localCost) }, user, branchId);
+    }
+
     public async Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost,
         int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null, decimal taxAmount = 0m)
     {
@@ -258,6 +284,11 @@ public class AccountingService : IAccountingService
         }
         throw new InvalidOperationException("تعذر حفظ القيد بسبب تعارض في البيانات، حاول مرة أخرى");
     }
+
+    public async Task<JournalEntry?> GetEntryForSourceAsync(JournalSource source, int sourceId)
+        => await _db.JournalEntries
+            .Include(e => e.Lines)
+            .FirstOrDefaultAsync(e => e.Source == source && e.SourceId == sourceId);
 
     private static async Task<int> MaxSeriesValueAsync(IQueryable<string> existing, string seriesPrefix)
     {

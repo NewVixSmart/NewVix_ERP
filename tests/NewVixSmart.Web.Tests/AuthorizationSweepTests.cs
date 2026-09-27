@@ -101,4 +101,75 @@ public sealed class AuthorizationSweepTests
         Assert.Contains(all, c => c.FullName == "NewVixSmart.Web.Controllers.HomeController");
         Assert.Contains(all, c => c.FullName == "NewVixSmart.Web.Api.TokensController");
     }
+
+    private static string? PermKeyOf(MethodInfo action) =>
+        action.GetCustomAttribute<RequirePermAttribute>(inherit: true)?.Arguments?.FirstOrDefault() as string;
+
+    private static IReadOnlyList<string> RequiredPerms(Type controller) =>
+        ActionMethods(controller)
+            .Select(PermKeyOf)
+            .Where(k => k is not null)
+            .Select(k => k!)
+            .ToList();
+
+    [Fact]
+    public void NewFlowControllers_GuardEveryActionWithTheExpectedPermission()
+    {
+        var expected = new Dictionary<Type, string[]>
+        {
+            [typeof(NewVixSmart.Web.Controllers.StockReservationsController)] =
+                ["StockReservations.View", "StockReservations.Create", "StockReservations.Release"],
+            [typeof(NewVixSmart.Web.Controllers.DeliveryIssuesController)] =
+                ["DeliveryIssues.View", "DeliveryIssues.Create", "DeliveryIssues.Issue"]
+        };
+
+        foreach (var (controller, perms) in expected)
+        {
+            var guarded = RequiredPerms(controller).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
+            var wanted = perms.OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+            Assert.Equal(wanted, guarded);
+        }
+    }
+
+    [Fact]
+    public void WarehouseRole_CanReserveAndDeliver_WithoutNeedingSalesCreate()
+    {
+        var warehouse = NewVixSmart.Web.Services.PermissionDefaults.DefaultsFor("Warehouse");
+
+        foreach (var perm in new[]
+                 {
+                     "StockReservations.View", "StockReservations.Create", "StockReservations.Release",
+                     "DeliveryIssues.View", "DeliveryIssues.Create", "DeliveryIssues.Issue",
+                     "DeliveryOrders.View", "DeliveryOrders.Create", "DeliveryOrders.Deliver"
+                 })
+        {
+            Assert.Contains(perm, warehouse);
+        }
+
+        var accountant = NewVixSmart.Web.Services.PermissionDefaults.DefaultsFor("Accountant");
+        foreach (var perm in new[]
+                 {
+                     "StockReservations.View", "StockReservations.Create", "StockReservations.Release",
+                     "DeliveryIssues.View", "DeliveryIssues.Create", "DeliveryIssues.Issue"
+                 })
+        {
+            Assert.Contains(perm, accountant);
+        }
+    }
+
+    [Fact]
+    public void ReservationAndIssuePermissions_ExistInTheCatalog()
+    {
+        var stockReservationActions = NewVixSmart.Web.Services.PermissionCatalog.ActionsFor("StockReservations");
+        var deliveryIssueActions = NewVixSmart.Web.Services.PermissionCatalog.ActionsFor("DeliveryIssues");
+
+        Assert.Equal(["View", "Create", "Release"], stockReservationActions);
+        Assert.Equal(["View", "Create", "Issue"], deliveryIssueActions);
+
+        Assert.Contains(NewVixSmart.Web.Services.PermissionCatalog.Modules,
+            m => m.Key == "StockReservations" && m.Controller == "StockReservations");
+        Assert.Contains(NewVixSmart.Web.Services.PermissionCatalog.Modules,
+            m => m.Key == "DeliveryIssues" && m.Controller == "DeliveryIssues");
+    }
 }

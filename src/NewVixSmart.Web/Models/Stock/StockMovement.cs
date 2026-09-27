@@ -79,5 +79,7 @@ public enum DocumentType
     [Display(Name = "تحويل")]
     Transfer = 6,
     [Display(Name = "أذن تسليم بيع")]
-    SaleDeliveryOrder = 7
+    SaleDeliveryOrder = 7,
+    [Display(Name = "أمر تسليم بيع")]
+    SalesDeliveryIssue = 8
 }

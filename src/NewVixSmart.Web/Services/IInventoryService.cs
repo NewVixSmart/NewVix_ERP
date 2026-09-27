@@ -8,6 +8,14 @@ public interface IInventoryService
 {
     Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true);
     Task<(bool Success, string? Error)> CreateDeliveryOrderAsync(DeliveryOrder delivery, List<DeliveryOrderItem> items, string? user);
+    Task<(bool Success, string? Error, DeliveryOrder? Delivery)> CreateSalesDeliveryNoteAsync(
+        int? salesOrderId, int? saleInvoiceId, int? customerId, List<DeliveryOrderItem> items, string? user,
+        DateTime? deliveryDate = null, string? notes = null);
+    Task<(bool Success, string? Error, DeliveryIssue? Issue)> CreateDeliveryIssueAsync(
+        int deliveryId, List<DeliveryIssueItem> items, string? user, DateTime? issueDate = null, string? notes = null,
+        string? carrier = null, string? trackingNumber = null);
+    Task<(bool Success, string? Error)> IssueDeliveryAsync(int issueId, string? user, int? branchId = null);
+    Task<(bool Success, string? Error)> CancelDeliveryIssueAsync(int issueId, string? user);
     Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null);
     Task<(bool Success, string? Error)> CancelDeliveryOrderAsync(int deliveryId, string? user);
     Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true);

@@ -36,10 +36,16 @@ public class DashboardReportViewModel
     public List<OverdueInvoiceViewModel> OverdueReceivables { get; set; } = new();
     public List<OverdueInvoiceViewModel> OverduePayables { get; set; } = new();
     public List<LowStockItemViewModel> LowStockItems { get; set; } = new();
+    public List<PendingDeliveryLineViewModel> PendingDeliveries { get; set; } = new();
+    public int ActiveReservationCount { get; set; }
+    public decimal ActiveReservedQuantity { get; set; }
 
     public int OverdueReceivableCount => OverdueReceivables.Count;
     public decimal OverdueReceivableTotal => OverdueReceivables.Sum(x => x.Outstanding);
     public int OverduePayableCount => OverduePayables.Count;
     public decimal OverduePayableTotal => OverduePayables.Sum(x => x.Outstanding);
     public int LowStockCount => LowStockItems.Count;
+    public int PendingDeliveryCount => PendingDeliveries.Count;
+    public decimal PendingDeliveryTotal => PendingDeliveries.Sum(x => x.PendingValue);
+    public int PendingDeliveryQty => (int)PendingDeliveries.Sum(x => x.PendingQty);
 }

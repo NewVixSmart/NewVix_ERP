@@ -21,4 +21,7 @@ public class DashboardViewModel
     public decimal DueSoonReceivableTotal { get; set; }
     public int DueSoonPayableCount { get; set; }
     public decimal DueSoonPayableTotal { get; set; }
+    public int PendingDeliveryCount { get; set; }
+    public decimal PendingDeliveryValue { get; set; }
+    public int ActiveReservationCount { get; set; }
 }

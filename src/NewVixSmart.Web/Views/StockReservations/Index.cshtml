@@ -1,0 +1,71 @@
+@model IReadOnlyList<NewVixSmart.Web.Models.Stock.StockReservation>
+@inject NewVixSmart.Web.Services.IPermissionService Perm
+@using NewVixSmart.Web.Models.Stock
+@using NewVixSmart.Web.Extensions
+@{ ViewData["Title"] = "حجوزات المخزون"; }
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h2><i class="bi bi-bookmark-check text-primary"></i> حجوزات المخزون</h2>
+    @if (await Perm.HasAsync("StockReservations.Create"))
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> حجز جديد</a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+}
+
+<ul class="nav nav-pills mb-3" aria-label="فلترة حجوزات المخزون">
+    <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
+    @foreach (var st in Enum.GetValues<StockReservationStatus>())
+    {
+        <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter as StockReservationStatus? == st ? "active" : "")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a></li>
+    }
+</ul>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">لا توجد حجوزات بعد.</div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover mb-0">
+            <caption class="visually-hidden">قائمة حجوزات المخزون مع الحالة والكميات المحجوزة</caption>
+            <thead><tr><th scope="col">رقم الحجز</th><th scope="col">أمر البيع</th><th scope="col">العميل</th><th scope="col">عدد الأصناف</th><th scope="col">الكمية</th><th scope="col">العدد</th><th scope="col">الحالة</th><th scope="col">أُنشئ</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <th scope="row"><code>@r.ReservationNumber</code></th>
+                        <td>
+                            @if (r.SalesOrder != null)
+                            {
+                                <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@r.SalesOrder.PublicId">@r.SalesOrder.OrderNumber</a>
+                            }
+                            else
+                            {
+                                <span>حجز مستقل</span>
+                            }
+                        </td>
+                        <td>@(r.Customer?.Name ?? "—")</td>
+                        <td>@r.Items.Count</td>
+                        <td>@r.TotalQuantity.ToString("N2")</td>
+                        <td>@r.TotalCount.ToString("N2")</td>
+                        <td><span class="badge @(r.Status switch { StockReservationStatus.Released => "bg-secondary", StockReservationStatus.Consumed => "bg-success", _ => "bg-warning text-dark" })">@r.Status.GetDisplayName()</span></td>
+                        <td>@r.CreatedAt.ToString("dd/MM/yyyy")</td>
+                        <td class="text-center">
+                            <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض الحجز @r.ReservationNumber"><i class="bi bi-eye"></i></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

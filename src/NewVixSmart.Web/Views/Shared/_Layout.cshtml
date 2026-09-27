@@ -194,7 +194,7 @@
                 </div>
             }
 
-            @if (await Perm.HasAnyAsync("Items.View", "Stock.View", "StockReport.View", "InventoryAdjustments.View", "Warehouses.View", "StockTransfers.View", "Batch.AdjustmentCreate"))
+            @if (await Perm.HasAnyAsync("Items.View", "Stock.View", "StockReport.View", "InventoryAdjustments.View", "Warehouses.View", "StockTransfers.View", "StockReservations.View", "DeliveryIssues.View", "Batch.AdjustmentCreate"))
             {
                 <div class="nav-group" data-group="stock">
                     <button type="button" class="nav-group-header" aria-expanded="true" aria-controls="nav-stock" aria-label="المخزون" title="المخزون">
@@ -252,6 +252,20 @@
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "StockTransfers" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "StockTransfers" ? "page" : null)" aria-label="نقل مخزون" asp-controller="StockTransfers" asp-action="Index">
                                     <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                                     <span class="nav-link-text">نقل مخزون</span>
+                                </a>
+                            }
+                            @if (await Perm.HasAsync("StockReservations.View"))
+                            {
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "StockReservations" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "StockReservations" ? "page" : null)" aria-label="حجوزات المخزون" asp-controller="StockReservations" asp-action="Index">
+                                    <i class="bi bi-bookmark-check" aria-hidden="true"></i>
+                                    <span class="nav-link-text">حجوزات المخزون</span>
+                                </a>
+                            }
+                            @if (await Perm.HasAsync("DeliveryIssues.View"))
+                            {
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "DeliveryIssues" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "DeliveryIssues" ? "page" : null)" aria-label="أوامر التسليم" asp-controller="DeliveryIssues" asp-action="Index">
+                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                    <span class="nav-link-text">أوامر التسليم</span>
                                 </a>
                             }
                             @if (await Perm.HasAsync("StockReport.View"))

@@ -11,4 +11,6 @@ public interface ISalesOrdersService
     Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId);
     Task<(bool Success, string? Error)> CancelOrderAsync(int orderId);
     Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user);
+    Task<(bool Success, string? Error, SaleInvoice? Invoice)> InvoiceOutstandingDeliveriesAsync(
+        int orderId, string? user, int? branchId = null);
 }

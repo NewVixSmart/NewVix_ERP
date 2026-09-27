@@ -10,21 +10,57 @@
 {
     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 }
+@if (ViewBag.OrderLabel != null)
+{
+    <div class="alert alert-info my-3">أمر البيع المختار: <strong>@ViewBag.OrderLabel</strong> — الأسطر المعروضة هي المتبقي غير المسجّل في أذون أخرى.</div>
+}
 @if (ViewBag.InvoiceLabel != null)
 {
     <div class="alert alert-info my-3">الفاتورة المختارة: <strong>@ViewBag.InvoiceLabel</strong> — تُشحن الكمية المتبقية دفعة واحدة أو جزء منها.</div>
 }
 
 <form asp-action="Create">
+    <input type="hidden" name="Source" id="SourceField" value="@Model.Source" />
+
     <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-diagram-3"></i> مصدر الأذن</div>
         <div class="card-body">
-            <div class="row g-3">
+            <fieldset class="row g-3">
+                <legend class="visually-hidden">اختر مصدر أذن التسليم</legend>
                 <div class="col-md-4">
-                    <label class="form-label" for="invoiceSelect">فاتورة البيع</label>
-                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select" id="invoiceSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="sourceChoice" id="srcOrder" value="Order" @(Model.Source == "Order" ? "checked" : "") />
+                        <label class="form-check-label" for="srcOrder">من أمر بيع</label>
+                    </div>
+                    <select asp-for="Delivery.SalesOrderId" asp-items="@Model.SalesOrders" class="form-select form-select-sm mt-2" id="salesOrderSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                        <option value="">-- اختر أمر بيع --</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="sourceChoice" id="srcInvoice" value="Invoice" @(Model.Source == "Invoice" ? "checked" : "") />
+                        <label class="form-check-label" for="srcInvoice">من فاتورة (المسار القديم)</label>
+                    </div>
+                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select form-select-sm mt-2" id="invoiceSelect" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر فاتورة بيع --</option>
                     </select>
                 </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="sourceChoice" id="srcFree" value="Free" @(Model.Source != "Order" && Model.Source != "Invoice" ? "checked" : "") />
+                        <label class="form-check-label" for="srcFree">إدخال حر (بدون أمر أو فاتورة)</label>
+                    </div>
+                    <select asp-for="Delivery.CustomerId" asp-items="@Model.Customers" class="form-select form-select-sm mt-2" id="customerSelect">
+                        <option value="">-- اختر العميل --</option>
+                    </select>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
                 <div class="col-md-3">
                     <label asp-for="Delivery.DeliveryDate" class="form-label"></label>
                     <input asp-for="Delivery.DeliveryDate" class="form-control" type="date" />
@@ -50,6 +86,7 @@
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0" id="itemsTable">
+                    <caption class="visually-hidden">أصناف أذن التسليم مع الكمية والعدد المُسلَّم</caption>
                     <thead>
                         <tr>
                             <th scope="col" style="width:40%">الصنف</th>
@@ -76,7 +113,24 @@
                 </table>
             </div>
         </div>
-        <div class="card-footer text-muted small">الكمية المعروضة هي المتبقية غير المسلّمة من الفاتورة (تخصم منها أي أذونات سابقة). يمكنك إنقاصها لتسليم جزئي.</div>
+        <div class="card-footer text-muted small">اختر صنفاً من قائمة الأصناف لإضافته. الكمية المعروضة هي المتبقية غير المسلّمة من المصدر.</div>
+        <div class="card-body border-top">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label for="itemPicker" class="form-label">إضافة صنف</label>
+                    <select id="itemPicker" class="form-select">
+                        <option value="">-- اختر الصنف --</option>
+                        @foreach (var it in Model.ItemsData)
+                        {
+                            <option value="@it.Id">@it.Name @(it.Code != null ? $"({it.Code})" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" id="addItemBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-plus-lg"></i> إضافة</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="mt-4 d-flex gap-2">
@@ -88,13 +142,80 @@
 @section Scripts {
 <script nonce="@Context.GetCspNonce()">
 document.querySelectorAll('.remove-row').forEach(btn => {
-    btn.addEventListener('click', function() { this.closest('tr').remove(); });
+    btn.addEventListener('click', function () { this.closest('tr').remove(); renumber(); });
 });
+
+const SourceField = document.getElementById('SourceField');
+const radios = document.querySelectorAll('input[name="sourceChoice"]');
+const orderSelect = document.getElementById('salesOrderSelect');
 const invoiceSelect = document.getElementById('invoiceSelect');
+const customerSelect = document.getElementById('customerSelect');
+const createUrl = '@Url.Action("Create", "DeliveryOrders")';
+
+function currentSource() {
+    const checked = document.querySelector('input[name="sourceChoice"]:checked');
+    return checked ? checked.value : 'Free';
+}
+
+function renumber() {
+    document.querySelectorAll('#itemsBody tr').forEach(function (tr, i) {
+        tr.querySelectorAll('input[name]').forEach(function (el) {
+            el.name = el.name.replace(/items\[\d+\]/, 'items[' + i + ']');
+        });
+    });
+}
+
+function clearOtherSources(keep) {
+    if (keep !== 'Order' && orderSelect) orderSelect.value = '';
+    if (keep !== 'Invoice' && invoiceSelect) invoiceSelect.value = '';
+    if (keep !== 'Free' && customerSelect) customerSelect.value = '';
+}
+
+radios.forEach(function (r) {
+    r.addEventListener('change', function () {
+        SourceField.value = r.value;
+        clearOtherSources(r.value);
+    });
+});
+
+if (orderSelect) {
+    orderSelect.addEventListener('change', function () {
+        if (orderSelect.value) {
+            SourceField.value = 'Order';
+            clearOtherSources('Order');
+            location.href = createUrl + '?source=Order&salesOrderId=' + encodeURIComponent(orderSelect.value);
+        }
+    });
+}
+
 if (invoiceSelect) {
-    const baseUrl = invoiceSelect.getAttribute('data-redirect') || '';
-    invoiceSelect.addEventListener('change', () => {
-        if (invoiceSelect.value) location.href = baseUrl + '?invoiceId=' + encodeURIComponent(invoiceSelect.value);
+    invoiceSelect.addEventListener('change', function () {
+        if (invoiceSelect.value) {
+            SourceField.value = 'Invoice';
+            clearOtherSources('Invoice');
+            location.href = createUrl + '?source=Invoice&invoiceId=' + encodeURIComponent(invoiceSelect.value);
+        }
+    });
+}
+
+const picker = document.getElementById('itemPicker');
+const addBtn = document.getElementById('addItemBtn');
+if (picker && addBtn) {
+    addBtn.addEventListener('click', function () {
+        if (!picker.value) return;
+        const opt = picker.selectedOptions[0];
+        const body = document.getElementById('itemsBody');
+        const idx = body.querySelectorAll('tr').length;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="hidden" name="items[' + idx + '].ItemId" /><strong></strong></td>' +
+            '<td><input name="items[' + idx + '].Count" type="number" step="0.01" value="0" class="form-control form-control-sm" aria-label="العدد المسلّم" /></td>' +
+            '<td><input name="items[' + idx + '].Quantity" type="number" step="0.01" value="0" class="form-control form-control-sm" aria-label="الكمية المسلّمة" /></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>';
+        tr.querySelector('input[name$=".ItemId"]').value = picker.value;
+        tr.querySelector('strong').textContent = opt.textContent.trim();
+        body.appendChild(tr);
+        tr.querySelector('.remove-row').addEventListener('click', function () { tr.remove(); renumber(); });
+        picker.value = '';
     });
 }
 </script>

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace NewVixSmart.Web.Models.Sales;
@@ -20,6 +21,22 @@ public class DeliveryOrder
 
     [BindNever]
     public SaleInvoice? SaleInvoice { get; set; }
+
+    [Display(Name = "أمر البيع المرتبط")]
+    public int? SalesOrderId { get; set; }
+
+    [BindNever]
+    public SalesOrder? SalesOrder { get; set; }
+
+    [Display(Name = "حجز المخزون المرتبط")]
+    public int? StockReservationId { get; set; }
+
+    [BindNever]
+    public Stock.StockReservation? StockReservation { get; set; }
+
+    [BindNever]
+    [NotMapped]
+    public bool IsOrderBacked => SalesOrderId.HasValue;
 
     [Display(Name = "العميل")]
     public int CustomerId { get; set; }
@@ -68,4 +85,7 @@ public class DeliveryOrder
 
     [BindNever]
     public ICollection<DeliveryOrderItem> Items { get; set; } = new List<DeliveryOrderItem>();
+
+    [BindNever]
+    public ICollection<DeliveryIssue> Issues { get; set; } = new List<DeliveryIssue>();
 }

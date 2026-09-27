@@ -848,6 +848,12 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int?>("QuantityUnitId")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("ReservedCount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ReservedQuantity")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1492,6 +1498,127 @@ namespace NewVixSmart.Web.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Carrier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DeliveryOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssueNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssuedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PublicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("SaleInvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SalesOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DeliveryOrderId");
+
+                    b.HasIndex("IssueNumber")
+                        .IsUnique();
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
+
+                    b.HasIndex("SaleInvoiceId");
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.ToTable("DeliveryIssues");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssueItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Count")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("DeliveryIssueId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DeliveryOrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("SalesOrderItemId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryIssueId");
+
+                    b.HasIndex("DeliveryOrderItemId");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("SalesOrderItemId");
+
+                    b.ToTable("DeliveryIssueItems");
+                });
+
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryOrder", b =>
                 {
                     b.Property<int>("Id")
@@ -1542,7 +1669,13 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int?>("SaleInvoiceId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SalesOrderId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("StockReservationId")
                         .HasColumnType("int");
 
                     b.Property<string>("TrackingNumber")
@@ -1561,7 +1694,14 @@ namespace NewVixSmart.Web.Migrations
 
                     b.HasIndex("SaleInvoiceId");
 
-                    b.ToTable("DeliveryOrders");
+                    b.HasIndex("SalesOrderId");
+
+                    b.HasIndex("StockReservationId");
+
+                    b.ToTable("DeliveryOrders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryOrders_SingleSource", "([SalesOrderId] IS NULL OR [SaleInvoiceId] IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryOrderItem", b =>
@@ -1659,6 +1799,9 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int>("PaymentTerms")
                         .HasColumnType("int");
 
+                    b.Property<int>("PostingMode")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("PublicId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1691,7 +1834,6 @@ namespace NewVixSmart.Web.Migrations
                         .IsUnique();
 
                     b.HasIndex("SalesOrderId")
-                        .IsUnique()
                         .HasFilter("[SalesOrderId] IS NOT NULL");
 
                     b.ToTable("SaleInvoices");
@@ -2048,6 +2190,12 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<decimal>("Count")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("DeliveredCount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DeliveredQty")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("InvoicedCount")
                         .HasColumnType("decimal(18,2)");
 
@@ -2058,6 +2206,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ReservedCount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ReservedQty")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<byte[]>("RowVersion")
@@ -2230,6 +2384,111 @@ namespace NewVixSmart.Web.Migrations
                     b.HasIndex("ItemId");
 
                     b.ToTable("StockMovements");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PublicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReleasedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReservationNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("SalesOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
+
+                    b.HasIndex("ReservationNumber")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.ToTable("StockReservations");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockReservationLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ConsumedCount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ConsumedQuantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Count")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("SalesOrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StockReservationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("SalesOrderItemId");
+
+                    b.HasIndex("StockReservationId");
+
+                    b.ToTable("StockReservationLines");
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockTransfer", b =>
@@ -2726,6 +2985,73 @@ namespace NewVixSmart.Web.Migrations
                     b.Navigation("Currency");
                 });
 
+            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssue", b =>
+                {
+                    b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.DeliveryOrder", "DeliveryOrder")
+                        .WithMany("Issues")
+                        .HasForeignKey("DeliveryOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SaleInvoice", "SaleInvoice")
+                        .WithMany("DeliveryIssues")
+                        .HasForeignKey("SaleInvoiceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrder", "SalesOrder")
+                        .WithMany()
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("DeliveryOrder");
+
+                    b.Navigation("SaleInvoice");
+
+                    b.Navigation("SalesOrder");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssueItem", b =>
+                {
+                    b.HasOne("NewVixSmart.Web.Models.Sales.DeliveryIssue", "DeliveryIssue")
+                        .WithMany("Items")
+                        .HasForeignKey("DeliveryIssueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.DeliveryOrderItem", "DeliveryOrderItem")
+                        .WithMany()
+                        .HasForeignKey("DeliveryOrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Core.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrderItem", "SalesOrderItem")
+                        .WithMany()
+                        .HasForeignKey("SalesOrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DeliveryIssue");
+
+                    b.Navigation("DeliveryOrderItem");
+
+                    b.Navigation("Item");
+
+                    b.Navigation("SalesOrderItem");
+                });
+
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryOrder", b =>
                 {
                     b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
@@ -2739,9 +3065,23 @@ namespace NewVixSmart.Web.Migrations
                         .HasForeignKey("SaleInvoiceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrder", "SalesOrder")
+                        .WithMany("DeliveryOrders")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NewVixSmart.Web.Models.Stock.StockReservation", "StockReservation")
+                        .WithMany()
+                        .HasForeignKey("StockReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Customer");
 
                     b.Navigation("SaleInvoice");
+
+                    b.Navigation("SalesOrder");
+
+                    b.Navigation("StockReservation");
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryOrderItem", b =>
@@ -2782,7 +3122,7 @@ namespace NewVixSmart.Web.Migrations
                         .IsRequired();
 
                     b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrder", "SalesOrder")
-                        .WithMany()
+                        .WithMany("Invoices")
                         .HasForeignKey("SalesOrderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -2998,6 +3338,49 @@ namespace NewVixSmart.Web.Migrations
                     b.Navigation("Item");
                 });
 
+            modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockReservation", b =>
+                {
+                    b.HasOne("NewVixSmart.Web.Models.Sales.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrder", "SalesOrder")
+                        .WithMany("Reservations")
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("SalesOrder");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockReservationLine", b =>
+                {
+                    b.HasOne("NewVixSmart.Web.Models.Core.Item", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NewVixSmart.Web.Models.Sales.SalesOrderItem", "SalesOrderItem")
+                        .WithMany()
+                        .HasForeignKey("SalesOrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("NewVixSmart.Web.Models.Stock.StockReservation", "StockReservation")
+                        .WithMany("Items")
+                        .HasForeignKey("StockReservationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+
+                    b.Navigation("SalesOrderItem");
+
+                    b.Navigation("StockReservation");
+                });
+
             modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockTransfer", b =>
                 {
                     b.HasOne("NewVixSmart.Web.Models.Stock.Warehouse", "SourceWarehouse")
@@ -3111,13 +3494,22 @@ namespace NewVixSmart.Web.Migrations
                     b.Navigation("SaleReturns");
                 });
 
+            modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryIssue", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.DeliveryOrder", b =>
                 {
+                    b.Navigation("Issues");
+
                     b.Navigation("Items");
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.SaleInvoice", b =>
                 {
+                    b.Navigation("DeliveryIssues");
+
                     b.Navigation("Items");
                 });
 
@@ -3132,6 +3524,17 @@ namespace NewVixSmart.Web.Migrations
                 });
 
             modelBuilder.Entity("NewVixSmart.Web.Models.Sales.SalesOrder", b =>
+                {
+                    b.Navigation("DeliveryOrders");
+
+                    b.Navigation("Invoices");
+
+                    b.Navigation("Items");
+
+                    b.Navigation("Reservations");
+                });
+
+            modelBuilder.Entity("NewVixSmart.Web.Models.Stock.StockReservation", b =>
                 {
                     b.Navigation("Items");
                 });

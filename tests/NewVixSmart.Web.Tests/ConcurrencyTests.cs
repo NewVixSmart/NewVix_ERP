@@ -264,10 +264,10 @@ public sealed class ConcurrencyTests : IDisposable
     }
 
     [Fact]
-    public async Task SaleInvoice_UniqueSalesOrderIndex_RejectsDuplicateDirectInsert()
+    public async Task SaleInvoice_MultipleInvoicesPerSalesOrder_AreAllowed()
     {
         using var db = CreateContext();
-        var customer = new Customer { Name = "عميل الفهرس الفريد" };
+        var customer = new Customer { Name = "عميل الفواتير الجزئية" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
 
@@ -277,7 +277,7 @@ public sealed class ConcurrencyTests : IDisposable
 
         db.SaleInvoices.Add(new SaleInvoice
         {
-            InvoiceNumber = "SI-UNIQ-1",
+            InvoiceNumber = "SI-PART-1",
             CustomerId = customer.Id,
             InvoiceDate = DateTime.Today,
             PaymentTerms = InvoicePaymentTerms.OpenTerm,
@@ -289,15 +289,19 @@ public sealed class ConcurrencyTests : IDisposable
         using var second = CreateContext();
         second.SaleInvoices.Add(new SaleInvoice
         {
-            InvoiceNumber = "SI-UNIQ-2",
+            InvoiceNumber = "SI-PART-2",
             CustomerId = customer.Id,
             InvoiceDate = DateTime.Today,
             PaymentTerms = InvoicePaymentTerms.OpenTerm,
-            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            TotalAmount = 50, NetAmount = 50, PaidAmount = 0, IsPaid = false,
             SalesOrderId = order.Id
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync());
-        Assert.Single(await db.SaleInvoices.Where(s => s.SalesOrderId == order.Id).ToListAsync());
+        await second.SaveChangesAsync();
+
+        // Partial invoicing: the same sales order may carry several invoices (one per
+        // delivered batch), so the former unique index is intentionally gone. The guard
+        // against double invoicing now lives on the delivery issue, not on the order.
+        Assert.Equal(2, await db.SaleInvoices.CountAsync(s => s.SalesOrderId == order.Id));
     }
 
     [Fact]

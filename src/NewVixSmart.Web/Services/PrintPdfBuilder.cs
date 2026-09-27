@@ -372,7 +372,7 @@ public static class PrintPdfBuilder
             }));
     }
 
-    public static byte[] RenderCustomerStatementPdf(string partyName, DateTime from, DateTime to, decimal opening, IReadOnlyList<StatementLine> lines, decimal closing)
+    public static byte[] RenderCustomerStatementPdf(string partyName, DateTime from, DateTime to, decimal opening, IReadOnlyList<StatementLine> lines, decimal closing, decimal? pendingValue = null)
     {
         var layout = ResolveLayout(PrintGroup.CustomerStatement);
         return Render(PrintGroup.CustomerStatement, layout, $"كشف حساب — {partyName}", page =>
@@ -380,6 +380,8 @@ public static class PrintPdfBuilder
             {
                 InfoRow(col, new[] { $"{partyName}", $"من: {from:dd/MM/yyyy}", $"إلى: {to:dd/MM/yyyy}" });
                 StatementTable(col, layout, opening, lines, closing);
+                if (pendingValue.HasValue)
+                    TotalRow(col, layout, "تسليمات معلّقة (غير محسوبة في الرصيد)", Fmt(pendingValue.Value, layout.Decimals), false);
             }));
     }
 

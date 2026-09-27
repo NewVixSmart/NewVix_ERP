@@ -32,6 +32,10 @@ public class AppDbContext : IdentityDbContext
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
     public DbSet<DeliveryOrder> DeliveryOrders => Set<DeliveryOrder>();
     public DbSet<DeliveryOrderItem> DeliveryOrderItems => Set<DeliveryOrderItem>();
+    public DbSet<DeliveryIssue> DeliveryIssues => Set<DeliveryIssue>();
+    public DbSet<DeliveryIssueItem> DeliveryIssueItems => Set<DeliveryIssueItem>();
+    public DbSet<StockReservation> StockReservations => Set<StockReservation>();
+    public DbSet<StockReservationLine> StockReservationLines => Set<StockReservationLine>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<InventoryAdjustment> InventoryAdjustments => Set<InventoryAdjustment>();
     public DbSet<Payment> Payments => Set<Payment>();
@@ -152,11 +156,11 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(s => s.InvoiceNumber).IsUnique();
             e.HasIndex(s => s.PublicId).IsUnique();
             e.Property(s => s.PublicId).ValueGeneratedNever();
-            e.HasIndex(s => s.SalesOrderId).IsUnique().HasFilter("[SalesOrderId] IS NOT NULL");
+            e.HasIndex(s => s.SalesOrderId).HasFilter("[SalesOrderId] IS NOT NULL");
             e.HasOne(s => s.Customer).WithMany(c => c.SaleInvoices).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Currency).WithMany().HasForeignKey(s => s.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(s => s.SalesOrder).WithMany().HasForeignKey(s => s.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(s => s.SalesOrder).WithMany(o => o.Invoices).HasForeignKey(s => s.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<SaleInvoiceItem>(e =>
@@ -326,7 +330,6 @@ public class AppDbContext : IdentityDbContext
             e.HasOne(o => o.Currency).WithMany().HasForeignKey(o => o.CurrencyId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(o => o.SaleQuote).WithMany().HasForeignKey(o => o.SaleQuoteId).OnDelete(DeleteBehavior.SetNull);
         });
-
         builder.Entity<SalesOrderItem>(e =>
         {
             e.Property(oi => oi.RowVersion).IsRowVersion();
@@ -341,13 +344,54 @@ public class AppDbContext : IdentityDbContext
             e.Property(d => d.PublicId).ValueGeneratedNever();
             e.Property(d => d.RowVersion).IsRowVersion();
             e.HasOne(d => d.SaleInvoice).WithMany().HasForeignKey(d => d.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(d => d.SalesOrder).WithMany(o => o.DeliveryOrders).HasForeignKey(d => d.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(d => d.StockReservation).WithMany().HasForeignKey(d => d.StockReservationId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(d => d.Customer).WithMany().HasForeignKey(d => d.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.ToTable("DeliveryOrders", t => t.HasCheckConstraint("CK_DeliveryOrders_SingleSource",
+                "([SalesOrderId] IS NULL OR [SaleInvoiceId] IS NULL)"));
         });
 
         builder.Entity<DeliveryOrderItem>(e =>
         {
             e.HasOne(di => di.DeliveryOrder).WithMany(d => d.Items).HasForeignKey(di => di.DeliveryOrderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(di => di.Item).WithMany().HasForeignKey(di => di.ItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<DeliveryIssue>(e =>
+        {
+            e.HasIndex(d => d.IssueNumber).IsUnique();
+            e.HasIndex(d => d.PublicId).IsUnique();
+            e.Property(d => d.PublicId).ValueGeneratedNever();
+            e.Property(d => d.RowVersion).IsRowVersion();
+            e.HasOne(d => d.DeliveryOrder).WithMany(p => p.Issues).HasForeignKey(d => d.DeliveryOrderId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(d => d.Customer).WithMany().HasForeignKey(d => d.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(d => d.SalesOrder).WithMany().HasForeignKey(d => d.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(d => d.SaleInvoice).WithMany(i => i.DeliveryIssues).HasForeignKey(d => d.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<DeliveryIssueItem>(e =>
+        {
+            e.HasOne(di => di.DeliveryIssue).WithMany(d => d.Items).HasForeignKey(di => di.DeliveryIssueId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(di => di.DeliveryOrderItem).WithMany().HasForeignKey(di => di.DeliveryOrderItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(di => di.Item).WithMany().HasForeignKey(di => di.ItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(di => di.SalesOrderItem).WithMany().HasForeignKey(di => di.SalesOrderItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockReservation>(e =>
+        {
+            e.HasIndex(r => r.ReservationNumber).IsUnique();
+            e.HasIndex(r => r.PublicId).IsUnique();
+            e.Property(r => r.PublicId).ValueGeneratedNever();
+            e.Property(r => r.RowVersion).IsRowVersion();
+            e.HasOne(r => r.SalesOrder).WithMany(o => o.Reservations).HasForeignKey(r => r.SalesOrderId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(r => r.Customer).WithMany().HasForeignKey(r => r.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<StockReservationLine>(e =>
+        {
+            e.HasOne(l => l.StockReservation).WithMany(r => r.Items).HasForeignKey(l => l.StockReservationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(l => l.Item).WithMany().HasForeignKey(l => l.ItemId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(l => l.SalesOrderItem).WithMany().HasForeignKey(l => l.SalesOrderItemId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<BudgetYear>(e =>

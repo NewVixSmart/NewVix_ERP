@@ -25,5 +25,7 @@ public enum JournalSource
     [Display(Name = "استيراد")]
     Import = 10,
     [Display(Name = "أذن تسليم بيع")]
-    SaleDeliveryOrder = 11
+    SaleDeliveryOrder = 11,
+    [Display(Name = "أمر تسليم بيع")]
+    SaleDeliveryIssue = 12
 }

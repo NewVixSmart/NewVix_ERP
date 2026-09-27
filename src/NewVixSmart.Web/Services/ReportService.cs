@@ -5,6 +5,8 @@ using QuestPDF.Infrastructure;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.ViewModels.Core;
 using NewVixSmart.Web.ViewModels.Reports;
 
@@ -100,6 +102,15 @@ public class ReportService : IReportService
             MinCount = i.MinCount,
             MinQuantity = i.MinQuantity
         }).ToList();
+
+        var pending = await GetPendingDeliveriesAsync();
+        vm.PendingDeliveries = pending.Lines;
+
+        var reserved = await _db.StockReservations.AsNoTracking()
+            .Where(r => r.Status == StockReservationStatus.Active)
+            .ToListAsync();
+        vm.ActiveReservationCount = reserved.Count;
+        vm.ActiveReservedQuantity = reserved.Sum(r => r.TotalQuantity);
 
         return vm;
     }
@@ -1120,6 +1131,95 @@ public class ReportService : IReportService
         return ms.ToArray();
     }
 
+    public async Task<PendingDeliveryReportViewModel> GetPendingDeliveriesAsync(int? customerId = null)
+    {
+        var query = _db.SalesOrderItems.AsNoTracking()
+            .Where(i => i.SalesOrder.Status != SalesOrderStatus.Cancelled
+                && (i.Quantity - i.DeliveredQty > 0 || i.Count - i.DeliveredCount > 0));
+
+        if (customerId.HasValue)
+            query = query.Where(i => i.SalesOrder.CustomerId == customerId.Value);
+
+        var rows = await query
+            .Select(i => new
+            {
+                i.SalesOrderId,
+                OrderPublicId = i.SalesOrder.PublicId,
+                OrderNumber = i.SalesOrder.OrderNumber,
+                i.SalesOrder.OrderDate,
+                i.SalesOrder.ExpectedDate,
+                CustomerId = i.SalesOrder.CustomerId,
+                CustomerName = i.SalesOrder.Customer.Name,
+                ItemName = i.Item.Name,
+                i.Quantity,
+                i.Count,
+                i.UnitPrice,
+                i.DeliveredQty,
+                i.DeliveredCount,
+                i.InvoicedQty,
+                i.InvoicedCount,
+                i.ReservedQty,
+                i.ReservedCount
+            })
+            .ToListAsync();
+
+        var lines = rows.Select(r => new PendingDeliveryLineViewModel
+        {
+            OrderId = r.SalesOrderId,
+            OrderPublicId = r.OrderPublicId,
+            OrderNumber = r.OrderNumber,
+            OrderDate = r.OrderDate,
+            ExpectedDate = r.ExpectedDate,
+            CustomerId = r.CustomerId,
+            CustomerName = r.CustomerName,
+            ItemName = r.ItemName,
+            Quantity = r.Quantity,
+            Count = r.Count,
+            UnitPrice = r.UnitPrice,
+            DeliveredQty = r.DeliveredQty,
+            DeliveredCount = r.DeliveredCount,
+            InvoicedQty = r.InvoicedQty,
+            InvoicedCount = r.InvoicedCount,
+            ReservedQty = r.ReservedQty,
+            ReservedCount = r.ReservedCount,
+            PendingQty = r.Quantity - r.DeliveredQty,
+            PendingCount = r.Count - r.DeliveredCount
+        })
+        .OrderBy(l => l.CustomerName)
+        .ThenBy(l => l.OrderNumber)
+        .ThenBy(l => l.ItemName)
+        .ToList();
+
+        return new PendingDeliveryReportViewModel
+        {
+            Lines = lines,
+            TotalValue = decimal.Round(lines.Sum(l => l.PendingValue), 2),
+            TotalQty = (int)lines.Sum(l => l.PendingQty),
+            TotalCount = (int)lines.Sum(l => l.PendingCount)
+        };
+    }
+
+    public async Task<decimal> GetPendingDeliveriesValueAsync(int customerId)
+    {
+        var rows = await _db.SalesOrderItems.AsNoTracking()
+            .Where(i => i.SalesOrder.CustomerId == customerId
+                && i.SalesOrder.Status != SalesOrderStatus.Cancelled)
+            .Select(i => new
+            {
+                Base = i.SalesOrder.ExchangeRate ?? 1m,
+                i.UnitPrice,
+                i.Quantity,
+                i.Count,
+                i.DeliveredQty,
+                i.DeliveredCount
+            })
+            .ToListAsync();
+
+        return decimal.Round(rows
+            .Where(r => r.Quantity - r.DeliveredQty > 0 || r.Count - r.DeliveredCount > 0)
+            .Sum(r => (r.Quantity - r.DeliveredQty > 0 ? r.Quantity - r.DeliveredQty : r.Count - r.DeliveredCount) * r.UnitPrice * r.Base), 2);
+    }
+
     public async Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == customerId);
@@ -1141,7 +1241,9 @@ public class ReportService : IReportService
         foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount * (r.ExchangeRate ?? 1m), 2)));
         foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.BaseAmount > 0 ? r.BaseAmount : r.Amount));
 
-        return BuildStatementWorkbook($"كشف حساب — {customer.Name}", customer.OpeningBalance, lines);
+        var pendingValue = await GetPendingDeliveriesValueAsync(customerId);
+
+        return BuildStatementWorkbook($"كشف حساب — {customer.Name}", customer.OpeningBalance, lines, pendingValue);
     }
 
     public async Task<byte[]> ExportSupplierStatementXlsxAsync(int supplierId)
@@ -1168,7 +1270,7 @@ public class ReportService : IReportService
         return BuildStatementWorkbook($"كشف حساب — {supplier.Name}", supplier.OpeningBalance, lines);
     }
 
-    private static byte[] BuildStatementWorkbook(string title, decimal openingBalance, List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)> unordered)
+    private static byte[] BuildStatementWorkbook(string title, decimal openingBalance, List<(DateTime Date, string Desc, string Doc, decimal Debit, decimal Credit)> unordered, decimal? pendingValue = null)
     {
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("كشف حساب");
@@ -1198,6 +1300,16 @@ public class ReportService : IReportService
         ws.Cell(row + 1, 1).Style.Font.Bold = true;
         ws.Cell(row + 1, 5).Value = (double)running;
         ws.Cell(row + 1, 5).Style.Font.Bold = true;
+
+        if (pendingValue.HasValue)
+        {
+            var pr = row + 3;
+            ws.Cell(pr, 1).Value = "تسليمات معلّقة (غير مسلَّم — غير محسوبة في الرصيد)";
+            ws.Cell(pr, 1).Style.Font.Bold = true;
+            ws.Cell(pr, 5).Value = (double)pendingValue.Value;
+            ws.Cell(pr, 5).Style.Font.Bold = true;
+        }
+
         ws.Columns().AdjustToContents();
 
         using var ms = new MemoryStream();

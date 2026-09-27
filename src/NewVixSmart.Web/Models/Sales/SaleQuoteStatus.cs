@@ -10,7 +10,7 @@ public enum SaleQuoteStatus
     [Display(Name = "جارٍ التحويل")]
     Converting = 1,
 
-    [Display(Name = "محوّل إلى فاتورة")]
+    [Display(Name = "محوّل إلى أمر بيع")]
     Converted = 2,
 
     [Display(Name = "ملغي")]

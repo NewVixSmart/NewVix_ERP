@@ -26,7 +26,11 @@ public class ReportsController : Controller
         _report = report;
     }
 
-    public IActionResult Index() => View();
+    public async Task<IActionResult> Index()
+    {
+        ViewBag.PendingDeliveries = await _report.GetPendingDeliveriesAsync();
+        return View();
+    }
 
     public async Task<IActionResult> Sales(DateTime? from, DateTime? to)
     {

@@ -82,6 +82,24 @@ public class Item
     [Range(0, 999999999, ErrorMessage = "الرصيد الكمي لا يمكن أن يكون سالباً")]
     public decimal CurrentQuantity { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "الكمية المحجوزة")]
+    [Range(0, 999999999, ErrorMessage = "الكمية المحجوزة لا يمكن أن تكون سالبة")]
+    public decimal ReservedQuantity { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    [Display(Name = "العدد المحجوز")]
+    [Range(0, 999999999, ErrorMessage = "العدد المحجوز لا يمكن أن يكون سالباً")]
+    public decimal ReservedCount { get; set; }
+
+    [NotMapped]
+    [Display(Name = "الكمية المتاحة")]
+    public decimal AvailableQuantity => CurrentQuantity - ReservedQuantity;
+
+    [NotMapped]
+    [Display(Name = "العدد المتاح")]
+    public decimal AvailableCount => CurrentCount - ReservedCount;
+
     [StringLength(500)]
     [Display(Name = "ملاحظات")]
     public string? Notes { get; set; }

@@ -2,7 +2,7 @@
 
 نظام ويب متكامل لإدارة عمليات التداول التجاري باللغة العربية (RTL) على **ASP.NET Core 10 + Entity Framework Core + SQL Server** — يشمل إدارة الأصناف والمخزون (FIFO)، المبيعات والمشتريات، المرتجعات، الدفعات متعددة العملات، المحاسبة ذات القيد المزدوج، القوائم المالية، الإقفال السنوي، الميزانيات، العمليات الجماعية، API عديمة الحالة (JWT)، والجداول/الباركود والتصدير.
 
-> **الحالة**: المراحل المخططة P0–P4 مكتملة ومُتحقَّقة، واكتملت P5 (أمن → توثيق → القائمة العمرية وتنبيهات الاستحقاق → التدفق النقدي وكشوف الحساب). **348 اختبارًا** أخضر، بوابة إتاحة WCAG 2.2 AA مفعّلة، وتقارير تدقيق الأمان والمحاسبة مغلقة (0 حرج، 11 منخفضًا/متوسطًا قيد التلميع).
+> **الحالة**: المراحل المخططة P0–P4 مكتملة ومُتحقَّقة، واكتملت P5 (أمن → توثيق → القائمة العمرية وتنبيهات الاستحقاق → التدفق النقدي وكشوف الحساب)، و**M12 (حجز المخزون ← أذن التسليم ← الفوترة بعد التسليم)**. **417 اختبارًا** أخضر، بوابة إتاحة WCAG 2.2 AA مفعّلة، وتقارير تدقيق الأمان والمحاسبة مغلقة (0 حرج، 11 منخفضًا/متوسطًا قيد التلميع).
 
 ---
 
@@ -34,13 +34,40 @@ NewVixSmart.slnx
 - **API**: `POST /api/auth/token` (JWT) + نقاط أصناف/مخزون/فواتير/مدفوعات/قيود مع مفاتيح أذونات `ApiAuthorize`.
 - **إتاحة**: WCAG 2.2 AA (مسح axe صفر انتهاكات على 46 مسارًا)، RTL كامل، لوحة مفاتيح، `lang="ar" dir="rtl"`.
 
+## تدفق البيع: حجز ← تسليم ← فاتورة (M12)
+
+مسار **AtInvoice** (المسار المفضّل والمحاسبي الصحيح: الإيراد يظهر عند التحقق من الفاتورة، لا عند التسليم):
+
+```
+أمر بيع  →  حجز مخزون  →  إذن تسليم  →  أمر تسليم  →  فاتورة تسليمات
+  (SalesOrders)  (StockReservations)  (DeliveryIssues)  (DeliveryOrders)   (Sales)
+```
+
+| الخطوة | الشاشة | الإذن | الأثر |
+|---|---|---|---|
+| حجز كمية/عدد | `StockReservations` | `StockReservations.Create` | `Available = Current − Reserved` (نطاق الصنف عام) |
+| إذن تسليم (3rd‑party) | `DeliveryIssues` | `DeliveryIssues.Create` | كشف منStdReservations → إذن/أمر |
+| تنفيذ التسليم | `DeliveryOrders` | `DeliveryOrders.Deliver` | سحب FIFO + `Dr 5000 / Cr 1300` (تكلفة فقط) |
+| فاتورة التسليمات | `Sales` | `Sales.Create` | `Dr 1200 = Gross` / `Cr 4000 = Gross−Tax` / `Cr 2055 = Tax` |
+
+قواعد أساسية:
+- الفاتورة تقبل **عدة أوامر تسليم** وتُفوتر الكميات **المسلَّمة غير المفوترة فقط** (`SalesOrderItem.UninvoicedQty/UninvoicedCount`).
+- `Quantity` و`Count` بعدان مستقلان؛ قاعدة العرض `Quantity > 0 ? Quantity : Count`.
+- أذون/أوامر التسليم **بلا أسعار** — التسعير يتم عند الفاتورة.
+- **الإيراد لا يُرحَّل عند التسليم** في هذا المسار؛ التكلفة فقط.
+- المسار القديم `SalesPostingMode.AtDelivery` باقٍ كما هو للسلوك التاريخي، والبيع المباشر في `Sales/Create` ما زال يرحّل الإيراد والمخزون فورًا (مع تنبيه في الشاشة).
+- مسارات مستقلة مسموحة: حجز بلا أمر بيع، إذن بعميل، وفوترة تسليم بلا أمر بيع.
+- **مرتجع** مقابل فاتورة AtInvoice يرحّل `Dr 5101 / Cr 2055 / Cr 1200 / Cr 1300 / Dr 5000` (يقلب التكلفة والإيراد معًا).
+
+مرئية في: تبويبات حالات أوامر البيع + أعمدة «مطلوب/مسلَّم/مفوتر»، تفاصيل أمر البيع (الحجز والتقدم والتسليمات والفواتير)، كشوف العميل مع **قيمة التسليمات المعلّقة**، تقرير التسليمات المعلّقة في `Reports`، بطاقة «تسليمات معلّقة» في لوحة القيادة، وتصديرات XLSX/CSV للحجوزات وأذون التسليم.
+
 ## التشغيل محليًا
 
 ```bash
 # البناء والاختبار (أوامر C# تُنفذ من حلّ المشروع)
 dotnet restore NewVixSmart.slnx
 dotnet build NewVixSmart.slnx -c Release        # 0W/0E (تحذيرات كأخطاء)
-dotnet test  NewVixSmart.slnx -c Release        # 348 اختبارًا (SQLite، لا DB خارجي)
+dotnet test  NewVixSmart.slnx -c Release        # 417 اختبارًا (SQLite، لا DB خارجي)
 
 # تشغيل التطبيق (وضع التطوير — يستخدم launchSettings على :5165)
 dotnet run --project src/NewVixSmart.Web
@@ -90,6 +117,8 @@ ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/NewVixSmart.Web --no-
 ## التوثيق
 
 - `docs/BUILD-PLAN-README.md` — خطة المراحل M0→P5 وسجل الإكمال والتحقق لكل مرحلة.
+- `plan/feature-sales-reservation-delivery-invoice-flow-1.md` — خطة M12 (حجز المخزون ← أذن التسليم ← الفوترة بعد التسليم) مع 71 مهمة وقراراتها.
+- `AGENTS.md` — قواعد العمل الإلزامية للوكلاء (قبل التعديل: راجع README وACCESSIBILITY.md؛ الاختبارات إلزامية).
 - `docs/DEPLOY-AZURE.md` / `docs/DEPLOY-AZURE-EN.md` — نشر Azure App Service + SQL.
 - `docs/BACKUP.md`, `scripts/` — نسخ احتياطي وجدولتها.
 - `Deep-Audit-Report.md`, `ACCESSIBILITY.md` — تدقيق أمني/محاسبي وإتاحة.
@@ -104,3 +133,5 @@ ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/NewVixSmart.Web --no-
 | `ChartOfAccounts` | View, Create, Edit, Deactivate | Accountant (View) |
 | `Budgets` | View, Manage | Accountant (View+Manage) |
 | `SaleReturns`/`PurchaseReturns` | View, Create, Post | Accountant + Warehouse |
+| `StockReservations` | View, Create, Release | Accountant + Warehouse |
+| `DeliveryIssues` | View, Create, Issue | Accountant + Warehouse |

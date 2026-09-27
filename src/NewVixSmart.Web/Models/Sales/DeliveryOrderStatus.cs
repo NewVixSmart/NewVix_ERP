@@ -9,5 +9,7 @@ public enum DeliveryOrderStatus
     [Display(Name = "تم التسليم")]
     Delivered = 1,
     [Display(Name = "ملغي")]
-    Cancelled = 2
+    Cancelled = 2,
+    [Display(Name = "تسليم جزئي")]
+    PartiallyIssued = 3
 }

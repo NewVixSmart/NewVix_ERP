@@ -110,6 +110,14 @@ public sealed class SalesQuotesService : ISalesQuotesService
             return (false, error, null);
         }
 
+        var (approved, approveError) = await _orders.ApproveOrderAsync(order.Id);
+        if (!approved)
+        {
+            await DeleteCreatedOrderAsync(order.Id);
+            await RollbackConversionAsync(quoteId);
+            return (false, approveError, null);
+        }
+
         var convertedAt = DateTime.UtcNow;
         try
         {
@@ -156,6 +164,15 @@ public sealed class SalesQuotesService : ISalesQuotesService
     private async Task DeleteCreatedOrderAsync(int orderId)
     {
         _db.ChangeTracker.Clear();
+        var reservationIds = await _db.StockReservations
+            .Where(r => r.SalesOrderId == orderId)
+            .Select(r => r.Id)
+            .ToListAsync();
+        if (reservationIds.Count > 0)
+        {
+            await _db.StockReservationLines.Where(l => reservationIds.Contains(l.StockReservationId)).ExecuteDeleteAsync();
+            await _db.StockReservations.Where(r => reservationIds.Contains(r.Id)).ExecuteDeleteAsync();
+        }
         await _db.SalesOrderItems.Where(i => i.SalesOrderId == orderId).ExecuteDeleteAsync();
         await _db.SalesOrders.Where(o => o.Id == orderId).ExecuteDeleteAsync();
     }

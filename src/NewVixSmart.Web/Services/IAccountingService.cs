@@ -7,6 +7,8 @@ public readonly record struct JournalLine(string Code, decimal Debit, decimal Cr
 public interface IAccountingService
 {
     Task RecordSaleInvoiceAsync(DateTime entryDate, int customerId, decimal netAmount, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null);
+    Task RecordSaleInvoiceRevenueAsync(DateTime entryDate, int customerId, decimal netAmount, decimal taxAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? invoiceId = null);
+    Task RecordSaleIssueCostAsync(DateTime entryDate, int issueId, decimal costAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null);
     Task RecordSaleDeliveryAsync(DateTime entryDate, int customerId, decimal value, decimal cost, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null, int? deliveryId = null, decimal taxAmount = 0m);
     Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount, int? currencyId, decimal? exchangeRate, string? user, int? branchId = null);
     Task RecordReceiptAsync(DateTime entryDate, decimal amount, PaymentMethod method, int customerId, string? user, int? branchId = null);
@@ -19,4 +21,5 @@ public interface IAccountingService
     Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null);
     Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null);
     Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null);
+    Task<JournalEntry?> GetEntryForSourceAsync(JournalSource source, int sourceId);
 }

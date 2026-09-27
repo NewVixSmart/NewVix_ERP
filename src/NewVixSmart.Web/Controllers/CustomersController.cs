@@ -141,6 +141,82 @@ public class CustomersController : Controller
     }
 
     [RequirePerm("Customers.View")]
+    public async Task<IActionResult> PendingDeliveries(int id)
+    {
+        var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+        if (customer == null) return NotFound();
+
+        var lines = await PendingLinesAsync(id);
+        return View(new CustomerPendingDeliveriesViewModel
+        {
+            Customer = customer,
+            Lines = lines,
+            TotalValue = lines.Sum(l => l.PendingValue)
+        });
+    }
+
+    private async Task<List<CustomerPendingLine>> PendingLinesAsync(int customerId)
+    {
+        var rows = await _db.SalesOrderItems.AsNoTracking()
+            .Where(i => i.SalesOrder.CustomerId == customerId
+                && i.SalesOrder.Status != SalesOrderStatus.Cancelled
+                && (i.Quantity - i.DeliveredQty > 0 || i.Count - i.DeliveredCount > 0))
+            .Select(i => new
+            {
+                i.SalesOrderId,
+                OrderNumber = i.SalesOrder.OrderNumber,
+                OrderPublicId = i.SalesOrder.PublicId,
+                i.SalesOrder.OrderDate,
+                i.SalesOrder.ExpectedDate,
+                ItemName = i.Item.Name,
+                i.Quantity,
+                i.Count,
+                i.UnitPrice,
+                i.DeliveredQty,
+                i.DeliveredCount,
+                i.InvoicedQty,
+                i.InvoicedCount,
+                i.ReservedQty,
+                i.ReservedCount
+            })
+            .ToListAsync();
+
+        var orderIds = rows.Select(r => r.SalesOrderId).Distinct().ToList();
+        var notes = await _db.DeliveryOrders.AsNoTracking()
+            .Where(d => orderIds.Contains(d.SalesOrderId!.Value))
+            .Select(d => new { d.SalesOrderId, d.DeliveryNumber })
+            .ToListAsync();
+
+        return rows
+            .Select(r => new CustomerPendingLine
+            {
+                OrderId = r.SalesOrderId,
+                OrderNumber = r.OrderNumber,
+                OrderPublicId = r.OrderPublicId,
+                OrderDate = r.OrderDate,
+                ExpectedDate = r.ExpectedDate,
+                ItemName = r.ItemName,
+                Quantity = r.Quantity,
+                Count = r.Count,
+                UnitPrice = r.UnitPrice,
+                DeliveredQty = r.DeliveredQty,
+                DeliveredCount = r.DeliveredCount,
+                InvoicedQty = r.InvoicedQty,
+                InvoicedCount = r.InvoicedCount,
+                ReservedQty = r.ReservedQty,
+                ReservedCount = r.ReservedCount,
+                PendingQty = r.Quantity - r.DeliveredQty,
+                PendingCount = r.Count - r.DeliveredCount,
+                DeliveryNoteNumbers = string.Join("، ", notes
+                    .Where(n => n.SalesOrderId == r.SalesOrderId)
+                    .Select(n => n.DeliveryNumber))
+            })
+            .OrderBy(r => r.OrderDate)
+            .ThenBy(r => r.ItemName)
+            .ToList();
+    }
+
+    [RequirePerm("Customers.View")]
     public async Task<IActionResult> Ledger(int id)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
@@ -161,7 +237,8 @@ public class CustomersController : Controller
             Invoices = invoices,
             Payments = payments,
             Returns = returns,
-            Balance = customer.OpeningBalance + totalInvoices - onReceiptPaid - totalReturns - totalPayments
+            Balance = customer.OpeningBalance + totalInvoices - onReceiptPaid - totalReturns - totalPayments,
+            PendingLines = await PendingLinesAsync(id)
         };
         return View(vm);
     }
@@ -200,7 +277,8 @@ public class CustomersController : Controller
         var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;
         var to = lines.Count > 0 ? lines.Max(l => l.Date) : DateTime.Today;
         var closing = customer.OpeningBalance + lines.Sum(l => l.Debit - l.Credit);
-        var bytes = PrintPdfBuilder.RenderCustomerStatementPdf(customer.Name, from, to, customer.OpeningBalance, lines, closing);
+        var pendingValue = await _report.GetPendingDeliveriesValueAsync(id);
+        var bytes = PrintPdfBuilder.RenderCustomerStatementPdf(customer.Name, from, to, customer.OpeningBalance, lines, closing, pendingValue);
         return File(bytes, "application/pdf", $"customer-statement-{id}.pdf");
     }
 }

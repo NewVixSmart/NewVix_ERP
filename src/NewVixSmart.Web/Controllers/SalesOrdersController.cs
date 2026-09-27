@@ -17,11 +17,13 @@ public class SalesOrdersController : Controller
 {
     private readonly AppDbContext _db;
     private readonly ISalesOrdersService _orders;
+    private readonly IStockReservationsService _reservations;
 
-    public SalesOrdersController(AppDbContext db, ISalesOrdersService orders)
+    public SalesOrdersController(AppDbContext db, ISalesOrdersService orders, IStockReservationsService reservations)
     {
         _db = db;
         _orders = orders;
+        _reservations = reservations;
     }
 
     [RequirePerm("SalesOrders.View")]
@@ -29,6 +31,14 @@ public class SalesOrdersController : Controller
     {
         var orders = await _orders.GetOrdersAsync(status);
         ViewBag.StatusFilter = status;
+
+        var counts = await _db.SalesOrders.AsNoTracking()
+            .GroupBy(o => o.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+        ViewBag.StatusCounts = counts;
+        ViewBag.TotalCount = counts.Values.Sum();
+
         return View(orders);
     }
 
@@ -158,6 +168,12 @@ public class SalesOrdersController : Controller
 
         var order = await _orders.GetOrderAsync(orderId);
         if (order == null) return NotFound();
+
+        ViewBag.Reservation = await _reservations.GetForOrderAsync(order.Id);
+        ViewBag.Invoices = await _db.SaleInvoices.AsNoTracking()
+            .Where(i => i.SalesOrderId == order.Id)
+            .OrderByDescending(i => i.Id)
+            .ToListAsync();
         return View(order);
     }
 
@@ -193,10 +209,10 @@ public class SalesOrdersController : Controller
     [RequirePerm("SalesOrders.Convert")]
     public async Task<IActionResult> CreateInvoice(int id)
     {
-        var (ok, error) = await _orders.CreateInvoiceFromOrderAsync(id, User.Identity?.Name);
+        var (ok, error, invoice) = await _orders.InvoiceOutstandingDeliveriesAsync(id, User.Identity?.Name);
         if (ok)
         {
-            TempData["Success"] = "تم إنشاء فاتورة البيع من أمر البيع (غير مسدّدة)";
+            TempData["Success"] = $"تم إنشاء فاتورة رقم {invoice?.InvoiceNumber} بالكميات المسلَّمة فقط (غير مسدّدة)";
             return RedirectToAction("Index", "Sales");
         }
         TempData["Error"] = error ?? "تعذر إنشاء الفاتورة";

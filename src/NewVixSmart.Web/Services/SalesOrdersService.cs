@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Models.Stock;
 
 namespace NewVixSmart.Web.Services;
 
@@ -10,11 +11,16 @@ public sealed class SalesOrdersService : ISalesOrdersService
     private const int MaxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
+    private readonly IStockReservationsService _reservations;
+    private readonly IDeliveriesInvoicingService _deliveriesInvoicing;
 
-    public SalesOrdersService(AppDbContext db, IInventoryService inventory)
+    public SalesOrdersService(AppDbContext db, IInventoryService inventory,
+        IStockReservationsService? reservations = null, IDeliveriesInvoicingService? deliveriesInvoicing = null)
     {
         _db = db;
         _inventory = inventory;
+        _reservations = reservations ?? new StockReservationsService(db);
+        _deliveriesInvoicing = deliveriesInvoicing ?? new DeliveriesInvoicingService(db, inventory);
     }
 
     public async Task<IReadOnlyList<SalesOrder>> GetOrdersAsync(SalesOrderStatus? status = null)
@@ -41,6 +47,8 @@ public sealed class SalesOrdersService : ISalesOrdersService
             .Include(o => o.SaleQuote)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
             .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
+            .Include(o => o.DeliveryOrders).ThenInclude(d => d.Issues).ThenInclude(i => i.Items)
+            .Include(o => o.DeliveryOrders).ThenInclude(d => d.Issues).ThenInclude(i => i.SaleInvoice)
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id);
     }
@@ -92,6 +100,9 @@ public sealed class SalesOrdersService : ISalesOrdersService
         var existing = await _db.SalesOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == order.Id);
         if (existing == null) return (false, "أمر البيع غير موجود");
         if (existing.Status != SalesOrderStatus.Draft) return (false, "لا يمكن تعديل أمر بيع غير مسودة");
+        if (await _db.StockReservations.AnyAsync(r => r.SalesOrderId == order.Id &&
+            (r.Status == StockReservationStatus.Active || r.Status == StockReservationStatus.PartiallyConsumed)))
+            return (false, "يوجد حجز قائم لهذا الأمر — ألغِ الحجز قبل التعديل");
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
@@ -136,31 +147,74 @@ public sealed class SalesOrdersService : ISalesOrdersService
 
     public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId)
     {
-        var order = await _db.SalesOrders.FindAsync(orderId);
-        if (order == null) return (false, "أمر البيع غير موجود");
-        if (order.Status != SalesOrderStatus.Draft) return (false, "يمكن اعتماد المسودات فقط");
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _db.SalesOrders.FindAsync(orderId);
+                if (order == null) return (false, "أمر البيع غير موجود");
+                if (order.Status != SalesOrderStatus.Draft) return (false, "يمكن اعتماد المسودات فقط");
 
-        order.Status = SalesOrderStatus.Approved;
-        await _db.SaveChangesAsync();
-        return (true, null);
+                order.Status = SalesOrderStatus.Approved;
+                await _db.SaveChangesAsync();
+
+                var (reserved, reserveError) = await _reservations.ReserveOrderAsync(orderId, order.CreatedBy, beginOwnTransaction: false);
+                if (!reserved)
+                {
+                    await tx.RollbackAsync();
+                    _db.ChangeTracker.Clear();
+                    return (false, reserveError);
+                }
+
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
+            catch (DbUpdateException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
+        }
+        return (false, "تعذر اعتماد أمر البيع بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> CancelOrderAsync(int orderId)
     {
-        var order = await _db.SalesOrders.FindAsync(orderId);
-        if (order == null) return (false, "أمر البيع غير موجود");
-        if (order.Status == SalesOrderStatus.Invoiced) return (false, "لا يمكن إلغاء أمر تمت فوترته");
-        if (order.Status == SalesOrderStatus.Cancelled) return (false, "الأمر ملغي بالفعل");
+        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _db.SalesOrders.FindAsync(orderId);
+                if (order == null) return (false, "أمر البيع غير موجود");
+                if (order.Status == SalesOrderStatus.Invoiced) return (false, "لا يمكن إلغاء أمر تمت فوترته");
+                if (order.Status == SalesOrderStatus.Cancelled) return (false, "الأمر ملغي بالفعل");
 
-        order.Status = SalesOrderStatus.Cancelled;
-        await _db.SaveChangesAsync();
-        return (true, null);
+                if (await _db.DeliveryIssues.AnyAsync(i => i.SalesOrderId == orderId && i.Status == DeliveryIssueStatus.Issued))
+                {
+                    await tx.RollbackAsync();
+                    _db.ChangeTracker.Clear();
+                    return (false, "تم تسليم كميات من هذا الأمر — ألغِ أمر التسليم أولاً");
+                }
+
+                order.Status = SalesOrderStatus.Cancelled;
+                await _db.SaveChangesAsync();
+
+                await _reservations.ReleaseForOrderAsync(orderId, order.CreatedBy);
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
+            catch (DbUpdateException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
+        }
+        return (false, "تعذر إلغاء أمر البيع بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
         if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == orderId))
             return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
+
+        if (await _db.DeliveryOrders.AnyAsync(d => d.SalesOrderId == orderId && d.Status != DeliveryOrderStatus.Cancelled))
+            return (false, "يوجد أذن تسليم لهذا الأمر — أنشئ الفاتورة من أوامر التسليم المرحّلة");
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -230,6 +284,28 @@ public sealed class SalesOrdersService : ISalesOrdersService
             }
         }
         return (false, "تعذر فوترة الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
+    }
+
+    public async Task<(bool Success, string? Error, SaleInvoice? Invoice)> InvoiceOutstandingDeliveriesAsync(
+        int orderId, string? user, int? branchId = null)
+    {
+        var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order == null) return (false, "أمر البيع غير موجود", null);
+        if (order.Status == SalesOrderStatus.Draft) return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط", null);
+        if (order.Status == SalesOrderStatus.Cancelled) return (false, "لا يمكن فاتورة أمر ملغي", null);
+
+        var issueIds = await _deliveriesInvoicing.GetOutstandingIssueIdsAsync(orderId);
+        if (issueIds.Count == 0)
+            return (false, "لا توجد تسليمات غير مفوترة لهذا الأمر", null);
+
+        var invoice = new SaleInvoice
+        {
+            CustomerId = order.CustomerId,
+            InvoiceDate = DateTime.Today,
+            PaymentTerms = InvoicePaymentTerms.OpenTerm,
+            Notes = order.Notes
+        };
+        return await _deliveriesInvoicing.CreateInvoiceFromIssuesAsync(issueIds, invoice, user, branchId);
     }
 
     private async Task<string> NextOrderNumberAsync()

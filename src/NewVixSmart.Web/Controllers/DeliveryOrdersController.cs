@@ -38,57 +38,6 @@ public class DeliveryOrdersController : Controller
         return View(list);
     }
 
-    [RequirePerm("DeliveryOrders.Create")]
-    public async Task<IActionResult> Create(int? invoiceId)
-    {
-        var invoices = await InvoiceOptionsAsync();
-        var vm = new DeliveryOrderViewModel
-        {
-            Invoices = new SelectList(invoices.Select(i => new { i.Id, Label = InvoiceLabel(i) }), "Id", "Label", invoiceId),
-            ItemsData = await ItemsAsync(),
-            Delivery = new DeliveryOrder { DeliveryDate = DateTime.Today }
-        };
-
-        if (invoiceId.HasValue)
-        {
-            var invoice = await _db.SaleInvoices.Include(i => i.Customer).Include(i => i.Items).AsNoTracking()
-                .FirstOrDefaultAsync(i => i.Id == invoiceId.Value);
-            if (invoice != null)
-            {
-                vm.Delivery.SaleInvoiceId = invoice.Id;
-                vm.Delivery.CustomerId = invoice.CustomerId;
-                vm.Items.AddRange(await RemainingLinesAsync(invoice));
-                ViewBag.InvoiceLabel = InvoiceLabel(invoice);
-                ViewBag.InvoiceNet = invoice.NetAmount;
-            }
-        }
-        return View(vm);
-    }
-
-    [HttpPost, ValidateAntiForgeryToken]
-    [RequirePerm("DeliveryOrders.Create")]
-    public async Task<IActionResult> Create(DeliveryOrderViewModel vm)
-    {
-        vm.Delivery ??= new DeliveryOrder();
-        vm.Items ??= new List<DeliveryOrderItem>();
-        ModelState.IgnoreEmptyLineItemRows();
-
-        var (ok, error) = await _inventory.CreateDeliveryOrderAsync(vm.Delivery, vm.Items, User.Identity?.Name);
-        if (ok)
-        {
-            TempData["Success"] = "تم إنشاء أذن التسليم بنجاح";
-            return RedirectToAction(nameof(Index));
-        }
-        ModelState.AddModelError("", error ?? "تعذر حفظ أذن التسليم");
-
-        var invoices = await InvoiceOptionsAsync();
-        vm.Invoices = new SelectList(invoices.Select(i => new { i.Id, Label = InvoiceLabel(i) }), "Id", "Label", vm.Delivery.SaleInvoiceId);
-        vm.ItemsData = await ItemsAsync();
-        var invoice = invoices.FirstOrDefault(i => i.Id == vm.Delivery.SaleInvoiceId);
-        if (invoice != null) ViewBag.InvoiceLabel = InvoiceLabel(invoice);
-        return View(vm);
-    }
-
     [RequirePerm("DeliveryOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
@@ -145,10 +94,167 @@ public class DeliveryOrdersController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    [RequirePerm("DeliveryOrders.Create")]
+    public async Task<IActionResult> Create(int? invoiceId, int? salesOrderId, string? source)
+    {
+        var vm = new DeliveryOrderViewModel
+        {
+            Invoices = new SelectList((await InvoiceOptionsAsync()).Select(i => new { i.Id, Label = InvoiceLabel(i) }), "Id", "Label", invoiceId),
+            SalesOrders = new SelectList((await OrderOptionsAsync()).Select(o => new { o.Id, o.OrderNumber, o.CustomerName }), "Id", "OrderNumber", salesOrderId),
+            Customers = new SelectList(await CustomersAsync(), "Id", "Name"),
+            ItemsData = await ItemsAsync(),
+            Delivery = new DeliveryOrder { DeliveryDate = DateTime.Today }
+        };
+
+        if (!string.IsNullOrWhiteSpace(source)) vm.Source = source;
+
+        if (salesOrderId.HasValue)
+        {
+            vm.Source = "Order";
+            var lines = await RemainingOrderLinesAsync(salesOrderId.Value);
+            if (lines == null) return NotFound();
+            var order = vm.SalesOrders!.Cast<SelectListItem>().FirstOrDefault(s => s.Value == salesOrderId.Value.ToString());
+            ViewBag.OrderLabel = order?.Text;
+            ViewBag.OrderLines = lines;
+            vm.Items = lines;
+            vm.Delivery.SalesOrderId = salesOrderId.Value;
+        }
+        else if (invoiceId.HasValue)
+        {
+            vm.Source = "Invoice";
+            var invoice = await _db.SaleInvoices.Include(i => i.Customer).Include(i => i.Items).AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == invoiceId.Value);
+            if (invoice != null)
+            {
+                vm.Delivery.SaleInvoiceId = invoice.Id;
+                vm.Delivery.CustomerId = invoice.CustomerId;
+                vm.Items.AddRange(await RemainingLinesAsync(invoice));
+                ViewBag.InvoiceLabel = InvoiceLabel(invoice);
+                ViewBag.InvoiceNet = invoice.NetAmount;
+            }
+        }
+        return View(vm);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    [RequirePerm("DeliveryOrders.Create")]
+    public async Task<IActionResult> Create(DeliveryOrderViewModel vm)
+    {
+        vm.Delivery ??= new DeliveryOrder();
+        vm.Items ??= new List<DeliveryOrderItem>();
+        ModelState.IgnoreEmptyLineItemRows();
+
+        var sources = new List<int>();
+        if (vm.Delivery.SalesOrderId is int orderId && orderId > 0) sources.Add(orderId);
+        if (vm.Delivery.SaleInvoiceId is int invId && invId > 0) sources.Add(invId);
+        if (vm.Source == "Order" || vm.Source == "Invoice" || vm.Source == "Free")
+        {
+            if (sources.Count > 1)
+            {
+                ModelState.AddModelError("", "اختر مصدراً واحداً فقط: أمر بيع أو فاتورة أو إدخال حر");
+                return await RepopulateAsync(vm);
+            }
+            if (vm.Source != "Free" && sources.Count == 0)
+            {
+                ModelState.AddModelError("", vm.Source == "Order" ? "اختر أمر البيع" : "اختر فاتورة البيع");
+                return await RepopulateAsync(vm);
+            }
+        }
+
+        (bool ok, string? error) result;
+        if (vm.Delivery.SalesOrderId is int soId && soId > 0)
+        {
+            var (ok1, error1, _) = await _inventory.CreateSalesDeliveryNoteAsync(soId, null, null,
+                vm.Items, User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
+            result = (ok1, error1);
+        }
+        else if (vm.Delivery.SaleInvoiceId is int siId && siId > 0)
+        {
+            var (ok2, error2) = await _inventory.CreateDeliveryOrderAsync(vm.Delivery, vm.Items, User.Identity?.Name);
+            result = (ok2, error2);
+        }
+        else
+        {
+            var (ok3, error3, _) = await _inventory.CreateSalesDeliveryNoteAsync(null, null,
+                vm.Delivery.CustomerId, vm.Items, User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
+            result = (ok3, error3);
+        }
+
+        if (result.ok)
+        {
+            TempData["Success"] = "تم إنشاء أذن التسليم بنجاح";
+            return RedirectToAction(nameof(Index));
+        }
+        ModelState.AddModelError("", result.error ?? "تعذر حفظ أذن التسليم");
+        return await RepopulateAsync(vm);
+    }
+
+    private async Task<IActionResult> RepopulateAsync(DeliveryOrderViewModel vm)
+    {
+        vm.Invoices = new SelectList((await InvoiceOptionsAsync()).Select(i => new { i.Id, Label = InvoiceLabel(i) }), "Id", "Label", vm.Delivery.SaleInvoiceId);
+        vm.SalesOrders = new SelectList((await OrderOptionsAsync()).Select(o => new { o.Id, o.OrderNumber, o.CustomerName }), "Id", "OrderNumber", vm.Delivery.SalesOrderId);
+        vm.Customers = new SelectList(await CustomersAsync(), "Id", "Name", vm.Delivery.CustomerId);
+        vm.ItemsData = await ItemsAsync();
+        if (vm.Delivery.SaleInvoiceId is int invId)
+        {
+            var invoice = (await InvoiceOptionsAsync()).FirstOrDefault(i => i.Id == invId);
+            if (invoice != null) ViewBag.InvoiceLabel = InvoiceLabel(invoice);
+        }
+        return View(vm);
+    }
+
+    private async Task<List<DeliveryOrderItem>?> RemainingOrderLinesAsync(int orderId)
+    {
+        var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order == null) return null;
+
+        var orderLines = await _db.SalesOrderItems.AsNoTracking()
+            .Where(i => i.SalesOrderId == orderId).ToListAsync();
+        var noted = await _db.DeliveryOrders.AsNoTracking()
+            .Where(d => d.SalesOrderId == orderId && d.Status != DeliveryOrderStatus.Cancelled)
+            .SelectMany(d => d.Items)
+            .GroupBy(x => x.ItemId)
+            .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity), Cnt = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.ItemId, x => (Qty: x.Qty, Cnt: x.Cnt));
+        var issued = await _db.DeliveryIssues.AsNoTracking()
+            .Where(i => i.SalesOrderId == orderId && i.Status == DeliveryIssueStatus.Issued)
+            .SelectMany(i => i.Items)
+            .GroupBy(x => x.ItemId)
+            .Select(g => new { ItemId = g.Key, Qty = g.Sum(x => x.Quantity), Cnt = g.Sum(x => x.Count) })
+            .ToDictionaryAsync(x => x.ItemId, x => (Qty: x.Qty, Cnt: x.Cnt));
+
+        return orderLines.Select(l =>
+        {
+            var n = noted.TryGetValue(l.ItemId, out var nv) ? nv : (Qty: 0m, Cnt: 0m);
+            var s = issued.TryGetValue(l.ItemId, out var sv) ? sv : (Qty: 0m, Cnt: 0m);
+            return new DeliveryOrderItem
+            {
+                ItemId = l.ItemId,
+                Quantity = l.Quantity - n.Qty + s.Qty,
+                Count = l.Count - n.Cnt + s.Cnt
+            };
+        }).Where(i => i.Quantity > 0.005m || i.Count > 0.005m).ToList();
+    }
+
+    private async Task<List<OrderOption>> OrderOptionsAsync()
+        => await _db.SalesOrders.AsNoTracking()
+            .Where(o => o.Status != SalesOrderStatus.Draft && o.Status != SalesOrderStatus.Cancelled)
+            .OrderByDescending(o => o.Id).Take(300)
+            .Select(o => new OrderOption(o.Id, o.OrderNumber, o.Customer!.Name))
+            .ToListAsync();
+
+    private async Task<List<Customer>> CustomersAsync()
+        => await _db.Customers.Where(c => c.IsActive).AsNoTracking().OrderBy(c => c.Name).ToListAsync();
+
+    private record OrderOption(int Id, string OrderNumber, string CustomerName);
+
     private async Task<DeliveryOrder?> LoadDeliveryAsync(int id)
         => await _db.DeliveryOrders
             .Include(d => d.Customer)
             .Include(d => d.SaleInvoice).ThenInclude(i => i!.Customer)
+            .Include(d => d.SalesOrder)
+            .Include(d => d.Issues).ThenInclude(i => i.Items).ThenInclude(i => i.Item)
+            .Include(d => d.Issues).ThenInclude(i => i.SaleInvoice)
             .Include(d => d.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
             .Include(d => d.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()

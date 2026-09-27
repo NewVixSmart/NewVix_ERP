@@ -26,6 +26,8 @@ public interface IReportService
     Task<byte[]> ExportAuditLedgerXlsxAsync(DateTime? from, DateTime? to, int? accountId, Models.Accounting.JournalSource? source);
     Task<byte[]> ExportAgingXlsxAsync();
     Task<byte[]> ExportCashFlowXlsxAsync(DateTime from, DateTime to);
+    Task<decimal> GetPendingDeliveriesValueAsync(int customerId);
+    Task<NewVixSmart.Web.ViewModels.Reports.PendingDeliveryReportViewModel> GetPendingDeliveriesAsync(int? customerId = null);
     Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId);
     Task<byte[]> ExportSupplierStatementXlsxAsync(int supplierId);
     Task<byte[]> ExportBudgetVarianceXlsxAsync(int year, IReadOnlyList<(string Code, string Name, decimal Budget, decimal Actual, decimal Variance, decimal VariancePct)> rows);

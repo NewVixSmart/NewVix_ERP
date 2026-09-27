@@ -9,6 +9,22 @@
     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 }
 
+<div class="alert alert-warning" role="note">
+    <div class="fw-semibold"><i class="bi bi-exclamation-triangle"></i> هذا المسار يُرحّل الإيراد عند التسليم مباشرة</div>
+    <p class="mb-2">
+        الفاتورة المباشرة تُسجّل الإيراد والمخزون معاً لحظة الخصم، ولا تستخدم أذونات التسليم ولا الحجز المسبق.
+        راجع الحساب والضريبة فقط.
+    </p>
+    <p class="mb-0">
+        <strong>المسار الموصى به:</strong>
+        أنشئ <a asp-controller="SalesOrders" asp-action="Create">أمر بيع</a>، ثم
+        <a asp-controller="StockReservations" asp-action="Create">احجز الكمية</a>، ثم
+        <a asp-controller="DeliveryOrders" asp-action="Create">أذن تسليم</a>، وأخيراً
+        <a asp-controller="SalesOrders" asp-action="Index">فاتورة التسليمات</a> —
+        بحيث يتحقق الإيراد والتكلفة لحظة التسليم الفعلي.
+    </p>
+</div>
+
 <form asp-action="Create" id="invoiceForm" data-loading-submit data-loading-text="جاري الحفظ...">
     <div class="card mb-3">
         <div class="card-body">

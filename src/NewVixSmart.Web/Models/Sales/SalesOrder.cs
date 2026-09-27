@@ -65,6 +65,15 @@ public class SalesOrder
     [BindNever]
     public ICollection<SalesOrderItem> Items { get; set; } = new List<SalesOrderItem>();
 
+    [BindNever]
+    public ICollection<SaleInvoice> Invoices { get; set; } = new List<SaleInvoice>();
+
+    [BindNever]
+    public ICollection<Stock.StockReservation> Reservations { get; set; } = new List<Stock.StockReservation>();
+
+    [BindNever]
+    public ICollection<DeliveryOrder> DeliveryOrders { get; set; } = new List<DeliveryOrder>();
+
     [Timestamp]
     public byte[]? RowVersion { get; set; }
 }
