@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-09-26
 last_updated: 2026-09-27
 owner: Senior ERP Engineer
-status: 'In Progress'
+status: 'Complete'
 tags: feature, sales, inventory, reservation, delivery, accounting, migration
 ---
 
 # Introduction
 
-![Status: In Progress](https://img.shields.io/badge/status-In%20Progress-yellow)
+![Status: Complete](https://img.shields.io/badge/status-Complete-brightgreen)
 
 Invert the sales flow so that money is recognized only against what actually left the warehouse.
 Today the system is invoice-first: an invoice is created, a delivery note (`DeliveryOrder` = أذن التسليم)
@@ -124,7 +124,7 @@ possible without a sales order, and undelivered quantities must be visible on th
   `ReleaseAsync(int reservationId, string? user)`;
   `ConsumeForIssuesAsync(List<DeliveryIssueItem> lines, int? customerId, DateTime date)`;
   `ReleaseForOrderAsync(int salesOrderId, string? user)`;
-  `GetForOrderAsync(int salesOrderId)`. | | |
+  `GetForOrderAsync(int salesOrderId)`. | [x] | 2026-09-27 |
 | TASK-020 | `ReserveOrderAsync`: load the order (must be `Approved` or later), build one reservation header per order (`SalesOrderId` set, `CustomerId` copied), one line per order line with `SalesOrderItemId`, `Quantity`/`Count` = order line minus what is already `DeliveredQty`/`DeliveredCount`; skip lines with nothing outstanding; reject when nothing is left; number via `RSV-yyyyMMdd-###` mirroring `NextOrderNumberAsync`; status `Active`. | ✅ | 2026-09-26 |
 | TASK-021 | `ReserveOrderAsync` + `CreateStandaloneAsync` validation (REQ-002): compute availability per item, and if `requested > available` return `(false, "المتاح غير كافٍ للصنف {name}: المطلوب {x} والمتاح {y}")` listing every offending line. Never allow a negative `Item.Reserved*`. Wrap in the standard 3-attempt transaction loop with `DetachAll()`. | ✅ | 2026-09-26 |
 | TASK-022 | On successful reserve: increment `Item.ReservedQuantity` / `ReservedCount` and `SalesOrderItem.ReservedQty` / `ReservedCount`. Assert that the post-update `Item.CurrentQuantity >= ReservedQuantity` invariant holds; throw `InvalidOperationException` otherwise. | ✅ | 2026-09-26 |
@@ -163,7 +163,7 @@ possible without a sales order, and undelivered quantities must be visible on th
   lines `Dr 1200 localNet / Cr 4000 (localNet - localTax) / Cr 2055 localTax`, source `JournalSource.SaleInvoice`, `SourceId = invoiceId ?? customerId`; throw `InvalidOperationException("فاتورة البيع بلا قيمة")` when `localNet <= 0`. | ✅ | 2026-09-26 |
 | TASK-036 | Delete the now-unused `AccountingService.RecordSaleInvoiceAsync` (lines 17-35) and migrate every caller/test to `RecordSaleInvoiceRevenueAsync`; grep `RecordSaleInvoiceAsync` and `IAccountingService` first so no reference is left (it posted COGS and no tax, which contradicts REQ-010). | ⚠️ انحراف | 2026-09-26 |
 | TASK-037 | Add `Task<JournalEntry?> GetEntryForSourceAsync(JournalSource source, int sourceId)` to `IAccountingService`/`AccountingService` so tests can assert the exact lines of an issue/invoice journal without reaching into `JournalEntries` directly. | ✅ | 2026-09-26 |
-| TASK-038 |Verify `RecordSaleReturnWithCostAsync` still mirrors the new invoice booking: returns stay proportional to the source invoice (`Dr 5101 / Dr 2055 / Cr 1200` plus `Dr 1300 / Cr 5000` for the cost leg) — no change to its math, but add a test that a return against an `AtInvoice` invoice nets the same accounts as before. | [x] | 2026-09-27 |
+| TASK-038 | Verify `RecordSaleReturnWithCostAsync` still mirrors the new invoice booking: returns stay proportional to the source invoice (`Dr 5101 / Dr 2055 / Cr 1200` plus `Dr 1300 / Cr 5000` for the cost leg) — no change to its math, but add a test that a return against an `AtInvoice` invoice nets the same accounts as before. | [x] | 2026-09-27 |
 
 #### انحراف عن الخطة — TASK-036
 
@@ -220,10 +220,10 @@ possible without a sales order, and undelivered quantities must be visible on th
 | TASK-050 | Create `Controllers/DeliveryIssuesController.cs`: `Index` (`DeliveryIssues.View`, filter by note/order/status), `Create` GET/POST (`DeliveryIssues.Create`, note picker showing only notes with outstanding quantity), `Details`, `Print`, `Issue` POST (`DeliveryIssues.Issue`, calls `IssueDeliveryAsync`), `Cancel` POST. No price column anywhere in the payload or the view. | [x] | 2026-09-27 |
 | TASK-051 | Create `ViewModels/Sales/DeliveryIssueViewModel.cs` and `Views/DeliveryIssues/{Index,Create,Details,Print}.cshtml`: show parent note number, order number, item, quantity/count, and a "غير مفوتر / مفوتر بفاتورة رقم X" state; no price, no amount columns. | [x] | 2026-09-27 |
 | TASK-052 | Rework `Controllers/DeliveryOrdersController.cs` + `Views/DeliveryOrders/Create.cshtml`: a source selector with three options — من أمر بيع (`salesOrderId`, shows only order lines with `PendingQty > 0 || PendingCount > 0`), من فاتورة (legacy `invoiceId`), مباشر (customer + free lines, no source). Post validates exactly one source and reuses `CreateDeliveryOrderAsync`. | [x] | 2026-09-27 |
-| TASK-053 |`Views/DeliveryOrders/Details.cshtml`: add the issues table (number, date, status, items, invoice link) and a "إنشاء أمر تسليم" button enabled only when outstanding quantity remains and the note is order-backed or standalone. | [x] | 2026-09-27 |
-| TASK-054 |`Views/SalesOrders/Details.cshtml`: reservation panel (reserved/available per line), delivery progress bars (ordered → delivered → invoiced), the delivery-notes list with their issues, the invoices list (now multiple per order), and the "فوترة التسليمات غير المفوترة" button. | [x] | 2026-09-27 |
-| TASK-055 |`Views/SalesOrders/Index.cshtml`: state tabs computed from the item counters — مسودة / بانتظار التسليم / مسلّم جزئياً / مكتمل التسليم / مفوتر / ملغي — plus a per-row "محجوز" badge. | [x] | 2026-09-27 |
-| TASK-056 |`Views/Sales/Create.cshtml`: keep the legacy direct sale, add a notice that this path posts revenue at delivery and that the delivery-issue flow is the recommended route for orders. | [x] | 2026-09-27 |
+| TASK-053 | `Views/DeliveryOrders/Details.cshtml`: add the issues table (number, date, status, items, invoice link) and a "إنشاء أمر تسليم" button enabled only when outstanding quantity remains and the note is order-backed or standalone. | [x] | 2026-09-27 |
+| TASK-054 | `Views/SalesOrders/Details.cshtml`: reservation panel (reserved/available per line), delivery progress bars (ordered → delivered → invoiced), the delivery-notes list with their issues, the invoices list (now multiple per order), and the "فوترة التسليمات غير المفوترة" button. | [x] | 2026-09-27 |
+| TASK-055 | `Views/SalesOrders/Index.cshtml`: state tabs computed from the item counters — مسودة / بانتظار التسليم / مسلّم جزئياً / مكتمل التسليم / مفوتر / ملغي — plus a per-row "محجوز" badge. | [x] | 2026-09-27 |
+| TASK-056 | `Views/Sales/Create.cshtml`: keep the legacy direct sale, add a notice that this path posts revenue at delivery and that the delivery-issue flow is the recommended route for orders. | [x] | 2026-09-27 |
 | TASK-057 | `Views/Shared/_Layout.cshtml`: add the two new nav entries in the stock section; confirm both appear only when the role holds the matching permission (existing `PermissionCatalog.Modules` filter). | [x] | 2026-09-27 |
 
 ### Implementation Phase 7 — Customer pending view, reports, exports
@@ -232,12 +232,12 @@ possible without a sales order, and undelivered quantities must be visible on th
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-058 |Extend `ViewModels/Sales/CustomerLedgerViewModel.cs` with `List<CustomerPendingLine> PendingLines` where `CustomerPendingLine` = `OrderNumber`, `OrderId`, `PublicId`, `OrderDate`, `ItemName`, `Quantity`, `Count`, `UnitPrice`, `DeliveredQty`, `DeliveredCount`, `InvoicedQty`, `InvoicedCount`, `ReservedQty`, `ReservedCount`, `PendingQty`, `PendingCount`, `PendingValue`, `ExpectedDate`, `DeliveryNoteNumbers`. | [x] | 2026-09-27 |
-| TASK-059 |`Controllers/CustomersController.cs`: add `PendingDeliveries(int id)` (`Customers.View`) returning the aggregated lines for the customer from `SalesOrderItems` where the order is not `Cancelled` and `PendingQty > 0 \|\| PendingCount > 0`; add a link from `Views/Customers/Ledger.cshtml` and `Index.cshtml`; create `Views/Customers/PendingDeliveries.cshtml` with a totals row and an accessible table. | [x] | 2026-09-27 |
-| TASK-060 |`Controllers/CustomersController.Ledger` and `LedgerXlsx`/`LedgerPdf`: append a "التسليمات المعلقة (غير مفوترة)" statement section showing committed-but-undelivered value separately from the receivable balance, so the ledger balance stays strictly invoice-driven (REQ-010). | [x] | 2026-09-27 |
-| TASK-061 |`Services/ReportService.cs`: add `GetPendingDeliveriesAsync(int? customerId)` and surface it as a "تسليمات معلقة" block on `Views/Reports/Index.cshtml` (behind `Reports.View`) with a total row. | [x] | 2026-09-27 |
-| TASK-062 |`Services/ExportCenterService.cs`: add `StockReservationsXlsxAsync`/`CsvAsync` and extend `DeliveryOrdersXlsxAsync` with a per-issue column set; register both in `Controllers/ExportCenterController.cs` and `Views/ExportCenter/Index.cshtml`. | [x] | 2026-09-27 |
-| TASK-063 |`Services/DashboardService.cs` / `Views/Home/Index.cshtml`: add a "تسليمات بانتظار الفوترة" count and value tile next to the existing stock tiles. | [x] | 2026-09-27 |
+| TASK-058 | Extend `ViewModels/Sales/CustomerLedgerViewModel.cs` with `List<CustomerPendingLine> PendingLines` where `CustomerPendingLine` = `OrderNumber`, `OrderId`, `PublicId`, `OrderDate`, `ItemName`, `Quantity`, `Count`, `UnitPrice`, `DeliveredQty`, `DeliveredCount`, `InvoicedQty`, `InvoicedCount`, `ReservedQty`, `ReservedCount`, `PendingQty`, `PendingCount`, `PendingValue`, `ExpectedDate`, `DeliveryNoteNumbers`. | [x] | 2026-09-27 |
+| TASK-059 | `Controllers/CustomersController.cs`: add `PendingDeliveries(int id)` (`Customers.View`) returning the aggregated lines for the customer from `SalesOrderItems` where the order is not `Cancelled` and `PendingQty > 0 \|\| PendingCount > 0`; add a link from `Views/Customers/Ledger.cshtml` and `Index.cshtml`; create `Views/Customers/PendingDeliveries.cshtml` with a totals row and an accessible table. | [x] | 2026-09-27 |
+| TASK-060 | `Controllers/CustomersController.Ledger` and `LedgerXlsx`/`LedgerPdf`: append a "التسليمات المعلقة (غير مفوترة)" statement section showing committed-but-undelivered value separately from the receivable balance, so the ledger balance stays strictly invoice-driven (REQ-010). | [x] | 2026-09-27 |
+| TASK-061 | `Services/ReportService.cs`: add `GetPendingDeliveriesAsync(int? customerId)` and surface it as a "تسليمات معلقة" block on `Views/Reports/Index.cshtml` (behind `Reports.View`) with a total row. | [x] | 2026-09-27 |
+| TASK-062 | `Services/ExportCenterService.cs`: add `StockReservationsXlsxAsync`/`CsvAsync` and extend `DeliveryOrdersXlsxAsync` with a per-issue column set; register both in `Controllers/ExportCenterController.cs` and `Views/ExportCenter/Index.cshtml`. | [x] | 2026-09-27 |
+| TASK-063 | `Services/DashboardService.cs` / `Views/Home/Index.cshtml`: add a "تسليمات بانتظار الفوترة" count and value tile next to the existing stock tiles. | [x] | 2026-09-27 |
 
 ### Implementation Phase 8 — Verification, tests, documentation, push
 
@@ -252,7 +252,7 @@ possible without a sales order, and undelivered quantities must be visible on th
 | TASK-068 | `dotnet ef migrations has-pending-model-changes` → no changes (CON-003); `dotnet ef database update`; then run the app and smoke-test: quote → order → reserve, note from order, two partial issues on one note, invoice from both issues, customer pending view empty afterwards, and the legacy direct sale + delivery still posting the full journal. | [x] | 2026-09-27 |
 | TASK-069 | Re-run the accessibility gate for the new/changed views (light + dark) and fix any new violations; keep the table `scope`/`caption` rules from Round 20. | [x] | 2026-09-27 |
 | TASK-070 | Update `AGENTS.md`/`README.md` flow documentation if it describes the sales path, and append a short "M12" note to the plan file status once shipped. | [x] | 2026-09-27 |
-| TASK-071 | Conventional commit, then `git push origin main`. Audit documents under `docs/` and the root audit markdown files stay untracked and are never staged. | | |
+| TASK-071 | Conventional commit, then `git push origin main`. Audit documents under `docs/` and the root audit markdown files stay untracked and are never staged. | [x] | 2026-09-27 |
 
 ## 3. Alternatives
 
