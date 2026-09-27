@@ -154,7 +154,12 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
 
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null)
+                // A fully discounted invoice nets to zero: there is no receivable and no revenue
+                // to recognise, so nothing is posted here. The delivery cost entry still stands,
+                // because the goods did leave stock. Mirrors the purchase invoice path, which
+                // guards the same way - without it RecordSaleInvoiceRevenueAsync throws on a
+                // zero value and rolls the whole delivery back.
+                if (_accounting != null && invoice.NetAmount > 0m)
                     await _accounting.RecordSaleInvoiceRevenueAsync(invoice.InvoiceDate, invoice.CustomerId,
                         invoice.NetAmount, invoice.Tax, invoice.CurrencyId, invoice.ExchangeRate,
                         user, branchId, invoice.Id);

@@ -827,6 +827,64 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task InvoiceFromIssues_FullyDiscountedInvoice_PostsCostOnlyAndNoRevenue()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        var (itemId, custId) = await SeedAsync(db);
+        db.StockLayers.Add(new StockLayer
+        {
+            ItemId = itemId, Qty = 100, Count = 0, UnitCost = 60m, RemainingQty = 100, RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var reservations = new StockReservationsService(db);
+        var accounting = new AccountingService(db);
+        var inventory = new InventoryService(db, accounting, reservations);
+        var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 50m, unitPrice: 100m);
+        Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
+
+        var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
+            new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 50m } }, "tester");
+        var orderLineId = await db.SalesOrderItems.Where(i => i.SalesOrderId == orderId).Select(i => i.Id).SingleAsync();
+        var (_, _, issue) = await inventory.CreateDeliveryIssueAsync(note!.Id, new List<DeliveryIssueItem>
+        {
+            new() { ItemId = itemId, Quantity = 20m, SalesOrderItemId = orderLineId }
+        }, "tester");
+        Assert.True((await inventory.IssueDeliveryAsync(issue!.Id, "tester")).Success);
+
+        // A 100% invoice-level discount is a legitimate case (samples, promotions). The invoice
+        // nets to zero, so there is no receivable and no revenue to recognise - but the goods
+        // still leave stock at cost, so the delivery cost entry must post.
+        var invoicing = new DeliveriesInvoicingService(db, inventory, accounting);
+        var (ok, err, invoice) = await invoicing.CreateInvoiceFromIssuesAsync(
+            new[] { issue!.Id },
+            new SaleInvoice
+            {
+                CustomerId = custId, InvoiceDate = new DateTime(2026, 5, 4),
+                Tax = 0m, Discount = 2000m
+            },
+            "tester");
+
+        Assert.True(ok, err);
+        Assert.NotNull(invoice);
+        Assert.Equal(2000m, invoice!.TotalAmount);
+        Assert.Equal(0m, invoice.NetAmount);
+        Assert.Equal(invoice.Id, (await db.DeliveryIssues.AsNoTracking().SingleAsync()).SaleInvoiceId);
+
+        var entries = await db.JournalEntries.Include(e => e.Lines).ToListAsync();
+        var cost = Assert.Single(entries);
+        Assert.Equal(JournalSource.SaleDeliveryIssue, cost.Source);
+        Assert.Equal(20m * 60m, cost.Lines.Sum(l => l.Debit));
+        Assert.Equal(cost.Lines.Sum(l => l.Debit), cost.Lines.Sum(l => l.Credit));
+        Assert.DoesNotContain(entries, e => e.Source == JournalSource.SaleInvoice);
+
+        var itemAfter = await db.Items.AsNoTracking().SingleAsync(i => i.Id == itemId);
+        Assert.Equal(80m, itemAfter.CurrentQuantity);
+    }
+
+    [Fact]
     public async Task InvoiceFromIssues_TwoIssuesOneInvoice_CollapsesLines()
     {
         using var db = CreateContext();
