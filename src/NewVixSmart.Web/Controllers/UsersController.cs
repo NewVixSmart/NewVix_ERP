@@ -42,7 +42,8 @@ public class UsersController : Controller
                 Id = user.Id,
                 UserName = user.UserName ?? user.Id,
                 Roles = rolesByUser.TryGetValue(user.Id, out var roles) ? roles : new List<string>(),
-                PermissionCount = permsByUser.TryGetValue(user.Id, out var c) ? c : 0
+                PermissionCount = permsByUser.TryGetValue(user.Id, out var c) ? c : 0,
+                IsDeactivated = await _userManager.IsLockedOutAsync(user)
             });
         }
         return View(items.OrderByDescending(x => x.Roles.Contains("Admin")).ThenBy(x => x.UserName).ToList());
@@ -94,6 +95,43 @@ public class UsersController : Controller
 
         ViewBag.Roles = new SelectList(new[] { "Accountant", "Warehouse", "Admin" }, vm.Role);
         return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleDeactivated(string id)
+    {
+        var user = await _userManager.FindByIdAsync(id);
+        if (user == null) return NotFound();
+
+        // No admin can revoke their own access here: the only other route to recovery is
+        // another admin, and a single-admin deployment would then be locked out for good.
+        if (user.Id == _userManager.GetUserId(User))
+        {
+            TempData["Error"] = "لا يمكنك إبطال حسابك بنفسك";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Lockout rather than deletion: audit trails and historical documents keep
+        // CreatedBy as free text, but the account row must stay for referential history.
+        // Both login paths already honour LockoutEnd - SignInAsync(lockoutOnFailure: true)
+        // in AccountController and IsLockedOutAsync in TokensController - so this is the
+        // enforcement point the codebase already trusts, not a new mechanism.
+        var isLocked = await _userManager.IsLockedOutAsync(user);
+        var result = isLocked
+            ? await _userManager.SetLockoutEndDateAsync(user, null)
+            : await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+
+        if (!result.Succeeded)
+        {
+            TempData["Error"] = string.Join("، ", result.Errors.Select(e => e.Description));
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["Success"] = isLocked
+            ? $"أُعيد تفعيل «{user.UserName}»"
+            : $"أُبطل حساب «{user.UserName}» — لن يستطيع تسجيل الدخول";
+        return RedirectToAction(nameof(Index));
     }
 
     public async Task<IActionResult> Permissions(string id)

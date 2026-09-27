@@ -926,6 +926,8 @@ public sealed class InventoryService : IInventoryService
                 var returnError = await ValidateSaleReturnQuantitiesAsync(saleReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
 
+                await ReconcileSaleReturnCurrencyAsync(saleReturn);
+
                 var invPrices = await _db.SaleInvoiceItems.AsNoTracking()
                     .Where(i => i.SaleInvoiceId == saleReturn.SaleInvoiceId)
                     .Select(i => new { i.ItemId, i.UnitPrice })
@@ -1071,6 +1073,8 @@ public sealed class InventoryService : IInventoryService
 
                 var returnError = await ValidatePurchaseReturnQuantitiesAsync(purchaseReturn, valid);
                 if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
+
+                await ReconcilePurchaseReturnCurrencyAsync(purchaseReturn);
 
                 var invPrices = await _db.PurchaseInvoiceItems.AsNoTracking()
                     .Where(i => i.PurchaseInvoiceId == purchaseReturn.PurchaseInvoiceId)
@@ -1555,6 +1559,37 @@ public sealed class InventoryService : IInventoryService
                 RemainingCount = addCount
             });
         }
+    }
+
+    // The interactive path already copies the source invoice's currency and rate onto the
+    // return (SaleReturnsController), but ImportCenterService applies a CSV row's own
+    // CurrencyId/ExchangeRate and then posts through this same method. Without a backstop
+    // here an imported return could name its source invoice and still book the receivable
+    // credit at an unrelated rate, because the accounting entry multiplies the gross by this
+    // rate. Reconciling in the service covers every caller. A return with no source invoice
+    // has nothing to reconcile against and deliberately keeps the caller's values.
+    private async Task ReconcileSaleReturnCurrencyAsync(SaleReturn saleReturn)
+    {
+        if (saleReturn.SaleInvoiceId is not int invoiceId) return;
+        var source = await _db.SaleInvoices.AsNoTracking()
+            .Where(i => i.Id == invoiceId)
+            .Select(i => new { i.CurrencyId, i.ExchangeRate })
+            .FirstOrDefaultAsync();
+        if (source?.CurrencyId == null) return;
+        saleReturn.CurrencyId = source.CurrencyId;
+        saleReturn.ExchangeRate = source.ExchangeRate is > 0 ? source.ExchangeRate : 1m;
+    }
+
+    private async Task ReconcilePurchaseReturnCurrencyAsync(PurchaseReturn purchaseReturn)
+    {
+        if (purchaseReturn.PurchaseInvoiceId is not int invoiceId) return;
+        var source = await _db.PurchaseInvoices.AsNoTracking()
+            .Where(i => i.Id == invoiceId)
+            .Select(i => new { i.CurrencyId, i.ExchangeRate })
+            .FirstOrDefaultAsync();
+        if (source?.CurrencyId == null) return;
+        purchaseReturn.CurrencyId = source.CurrencyId;
+        purchaseReturn.ExchangeRate = source.ExchangeRate is > 0 ? source.ExchangeRate : 1m;
     }
 
     private async Task<string?> ValidateSaleReturnQuantitiesAsync(SaleReturn saleReturn, List<SaleReturnItem> valid)

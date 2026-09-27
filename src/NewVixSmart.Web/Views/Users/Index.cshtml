@@ -1,6 +1,7 @@
 @model IEnumerable<NewVixSmart.Web.ViewModels.Users.UserListItemViewModel>
 @{
     ViewData["Title"] = "المستخدمون والصلاحيات";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
@@ -10,12 +11,14 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">قائمة المستخدمين وأدوارهم وعدد صلاحياتهم وحالة كل حساب</caption>
         <thead>
             <tr>
                 <th scope="col">اسم المستخدم</th>
                 <th scope="col">الدور</th>
                 <th scope="col">عدد الصلاحيات</th>
-                <th scope="col" class="text-center">إدارة الصلاحيات</th>
+                <th scope="col">الحالة</th>
+                <th scope="col" class="text-center">الإجراءات</th>
             </tr>
         </thead>
         <tbody>
@@ -49,17 +52,41 @@
                             <span class="badge bg-info text-dark">@u.PermissionCount إجراء</span>
                         }
                     </td>
-                    <td class="text-center">
-                        @if (u.Roles.Contains("Admin"))
+                    <td>
+                        @if (u.IsDeactivated)
                         {
-                            <span class="text-muted small">—</span>
+                            <span class="badge bg-danger">مُبطَل</span>
                         }
                         else
                         {
-                            <a asp-action="Permissions" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" aria-label="إدارة صلاحيات @u.UserName">
-                                <i class="bi bi-toggles" aria-hidden="true"></i> صلاحيات
-                            </a>
+                            <span class="badge bg-success">نشط</span>
                         }
+                    </td>
+                    <td class="text-center">
+                        <div class="d-inline-flex gap-1 flex-wrap justify-content-center">
+                            @if (!u.Roles.Contains("Admin"))
+                            {
+                                <a asp-action="Permissions" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" aria-label="إدارة صلاحيات @u.UserName">
+                                    <i class="bi bi-toggles" aria-hidden="true"></i> صلاحيات
+                                </a>
+                            }
+                            @if (u.Id == currentUserId)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                                        title="لا يمكنك إبطال حسابك بنفسك">
+                                    <i class="bi bi-person-slash" aria-hidden="true"></i> @(!u.IsDeactivated ? "إبطال" : "إعادة تفعيل")
+                                </button>
+                            }
+                            else
+                            {
+                                <form asp-action="ToggleDeactivated" asp-route-id="@u.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm @(u.IsDeactivated ? "btn-outline-success" : "btn-outline-danger")"
+                                            aria-label="@(u.IsDeactivated ? "إعادة تفعيل حساب " : "إبطال حساب ") @u.UserName">
+                                        <i class="bi bi-person-slash" aria-hidden="true"></i> @(!u.IsDeactivated ? "إبطال" : "إعادة تفعيل")
+                                    </button>
+                                </form>
+                            }
+                        </div>
                     </td>
                 </tr>
             }

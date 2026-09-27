@@ -272,6 +272,20 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
+// Every guard in this file is keyed on !IsDevelopment(), so an accidental
+// ASPNETCORE_ENVIRONMENT=Development on a production host silently disables all of
+// them at once: the JWT key gate, the seed-password gate, the connection-string gate,
+// HSTS, the cookie Secure flag, and the Swagger UI - leaving the publicly published
+// dev JWT key and dev seed passwords live. Nothing else warns about it, so say so loudly.
+if (app.Environment.IsDevelopment())
+{
+    app.Logger.LogCritical(
+        "SECURITY: ASPNETCORE_ENVIRONMENT=Development. The Jwt:Key strength gate, the Seed__*Password "
+        + "gate, the SQL Server connection-string gate, HSTS, the auth/session cookie Secure flag and the "
+        + "Swagger UI are all DISABLED, and the dev JWT key plus the dev seed passwords are in effect. "
+        + "Never run this configuration on a reachable host.");
+}
+
 PdfInvoiceService.ConfigureServices(app.Services);
 
 app.Use(async (context, next) =>

@@ -8,6 +8,7 @@ public class UserListItemViewModel
     public string UserName { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new();
     public int PermissionCount { get; set; }
+    public bool IsDeactivated { get; set; }
 }
 
 public class UserPermissionViewModel
@@ -39,7 +40,7 @@ public class CreateUserViewModel
     public string Username { get; set; } = string.Empty;
 
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "كلمة المرور مطلوبة")]
-    [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 6, ErrorMessage = "كلمة المرور 6 أحرف على الأقل")]
+    [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 8, ErrorMessage = "كلمة المرور 8 أحرف على الأقل (مع حرف كبير وصغير ورقم ورمز)")]
     public string Password { get; set; } = string.Empty;
 
     public string Role { get; set; } = "Warehouse";
