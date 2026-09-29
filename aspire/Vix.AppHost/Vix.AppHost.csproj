@@ -22,7 +22,7 @@
          dashboard MessagePack log channel was runtime-verified on 2.5.301 in
          docs/audit-round19-findings.md. Covered by the "messagepack" dependabot
          group in .github/dependabot.yml. -->
-    <PackageReference Include="MessagePack" Version="2.5.301" />
+    <PackageReference Include="MessagePack" Version="3.1.10" />
   </ItemGroup>
 
   <ItemGroup>
