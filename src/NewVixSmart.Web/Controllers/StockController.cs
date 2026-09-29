@@ -27,9 +27,16 @@ public class StockController : Controller
     {
         var query = _db.StockMovements.Include(s => s.Item).AsNoTracking().AsQueryable();
 
-        if (itemId.HasValue) query = query.Where(s => s.ItemId == itemId.Value);
+        if (itemId.HasValue)
+        {
+            query = query.Where(s => s.ItemId == itemId.Value);
+        }
+
         if (type.HasValue && Enum.IsDefined(typeof(MovementType), type.Value))
+        {
             query = query.Where(s => s.Type == type.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -65,10 +72,14 @@ public class StockController : Controller
             .Where(i => i.IsActive).AsNoTracking().AsQueryable();
 
         if (categoryId.HasValue)
+        {
             query = query.Where(i => i.CategoryId == categoryId.Value);
+        }
 
         if (lowOnly)
+        {
             query = query.Where(i => (i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount < i.MinCount) || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity < i.MinQuantity));
+        }
 
         var total = await query.CountAsync();
         ViewBag.CategoryId = categoryId;

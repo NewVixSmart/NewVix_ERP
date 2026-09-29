@@ -1,40 +1,39 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace NewVixSmart.Web.Migrations
+namespace NewVixSmart.Web.Migrations;
+
+/// <inheritdoc />
+public partial class AddSalesOrderRowVersion : Migration
 {
     /// <inheritdoc />
-    public partial class AddSalesOrderRowVersion : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<byte[]>(
-                name: "RowVersion",
-                table: "SalesOrders",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true);
+        migrationBuilder.AddColumn<byte[]>(
+            name: "RowVersion",
+            table: "SalesOrders",
+            type: "rowversion",
+            rowVersion: true,
+            nullable: true);
 
-            migrationBuilder.AddColumn<byte[]>(
-                name: "RowVersion",
-                table: "SalesOrderItems",
-                type: "rowversion",
-                rowVersion: true,
-                nullable: true);
-        }
+        migrationBuilder.AddColumn<byte[]>(
+            name: "RowVersion",
+            table: "SalesOrderItems",
+            type: "rowversion",
+            rowVersion: true,
+            nullable: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "RowVersion",
-                table: "SalesOrders");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "RowVersion",
+            table: "SalesOrders");
 
-            migrationBuilder.DropColumn(
-                name: "RowVersion",
-                table: "SalesOrderItems");
-        }
+        migrationBuilder.DropColumn(
+            name: "RowVersion",
+            table: "SalesOrderItems");
     }
 }

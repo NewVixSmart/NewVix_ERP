@@ -245,11 +245,19 @@ public class ReportsController : Controller
             .AsNoTracking()
             .Where(j => j.IsPosted && j.Date >= fromDate && j.Date <= toDate);
         if (source is not null)
+        {
             query = query.Where(j => j.Source == source);
+        }
+
         if (accountId is not null)
+        {
             query = query.Where(j => j.Lines.Any(l => l.AccountId == accountId));
+        }
+
         if (branchId is not null)
+        {
             query = query.Where(j => j.BranchId == branchId);
+        }
 
         var total = await query.CountAsync();
         ViewBag.From = fromDate.ToString("yyyy-MM-dd");
@@ -616,19 +624,34 @@ public class ReportsController : Controller
             "purchase" => "Purchases.View",
             _ => null
         };
-        if (sourceKey is null) return NotFound();
-        if (!await _perms.HasAsync(sourceKey)) return Forbid();
+        if (sourceKey is null)
+        {
+            return NotFound();
+        }
+
+        if (!await _perms.HasAsync(sourceKey))
+        {
+            return Forbid();
+        }
 
         if (sourceKey == "Sales.View")
         {
             var sale = await _db.SaleInvoices.AsNoTracking().Include(s => s.Customer).Include(s => s.Items).ThenInclude(i => i.Item).FirstOrDefaultAsync(s => s.Id == id);
-            if (sale == null) return NotFound();
+            if (sale == null)
+            {
+                return NotFound();
+            }
+
             var saleBytes = PdfInvoiceService.RenderSalePdf(sale);
             return File(saleBytes, "application/pdf", $"sale-{sale.InvoiceNumber}.pdf");
         }
 
         var purchase = await _db.PurchaseInvoices.AsNoTracking().Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).FirstOrDefaultAsync(p => p.Id == id);
-        if (purchase == null) return NotFound();
+        if (purchase == null)
+        {
+            return NotFound();
+        }
+
         var purchaseBytes = PdfInvoiceService.RenderPurchasePdf(purchase);
         return File(purchaseBytes, "application/pdf", $"purchase-{purchase.InvoiceNumber}.pdf");
     }

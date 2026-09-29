@@ -107,13 +107,20 @@ public static class PdfInvoiceService
     private static string? Remaining(Func<AppDbContext, decimal> price, PrintLayoutOptions layout)
     {
         var factory = Services?.GetService<IServiceScopeFactory>();
-        if (factory == null) return null;
+        if (factory == null)
+        {
+            return null;
+        }
 
         try
         {
             using var scope = factory.CreateScope();
             var db = scope.ServiceProvider.GetService<AppDbContext>();
-            if (db == null) return null;
+            if (db == null)
+            {
+                return null;
+            }
+
             return PrintPdfBuilder.Fmt(price(db), layout.Decimals);
         }
         catch

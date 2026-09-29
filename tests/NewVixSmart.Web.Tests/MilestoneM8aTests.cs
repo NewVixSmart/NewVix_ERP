@@ -78,7 +78,10 @@ public sealed class MilestoneM8aTests : IDisposable
 
     private static SaleInvoiceItem QtyLine(int itemId, decimal qty, decimal price) => new()
     {
-        ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = price
+        ItemId = itemId,
+        Quantity = qty,
+        Count = 0,
+        UnitPrice = price
     };
 
     // ---------- Single currency ----------

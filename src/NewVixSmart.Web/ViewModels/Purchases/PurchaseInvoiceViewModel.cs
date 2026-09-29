@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
 

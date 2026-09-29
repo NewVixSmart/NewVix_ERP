@@ -31,7 +31,11 @@ public sealed class RequirePermFilter : IAsyncAuthorizationFilter
             context.Result = new RedirectToActionResult("Login", "Account", null);
             return;
         }
-        if (await _permissions.HasAsync(_key)) return;
+        if (await _permissions.HasAsync(_key))
+        {
+            return;
+        }
+
         context.Result = new RedirectToActionResult("AccessDenied", "Account", null);
     }
 }

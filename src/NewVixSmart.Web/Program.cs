@@ -1,24 +1,24 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Vix.ServiceDefaults;
-using NewVixSmart.Web.Data;
-using NewVixSmart.Web.Extensions;
-using NewVixSmart.Web.Infrastructure;
-using NewVixSmart.Web.Services;
 using System.Globalization;
+using System.IO.Compression;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
-using System.IO.Compression;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Infrastructure;
+using NewVixSmart.Web.Services;
+using Vix.ServiceDefaults;
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
@@ -31,7 +31,9 @@ builder.AddServiceDefaults();
 
 var hostingAllowedHosts = builder.Configuration["Hosting:AllowedHosts"];
 if (!string.IsNullOrWhiteSpace(hostingAllowedHosts))
+{
     builder.Configuration["AllowedHosts"] = hostingAllowedHosts;
+}
 
 var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!builder.Environment.IsDevelopment()
@@ -129,7 +131,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     if (!builder.Environment.IsDevelopment())
+    {
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    }
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -254,7 +258,7 @@ builder.Services.AddScoped<ISalesQuotesService, SalesQuotesService>();
 builder.Services.AddScoped<IAccountingService, AccountingService>();
 builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddScoped<IProcurementService, ProcurementService>();
-    builder.Services.AddScoped<ISalesOrdersService, SalesOrdersService>();
+builder.Services.AddScoped<ISalesOrdersService, SalesOrdersService>();
 builder.Services.AddScoped<IStockReservationsService, StockReservationsService>();
 builder.Services.AddScoped<IDeliveriesInvoicingService, DeliveriesInvoicingService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
@@ -277,7 +281,9 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     if (!builder.Environment.IsDevelopment())
+    {
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    }
 });
 
 var app = builder.Build();
@@ -319,7 +325,10 @@ app.Use(async (context, next) =>
     catch (Exception ex)
     {
         if (app.Environment.IsDevelopment())
+        {
             throw;
+        }
+
         app.Logger.LogError(ex, "Unhandled exception");
         // Once any byte of the response is on the wire neither Clear() nor a status-code change is
         // legal: both throw InvalidOperationException, so an exception raised while streaming (a
@@ -335,7 +344,10 @@ app.Use(async (context, next) =>
         // writing the body. The IsDevelopment rethrow above means we are past it from here on.
         ApplySecurityHeaders(context);
         if (!app.Environment.IsDevelopment())
+        {
             ApplyHstsHeader(context, hstsOptions);
+        }
+
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsJsonAsync(new { message = "حدث خطأ غير متوقع. حاول مرة أخرى.", detail = string.Empty });
@@ -395,10 +407,22 @@ static void ApplySecurityHeaders(HttpContext context)
 // the error handler runs inside UseHsts and clears the header off every 500.
 static void ApplyHstsHeader(HttpContext context, HstsOptions options)
 {
-    if (options.MaxAge <= TimeSpan.Zero || !context.Request.IsHttps) return;
+    if (options.MaxAge <= TimeSpan.Zero || !context.Request.IsHttps)
+    {
+        return;
+    }
+
     var value = "max-age=" + (long)options.MaxAge.TotalSeconds;
-    if (options.IncludeSubDomains) value += "; includeSubDomains";
-    if (options.Preload) value += "; preload";
+    if (options.IncludeSubDomains)
+    {
+        value += "; includeSubDomains";
+    }
+
+    if (options.Preload)
+    {
+        value += "; preload";
+    }
+
     context.Response.Headers["Strict-Transport-Security"] = value;
 }
 
@@ -510,10 +534,14 @@ if (!app.Environment.IsDevelopment())
         var value = app.Configuration[key];
         var envVar = key.Replace(":", "__", StringComparison.Ordinal);
         if (string.IsNullOrWhiteSpace(value))
+        {
             seedProblems.Add($"{envVar} (missing or empty)");
+        }
         else if (insecureSeedDefaults.Contains(value, StringComparer.Ordinal)
             || value.Contains("REPLACE_WITH", StringComparison.OrdinalIgnoreCase))
+        {
             seedProblems.Add($"{envVar} (shipped default / placeholder value)");
+        }
     }
     if (seedProblems.Count > 0)
     {

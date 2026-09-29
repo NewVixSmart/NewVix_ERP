@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Sales;
 
@@ -31,33 +31,57 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
         IReadOnlyList<int> issueIds, SaleInvoice invoice, string? user, int? branchId = null)
     {
         var ids = issueIds.Where(i => i > 0).Distinct().ToList();
-        if (ids.Count == 0) return (false, "يرجى اختيار أمر تسليم واحد على الأقل", null);
+        if (ids.Count == 0)
+        {
+            return (false, "يرجى اختيار أمر تسليم واحد على الأقل", null);
+        }
 
         var issues = await _db.DeliveryIssues.AsNoTracking()
             .Include(i => i.Items)
             .Include(i => i.SalesOrder)
             .Where(i => ids.Contains(i.Id))
             .ToListAsync();
-        if (issues.Count != ids.Count) return (false, "يوجد أمر تسليم غير موجود", null);
+        if (issues.Count != ids.Count)
+        {
+            return (false, "يوجد أمر تسليم غير موجود", null);
+        }
 
         if (issues.Any(i => i.Status == DeliveryIssueStatus.Cancelled))
+        {
             return (false, "لا يمكن فاتورة أمر تسليم ملغي", null);
+        }
+
         if (issues.Any(i => i.Status != DeliveryIssueStatus.Issued))
+        {
             return (false, "يمكن فاتورة أوامر التسليم المرحّلة فقط", null);
+        }
+
         if (issues.Any(i => i.SaleInvoiceId.HasValue))
+        {
             return (false, "أمر التسليم مفوتر بالفعل", null);
+        }
 
         var customerIds = issues.Select(i => i.CustomerId).Distinct().ToList();
-        if (customerIds.Count != 1) return (false, "يجب أن تكون أوامر التسليم لعميل واحد", null);
+        if (customerIds.Count != 1)
+        {
+            return (false, "يجب أن تكون أوامر التسليم لعميل واحد", null);
+        }
+
         var customerId = customerIds[0];
         if (invoice.CustomerId > 0 && invoice.CustomerId != customerId)
+        {
             return (false, "العميل المختار لا يطابق عميل أوامر التسليم", null);
+        }
+
         invoice.CustomerId = customerId;
 
         var lines = issues.SelectMany(i => i.Items)
             .Where(x => x.ItemId > 0 && (x.Quantity > 0 || x.Count > 0))
             .ToList();
-        if (lines.Count == 0) return (false, "أوامر التسليم لا تحتوي على أصناف صالحة للفوترة", null);
+        if (lines.Count == 0)
+        {
+            return (false, "أوامر التسليم لا تحتوي على أصناف صالحة للفوترة", null);
+        }
 
         var itemIds = lines.Select(l => l.ItemId).Distinct().ToList();
         var items = await _db.Items.AsNoTracking()
@@ -75,7 +99,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
         foreach (var group in lines.GroupBy(l => l.ItemId))
         {
             if (!items.TryGetValue(group.Key, out var item))
+            {
                 return (false, $"الصنف رقم {group.Key} غير موجود", null);
+            }
 
             var prices = new List<decimal>();
             foreach (var line in group.Where(l => l.SalesOrderItemId.HasValue))
@@ -86,11 +112,15 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
                 // decimals - both become 12.35 and agree, and the guard below would pass a delivery
                 // note billing a different price than the order.
                 if (orderLines.TryGetValue(line.SalesOrderItemId!.Value, out var orderLine))
+                {
                     prices.Add(decimal.Round(orderLine.UnitPrice, DecimalPrecision.PriceScale));
+                }
             }
             prices = prices.Distinct().ToList();
             if (prices.Count > 1)
+            {
                 return (false, $"اختلف سعر الصنف «{item.Name}» بين أوامر التسليم — راجع الأسعار قبل الفوترة", null);
+            }
 
             // The sum runs over decimal(18,4) issue rows, so it is already on the quantity grid and
             // is rounded once here, at the end, to that same grid. Rounding it to two decimals first
@@ -116,7 +146,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
         {
             var references = issues.Where(i => i.SalesOrder != null).Select(i => i.SalesOrder!.OrderNumber).ToList();
             if (references.Count > 0)
+            {
                 invoice.OrderReference = string.Join("، ", references.Distinct());
+            }
         }
 
         invoice.PostingMode = SalesPostingMode.AtInvoice;
@@ -137,7 +169,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
 
                 var tracked = await _db.DeliveryIssues.Where(i => ids.Contains(i.Id)).ToListAsync();
                 foreach (var issue in tracked)
+                {
                     issue.SaleInvoiceId = invoice.Id;
+                }
 
                 var billedOrderLineIds = lines.Where(l => l.SalesOrderItemId.HasValue)
                     .Select(l => l.SalesOrderItemId!.Value).Distinct().ToList();
@@ -150,7 +184,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
                 }
 
                 foreach (var orderId in orderIds.Where(id => id.HasValue).Select(id => id!.Value).Distinct())
+                {
                     await RefreshOrderInvoicingStatusAsync(orderId);
+                }
 
                 await _db.SaveChangesAsync();
 
@@ -160,8 +196,10 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
                 // guards the same way - without it RecordSaleInvoiceRevenueAsync throws on a
                 // zero value and rolls the whole delivery back.
                 if (_accounting != null && invoice.NetAmount > 0m)
+                {
                     await _accounting.RecordSaleInvoiceRevenueAsync(invoice.InvoiceDate, invoice.CustomerId,
                         invoice.NetAmount, invoice.Tax, user, branchId, invoice.Id);
+                }
 
                 await tx.CommitAsync();
                 return (true, null, invoice);
@@ -176,7 +214,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
     {
         var order = await _db.SalesOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId);
         if (order == null || order.Status == SalesOrderStatus.Cancelled || order.Status == SalesOrderStatus.Draft)
+        {
             return;
+        }
 
         var fullyInvoiced = order.Items.Count > 0 && order.Items.All(i =>
             DeliveryOpenLines.IsLineSettled(i.Quantity, i.Count, i.InvoicedQty, i.InvoicedCount));

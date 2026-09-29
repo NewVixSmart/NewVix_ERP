@@ -1,15 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
-using NewVixSmart.Web.ViewModels.Core;
 using NewVixSmart.Web.Services;
-using System.ComponentModel.DataAnnotations;
-using System.Globalization;
-using System.Text.Json;
+using NewVixSmart.Web.ViewModels.Core;
 
 namespace NewVixSmart.Web.Controllers;
 
@@ -56,7 +56,9 @@ public class SettingsController : Controller
         }
         branch.Code = branch.Code.Trim().ToUpperInvariant();
         if (await _db.Branches.AnyAsync(b => b.Code == branch.Code))
+        {
             TempData["Error"] = "فرع بهذا الرمز موجود بالفعل";
+        }
         else
         {
             branch.CreatedAt = DateTime.UtcNow;
@@ -78,12 +80,17 @@ public class SettingsController : Controller
             return RedirectToAction(nameof(Index));
         }
         var existing = await _db.Branches.FindAsync(branch.Id);
-        if (existing == null) return NotFound();
+        if (existing == null)
+        {
+            return NotFound();
+        }
 
         if (!string.IsNullOrWhiteSpace(branch.Code) && !string.IsNullOrWhiteSpace(branch.Name))
         {
             if (await _db.Branches.AnyAsync(b => b.Id != branch.Id && b.Code == branch.Code.Trim().ToUpperInvariant()))
+            {
                 TempData["Error"] = "فرع بهذا الرمز موجود بالفعل";
+            }
             else
             {
                 existing.Code = branch.Code.Trim().ToUpperInvariant();
@@ -108,7 +115,11 @@ public class SettingsController : Controller
     public async Task<IActionResult> DeleteBranch(int id)
     {
         var branch = await _db.Branches.FindAsync(id);
-        if (branch == null) return NotFound();
+        if (branch == null)
+        {
+            return NotFound();
+        }
+
         bool inUse = await _db.SaleInvoices.AnyAsync(s => s.BranchId == id) ||
                      await _db.PurchaseInvoices.AnyAsync(p => p.BranchId == id) ||
                      await _db.Payments.AnyAsync(p => p.BranchId == id) ||
@@ -187,7 +198,9 @@ public class SettingsController : Controller
         if (existing != null && !string.IsNullOrWhiteSpace(unit.Name) && unit.ParentUnitId != unit.Id && !await CreatesCycleAsync(unit.Id, unit.ParentUnitId))
         {
             if (await _db.Units.AnyAsync(u => u.Id != unit.Id && u.Name == unit.Name.Trim()))
+            {
                 TempData["Error"] = "الوحدة بهذا الاسم موجودة بالفعل";
+            }
             else
             {
                 existing.Name = unit.Name.Trim();
@@ -212,7 +225,10 @@ public class SettingsController : Controller
     public async Task<IActionResult> DeleteUnit(int id)
     {
         var unit = await _db.Units.FindAsync(id);
-        if (unit == null) return NotFound();
+        if (unit == null)
+        {
+            return NotFound();
+        }
 
         bool inUse = await _db.Items.AnyAsync(i => i.CountUnitId == id || i.QuantityUnitId == id) ||
                      await _db.Units.AnyAsync(u => u.ParentUnitId == id);
@@ -394,7 +410,10 @@ public class SettingsController : Controller
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             foreach (var g in Enum.GetValues<PrintGroup>())
+            {
                 await _printSettings.SaveLayoutAsync(g, options);
+            }
+
             await tx.CommitAsync();
             _printSettings.Invalidate();
         }
@@ -480,19 +499,32 @@ public class SettingsController : Controller
     private static (bool Ok, string Error, string? ContentType) ValidateLogo(IFormFile file)
     {
         if (file.Length == 0 || file.Length > 2 * 1024 * 1024)
+        {
             return (false, "حجم الشعار يجب ألا يتجاوز 2 ميجابايت", null);
+        }
+
         using var stream = file.OpenReadStream();
         var head = new byte[12];
         int read = stream.Read(head, 0, head.Length);
         string? type = null;
         if (read >= 8 && head[0] == 0x89 && head[1] == 0x50 && head[2] == 0x4E && head[3] == 0x47 && head[4] == 0x0D && head[5] == 0x0A && head[6] == 0x1A && head[7] == 0x0A)
+        {
             type = "image/png";
+        }
         else if (read >= 3 && head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF)
+        {
             type = "image/jpeg";
+        }
         else if (read >= 8 && head[0] == (byte)'R' && head[1] == (byte)'I' && head[2] == (byte)'F' && head[3] == (byte)'F' && head[4] == (byte)'W' && head[5] == (byte)'E' && head[6] == (byte)'B' && head[7] == (byte)'P')
+        {
             type = "image/webp";
+        }
+
         if (type == null)
+        {
             return (false, "صيغة غير صالحة؛ استخدم PNG أو JPEG أو WEBP", null);
+        }
+
         return (true, "", type);
     }
 
@@ -505,18 +537,30 @@ public class SettingsController : Controller
     private static string NormalizeHex(string value)
     {
         var h = value.Trim().TrimStart('#');
-        if (h.Length == 3) h = string.Concat(h.Select(c => char.ToString(c) + char.ToString(c)));
+        if (h.Length == 3)
+        {
+            h = string.Concat(h.Select(c => char.ToString(c) + char.ToString(c)));
+        }
+
         return $"#{h.ToLowerInvariant()}";
     }
 
     private async Task<bool> CreatesCycleAsync(int unitId, int? parentUnitId)
     {
-        if (parentUnitId == null) return false;
+        if (parentUnitId == null)
+        {
+            return false;
+        }
+
         var visited = new HashSet<int>();
         int? current = parentUnitId;
         while (current != null && visited.Add(current.Value))
         {
-            if (current.Value == unitId) return true;
+            if (current.Value == unitId)
+            {
+                return true;
+            }
+
             var parent = await _db.Units.AsNoTracking().FirstOrDefaultAsync(u => u.Id == current.Value);
             current = parent?.ParentUnitId;
         }

@@ -286,7 +286,11 @@ public sealed class AuditRound20CloseoutTests : IDisposable
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var (created, _) = await svc.CreateDeliveryOrderAsync(delivery,
             [new DeliveryOrderItem { ItemId = itemId, Quantity = qty, Count = 0 }], "test");
-        if (!created) return false;
+        if (!created)
+        {
+            return false;
+        }
+
         var (delivered, _) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
         return delivered;
     }

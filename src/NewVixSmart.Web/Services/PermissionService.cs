@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
-using System.Security.Claims;
 
 namespace NewVixSmart.Web.Services;
 
@@ -28,16 +28,32 @@ public class PermissionService : IPermissionService
 
     public async Task<bool> HasAsync(string key)
     {
-        if (_http.HttpContext?.User.Identity?.IsAuthenticated != true) return false;
-        if (IsAdmin) return true;
+        if (_http.HttpContext?.User.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (IsAdmin)
+        {
+            return true;
+        }
+
         var set = await GetSetAsync();
         return set.Contains(key);
     }
 
     public async Task<bool> HasAnyAsync(params string[] keys)
     {
-        if (_http.HttpContext?.User.Identity?.IsAuthenticated != true) return false;
-        if (IsAdmin) return true;
+        if (_http.HttpContext?.User.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (IsAdmin)
+        {
+            return true;
+        }
+
         var set = await GetSetAsync();
         return keys.Any(set.Contains);
     }
@@ -52,7 +68,11 @@ public class PermissionService : IPermissionService
 
     private async Task<HashSet<string>> GetSetAsync()
     {
-        if (_permissions != null) return _permissions;
+        if (_permissions != null)
+        {
+            return _permissions;
+        }
+
         var userId = _http.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         _permissions = string.IsNullOrEmpty(userId)
             ? new HashSet<string>()

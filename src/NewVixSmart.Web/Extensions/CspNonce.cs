@@ -9,7 +9,11 @@ public static class CspNonce
 
     public static void SetCspNonce(this HttpContext context)
     {
-        if (context.Items.ContainsKey(ItemKey)) return;
+        if (context.Items.ContainsKey(ItemKey))
+        {
+            return;
+        }
+
         context.Items[ItemKey] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
     }
 

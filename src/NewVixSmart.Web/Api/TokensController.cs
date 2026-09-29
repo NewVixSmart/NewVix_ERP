@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -5,9 +8,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using NewVixSmart.Web.Api.Dtos;
 using NewVixSmart.Web.Infrastructure;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace NewVixSmart.Web.Api;
 
@@ -46,14 +46,20 @@ public class TokensController : ControllerBase
     public async Task<IActionResult> CreateToken([FromBody] TokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
             return BadRequest(new { error = "اسم المستخدم وكلمة المرور مطلوبان" });
+        }
 
         var user = await _userManager.FindByNameAsync(request.Username);
         if (user == null)
+        {
             return Unauthorized(new { message = "Invalid credentials" });
+        }
 
         if (await _userManager.IsLockedOutAsync(user))
+        {
             return Unauthorized(new { message = "Invalid credentials" });
+        }
 
         if (!await _userManager.CheckPasswordAsync(user, request.Password))
         {
@@ -71,7 +77,9 @@ public class TokensController : ControllerBase
             new(TokenStampChecks.StampClaimType, await _userManager.GetSecurityStampAsync(user)),
         };
         foreach (var role in roles)
+        {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
             _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key not configured")));

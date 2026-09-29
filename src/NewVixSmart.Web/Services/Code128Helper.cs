@@ -44,17 +44,27 @@ public static class Code128Helper
     public static string GetBarcodeValue(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
+        {
             return "NOCODE";
+        }
+
         var clean = new string(code.Where(c => c >= 32 && c <= 126).ToArray());
         return string.IsNullOrEmpty(clean) ? "NOCODE" : clean;
     }
 
     public static bool IsValidCode128(string value)
     {
-        if (string.IsNullOrEmpty(value)) return false;
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
         foreach (var c in value)
         {
-            if (c < 32 || c > 126) return false;
+            if (c < 32 || c > 126)
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -62,7 +72,9 @@ public static class Code128Helper
     public static int[] Encode(string text)
     {
         if (string.IsNullOrEmpty(text))
+        {
             return QuietZone.Concat(StartCodes[1]).Concat(QuietZone).ToArray();
+        }
 
         var result = new List<int>();
         result.AddRange(QuietZone);
@@ -73,7 +85,11 @@ public static class Code128Helper
         for (int i = 0; i < text.Length; i++)
         {
             int code = text[i] - 32;
-            if (code < 0 || code >= CodeB.Length) code = 0;
+            if (code < 0 || code >= CodeB.Length)
+            {
+                code = 0;
+            }
+
             result.AddRange(CodeB[code]);
             checksum += code * (i + 1);
         }
@@ -116,9 +132,14 @@ public static class Code128Helper
             int startPct = (int)((double)x / bars.Sum() * 100);
             int widthPct = (int)Math.Max(1, (double)bar / bars.Sum() * 100);
             if (black)
+            {
                 stops.Add($"black {startPct}% {startPct + widthPct}%");
+            }
             else
+            {
                 stops.Add($"white {startPct}% {startPct + widthPct}%");
+            }
+
             x += bar;
             black = !black;
         }

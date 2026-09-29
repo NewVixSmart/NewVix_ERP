@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -9,7 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using System.Diagnostics.CodeAnalysis;
 using NewVixSmart.Web.Api;
 using NewVixSmart.Web.Api.Dtos;
 using NewVixSmart.Web.Controllers;
@@ -19,9 +20,8 @@ using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
-using NewVixSmart.Web.ViewModels.Users;
 using NewVixSmart.Web.ViewModels.Core;
-using System.IdentityModel.Tokens.Jwt;
+using NewVixSmart.Web.ViewModels.Users;
 using Xunit;
 
 namespace NewVixSmart.Web.Tests;
@@ -129,7 +129,10 @@ public sealed class SecurityHardeningTests : IDisposable
     {
         using var db = CreateContext();
         for (int i = 1; i <= 5; i++)
+        {
             db.Customers.Add(new Customer { Name = $"عميل {i}", Code = $"CUS-T{i}", IsActive = true });
+        }
+
         await db.SaveChangesAsync();
 
         var controller = new NewVixSmart.Web.Api.CustomersController(db);
@@ -221,7 +224,9 @@ public sealed class SecurityHardeningTests : IDisposable
         public void SaveTempData(HttpContext context, IDictionary<string, object?> values)
         {
             foreach (var kv in values)
+            {
                 _data[kv.Key] = kv.Value;
+            }
         }
     }
 
@@ -252,7 +257,11 @@ public sealed class SecurityHardeningTests : IDisposable
         public Task SaveLayoutAsync(PrintGroup group, PrintLayoutOptions options) => Task.CompletedTask;
         public Task<PrintLayoutOptions> GetPreviewLayoutAsync(PrintGroup group, string? state)
         {
-            if (PrintSettingsService.DecodeState(state) is { } layout) return Task.FromResult(layout);
+            if (PrintSettingsService.DecodeState(state) is { } layout)
+            {
+                return Task.FromResult(layout);
+            }
+
             return Task.FromResult(new PrintLayoutOptions());
         }
         public void Invalidate() { }

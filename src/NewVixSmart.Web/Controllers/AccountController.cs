@@ -1,8 +1,8 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.ComponentModel.DataAnnotations;
 
 namespace NewVixSmart.Web.Controllers;
 
@@ -21,7 +21,10 @@ public class AccountController : Controller
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
+        {
             return Redirect(HomeLanding());
+        }
+
         ViewData["ReturnUrl"] = returnUrl;
         return View();
     }
@@ -32,7 +35,10 @@ public class AccountController : Controller
     public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
 
         var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, model.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
@@ -41,7 +47,11 @@ public class AccountController : Controller
             // ?returnUrl=//evil.com or ?returnUrl=https://evil.com answered 500. This is not an
             // open redirect - the throw prevented that - but it is a user-triggerable server
             // error on the login form. Validate first, and fall back to the role's landing page.
-            if (!Url.IsLocalUrl(returnUrl)) returnUrl = null;
+            if (!Url.IsLocalUrl(returnUrl))
+            {
+                returnUrl = null;
+            }
+
             return LocalRedirect(returnUrl ?? HomeLanding());
         }
 
@@ -64,7 +74,10 @@ public class AccountController : Controller
         await _signInManager.SignOutAsync();
         var user = await _userManager.GetUserAsync(User);
         if (user is not null)
+        {
             await _userManager.UpdateSecurityStampAsync(user);
+        }
+
         return RedirectToAction("Login");
     }
 
@@ -80,10 +93,16 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
 
         var user = await _userManager.GetUserAsync(User);
-        if (user == null) return RedirectToAction("Login");
+        if (user == null)
+        {
+            return RedirectToAction("Login");
+        }
 
         var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
         if (result.Succeeded)
@@ -94,7 +113,10 @@ public class AccountController : Controller
         }
 
         foreach (var error in result.Errors)
+        {
             ModelState.AddModelError(string.Empty, error.Description);
+        }
+
         return View(model);
     }
 
@@ -102,9 +124,21 @@ public class AccountController : Controller
 
     private string HomeLanding()
     {
-        if (User.IsInRole("Admin")) return "/";
-        if (User.IsInRole("Accountant")) return "/Reports/Index";
-        if (User.IsInRole("Warehouse")) return "/Stock/Index";
+        if (User.IsInRole("Admin"))
+        {
+            return "/";
+        }
+
+        if (User.IsInRole("Accountant"))
+        {
+            return "/Reports/Index";
+        }
+
+        if (User.IsInRole("Warehouse"))
+        {
+            return "/Stock/Index";
+        }
+
         return "/";
     }
 }

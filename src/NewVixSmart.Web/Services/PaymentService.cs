@@ -27,20 +27,34 @@ public sealed class PaymentService : IPaymentService
     public async Task<(bool Success, string? Error, Payment? Payment)> CreatePaymentAsync(Payment payment, string? user, int? branchId = null, bool beginOwnTransaction = true)
     {
         if (await IsPeriodClosedAsync(payment.PaymentDate))
+        {
             return (false, $"السنة المالية {payment.PaymentDate.Year} مغلقة — لا يمكن إدراج قيود فيها", null);
+        }
 
         if (payment.Type == PaymentType.Receipt && !payment.CustomerId.HasValue)
+        {
             return (false, "اختر العميل الذي تم القبض منه", null);
+        }
+
         if (payment.Type == PaymentType.Disbursement && !payment.SupplierId.HasValue)
+        {
             return (false, "اختر المورد الذي تم الصرف له", null);
+        }
 
         if (payment.Type == PaymentType.Receipt)
+        {
             payment.SupplierId = null;
+        }
         else
+        {
             payment.CustomerId = null;
+        }
 
         payment.DedupeKey = BuildDedupeKey(payment);
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreatePaymentAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreatePaymentAsync));
+        }
 
         for (int attempt = 1; attempt <= 3; attempt++)
         {
@@ -77,19 +91,31 @@ public sealed class PaymentService : IPaymentService
                 if (_accounting != null)
                 {
                     if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
+                    {
                         await _accounting.RecordReceiptAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.CustomerId.Value, user, branchId);
+                    }
                     else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
+                    {
                         await _accounting.RecordDisbursementAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.SupplierId.Value, user, branchId);
+                    }
                 }
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 return (true, null, payment);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx);
                 _db.ChangeTracker.Clear();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
+
                 payment.Id = 0;
                 payment.ReceiptNumber = await NextPaymentNumberAsync();
             }
@@ -97,7 +123,11 @@ public sealed class PaymentService : IPaymentService
             {
                 await TryRollbackAsync(tx);
                 _db.ChangeTracker.Clear();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
+
                 payment.Id = 0;
                 if (payment.DedupeKey != null
                     && await _db.Payments.AsNoTracking().AnyAsync(p => p.DedupeKey == payment.DedupeKey))
@@ -110,7 +140,11 @@ public sealed class PaymentService : IPaymentService
             {
                 await TryRollbackAsync(tx);
                 _db.ChangeTracker.Clear();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
+
                 _logger?.LogError(ex, "فشلت معالجة الدفعة رقم {Number}", payment.ReceiptNumber);
                 return (false, "تعذر معالجة الدفعة بسبب خطأ غير متوقع، حاول مرة أخرى", null);
             }
@@ -145,7 +179,11 @@ public sealed class PaymentService : IPaymentService
     /// </summary>
     private static async Task TryRollbackAsync(IDbContextTransaction? tx)
     {
-        if (tx == null) return;
+        if (tx == null)
+        {
+            return;
+        }
+
         try { await tx.RollbackAsync(); }
         catch (Exception) { }
     }
@@ -157,8 +195,10 @@ public sealed class PaymentService : IPaymentService
     private void RequireAmbientTransaction(string operation)
     {
         if (_db.Database.CurrentTransaction == null)
+        {
             throw new InvalidOperationException(
                 $"لا يمكن تنفيذ «{operation}» دون معاملة قائمة؛ ابدأ معاملة قبل الاستدعاء أو اترك القيمة الافتراضية لتفتح العملية معاملتها الخاصة");
+        }
     }
 
     private async Task<string> NextPaymentNumberAsync()
@@ -198,11 +238,22 @@ public sealed class PaymentService : IPaymentService
         {
             foreach (var (inv, outstanding) in await SaleOpenAmountsAsync(payment.CustomerId.Value))
             {
-                if (remaining <= 0m) break;
-                if (outstanding <= 0m) continue;
+                if (remaining <= 0m)
+                {
+                    break;
+                }
+
+                if (outstanding <= 0m)
+                {
+                    continue;
+                }
 
                 var allocate = Math.Min(remaining, outstanding);
-                if (allocate <= 0m) continue;
+                if (allocate <= 0m)
+                {
+                    continue;
+                }
+
                 inv.PaidAmount += allocate;
                 remaining -= allocate;
                 allocated += allocate;
@@ -212,18 +263,32 @@ public sealed class PaymentService : IPaymentService
                     SaleInvoiceId = inv.Id,
                     AllocatedAmount = allocate
                 });
-                if (inv.PaidAmount >= inv.NetAmount) inv.IsPaid = true;
+                if (inv.PaidAmount >= inv.NetAmount)
+                {
+                    inv.IsPaid = true;
+                }
             }
         }
         else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue && remaining > 0)
         {
             foreach (var (inv, outstanding) in await PurchaseOpenAmountsAsync(payment.SupplierId.Value))
             {
-                if (remaining <= 0m) break;
-                if (outstanding <= 0m) continue;
+                if (remaining <= 0m)
+                {
+                    break;
+                }
+
+                if (outstanding <= 0m)
+                {
+                    continue;
+                }
 
                 var allocate = Math.Min(remaining, outstanding);
-                if (allocate <= 0m) continue;
+                if (allocate <= 0m)
+                {
+                    continue;
+                }
+
                 inv.PaidAmount += allocate;
                 remaining -= allocate;
                 allocated += allocate;
@@ -233,16 +298,27 @@ public sealed class PaymentService : IPaymentService
                     PurchaseInvoiceId = inv.Id,
                     AllocatedAmount = allocate
                 });
-                if (inv.PaidAmount >= inv.NetAmount) inv.IsPaid = true;
+                if (inv.PaidAmount >= inv.NetAmount)
+                {
+                    inv.IsPaid = true;
+                }
             }
         }
 
         if (saleRows.Count > 0)
+        {
             _db.SalePaymentAllocations.AddRange(saleRows);
+        }
+
         if (purchaseRows.Count > 0)
+        {
             _db.PurchasePaymentAllocations.AddRange(purchaseRows);
+        }
+
         if (saleRows.Count > 0 || purchaseRows.Count > 0)
+        {
             await _db.SaveChangesAsync();
+        }
 
         return (remaining, allocated);
     }
@@ -269,7 +345,10 @@ public sealed class PaymentService : IPaymentService
                      || _db.DeliveryIssues.Any(i => i.SaleInvoiceId == s.Id && i.Status == DeliveryIssueStatus.Issued))
             .OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id)
             .ToListAsync();
-        if (invoices.Count == 0) return new List<(SaleInvoice, decimal)>();
+        if (invoices.Count == 0)
+        {
+            return new List<(SaleInvoice, decimal)>();
+        }
 
         var invoiceIds = invoices.Select(s => s.Id).ToList();
 
@@ -310,7 +389,10 @@ public sealed class PaymentService : IPaymentService
                 OpenAmountRule.SaleDeliveredNet(inv, orders),
                 OpenAmountRule.PaidBase(inv.PaidAmount, allocatedByInvoice.GetValueOrDefault(inv.Id)),
                 returnCredits.GetValueOrDefault(inv.Id));
-            if (amount > 0m) open.Add((inv, amount));
+            if (amount > 0m)
+            {
+                open.Add((inv, amount));
+            }
         }
         return open;
     }
@@ -327,7 +409,10 @@ public sealed class PaymentService : IPaymentService
             .Where(p => p.SupplierId == supplierId && p.PaidAmount < p.NetAmount)
             .OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id)
             .ToListAsync();
-        if (invoices.Count == 0) return new List<(PurchaseInvoice, decimal)>();
+        if (invoices.Count == 0)
+        {
+            return new List<(PurchaseInvoice, decimal)>();
+        }
 
         var invoiceIds = invoices.Select(p => p.Id).ToList();
 
@@ -358,7 +443,10 @@ public sealed class PaymentService : IPaymentService
                 decimal.Round(inv.NetAmount, 2),
                 OpenAmountRule.PaidBase(inv.PaidAmount, allocatedByInvoice.GetValueOrDefault(inv.Id)),
                 returnCredits.GetValueOrDefault(inv.Id));
-            if (amount > 0m) open.Add((inv, amount));
+            if (amount > 0m)
+            {
+                open.Add((inv, amount));
+            }
         }
         return open;
     }
@@ -370,10 +458,18 @@ public sealed class PaymentService : IPaymentService
 
     private static string? BuildDedupeKey(Payment payment)
     {
-        if (payment.Amount <= 0) return null;
+        if (payment.Amount <= 0)
+        {
+            return null;
+        }
+
         var party = payment.CustomerId.HasValue ? $"C{payment.CustomerId}"
             : payment.SupplierId.HasValue ? $"S{payment.SupplierId}" : null;
-        if (party == null) return null;
+        if (party == null)
+        {
+            return null;
+        }
+
         var date = payment.PaymentDate;
         var day = new DateTime(date.Year, date.Month, date.Day);
         return $"{payment.Type}|{party}|{payment.Amount}|{payment.Method}|{day:yyyyMMdd}";

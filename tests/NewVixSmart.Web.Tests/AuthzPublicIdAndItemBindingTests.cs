@@ -50,8 +50,14 @@ public sealed class AuthzPublicIdAndItemBindingTests
         var depth = 0;
         for (var i = open; i < source.Length; i++)
         {
-            if (source[i] == '{') depth++;
-            else if (source[i] == '}' && --depth == 0) return source[open..(i + 1)];
+            if (source[i] == '{')
+            {
+                depth++;
+            }
+            else if (source[i] == '}' && --depth == 0)
+            {
+                return source[open..(i + 1)];
+            }
         }
 
         throw new InvalidOperationException("Unbalanced braces after " + signature);

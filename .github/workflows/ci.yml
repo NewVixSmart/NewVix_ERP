@@ -42,6 +42,16 @@ jobs:
       - name: Restore
         run: dotnet restore NewVixSmart.slnx
 
+      # THE formatting gate. One command, one source of truth, same runner and
+      # same SDK as the build below. It sits after Restore and before Build
+      # because `--no-restore` needs the restore assets the step above produced
+      # on this runner - without them the gate cannot even start. The `run` value
+      # is a plain literal: no GitHub expression is interpolated into it, so
+      # nothing can rewrite the command at run time.
+      # Locally, to fix what this reports: dotnet format NewVixSmart.slnx
+      - name: Verify formatting (dotnet format --verify-no-changes)
+        run: dotnet format NewVixSmart.slnx --verify-no-changes --no-restore
+
       - name: Build (warnings are errors)
         run: dotnet build NewVixSmart.slnx -c Release --no-restore
 

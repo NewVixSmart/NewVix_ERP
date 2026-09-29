@@ -30,7 +30,9 @@ public sealed class ProductionConfigGateTests
         {
             var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web");
             if (File.Exists(Path.Combine(candidate, "appsettings.json")))
+            {
                 return candidate;
+            }
         }
 
         throw new DirectoryNotFoundException(

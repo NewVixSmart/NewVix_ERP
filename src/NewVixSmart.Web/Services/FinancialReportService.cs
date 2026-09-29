@@ -45,7 +45,10 @@ public class FinancialReportService : IFinancialReportService
             var credit = activity?.Credit ?? 0m;
             var signed = a.NormalBalance == NormalBalance.Debit ? debit - credit : credit - debit;
 
-            if (!a.IsActive && debit == 0m && credit == 0m) continue;
+            if (!a.IsActive && debit == 0m && credit == 0m)
+            {
+                continue;
+            }
 
             rows.Add(new TrialBalanceRowViewModel
             {
@@ -70,9 +73,20 @@ public class FinancialReportService : IFinancialReportService
     {
         var fromDate = from.Date;
         var toDate = to.Date;
-        if (fromDate > toDate) (fromDate, toDate) = (toDate, fromDate);
-        if (toDate > DateTime.Today) toDate = DateTime.Today;
-        if (fromDate > toDate) fromDate = toDate;
+        if (fromDate > toDate)
+        {
+            (fromDate, toDate) = (toDate, fromDate);
+        }
+
+        if (toDate > DateTime.Today)
+        {
+            toDate = DateTime.Today;
+        }
+
+        if (fromDate > toDate)
+        {
+            fromDate = toDate;
+        }
 
         var activity = await GetAccountActivityAsync(fromDate, toDate, GLAccountType.Revenue, GLAccountType.Expense);
 
@@ -82,7 +96,10 @@ public class FinancialReportService : IFinancialReportService
         {
             var signed = line.NormalBalance == NormalBalance.Debit ? line.Debit - line.Credit : line.Credit - line.Debit;
 
-            if (signed == 0m) continue;
+            if (signed == 0m)
+            {
+                continue;
+            }
 
             if (line.Type == GLAccountType.Revenue)
             {
@@ -134,7 +151,10 @@ public class FinancialReportService : IFinancialReportService
             var amount = line.Type == GLAccountType.Asset
                 ? line.Debit - line.Credit
                 : line.Credit - line.Debit;
-            if (amount == 0) continue;
+            if (amount == 0)
+            {
+                continue;
+            }
 
             var item = new BalanceSheetLineViewModel { Code = line.Code, Name = line.Name, Amount = amount };
 
@@ -205,8 +225,14 @@ public class FinancialReportService : IFinancialReportService
         foreach (var line in activity)
         {
             var signed = line.NormalBalance == NormalBalance.Debit ? line.Debit - line.Credit : line.Credit - line.Debit;
-            if (line.Type == GLAccountType.Revenue) revenue += signed;
-            else expense += signed;
+            if (line.Type == GLAccountType.Revenue)
+            {
+                revenue += signed;
+            }
+            else
+            {
+                expense += signed;
+            }
         }
 
         return revenue - expense - closedRetained;
@@ -241,7 +267,10 @@ public class FinancialReportService : IFinancialReportService
     public async Task<Dictionary<int, (decimal Debit, decimal Credit)>> GetAccountsYearlyActivityAsync(IEnumerable<int> accountIds, int year)
     {
         var ids = accountIds.Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<int, (decimal Debit, decimal Credit)>();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, (decimal Debit, decimal Credit)>();
+        }
 
         var fromDate = new DateTime(year, 1, 1);
         var toDate = new DateTime(year, 12, 31);
@@ -260,7 +289,10 @@ public class FinancialReportService : IFinancialReportService
 
         var result = new Dictionary<int, (decimal Debit, decimal Credit)>();
         foreach (var r in rows)
+        {
             result[r.AccountId] = (r.Debit, r.Credit);
+        }
+
         return result;
     }
 
@@ -293,7 +325,11 @@ public class FinancialReportService : IFinancialReportService
         foreach (var a in accounts)
         {
             byAccount.TryGetValue(a.Id, out var act);
-            if (!a.IsActive && (act?.Debit ?? 0m) == 0m && (act?.Credit ?? 0m) == 0m) continue;
+            if (!a.IsActive && (act?.Debit ?? 0m) == 0m && (act?.Credit ?? 0m) == 0m)
+            {
+                continue;
+            }
+
             result.Add(new AccountActivity(a.Code, a.Name, a.Type, a.NormalBalance, act?.Debit ?? 0m, act?.Credit ?? 0m));
         }
 

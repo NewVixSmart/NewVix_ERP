@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
-using NewVixSmart.Web.Extensions;
 
 namespace NewVixSmart.Web.Controllers;
 
@@ -23,7 +23,7 @@ public class SaleReturnsController : Controller
         _permissions = permissions;
     }
 
-[RequirePerm("SaleReturns.View")]
+    [RequirePerm("SaleReturns.View")]
     public async Task<IActionResult> Index()
     {
         var list = await _db.SaleReturns
@@ -35,21 +35,21 @@ public class SaleReturnsController : Controller
         return View(list);
     }
 
-[RequirePerm("SaleReturns.Create")]
-public async Task<IActionResult> Create()
+    [RequirePerm("SaleReturns.Create")]
+    public async Task<IActionResult> Create()
     {
         await PopulateDropdowns();
         return View();
     }
 
-[HttpPost]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("SaleReturns.Create")]
     public async Task<IActionResult> Create(SaleReturn saleReturn, List<SaleReturnItem> items)
     {
         items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<SaleReturnItem>();
         ModelState.IgnoreEmptyLineItemRows();
-if (items.Count == 0)
+        if (items.Count == 0)
         {
             ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
         }
@@ -62,7 +62,7 @@ if (items.Count == 0)
             {
                 ModelState.AddModelError("SaleInvoiceId", "الفاتورة الأصلية غير موجودة");
             }
-else if (invoice.CustomerId != saleReturn.CustomerId)
+            else if (invoice.CustomerId != saleReturn.CustomerId)
             {
                 ModelState.AddModelError("SaleInvoiceId", "الفاتورة الأصلية لا تخص هذا العميل");
             }
@@ -87,7 +87,7 @@ else if (invoice.CustomerId != saleReturn.CustomerId)
             }
         }
 
-if (ModelState.IsValid)
+        if (ModelState.IsValid)
         {
             var submit = Request.Form["submitAction"].ToString();
             if (submit == "post" && !await _permissions.HasAsync("SaleReturns.Post"))
@@ -96,24 +96,24 @@ if (ModelState.IsValid)
             }
             else
             {
-            var (ok, error, returnId) = await _inventory.CreateSaleReturnDraftAsync(saleReturn, items, User.Identity?.Name);
-            if (ok)
-            {
-                if (submit == "post")
+                var (ok, error, returnId) = await _inventory.CreateSaleReturnDraftAsync(saleReturn, items, User.Identity?.Name);
+                if (ok)
                 {
-                    var (posted, postError) = await _inventory.PostSaleReturnAsync(returnId, User.Identity?.Name);
-                    if (posted)
+                    if (submit == "post")
                     {
-                        TempData["Success"] = "تم ترحيل مرتجع البيع وإرجاع الكمية للمخزون";
-                        return RedirectToAction(nameof(Index));
+                        var (posted, postError) = await _inventory.PostSaleReturnAsync(returnId, User.Identity?.Name);
+                        if (posted)
+                        {
+                            TempData["Success"] = "تم ترحيل مرتجع البيع وإرجاع الكمية للمخزون";
+                            return RedirectToAction(nameof(Index));
+                        }
+                        TempData["Error"] = postError ?? "تعذر ترحيل مرتجع البيع";
+                        return await RedirectToDetailsAsync(returnId);
                     }
-                    TempData["Error"] = postError ?? "تعذر ترحيل مرتجع البيع";
+                    TempData["Success"] = "تم حفظ مرتجع البيع كمسودة";
                     return await RedirectToDetailsAsync(returnId);
                 }
-                TempData["Success"] = "تم حفظ مرتجع البيع كمسودة";
-                return await RedirectToDetailsAsync(returnId);
-            }
-            ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع البيع");
+                ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع البيع");
             }
         }
 
@@ -151,7 +151,11 @@ if (ModelState.IsValid)
             .Where(r => r.Id == id)
             .Select(r => (Guid?)r.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
@@ -166,10 +170,18 @@ if (ModelState.IsValid)
             .AsNoTracking();
 
         SaleReturn? saleReturn;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         saleReturn = await query.FirstOrDefaultAsync(r => r.PublicId == publicId);
 
-        if (saleReturn == null) return NotFound();
+        if (saleReturn == null)
+        {
+            return NotFound();
+        }
+
         return View(saleReturn);
     }
 
@@ -183,7 +195,11 @@ if (ModelState.IsValid)
 .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (saleReturn == null) return NotFound();
+        if (saleReturn == null)
+        {
+            return NotFound();
+        }
+
         return View(saleReturn);
     }
 
@@ -197,16 +213,20 @@ if (ModelState.IsValid)
 .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (saleReturn == null) return NotFound();
+        if (saleReturn == null)
+        {
+            return NotFound();
+        }
+
         var bytes = PrintPdfBuilder.RenderSaleReturnPdf(saleReturn);
         return File(bytes, "application/pdf", $"sale-return-{saleReturn.ReturnNumber}.pdf");
     }
 
-private async Task PopulateDropdowns()
+    private async Task PopulateDropdowns()
     {
         ViewBag.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).Where(i => i.IsSellable).AsNoTracking().ToListAsync();
-ViewBag.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
+        ViewBag.SaleInvoices = new SelectList(await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
         var prefix = $"SRTN-{DateTime.Now:yyyyMMdd}-";
         var taken = await _db.SaleReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;

@@ -65,9 +65,14 @@ public class InventoryAdjustmentsController : Controller
     {
         var (ok, error) = await _inventory.DeleteAdjustmentAsync(id, User.Identity?.Name);
         if (ok)
+        {
             TempData["Success"] = "تم حذف سجل الجرد وإعادة المخزون إلى حالته السابقة";
+        }
         else
+        {
             TempData["Error"] = error ?? "تعذر حذف سجل الجرد";
+        }
+
         return RedirectToAction(nameof(Index));
     }
 

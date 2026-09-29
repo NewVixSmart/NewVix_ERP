@@ -41,7 +41,11 @@ public class ImportCenterController : Controller
     public async Task<IActionResult> Template(string key)
     {
         var entity = _import.FindEntity(key);
-        if (entity is null) return NotFound();
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
         var bytes = await _import.DownloadTemplateAsync(key);
         return File(bytes, XlsxContentType, $"newvixsmart_template_{entity.FilePrefix}.xlsx");
     }
@@ -55,7 +59,11 @@ public class ImportCenterController : Controller
     public async Task<IActionResult> Preview(string key, IFormFile file)
     {
         var entity = _import.FindEntity(key);
-        if (entity is null) return NotFound();
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
         if (file is null || file.Length == 0)
         {
             TempData["Error"] = "اختر ملفًا أولاً";
@@ -82,12 +90,21 @@ public class ImportCenterController : Controller
     public async Task<IActionResult> Apply(string key, string payload, string applyToken)
     {
         var entity = _import.FindEntity(key);
-        if (entity is null) return NotFound();
+        if (entity is null)
+        {
+            return NotFound();
+        }
+
         var result = await _import.ImportAsync(key, payload, applyToken);
         if (result.Success)
+        {
             TempData["Success"] = result.Message;
+        }
         else
+        {
             TempData["Error"] = result.Message;
+        }
+
         return RedirectToAction(nameof(Index));
     }
 }

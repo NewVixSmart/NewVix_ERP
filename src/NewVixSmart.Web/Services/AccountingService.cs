@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 
@@ -30,7 +30,11 @@ public class AccountingService : IAccountingService
             lines.Add(new JournalLine("5000", localCost, 0));
             lines.Add(new JournalLine("1300", 0, localCost));
         }
-        if (lines.Count == 0) throw new InvalidOperationException("فاتورة البيع بلا قيمة أو تكلفة");
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("فاتورة البيع بلا قيمة أو تكلفة");
+        }
+
         await PostAsync(JournalSource.SaleInvoice, customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
     }
 
@@ -39,15 +43,31 @@ public class AccountingService : IAccountingService
     {
         var localValue = decimal.Round(netAmount, 2);
         var localTax = decimal.Round(taxAmount, 2);
-        if (localTax < 0.005m) localTax = 0m;
-        if (localTax > localValue - 0.005m) localTax = 0m;
-        if (localValue <= 0) throw new InvalidOperationException("فاتورة البيع بلا قيمة");
+        if (localTax < 0.005m)
+        {
+            localTax = 0m;
+        }
+
+        if (localTax > localValue - 0.005m)
+        {
+            localTax = 0m;
+        }
+
+        if (localValue <= 0)
+        {
+            throw new InvalidOperationException("فاتورة البيع بلا قيمة");
+        }
+
         var lines = new List<JournalLine>
         {
             new("1200", localValue, 0),
             new("4000", 0, decimal.Round(localValue - localTax, 2))
         };
-        if (localTax > 0) lines.Add(new JournalLine("2055", 0, localTax));
+        if (localTax > 0)
+        {
+            lines.Add(new JournalLine("2055", 0, localTax));
+        }
+
         await PostAsync(JournalSource.SaleInvoice, invoiceId ?? customerId, entryDate, "فاتورة بيع", lines.ToArray(), user, branchId);
     }
 
@@ -55,7 +75,11 @@ public class AccountingService : IAccountingService
         string? user, int? branchId = null)
     {
         var localCost = decimal.Round(costAmount, 2);
-        if (localCost <= 0) return;
+        if (localCost <= 0)
+        {
+            return;
+        }
+
         await PostAsync(JournalSource.SaleDeliveryIssue, issueId, entryDate, "تكلفة تسليم بيع",
             new[] { new JournalLine("5000", localCost, 0), new JournalLine("1300", 0, localCost) }, user, branchId);
     }
@@ -66,29 +90,47 @@ public class AccountingService : IAccountingService
         var localValue = decimal.Round(value, 2);
         var localCost = decimal.Round(cost, 2);
         var localTax = decimal.Round(taxAmount, 2);
-        if (localTax < 0.005m) localTax = 0m;
-        if (localTax > localValue - 0.005m) localTax = 0m;
+        if (localTax < 0.005m)
+        {
+            localTax = 0m;
+        }
+
+        if (localTax > localValue - 0.005m)
+        {
+            localTax = 0m;
+        }
+
         var lines = new List<JournalLine>();
         if (localValue > 0)
         {
             lines.Add(new JournalLine("1200", localValue, 0));
             lines.Add(new JournalLine("4000", 0, decimal.Round(localValue - localTax, 2)));
             if (localTax > 0)
+            {
                 lines.Add(new JournalLine("2055", 0, localTax));
+            }
         }
         if (localCost > 0)
         {
             lines.Add(new JournalLine("5000", localCost, 0));
             lines.Add(new JournalLine("1300", 0, localCost));
         }
-        if (lines.Count == 0) throw new InvalidOperationException("أذن التسليم بلا قيمة أو تكلفة");
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("أذن التسليم بلا قيمة أو تكلفة");
+        }
+
         await PostAsync(JournalSource.SaleDeliveryOrder, deliveryId ?? customerId, entryDate, "أذن تسليم بيع", lines.ToArray(), user, branchId);
     }
 
     public async Task RecordPurchaseInvoiceAsync(DateTime entryDate, int supplierId, decimal netAmount,
         string? user, int? branchId = null)
     {
-        if (netAmount <= 0) throw new InvalidOperationException("فاتورة الشراء بلا قيمة");
+        if (netAmount <= 0)
+        {
+            throw new InvalidOperationException("فاتورة الشراء بلا قيمة");
+        }
+
         var localValue = decimal.Round(netAmount, 2);
         await PostAsync(JournalSource.PurchaseInvoice, supplierId, entryDate, "فاتورة شراء",
             new[] { new JournalLine("1300", localValue, 0), new JournalLine("2000", 0, localValue) }, user, branchId);
@@ -127,7 +169,11 @@ public class AccountingService : IAccountingService
     {
         var contraValue = NonNegative(decimal.Round(valueAmount, 2));
         var tax = NonNegative(decimal.Round(taxAmount, 2));
-        if (tax < 0.005m) tax = 0m;
+        if (tax < 0.005m)
+        {
+            tax = 0m;
+        }
+
         var cost = NonNegative(decimal.Round(costAmount, 2));
 
         var lines = new List<JournalLine>();
@@ -135,15 +181,31 @@ public class AccountingService : IAccountingService
         // (total debits minus the cost credit) and the entry always balances to the cent.
         var totalDebits = decimal.Round(contraValue + tax + cost, 2);
         var receivable = decimal.Round(NonNegative(totalDebits - cost), 2);
-        if (contraValue > 0m) lines.Add(new JournalLine("5101", contraValue, 0));
-        if (receivable > 0m) lines.Add(new JournalLine("1200", 0, receivable));
-        if (tax > 0m) lines.Add(new JournalLine("2055", tax, 0));
+        if (contraValue > 0m)
+        {
+            lines.Add(new JournalLine("5101", contraValue, 0));
+        }
+
+        if (receivable > 0m)
+        {
+            lines.Add(new JournalLine("1200", 0, receivable));
+        }
+
+        if (tax > 0m)
+        {
+            lines.Add(new JournalLine("2055", tax, 0));
+        }
+
         if (cost > 0m)
         {
             lines.Add(new JournalLine("1300", cost, 0));
             lines.Add(new JournalLine("5000", 0, cost));
         }
-        if (lines.Count == 0) throw new InvalidOperationException("مرتجع البيع بلا قيمة أو تكلفة");
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("مرتجع البيع بلا قيمة أو تكلفة");
+        }
+
         await PostAsync(JournalSource.SaleReturn, sourceId, entryDate, "مرتجع بيع", lines.ToArray(), user, branchId);
     }
 
@@ -158,15 +220,25 @@ public class AccountingService : IAccountingService
         var localValue = NonNegative(decimal.Round(valueAmount, 2));
         var cost = NonNegative(decimal.Round(costAmount, 2));
         if (localValue <= 0m && cost <= 0m)
+        {
             throw new InvalidOperationException("مرتجع الشراء بلا قيمة أو تكلفة");
+        }
 
         var lines = new List<JournalLine>();
         // The payable debit is the largest leg, so it is the balancing figure (total credits
         // minus the cost debit) and the entry always balances to the cent despite per-leg rounding.
         var totalCredits = decimal.Round(localValue + cost, 2);
         var payable = decimal.Round(NonNegative(totalCredits - cost), 2);
-        if (payable > 0m) lines.Add(new JournalLine("2000", payable, 0));
-        if (localValue > 0m) lines.Add(new JournalLine("5102", 0, localValue));
+        if (payable > 0m)
+        {
+            lines.Add(new JournalLine("2000", payable, 0));
+        }
+
+        if (localValue > 0m)
+        {
+            lines.Add(new JournalLine("5102", 0, localValue));
+        }
+
         if (cost > 0m)
         {
             lines.Add(new JournalLine("1300", 0, cost));
@@ -180,7 +252,11 @@ public class AccountingService : IAccountingService
     public async Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null)
     {
         decimal amount = (qty > 0 ? qty : count) * cost;
-        if (amount <= 0) return;
+        if (amount <= 0)
+        {
+            return;
+        }
+
         await PostAsync(JournalSource.OpeningStock, itemId, date ?? DateTime.UtcNow, "جرد افتتاحي",
             new[] { new JournalLine("1300", amount, 0), new JournalLine("3000", 0, amount) }, user, branchId);
     }
@@ -188,7 +264,11 @@ public class AccountingService : IAccountingService
     public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null)
     {
         decimal amount = (qty > 0 ? qty : count) * cost;
-        if (amount <= 0) return;
+        if (amount <= 0)
+        {
+            return;
+        }
+
         await PostAsync(JournalSource.OpeningStock, itemId, date ?? DateTime.UtcNow, "جرد تخفيض",
             new[] { new JournalLine("3000", amount, 0), new JournalLine("1300", 0, amount) }, user, branchId);
     }
@@ -201,15 +281,25 @@ public class AccountingService : IAccountingService
         foreach (var line in lines)
         {
             if ((line.Debit > 0) == (line.Credit > 0))
+            {
                 throw new InvalidOperationException("كل سطر في القيد يجب أن يكون مدينًا أو دائنًا وليس كلاهما");
+            }
+
             if (line.Debit > 0 && line.Credit > 0)
+            {
                 throw new InvalidOperationException("لا يمكن أن يكون السطر مدينًا ودائنًا في نفس الوقت");
+            }
+
             if (line.Debit < 0 || line.Credit < 0)
+            {
                 throw new InvalidOperationException("لا يمكن أن يكون المبلغ سالبًا");
+            }
 
             var account = await _db.GLAccounts.FirstOrDefaultAsync(a => a.Code == line.Code);
             if (account == null)
+            {
                 throw new InvalidOperationException($"الحساب برمز {line.Code} غير موجود في مخطط الحسابات");
+            }
 
             validLines.Add((account.Id, line.Debit, line.Credit, line.Description));
             totalDebit += line.Debit;
@@ -217,12 +307,19 @@ public class AccountingService : IAccountingService
         }
 
         if (validLines.Count == 0)
+        {
             throw new InvalidOperationException("لا يمكن إنشاء قيد بلا أسطر");
+        }
+
         if (decimal.Round(totalDebit, 2) != decimal.Round(totalCredit, 2))
+        {
             throw new InvalidOperationException("مجموع المدين لا يساوي مجموع الدائن في القيد");
+        }
 
         if (await _db.FiscalPeriods.AnyAsync(fp => fp.Year == date.Year && fp.IsClosed))
+        {
             throw new InvalidOperationException($"السنة المالية {date.Year} مغلقة — لا يمكن إدراج قيود فيها");
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -259,7 +356,11 @@ public class AccountingService : IAccountingService
             }
             catch (DbUpdateException)
             {
-                if (_db.Database.CurrentTransaction != null) throw;
+                if (_db.Database.CurrentTransaction != null)
+                {
+                    throw;
+                }
+
                 _db.ChangeTracker.Clear();
             }
         }
@@ -277,9 +378,15 @@ public class AccountingService : IAccountingService
         int max = 0;
         foreach (var value in values)
         {
-            if (value == null || value.Length <= seriesPrefix.Length) continue;
+            if (value == null || value.Length <= seriesPrefix.Length)
+            {
+                continue;
+            }
+
             if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+            {
                 max = parsed;
+            }
         }
         return max;
     }

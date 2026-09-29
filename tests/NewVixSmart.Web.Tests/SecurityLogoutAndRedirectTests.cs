@@ -164,10 +164,18 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
     public async Task Login_GuardsAgainstOffSiteReturnUrlBeforeLocalRedirect()
     {
         // The guard has to be an explicit IsLocalUrl check: LocalRedirect on its own throws.
+        // Matched on the predicate alone, not on the whole statement, so adding braces around
+        // the body does not break the test while still being able to catch the guard's removal.
         var source = File.ReadAllText(TestPaths.WebProjectFile("Controllers", "AccountController.cs"));
-        var guard = source.IndexOf("if (!Url.IsLocalUrl(returnUrl)) returnUrl = null;", StringComparison.Ordinal);
+        var guard = source.IndexOf("!Url.IsLocalUrl(returnUrl)", StringComparison.Ordinal);
+        // Search from the guard: "returnUrl = null" also occurs as a parameter default on the
+        // GET overload, which has nothing to do with the redirect guard.
+        var guardAssigns = guard >= 0
+            ? source.IndexOf("returnUrl = null", guard, StringComparison.Ordinal)
+            : -1;
         var localRedirect = source.IndexOf("return LocalRedirect(", StringComparison.Ordinal);
         Assert.True(guard >= 0, "يجب فحص returnUrl بـ Url.IsLocalUrl قبل إعادة التوجيه.");
+        Assert.True(guardAssigns > guard, "يجب تصفير returnUrl غير المحلّي داخل فحص IsLocalUrl.");
         Assert.True(guard < localRedirect, "الفحص يجب أن يسبق LocalRedirect.");
     }
 

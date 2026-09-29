@@ -8,9 +8,15 @@ public static class ColorUtil
     {
         var h = hex.TrimStart('#');
         if (h.Length == 3)
+        {
             h = string.Concat(h.Select(c => char.ToString(c) + char.ToString(c)));
+        }
+
         if (h.Length != 6 || !h.All(Uri.IsHexDigit))
+        {
             throw new FormatException("invalid hex");
+        }
+
         return
         [
             Convert.ToByte(h[..2], 16),

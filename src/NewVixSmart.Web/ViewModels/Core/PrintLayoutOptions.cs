@@ -1,6 +1,7 @@
-namespace NewVixSmart.Web.ViewModels.Core;
 
 using System.ComponentModel.DataAnnotations;
+
+namespace NewVixSmart.Web.ViewModels.Core;
 
 public enum PrintPageSize { A4, A5, Letter }
 

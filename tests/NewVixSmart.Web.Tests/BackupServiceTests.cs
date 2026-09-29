@@ -300,9 +300,11 @@ public sealed class BackupServiceTests : IDisposable
 
         db.GLAccounts.Add(new GLAccount
         {
-            Code = "1000", Name = "النقد / الصندوق",
+            Code = "1000",
+            Name = "النقد / الصندوق",
             Type = GLAccountType.Asset,
-            NormalBalance = NormalBalance.Debit, IsActive = true
+            NormalBalance = NormalBalance.Debit,
+            IsActive = true
         });
         db.Suppliers.Add(new Supplier { Name = "مصنع النور للأغذية", Code = "SUP-XYZ" });
         db.SaveChanges();

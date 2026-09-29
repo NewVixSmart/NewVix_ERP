@@ -58,7 +58,10 @@ public sealed class OpenBalanceAgreementTests : IDisposable
             ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
+        {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
+        }
+
         db.SaveChanges();
     }
 

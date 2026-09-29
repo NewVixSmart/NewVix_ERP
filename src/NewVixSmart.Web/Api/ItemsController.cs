@@ -36,7 +36,11 @@ public class ItemsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            if (term.Length > 100) term = term[..100];
+            if (term.Length > 100)
+            {
+                term = term[..100];
+            }
+
             query = query.Where(i => i.Name.Contains(term) || (i.Code != null && i.Code.Contains(term)));
         }
 
@@ -67,7 +71,10 @@ public class ItemsController : ControllerBase
     public async Task<IActionResult> GetItem(int id)
     {
         var item = await _db.Items.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
-        if (item == null) return NotFound(new { message = "Item not found" });
+        if (item == null)
+        {
+            return NotFound(new { message = "Item not found" });
+        }
 
         var stockLayers = await _db.StockLayers
             .Where(sl => sl.ItemId == id && (sl.RemainingQty > 0 || sl.RemainingCount > 0))

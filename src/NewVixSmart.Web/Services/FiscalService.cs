@@ -35,25 +35,35 @@ public class FiscalService : IFiscalService
     public async Task ValidateBudgetWriteAsync(int year)
     {
         if (await _db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == year && p.IsClosed))
+        {
             throw new InvalidOperationException($"السنة المالية {year} مغلقة — لا يمكن إنشاء أو تعديل ميزانيتها");
+        }
     }
 
     public async Task<FiscalCloseSummary> CloseYearAsync(int year, string? user)
     {
         var period = await _db.FiscalPeriods.FirstOrDefaultAsync(p => p.Year == year);
         if (period == null)
+        {
             throw new InvalidOperationException($"السنة المالية {year} غير موجودة — أنشئها أولاً");
+        }
 
         if (period.IsClosed)
+        {
             throw new InvalidOperationException($"السنة المالية {year} مغلقة بالفعل");
+        }
 
         var latestYear = await _db.FiscalPeriods.MaxAsync(p => p.Year);
         if (year < latestYear)
+        {
             throw new InvalidOperationException($"لا يمكن إغلاق سنة {year} لأن سنة {latestYear} أحدث — أغلق الأحدث أولاً");
+        }
 
         var retained = await _db.GLAccounts.AsNoTracking().FirstOrDefaultAsync(a => a.Code == "3001");
         if (retained == null || !retained.IsActive)
+        {
             throw new InvalidOperationException("حساب الأرباح المحتجزة 3001 غير موجود في مخطط الحسابات");
+        }
 
         var closeDate = new DateTime(year, 12, 31);
 
@@ -62,13 +72,17 @@ public class FiscalService : IFiscalService
         {
             var activePeriod = await _db.FiscalPeriods.AsNoTracking().FirstOrDefaultAsync(p => p.Year == year);
             if (activePeriod?.IsClosed == true)
+            {
                 throw new InvalidOperationException($"السنة المالية {year} أُغلقت في جلسة أخرى — أعد فتحها أولاً");
+            }
 
             var activity = await _financial.GetYearlyPlActivityAsync(year);
 
             var openEntryCount = await _db.JournalEntries.CountAsync(j => j.Source == JournalSource.YearEndClose && j.SourceId == period.Id);
             if (openEntryCount > 0)
+            {
                 throw new InvalidOperationException($"سنة {year} بها قيد إقفال سنوي مرصّد بالفعل — أعد فتحها أولاً");
+            }
 
             int posted = 0;
             decimal netIncome = 0;
@@ -76,7 +90,10 @@ public class FiscalService : IFiscalService
             {
                 var signed = decimal.Round(
                     line.NormalBalance == NormalBalance.Debit ? line.Debit - line.Credit : line.Credit - line.Debit, 2);
-                if (signed == 0) continue;
+                if (signed == 0)
+                {
+                    continue;
+                }
 
                 var isCreditNormal = line.Type == GLAccountType.Revenue;
                 JournalLine[] pair = isCreditNormal
@@ -98,7 +115,10 @@ public class FiscalService : IFiscalService
 
             var toClose = await _db.FiscalPeriods.SingleAsync(p => p.Year == year);
             if (toClose.IsClosed)
+            {
                 throw new InvalidOperationException($"السنة المالية {year} أُغلقت للتو في جلسة أخرى — أعد فتحها أولاً");
+            }
+
             toClose.IsClosed = true;
             toClose.ClosedById = user;
             toClose.ClosedAt = DateTime.UtcNow;
@@ -119,13 +139,20 @@ public class FiscalService : IFiscalService
     {
         var period = await _db.FiscalPeriods.FirstOrDefaultAsync(p => p.Year == year);
         if (period == null)
+        {
             throw new InvalidOperationException($"السنة المالية {year} غير موجودة");
+        }
+
         if (!period.IsClosed)
+        {
             throw new InvalidOperationException($"السنة المالية {year} غير مغلقة — يمكن إعادة فتح سنة مغلقة فقط");
+        }
 
         var latestYear = await _db.FiscalPeriods.MaxAsync(p => p.Year);
         if (year < latestYear)
+        {
             throw new InvalidOperationException($"لا يمكن إعادة فتح سنة {year} لأن سنة {latestYear} أحدث — أعد فتح الأحدث أولاً");
+        }
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try

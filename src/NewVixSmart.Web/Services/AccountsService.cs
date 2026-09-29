@@ -1,7 +1,7 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
-using System.Text;
 
 namespace NewVixSmart.Web.Services;
 
@@ -32,13 +32,21 @@ public class AccountsService
 
     public static string NormKey(string value)
     {
-        if (string.IsNullOrEmpty(value)) return string.Empty;
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
         var sb = new StringBuilder(value.Length);
         foreach (var ch in value)
         {
             if (ch is '\u064B' or '\u064C' or '\u064D' or '\u064E' or '\u064F'
                 or '\u0650' or '\u0651' or '\u0652' or '\u0653' or '\u0654' or '\u0655'
-                or '\u200C' or '\u200D') continue;
+                or '\u200C' or '\u200D')
+            {
+                continue;
+            }
+
             sb.Append(ch switch
             {
                 '\u0622' or '\u0623' or '\u0625' => '\u0627',
@@ -67,19 +75,31 @@ public class AccountsService
         var isSystem = IsSystemAccount(currentCode);
         var isPosted = await HasPostedLinesAsync(accountId);
 
-        if (string.IsNullOrWhiteSpace(newCode)) return null;
+        if (string.IsNullOrWhiteSpace(newCode))
+        {
+            return null;
+        }
 
         var normalizedNew = newCode.Trim();
-        if (normalizedNew == currentCode) return null;
+        if (normalizedNew == currentCode)
+        {
+            return null;
+        }
 
         if (isPosted)
+        {
             return "لا يمكن تغيير رمز حساب له قيود مرحلة";
+        }
 
         if (isSystem)
+        {
             return "لا يمكن تغيير رمز حساب النظام";
+        }
 
         if (await CodeExistsAsync(normalizedNew, accountId))
+        {
             return "حساب بهذا الرمز موجود بالفعل";
+        }
 
         return null;
     }
@@ -87,7 +107,9 @@ public class AccountsService
     public async Task<AccountEditResult> ApplyEditAsync(GLAccount account, GLAccount model)
     {
         if (!string.IsNullOrWhiteSpace(model.Name))
+        {
             account.Name = model.Name.Trim();
+        }
 
         account.ParentAccountId = model.ParentAccountId;
         account.NormalBalance = model.NormalBalance;
@@ -96,9 +118,14 @@ public class AccountsService
         if (!model.IsActive && account.IsActive)
         {
             if (IsSystemAccount(account.Code))
+            {
                 return new AccountEditResult { Ok = false, Error = "لا يمكن تعطيل حساب نظامي مُعرَّف بالبذرة" };
+            }
+
             if (await HasPostedLinesAsync(account.Id))
+            {
                 return new AccountEditResult { Ok = false, Error = "لا يمكن تعطيل حساب له قيود مرحلة" };
+            }
         }
 
         account.IsActive = model.IsActive;
@@ -107,9 +134,14 @@ public class AccountsService
         {
             var codeIssue = await ValidateCodeChangeAsync(account.Id, model.Code, account.Code);
             if (codeIssue != null)
+            {
                 return new AccountEditResult { Ok = false, Error = codeIssue };
+            }
+
             if (model.Code.Trim() != account.Code)
+            {
                 account.Code = model.Code.Trim();
+            }
         }
 
         return new AccountEditResult { Ok = true };

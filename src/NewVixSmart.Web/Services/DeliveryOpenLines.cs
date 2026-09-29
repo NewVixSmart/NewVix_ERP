@@ -89,7 +89,10 @@ public static class DeliveryOpenLines
     /// <summary>Whether every ordered line of <paramref name="order"/> has been issued in full.</summary>
     public static bool IsFullyIssued(DeliveryOrder order)
     {
-        if (order.Items.Count == 0) return true;
+        if (order.Items.Count == 0)
+        {
+            return true;
+        }
 
         var issued = IssuedByItem(order);
         return order.Items.All(l =>
@@ -125,7 +128,10 @@ public static class DeliveryOpenLines
         foreach (var line in order.Items)
         {
             var got = issued.TryGetValue(line.ItemId, out var v) ? v : default;
-            if (IsLineSettled(line.Quantity, line.Count, got.Quantity, got.Count)) continue;
+            if (IsLineSettled(line.Quantity, line.Count, got.Quantity, got.Count))
+            {
+                continue;
+            }
 
             open += HasOpenQuantity(line.Quantity, line.Count, got.Quantity, got.Count)
                 ? Math.Max(0m, line.Quantity - got.Quantity)

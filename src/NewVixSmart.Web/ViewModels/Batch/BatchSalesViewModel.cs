@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;

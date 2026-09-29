@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
@@ -52,7 +52,9 @@ public class CustomersController : Controller
     public async Task<IActionResult> Create(Customer customer)
     {
         if (!string.IsNullOrWhiteSpace(customer.Code) && await _db.Customers.AnyAsync(c => c.Code == customer.Code))
+        {
             ModelState.AddModelError(nameof(Customer.Code), "الكود مستخدم بالفعل لعميل آخر");
+        }
 
         if (ModelState.IsValid)
         {
@@ -75,7 +77,11 @@ public class CustomersController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
-        if (customer == null) return NotFound();
+        if (customer == null)
+        {
+            return NotFound();
+        }
+
         return View(customer);
     }
 
@@ -83,11 +89,18 @@ public class CustomersController : Controller
     [RequirePerm("Customers.Edit")]
     public async Task<IActionResult> Edit(int id, Customer customer)
     {
-        if (id != customer.Id) return NotFound();
+        if (id != customer.Id)
+        {
+            return NotFound();
+        }
+
         if (ModelState.IsValid)
         {
             var existing = await _db.Customers.FirstOrDefaultAsync(c => c.Id == id);
-            if (existing == null) return NotFound();
+            if (existing == null)
+            {
+                return NotFound();
+            }
 
             existing.Name = customer.Name;
             existing.Code = customer.Code;
@@ -101,15 +114,21 @@ public class CustomersController : Controller
                     || await _db.Payments.AnyAsync(p => p.CustomerId == id)
                     || await _db.SaleReturns.AnyAsync(r => r.CustomerId == id);
                 if (hasHistory)
+                {
                     ModelState.AddModelError(nameof(Customer.OpeningBalance), "لا يمكن تغيير الرصيد الافتتاحي بعد وجود حركات مالية — عالج الرصيد بقيد تسوية");
+                }
                 else
+                {
                     existing.OpeningBalance = customer.OpeningBalance;
+                }
             }
             existing.Notes = customer.Notes;
             existing.IsActive = customer.IsActive;
 
             if (!string.IsNullOrWhiteSpace(existing.Code) && await _db.Customers.AnyAsync(c => c.Id != id && c.Code == existing.Code))
+            {
                 ModelState.AddModelError(nameof(Customer.Code), "الكود مستخدم بالفعل لعميل آخر");
+            }
 
             if (ModelState.IsValid)
             {
@@ -133,7 +152,11 @@ public class CustomersController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var customer = await _db.Customers.FindAsync(id);
-        if (customer == null) return NotFound();
+        if (customer == null)
+        {
+            return NotFound();
+        }
+
         customer.IsActive = false;
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم حذف العميل بنجاح";
@@ -144,7 +167,10 @@ public class CustomersController : Controller
     public async Task<IActionResult> PendingDeliveries(int id)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
-        if (customer == null) return NotFound();
+        if (customer == null)
+        {
+            return NotFound();
+        }
 
         var lines = await PendingLinesAsync(id);
         return View(new CustomerPendingDeliveriesViewModel
@@ -220,7 +246,10 @@ public class CustomersController : Controller
     public async Task<IActionResult> Ledger(int id)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
-        if (customer == null) return NotFound();
+        if (customer == null)
+        {
+            return NotFound();
+        }
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderByDescending(s => s.InvoiceDate).ToListAsync();
         var payments = await _db.Payments.AsNoTracking().Where(p => p.CustomerId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
@@ -247,7 +276,11 @@ public class CustomersController : Controller
     public async Task<IActionResult> LedgerXlsx(int id)
     {
         var bytes = await _report.ExportCustomerStatementXlsxAsync(id);
-        if (bytes.Length == 0) return NotFound();
+        if (bytes.Length == 0)
+        {
+            return NotFound();
+        }
+
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"customer-statement-{id}.xlsx");
     }
 
@@ -255,7 +288,10 @@ public class CustomersController : Controller
     public async Task<IActionResult> LedgerPdf(int id)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
-        if (customer == null) return NotFound();
+        if (customer == null)
+        {
+            return NotFound();
+        }
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
         var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
@@ -268,10 +304,20 @@ public class CustomersController : Controller
         {
             lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة بيع {inv.InvoiceNumber}", decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+            {
                 lines.Add(new StatementLine(inv.InvoiceDate, $"مدفوع عند الاستلام {inv.InvoiceNumber}", 0, decimal.Round(inv.PaidAmount, 2)));
+            }
         }
-        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
-        foreach (var r in receipts) lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.Amount));
+        foreach (var r in returns)
+        {
+            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
+        }
+
+        foreach (var r in receipts)
+        {
+            lines.Add(new StatementLine(r.PaymentDate, $"سند قبض {r.ReceiptNumber}", 0, r.Amount));
+        }
+
         lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Description).ToList();
 
         var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;

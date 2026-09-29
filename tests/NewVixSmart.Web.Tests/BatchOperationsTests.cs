@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -60,13 +60,27 @@ public sealed class BatchOperationsTests : IDisposable
 
         var item1 = new Item
         {
-            Name = "صنف 1", Category = cat, ItemType = type, CountUnit = unit, QuantityUnit = unit,
-            PurchasePrice = 50, SalePrice = 80, CurrentCount = 100, CurrentQuantity = 100
+            Name = "صنف 1",
+            Category = cat,
+            ItemType = type,
+            CountUnit = unit,
+            QuantityUnit = unit,
+            PurchasePrice = 50,
+            SalePrice = 80,
+            CurrentCount = 100,
+            CurrentQuantity = 100
         };
         var item2 = new Item
         {
-            Name = "صنف 2", Category = cat, ItemType = type, CountUnit = unit, QuantityUnit = unit,
-            PurchasePrice = 50, SalePrice = 80, CurrentCount = 100, CurrentQuantity = 100
+            Name = "صنف 2",
+            Category = cat,
+            ItemType = type,
+            CountUnit = unit,
+            QuantityUnit = unit,
+            PurchasePrice = 50,
+            SalePrice = 80,
+            CurrentCount = 100,
+            CurrentQuantity = 100
         };
         db.Items.AddRange(item1, item2);
 

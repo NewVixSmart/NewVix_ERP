@@ -212,7 +212,10 @@ public sealed class AuthzMenuLinkTests
         foreach (var link in ParseMenu())
         {
             var action = ResolveAction(link.Controller, link.Action);
-            if (action is null) continue; // external link or a controller outside this assembly
+            if (action is null)
+            {
+                continue; // external link or a controller outside this assembly
+            }
 
             var controllerType = ControllerType(link.Controller);
             var required = RequiredKeys(action, controllerType);
@@ -226,12 +229,18 @@ public sealed class AuthzMenuLinkTests
                 continue;
             }
 
-            if (IsRoleOnly(action, controllerType)) continue; // role gate already covers the keys
+            if (IsRoleOnly(action, controllerType))
+            {
+                continue; // role gate already covers the keys
+            }
 
             foreach (var subject in MinimalSubjects(link))
             {
                 var missing = required.Where(k => !subject.Contains(k)).OrderBy(k => k).ToList();
-                if (missing.Count == 0) continue;
+                if (missing.Count == 0)
+                {
+                    continue;
+                }
 
                 offenders.Add(
                     $"{link.Controller}/{link.Action} is reachable holding {{{string.Join(", ", subject)}}} " +

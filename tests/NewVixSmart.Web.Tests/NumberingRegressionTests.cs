@@ -34,7 +34,10 @@ public sealed class NumberingRegressionTests : IDisposable
 
     private static IEnumerable<int> Run(int from, int to)
     {
-        for (int n = from; n <= to; n++) yield return n;
+        for (int n = from; n <= to; n++)
+        {
+            yield return n;
+        }
     }
 
     private static async Task<Customer> SeedCustomerAsync(AppDbContext db, string name)
@@ -304,7 +307,10 @@ public sealed class NumberingRegressionTests : IDisposable
         {
             var added = eventData.Context?.ChangeTracker.Entries<SupplierQuote>()
                 .FirstOrDefault(e => e.State == EntityState.Added);
-            if (added == null) return result;
+            if (added == null)
+            {
+                return result;
+            }
 
             Injections++;
             var competing = added.Entity;

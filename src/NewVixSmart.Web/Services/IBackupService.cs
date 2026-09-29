@@ -7,11 +7,20 @@ public sealed class BackupFileName
     public static bool IsValid(string? fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
+        {
             return false;
+        }
+
         if (Path.GetFileName(fileName) != fileName)
+        {
             return false;
+        }
+
         if (!fileName.EndsWith(".bak", StringComparison.OrdinalIgnoreCase))
+        {
             return false;
+        }
+
         return true;
     }
 }

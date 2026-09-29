@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using NewVixSmart.Web.Models.Purchases;
 
 namespace NewVixSmart.Web.Models.Accounting;

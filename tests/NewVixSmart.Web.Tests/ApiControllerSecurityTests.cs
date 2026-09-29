@@ -24,7 +24,9 @@ public sealed class ApiControllerSecurityTests
     public void AllApiControllers_IgnoreAntiforgeryToken()
     {
         foreach (var type in ApiControllers)
+        {
             Assert.NotNull(Attribute.GetCustomAttribute(type, typeof(IgnoreAntiforgeryTokenAttribute)));
+        }
     }
 
     [Fact]
@@ -47,6 +49,8 @@ public sealed class ApiControllerSecurityTests
     public void ApiControllers_AreApiControllers()
     {
         foreach (var type in ApiControllers)
+        {
             Assert.NotNull(Attribute.GetCustomAttribute(type, typeof(ApiControllerAttribute)));
+        }
     }
 }

@@ -24,7 +24,10 @@ public class ExportCenterController : Controller
         var allowed = new HashSet<string>(StringComparer.Ordinal);
         foreach (var key in ExportCenterDatasets.Map.Keys)
         {
-            if (await CanReadDatasetAsync(key)) allowed.Add(key);
+            if (await CanReadDatasetAsync(key))
+            {
+                allowed.Add(key);
+            }
         }
 
         var vm = new ExportCenterViewModel
@@ -38,8 +41,16 @@ public class ExportCenterController : Controller
     public async Task<IActionResult> ExportXlsx(string key)
     {
         var option = _export.GetCatalog().FirstOrDefault(o => o.Key == key);
-        if (option is null) return NotFound();
-        if (!await CanReadDatasetAsync(key)) return Forbid();
+        if (option is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanReadDatasetAsync(key))
+        {
+            return Forbid();
+        }
+
         var bytes = await _export.ExportXlsxAsync(key);
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"newvixsmart_{key}_{DateTime.Today:yyyyMMdd}.xlsx");
@@ -49,9 +60,21 @@ public class ExportCenterController : Controller
     public async Task<IActionResult> ExportCsv(string key)
     {
         var option = _export.GetCatalog().FirstOrDefault(o => o.Key == key);
-        if (option is null) return NotFound();
-        if (!option.HasCsv) return BadRequest();
-        if (!await CanReadDatasetAsync(key)) return Forbid();
+        if (option is null)
+        {
+            return NotFound();
+        }
+
+        if (!option.HasCsv)
+        {
+            return BadRequest();
+        }
+
+        if (!await CanReadDatasetAsync(key))
+        {
+            return Forbid();
+        }
+
         var bytes = await _export.ExportCsvAsync(key);
         return File(bytes, "text/csv; charset=utf-8",
             $"newvixsmart_{key}_{DateTime.Today:yyyyMMdd}.csv");
@@ -64,7 +87,11 @@ public class ExportCenterController : Controller
     /// </summary>
     private async Task<bool> CanReadDatasetAsync(string key)
     {
-        if (!ExportCenterDatasets.TryGet(key, out var access)) return false;
+        if (!ExportCenterDatasets.TryGet(key, out var access))
+        {
+            return false;
+        }
+
         return await _perms.HasAsync(access.ExportKey) && await _perms.HasAsync(access.SourceViewKey);
     }
 }

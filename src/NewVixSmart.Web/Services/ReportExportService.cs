@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
@@ -124,9 +124,15 @@ public class ReportExportService
     {
         value ??= string.Empty;
         if (value.Length > 0 && "=+-\t@\r\n".IndexOf(value[0]) >= 0)
+        {
             value = "'" + value;
+        }
+
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+        {
             return "\"" + value.Replace("\"", "\"\"") + "\"";
+        }
+
         return value;
     }
 }

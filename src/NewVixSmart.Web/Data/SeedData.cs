@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,8 +9,6 @@ using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
-using System.Security.Cryptography;
-
 using NewVixSmart.Web.Models.Stock;
 
 namespace NewVixSmart.Web.Data;
@@ -28,7 +27,9 @@ public static class SeedData
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
+            {
                 await roleManager.CreateAsync(new IdentityRole(role));
+            }
         }
 
         var adminUser = await userManager.FindByNameAsync("admin");
@@ -49,7 +50,9 @@ public static class SeedData
             {
                 await userManager.AddToRoleAsync(adminUser, "Admin");
                 if (string.IsNullOrWhiteSpace(configuredAdminPwd) && env.IsDevelopment())
+                {
                     logger.LogInformation("مستخدم البذرة Admin: كلمة المرور = {Password}", adminPwd);
+                }
             }
         }
 
@@ -91,7 +94,9 @@ public static class SeedData
         await EnsureDefaultPermissionsAsync(serviceProvider);
 
         if (env.EnvironmentName.Equals("Development", StringComparison.OrdinalIgnoreCase))
+        {
             await EnsureDemoDataAsync(db, serviceProvider.GetRequiredService<NewVixSmart.Web.Services.IAccountingService>());
+        }
     }
 
     private static async Task EnsureDemoDataAsync(AppDbContext db, NewVixSmart.Web.Services.IAccountingService accounting)
@@ -167,12 +172,16 @@ public static class SeedData
         foreach (var chartAccount in chartAccounts)
         {
             if (!await db.GLAccounts.AnyAsync(a => a.Code == chartAccount.Code))
+            {
                 db.GLAccounts.Add(chartAccount);
+            }
         }
         await db.SaveChangesAsync();
 
         if (hasChart)
+        {
             return;
+        }
 
         var categories = new[]
         {
@@ -183,7 +192,9 @@ public static class SeedData
         foreach (var category in categories)
         {
             if (!await db.ItemCategories.AnyAsync(c => c.Name == category.Name))
+            {
                 db.ItemCategories.Add(category);
+            }
         }
 
         var types = new[]
@@ -195,7 +206,9 @@ public static class SeedData
         foreach (var type in types)
         {
             if (!await db.ItemTypes.AnyAsync(t => t.Name == type.Name))
+            {
                 db.ItemTypes.Add(type);
+            }
         }
 
         var units = new[]
@@ -207,7 +220,9 @@ public static class SeedData
         foreach (var unit in units)
         {
             if (!await db.Units.AnyAsync(u => u.Name == unit.Name))
+            {
                 db.Units.Add(unit);
+            }
         }
 
         await db.SaveChangesAsync();
@@ -219,7 +234,9 @@ public static class SeedData
             {
                 var child = await db.Units.FirstOrDefaultAsync(u => u.Name == name);
                 if (child != null && child.ParentUnitId == null)
+                {
                     child.ParentUnitId = masterCount.Id;
+                }
             }
         }
 
@@ -233,7 +250,9 @@ public static class SeedData
         foreach (var supplier in suppliers)
         {
             if (!await db.Suppliers.AnyAsync(s => s.Code == supplier.Code || s.Name == supplier.Name))
+            {
                 db.Suppliers.Add(supplier);
+            }
         }
 
         var customers = new[]
@@ -247,7 +266,9 @@ public static class SeedData
         foreach (var customer in customers)
         {
             if (!await db.Customers.AnyAsync(c => c.Code == customer.Code || c.Name == customer.Name))
+            {
                 db.Customers.Add(customer);
+            }
         }
 
         var unitsByName = await db.Units.ToDictionaryAsync(u => u.Name, u => u.Id);
@@ -274,7 +295,11 @@ public static class SeedData
         };
         foreach (var it in items)
         {
-            if (await db.Items.AnyAsync(i => i.Code == it.Code || i.Name == it.Name)) continue;
+            if (await db.Items.AnyAsync(i => i.Code == it.Code || i.Name == it.Name))
+            {
+                continue;
+            }
+
             var typeId = typesByName.TryGetValue(it.Type, out var it_t) ? it_t : default;
             var catId = categoriesByName.TryGetValue(it.Category, out var it_c) ? it_c : default;
             db.Items.Add(new Item
@@ -330,7 +355,9 @@ public static class SeedData
         foreach (var demoItem in demoItems)
         {
             if (await db.StockLayers.AnyAsync(sl => sl.ItemId == demoItem.Id))
+            {
                 continue;
+            }
 
             db.StockLayers.Add(new StockLayer
             {
@@ -391,9 +418,16 @@ public static class SeedData
         string[] roles = ["Admin", "Accountant", "Warehouse"];
         foreach (var user in users)
         {
-            if (await userManager.IsInRoleAsync(user, "Admin")) continue;
+            if (await userManager.IsInRoleAsync(user, "Admin"))
+            {
+                continue;
+            }
+
             var hasAny = await db.UserPermissions.AnyAsync(p => p.UserId == user.Id);
-            if (hasAny) continue;
+            if (hasAny)
+            {
+                continue;
+            }
 
             string[]? defaults = null;
             foreach (var role in roles)
@@ -404,7 +438,10 @@ public static class SeedData
                     break;
                 }
             }
-            if (defaults == null || defaults.Length == 0) continue;
+            if (defaults == null || defaults.Length == 0)
+            {
+                continue;
+            }
 
             db.UserPermissions.AddRange(defaults.Select(k => new UserPermission
             {
@@ -432,10 +469,14 @@ public static class SeedData
                 result = await userManager.CreateAsync(user, password);
             }
             if (result.Succeeded && string.IsNullOrWhiteSpace(configuredPwd) && env.IsDevelopment())
+            {
                 logger.LogInformation("مستخدم البذرة {Role}: كلمة المرور = {Password}", role, password);
+            }
         }
         if (!await userManager.IsInRoleAsync(user, role))
+        {
             await userManager.AddToRoleAsync(user, role);
+        }
     }
 
     private static string GenerateSecurePassword()
@@ -451,7 +492,10 @@ public static class SeedData
         chars[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
         chars[3] = special[RandomNumberGenerator.GetInt32(special.Length)];
         for (int i = 4; i < chars.Length; i++)
+        {
             chars[i] = all[RandomNumberGenerator.GetInt32(all.Length)];
+        }
+
         for (int i = chars.Length - 1; i > 0; i--)
         {
             int j = RandomNumberGenerator.GetInt32(i + 1);

@@ -25,7 +25,9 @@ public sealed class ProcurementService : IProcurementService
             .AsQueryable();
 
         if (status.HasValue)
+        {
             query = query.Where(o => o.Status == status.Value);
+        }
 
         return await query.OrderByDescending(o => o.OrderDate).Take(maxRows).ToListAsync();
     }
@@ -40,15 +42,23 @@ public sealed class ProcurementService : IProcurementService
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
+    public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل");
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+        }
 
         if (await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == order.SupplierId) == null)
+        {
             return (false, "المورد غير موجود");
+        }
 
         order.Status = PurchaseOrderStatus.Draft;
         order.CreatedBy = user;
@@ -61,7 +71,9 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
             order.OrderNumber = await NextOrderNumberAsync();
 
             foreach (var item in valid)
+            {
                 item.PurchaseOrderId = order.Id;
+            }
 
             _db.PurchaseOrders.Add(order);
             try
@@ -74,7 +86,10 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
                 var colliding = order.OrderNumber;
                 _db.ChangeTracker.Clear();
                 if (!await _db.PurchaseOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == colliding))
+                {
                     return (false, "تعذر حفظ الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
+                }
+
                 order.Id = 0;
                 foreach (var item in valid) { item.Id = 0; item.PurchaseOrderId = 0; }
                 order.Items = valid;
@@ -86,16 +101,31 @@ public async Task<(bool Success, string? Error)> CreateOrderAsync(PurchaseOrder 
     public async Task<(bool Success, string? Error)> UpdateOrderAsync(PurchaseOrder order, List<PurchaseOrderItem> items, string? user)
     {
         var existing = await _db.PurchaseOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == order.Id);
-        if (existing == null) return (false, "أمر الشراء غير موجود");
-        if (existing.Status != PurchaseOrderStatus.Draft) return (false, "لا يمكن تعديل أمر شراء غير مسودة");
+        if (existing == null)
+        {
+            return (false, "أمر الشراء غير موجود");
+        }
 
-var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (existing.Status != PurchaseOrderStatus.Draft)
+        {
+            return (false, "لا يمكن تعديل أمر شراء غير مسودة");
+        }
+
+        var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل");
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+        }
 
         if (await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == order.SupplierId) == null)
+        {
             return (false, "المورد غير موجود");
+        }
 
         existing.SupplierId = order.SupplierId;
         existing.OrderDate = order.OrderDate;
@@ -105,7 +135,10 @@ var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).To
         var oldItemIds = existing.Items.Select(i => i.Id).ToHashSet();
         var newItemIds = valid.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
         var toRemove = existing.Items.Where(i => !newItemIds.Contains(i.Id)).ToList();
-        foreach (var r in toRemove) existing.Items.Remove(r);
+        foreach (var r in toRemove)
+        {
+            existing.Items.Remove(r);
+        }
 
         foreach (var item in valid)
         {
@@ -131,8 +164,15 @@ var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).To
     public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId)
     {
         var order = await _db.PurchaseOrders.FindAsync(orderId);
-        if (order == null) return (false, "أمر الشراء غير موجود");
-        if (order.Status != PurchaseOrderStatus.Draft) return (false, "يمكن اعتماد المسودات فقط");
+        if (order == null)
+        {
+            return (false, "أمر الشراء غير موجود");
+        }
+
+        if (order.Status != PurchaseOrderStatus.Draft)
+        {
+            return (false, "يمكن اعتماد المسودات فقط");
+        }
 
         order.Status = PurchaseOrderStatus.Approved;
         await _db.SaveChangesAsync();
@@ -141,13 +181,26 @@ var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).To
 
     public async Task<(bool Success, string? Error)> CancelOrderAsync(int orderId)
     {
-var order = await _db.PurchaseOrders.FindAsync(orderId);
-        if (order == null) return (false, "أمر الشراء غير موجود");
-        if (order.Status == PurchaseOrderStatus.Cancelled) return (false, "الأمر ملغي بالفعل");
+        var order = await _db.PurchaseOrders.FindAsync(orderId);
+        if (order == null)
+        {
+            return (false, "أمر الشراء غير موجود");
+        }
+
+        if (order.Status == PurchaseOrderStatus.Cancelled)
+        {
+            return (false, "الأمر ملغي بالفعل");
+        }
+
         if (order.Status != PurchaseOrderStatus.Draft && order.Status != PurchaseOrderStatus.Approved)
+        {
             return (false, "لا يمكن إلغاء أمر تم استلام أو فوترة جزء منه");
+        }
+
         if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+        {
             return (false, "لا يمكن إلغاء أمر تمت فوترته");
+        }
 
         order.Status = PurchaseOrderStatus.Cancelled;
         await _db.SaveChangesAsync();
@@ -157,7 +210,9 @@ var order = await _db.PurchaseOrders.FindAsync(orderId);
     public async Task<(bool Success, string? Error)> ReceiveOrderLineAsync(int orderId, int orderItemId, decimal receiveQty, decimal receiveCount)
     {
         if (receiveQty < 0 || receiveCount < 0)
+        {
             return (false, "الكمية المستلمة لا يمكن أن تكون سالبة");
+        }
 
         for (int attempt = 1; attempt <= 3; attempt++)
         {
@@ -167,15 +222,26 @@ var order = await _db.PurchaseOrders.FindAsync(orderId);
                 var order = await _db.PurchaseOrders
                     .Include(o => o.Items)
                     .FirstOrDefaultAsync(o => o.Id == orderId);
-                if (order == null) return (false, "أمر الشراء غير موجود");
+                if (order == null)
+                {
+                    return (false, "أمر الشراء غير موجود");
+                }
+
                 if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
+                {
                     return (false, "يمكن الاستلام على أوامر معتمدة فقط");
+                }
 
                 var line = order.Items.FirstOrDefault(i => i.Id == orderItemId);
-                if (line == null) return (false, "البند غير موجود");
+                if (line == null)
+                {
+                    return (false, "البند غير موجود");
+                }
 
                 if (line.ReceivedQty + receiveQty > line.Quantity || line.ReceivedCount + receiveCount > line.Count)
+                {
                     return (false, "الكمية المستلمة أكبر من الكمية المطلوبة");
+                }
 
                 line.ReceivedQty += receiveQty;
                 line.ReceivedCount += receiveCount;
@@ -186,11 +252,15 @@ var order = await _db.PurchaseOrders.FindAsync(orderId);
                 var anyReceived = order.Items.Any(i => i.ReceivedQty > 0 || i.ReceivedCount > 0);
 
                 if (allFullyReceived)
+                {
                     order.Status = PurchaseOrderStatus.Received;
+                }
                 else if (anyReceived)
+                {
                     order.Status = PurchaseOrderStatus.PartiallyReceived;
+                }
 
-await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
                 await tx.CommitAsync();
                 return (true, null);
             }
@@ -208,10 +278,12 @@ await _db.SaveChangesAsync();
         return (false, "تعارض في البيانات أثناء الاستلام، يرجى إعادة المحاولة");
     }
 
-public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
+    public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
         if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+        {
             return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
+        }
 
         for (int attempt = 1; attempt <= 3; attempt++)
         {
@@ -222,9 +294,16 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
                     .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(o => o.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
                     .FirstOrDefaultAsync(o => o.Id == orderId);
-                if (order == null) return (false, "أمر الشراء غير موجود");
+                if (order == null)
+                {
+                    return (false, "أمر الشراء غير موجود");
+                }
+
                 if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.Received && order.Status != PurchaseOrderStatus.PartiallyReceived)
+                {
                     return (false, "يمكن إنشاء فاتورة لأمر معتمد أو مستلم فقط");
+                }
+
                 if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == order.Id))
                 {
                     await tx.RollbackAsync(); _db.ChangeTracker.Clear();
@@ -235,7 +314,9 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
                     .Where(i => (i.ReceivedQty > 0 || i.ReceivedCount > 0))
                     .ToList();
                 if (receivedLines.Count == 0)
+                {
                     return (false, "لا توجد أصناف مستلمة للتحويل إلى فاتورة");
+                }
 
                 var invoiceItems = receivedLines.Select(line => new PurchaseInvoiceItem
                 {
@@ -268,7 +349,9 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
             {
                 await tx.RollbackAsync(); _db.ChangeTracker.Clear();
                 if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+                {
                     return (false, "لا يمكن فوترة أمر الشراء أكثر من مرة");
+                }
             }
         }
         return (false, "تعذر فوترة الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -313,7 +396,9 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
                 _db.ChangeTracker.Clear();
                 if (!await _db.SupplierQuotes.AsNoTracking()
                     .AnyAsync(q => q.SupplierId == quote.SupplierId && q.ItemId == quote.ItemId))
+                {
                     return (false, "تعذر حفظ سعر المورد بسبب تعارض في البيانات، حاول مرة أخرى");
+                }
             }
         }
         return (false, "تعذر حفظ سعر المورد بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -341,9 +426,15 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
         int max = 0;
         foreach (var value in values)
         {
-            if (value.Length <= seriesPrefix.Length) continue;
+            if (value.Length <= seriesPrefix.Length)
+            {
+                continue;
+            }
+
             if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+            {
                 max = parsed;
+            }
         }
         return max;
     }

@@ -67,7 +67,11 @@ public class BudgetsController : Controller
     public async Task<IActionResult> ToggleActive(int id)
     {
         var budget = await _db.BudgetYears.FindAsync(id);
-        if (budget == null) return NotFound();
+        if (budget == null)
+        {
+            return NotFound();
+        }
+
         try { await _fiscal.ValidateBudgetWriteAsync(budget.Year); }
         catch (InvalidOperationException ex)
         {
@@ -147,13 +151,18 @@ public class BudgetsController : Controller
 
         foreach (var line in lines ?? new List<BudgetLineVm>())
         {
-            if (!plAccountIds.Contains(line.AccountId)) continue;
+            if (!plAccountIds.Contains(line.AccountId))
+            {
+                continue;
+            }
 
             var existing = await _db.BudgetLines.FirstOrDefaultAsync(l => l.BudgetYearId == budget.Id && l.AccountId == line.AccountId);
             if (existing == null)
             {
                 if (line.AnnualAmount != 0)
+                {
                     _db.BudgetLines.Add(new BudgetLine { BudgetYearId = budget.Id, AccountId = line.AccountId, AnnualAmount = line.AnnualAmount });
+                }
             }
             else
             {

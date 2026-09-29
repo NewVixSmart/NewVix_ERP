@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +22,7 @@ public class SalesQuotesController : Controller
         _quotes = quotes;
     }
 
-[RequirePerm("SalesQuotes.View")]
+    [RequirePerm("SalesQuotes.View")]
     public async Task<IActionResult> Index()
     {
         var query = _db.SaleQuotes.Include(q => q.Customer).AsNoTracking().OrderByDescending(q => q.QuoteDate);
@@ -71,13 +71,13 @@ public class SalesQuotesController : Controller
             ModelState.AddModelError("", error ?? "تعذر حفظ عرض السعر");
         }
 
-await PopulateDropdowns(vm);
+        await PopulateDropdowns(vm);
         vm.Quote.QuoteNumber = await NextNumberPreviewAsync();
         ModelState.Remove("Quote.QuoteNumber");
         return View(vm);
     }
 
-[RequirePerm("SalesQuotes.View")]
+    [RequirePerm("SalesQuotes.View")]
     public async Task<IActionResult> Details(string id)
     {
         var query = _db.SaleQuotes
@@ -90,10 +90,18 @@ await PopulateDropdowns(vm);
             .AsNoTracking();
 
         SaleQuote? quote;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         quote = await query.FirstOrDefaultAsync(q => q.PublicId == publicId);
 
-        if (quote == null) return NotFound();
+        if (quote == null)
+        {
+            return NotFound();
+        }
+
         return View(quote);
     }
 
@@ -107,7 +115,11 @@ await PopulateDropdowns(vm);
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
-        if (quote == null) return NotFound();
+        if (quote == null)
+        {
+            return NotFound();
+        }
+
         return View(quote);
     }
 
@@ -121,7 +133,11 @@ await PopulateDropdowns(vm);
 .Include(q => q.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(q => q.Id == id);
-        if (quote == null) return NotFound();
+        if (quote == null)
+        {
+            return NotFound();
+        }
+
         var bytes = SalesQuotesService.RenderQuotePdf(quote);
         return File(bytes, "application/pdf", $"SaleQuote-{quote.QuoteNumber}.pdf");
     }
@@ -147,7 +163,7 @@ await PopulateDropdowns(vm);
             TempData["Error"] = "لم يتم تحديد أي عروض للتحويل";
             return RedirectToAction(nameof(MassConvert));
         }
-int? branchId = HttpContext.Session.GetCurrentBranchId();
+        int? branchId = HttpContext.Session.GetCurrentBranchId();
         var (converted, failed, failures) = await _quotes.MassConvertAsync(ids, User.Identity?.Name, branchId);
         if (converted > 0)
         {
@@ -160,7 +176,7 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
         return RedirectToAction(nameof(Index));
     }
 
-[HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("SalesQuotes.Convert")]
     public async Task<IActionResult> Convert(int id)
     {
@@ -185,7 +201,11 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
             .Where(q => q.Id == id)
             .Select(q => (Guid?)q.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
@@ -216,7 +236,7 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
 
     private async Task<string> NextNumberPreviewAsync()
     {
-var prefix = $"SQ-{DateTime.Now:yyyyMMdd}-";
+        var prefix = $"SQ-{DateTime.Now:yyyyMMdd}-";
         var taken = await _db.SaleQuotes.AsNoTracking().Where(q => q.QuoteNumber.StartsWith(prefix)).Select(q => q.QuoteNumber).ToListAsync();
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
         return $"{prefix}{next:D3}";

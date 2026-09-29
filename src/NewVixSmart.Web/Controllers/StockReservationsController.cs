@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
-using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Stock;
 
@@ -33,7 +33,10 @@ public class StockReservationsController : Controller
             .AsNoTracking()
             .AsQueryable();
         if (status.HasValue)
+        {
             query = query.Where(r => r.Status == status.Value);
+        }
+
         var list = await query.OrderByDescending(r => r.Id).Take(500).ToListAsync();
         ViewBag.StatusFilter = status;
         return View(list);
@@ -42,14 +45,21 @@ public class StockReservationsController : Controller
     [RequirePerm("StockReservations.View")]
     public async Task<IActionResult> Details(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var reservation = await _db.StockReservations
             .Include(r => r.Customer)
             .Include(r => r.SalesOrder)
             .Include(r => r.Items).ThenInclude(i => i.Item)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.PublicId == publicId);
-        if (reservation == null) return NotFound();
+        if (reservation == null)
+        {
+            return NotFound();
+        }
 
         var itemIds = reservation.Items.Select(i => i.ItemId).Distinct().ToList();
         ViewBag.Availability = (await _reservations.GetAvailabilityAsync(itemIds)).ToDictionary(a => a.ItemId);
@@ -99,7 +109,11 @@ public class StockReservationsController : Controller
             .ToDictionary(a => a.ItemId);
         foreach (var line in vm.StandaloneItems)
         {
-            if (!availability.TryGetValue(line.ItemId, out var a)) continue;
+            if (!availability.TryGetValue(line.ItemId, out var a))
+            {
+                continue;
+            }
+
             if (line.Quantity > a.AvailableQuantity || line.Count > a.AvailableCount)
             {
                 TempData["Error"] = $"الكمية المطلوبة من «{a.ItemName}» أكبر من المتاح ({a.AvailableQuantity:N2} / {a.AvailableCount:N2})";
@@ -162,14 +176,28 @@ public class StockReservationsController : Controller
     [RequirePerm("StockReservations.Release")]
     public async Task<IActionResult> Release(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var reservation = await _db.StockReservations.AsNoTracking()
             .FirstOrDefaultAsync(r => r.PublicId == publicId);
-        if (reservation == null) return NotFound();
+        if (reservation == null)
+        {
+            return NotFound();
+        }
 
         var (ok, error) = await _reservations.ReleaseAsync(reservation.Id, User.Identity?.Name);
-        if (!ok) TempData["Error"] = error ?? "تعذر تحرير الحجز";
-        else TempData["Success"] = $"تم تحرير الحجز {reservation.ReservationNumber}";
+        if (!ok)
+        {
+            TempData["Error"] = error ?? "تعذر تحرير الحجز";
+        }
+        else
+        {
+            TempData["Success"] = $"تم تحرير الحجز {reservation.ReservationNumber}";
+        }
+
         return RedirectToAction(nameof(Details), new { id });
     }
 

@@ -70,7 +70,9 @@ public class BrandingService : IBrandingService
     public async Task<BrandingData> LoadAsync()
     {
         if (_cache.TryGetValue(CacheKey, out BrandingData? cached) && cached != null)
+        {
             return cached;
+        }
 
         var profile = await _db.CompanyProfiles.AsNoTracking().OrderBy(p => p.Id).FirstOrDefaultAsync() ?? new CompanyProfile();
         var settings = await _db.SystemSettings.AsNoTracking().ToListAsync();
@@ -97,7 +99,9 @@ public class BrandingService : IBrandingService
 
         var presetId = Get("Theme.Preset");
         if (presetId != null && PresetMap.TryGetValue(presetId, out var preset))
+        {
             return FromPreset(preset);
+        }
 
         var primary = FirstValid(Get("Theme.Primary"), "#2e6fd8");
         var accent = FirstValid(Get("Theme.Accent"), "#5bc8e8");
@@ -152,9 +156,17 @@ public class BrandingService : IBrandingService
 
     private static bool IsValidHex(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return false;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
         var h = value.Trim().TrimStart('#');
-        if (h.Length == 3) h = string.Concat(h.Select(c => char.ToString(c) + char.ToString(c)));
+        if (h.Length == 3)
+        {
+            h = string.Concat(h.Select(c => char.ToString(c) + char.ToString(c)));
+        }
+
         return h.Length == 6 && h.All(Uri.IsHexDigit);
     }
 
@@ -166,7 +178,10 @@ public class BrandingService : IBrandingService
         var current = hex;
         var guard = 0;
         while (ColorUtil.RelativeLuminance(current) > 0.15 && guard++ < 24)
+        {
             current = ColorUtil.Darken(current, 0.07);
+        }
+
         return current;
     }
 

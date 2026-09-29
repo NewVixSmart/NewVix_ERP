@@ -18,7 +18,9 @@ public class ItemTypesController : Controller
     {
         var query = _db.ItemTypes.OrderBy(t => t.Name).AsQueryable();
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
             return PartialView(await query.ToListAsync());
+        }
 
         var model = await query.ToListAsync();
         return View(model);
@@ -32,9 +34,15 @@ public class ItemTypesController : Controller
         if (ModelState.IsValid)
         {
             var name = itemType.Name?.Trim();
-            if (string.IsNullOrWhiteSpace(name)) return BadRequest("يرجى إدخال اسم النوع");
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest("يرجى إدخال اسم النوع");
+            }
+
             if (await _db.ItemTypes.AnyAsync(t => t.Name == name))
+            {
                 return BadRequest("نوع الصنف بهذا الاسم موجود بالفعل");
+            }
 
             itemType.Name = name;
             _db.ItemTypes.Add(itemType);
@@ -51,18 +59,31 @@ public class ItemTypesController : Controller
     public async Task<IActionResult> Edit(ItemType itemType)
     {
         var existing = await _db.ItemTypes.FindAsync(itemType.Id);
-        if (existing == null) return NotFound();
+        if (existing == null)
+        {
+            return NotFound();
+        }
+
         if (!string.IsNullOrWhiteSpace(itemType.Name))
         {
             var name = itemType.Name.Trim();
             if (await _db.ItemTypes.AnyAsync(t => t.Id != itemType.Id && t.Name == name))
+            {
                 return BadRequest("نوع الصنف بهذا الاسم موجود بالفعل");
+            }
+
             existing.Name = name;
         }
         if (itemType.Notes != null)
+        {
             existing.Notes = itemType.Notes;
+        }
+
         if (itemType.IsActive != existing.IsActive)
+        {
             existing.IsActive = itemType.IsActive;
+        }
+
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم تعديل نوع الصنف بنجاح";
         return Ok(new { id = existing.Id, name = existing.Name });
@@ -74,9 +95,15 @@ public class ItemTypesController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var itemType = await _db.ItemTypes.Include(t => t.Items).FirstOrDefaultAsync(t => t.Id == id);
-        if (itemType == null) return NotFound();
+        if (itemType == null)
+        {
+            return NotFound();
+        }
+
         if (itemType.Items.Any())
+        {
             return BadRequest("لا يمكن حذف نوع يحتوي على أصناف");
+        }
 
         _db.ItemTypes.Remove(itemType);
         await _db.SaveChangesAsync();

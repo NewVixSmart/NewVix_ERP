@@ -32,7 +32,10 @@ public class DeliveryOrdersController : Controller
             .AsNoTracking()
             .AsQueryable();
         if (status.HasValue)
+        {
             query = query.Where(d => d.Status == status.Value);
+        }
+
         var list = await query.OrderByDescending(d => d.DeliveryDate).Take(500).ToListAsync();
         ViewBag.StatusFilter = status;
         return View(list);
@@ -41,16 +44,28 @@ public class DeliveryOrdersController : Controller
     [RequirePerm("DeliveryOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var targetDeliveryId = await _db.DeliveryOrders.AsNoTracking()
             .Where(d => d.PublicId == publicId)
             .Select(d => (int?)d.Id)
             .FirstOrDefaultAsync();
-        if (targetDeliveryId == null) return NotFound();
+        if (targetDeliveryId == null)
+        {
+            return NotFound();
+        }
+
         var deliveryId = targetDeliveryId.Value;
 
         var delivery = await LoadDeliveryAsync(deliveryId);
-        if (delivery == null) return NotFound();
+        if (delivery == null)
+        {
+            return NotFound();
+        }
+
         return View(delivery);
     }
 
@@ -58,7 +73,11 @@ public class DeliveryOrdersController : Controller
     public async Task<IActionResult> Print(int id)
     {
         var delivery = await LoadDeliveryAsync(id);
-        if (delivery == null) return NotFound();
+        if (delivery == null)
+        {
+            return NotFound();
+        }
+
         return View(delivery);
     }
 
@@ -68,8 +87,15 @@ public class DeliveryOrdersController : Controller
     {
         int? branchId = HttpContext.Session.GetCurrentBranchId();
         var (ok, error) = await _inventory.DeliverDeliveryOrderAsync(id, User.Identity?.Name, branchId);
-        if (ok) TempData["Success"] = "تم ترحيل أذن التسليم: خُصم المخزون وسُجّلت قيود البيع";
-        else TempData["Error"] = error;
+        if (ok)
+        {
+            TempData["Success"] = "تم ترحيل أذن التسليم: خُصم المخزون وسُجّلت قيود البيع";
+        }
+        else
+        {
+            TempData["Error"] = error;
+        }
+
         return await RedirectToDetailsAsync(id);
     }
 
@@ -78,8 +104,15 @@ public class DeliveryOrdersController : Controller
     public async Task<IActionResult> Cancel(int id)
     {
         var (ok, error) = await _inventory.CancelDeliveryOrderAsync(id, User.Identity?.Name);
-        if (ok) TempData["Success"] = "تم إلغاء أذن التسليم";
-        else TempData["Error"] = error;
+        if (ok)
+        {
+            TempData["Success"] = "تم إلغاء أذن التسليم";
+        }
+        else
+        {
+            TempData["Error"] = error;
+        }
+
         return await RedirectToDetailsAsync(id);
     }
 
@@ -93,7 +126,11 @@ public class DeliveryOrdersController : Controller
             .Where(d => d.Id == id)
             .Select(d => (Guid?)d.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
@@ -109,13 +146,20 @@ public class DeliveryOrdersController : Controller
             Delivery = new DeliveryOrder { DeliveryDate = DateTime.Today }
         };
 
-        if (!string.IsNullOrWhiteSpace(source)) vm.Source = source;
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            vm.Source = source;
+        }
 
         if (salesOrderId.HasValue)
         {
             vm.Source = "Order";
             var lines = await RemainingOrderLinesAsync(salesOrderId.Value);
-            if (lines == null) return NotFound();
+            if (lines == null)
+            {
+                return NotFound();
+            }
+
             var order = vm.SalesOrders!.Cast<SelectListItem>().FirstOrDefault(s => s.Value == salesOrderId.Value.ToString());
             ViewBag.OrderLabel = order?.Text;
             ViewBag.OrderLines = lines;
@@ -148,8 +192,16 @@ public class DeliveryOrdersController : Controller
         ModelState.IgnoreEmptyLineItemRows();
 
         var sources = new List<int>();
-        if (vm.Delivery.SalesOrderId is int orderId && orderId > 0) sources.Add(orderId);
-        if (vm.Delivery.SaleInvoiceId is int invId && invId > 0) sources.Add(invId);
+        if (vm.Delivery.SalesOrderId is int orderId && orderId > 0)
+        {
+            sources.Add(orderId);
+        }
+
+        if (vm.Delivery.SaleInvoiceId is int invId && invId > 0)
+        {
+            sources.Add(invId);
+        }
+
         if (vm.Source == "Order" || vm.Source == "Invoice" || vm.Source == "Free")
         {
             if (sources.Count > 1)
@@ -201,7 +253,10 @@ public class DeliveryOrdersController : Controller
         if (vm.Delivery.SaleInvoiceId is int invId)
         {
             var invoice = (await InvoiceOptionsAsync()).FirstOrDefault(i => i.Id == invId);
-            if (invoice != null) ViewBag.InvoiceLabel = InvoiceLabel(invoice);
+            if (invoice != null)
+            {
+                ViewBag.InvoiceLabel = InvoiceLabel(invoice);
+            }
         }
         return View(vm);
     }
@@ -209,7 +264,10 @@ public class DeliveryOrdersController : Controller
     private async Task<List<DeliveryOrderItem>?> RemainingOrderLinesAsync(int orderId)
     {
         var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null) return null;
+        if (order == null)
+        {
+            return null;
+        }
 
         var orderLines = await _db.SalesOrderItems.AsNoTracking()
             .Where(i => i.SalesOrderId == orderId).ToListAsync();

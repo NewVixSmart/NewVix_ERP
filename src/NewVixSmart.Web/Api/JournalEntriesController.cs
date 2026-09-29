@@ -33,9 +33,14 @@ public class JournalEntriesController : ControllerBase
             .AsNoTracking()
             .Where(j => j.IsPosted && j.Date >= from.Value && j.Date <= to.Value);
         if (source is not null)
+        {
             query = query.Where(j => j.Source == source);
+        }
+
         if (accountId is not null)
+        {
             query = query.Where(j => j.Lines.Any(l => l.AccountId == accountId));
+        }
 
         var total = await query.CountAsync();
         var filteredEntryIds = query.Select(j => j.Id);

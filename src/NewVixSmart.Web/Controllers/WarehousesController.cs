@@ -27,7 +27,11 @@ public class WarehousesController : Controller
     [RequirePerm("Warehouses.Create")]
     public async Task<IActionResult> Create(Warehouse warehouse)
     {
-        if (!ModelState.IsValid) return View(warehouse);
+        if (!ModelState.IsValid)
+        {
+            return View(warehouse);
+        }
+
         _db.Warehouses.Add(warehouse);
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم إضافة المستودع بنجاح";
@@ -38,7 +42,11 @@ public class WarehousesController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var wh = await _db.Warehouses.FindAsync(id);
-        if (wh == null) return NotFound();
+        if (wh == null)
+        {
+            return NotFound();
+        }
+
         return View(wh);
     }
 
@@ -46,9 +54,17 @@ public class WarehousesController : Controller
     [RequirePerm("Warehouses.Edit")]
     public async Task<IActionResult> Edit(Warehouse warehouse)
     {
-        if (!ModelState.IsValid) return View(warehouse);
+        if (!ModelState.IsValid)
+        {
+            return View(warehouse);
+        }
+
         var wh = await _db.Warehouses.FindAsync(warehouse.Id);
-        if (wh == null) return NotFound();
+        if (wh == null)
+        {
+            return NotFound();
+        }
+
         wh.Code = warehouse.Code;
         wh.Name = warehouse.Name;
         wh.IsActive = warehouse.IsActive;
@@ -62,7 +78,11 @@ public class WarehousesController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var wh = await _db.Warehouses.FindAsync(id);
-        if (wh == null) return NotFound();
+        if (wh == null)
+        {
+            return NotFound();
+        }
+
         var hasLayers = await _db.StockLayers.AnyAsync(sl => sl.WarehouseId == id);
         if (hasLayers)
         {

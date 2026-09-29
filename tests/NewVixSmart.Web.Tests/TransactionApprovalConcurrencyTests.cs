@@ -40,7 +40,10 @@ public sealed class TransactionApprovalConcurrencyTests : IDisposable
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
-        if (File.Exists(_databasePath)) File.Delete(_databasePath);
+        if (File.Exists(_databasePath))
+        {
+            File.Delete(_databasePath);
+        }
     }
 
     private AppDbContext CreateContext() => new(
@@ -89,7 +92,9 @@ public sealed class TransactionApprovalConcurrencyTests : IDisposable
         int orderId;
         int itemId;
         using (var seed = CreateContext())
+        {
             (itemId, _, orderId) = await SeedAsync(seed);
+        }
 
         using var gate = new SemaphoreSlim(MaxParallel, MaxParallel);
         var approvals = await Task.WhenAll(Enumerable.Range(0, Attempts).Select(async _ =>

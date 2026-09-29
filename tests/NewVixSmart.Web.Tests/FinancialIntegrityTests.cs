@@ -69,7 +69,11 @@ public sealed class FinancialIntegrityTests : IDisposable
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = quantity, Count = 0 } }, "test");
-        if (!ok) return (false, err);
+        if (!ok)
+        {
+            return (false, err);
+        }
+
         return await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
     }
 

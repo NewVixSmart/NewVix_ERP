@@ -57,7 +57,10 @@ public sealed class PaymentReturnAllocationTests : IDisposable
             ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
+        {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
+        }
+
         db.SaveChanges();
     }
 
@@ -72,13 +75,21 @@ public sealed class PaymentReturnAllocationTests : IDisposable
 
         var itemA = new Item
         {
-            Name = "صنف أ", Category = category, ItemType = type,
-            CountUnit = unit, QuantityUnit = unit, SalePrice = 100m
+            Name = "صنف أ",
+            Category = category,
+            ItemType = type,
+            CountUnit = unit,
+            QuantityUnit = unit,
+            SalePrice = 100m
         };
         var itemB = new Item
         {
-            Name = "صنف ب", Category = category, ItemType = type,
-            CountUnit = unit, QuantityUnit = unit, SalePrice = 50m
+            Name = "صنف ب",
+            Category = category,
+            ItemType = type,
+            CountUnit = unit,
+            QuantityUnit = unit,
+            SalePrice = 50m
         };
         db.Items.AddRange(itemA, itemB);
 
@@ -111,7 +122,10 @@ public sealed class PaymentReturnAllocationTests : IDisposable
             var unitPrice = itemId == itemA ? 100m : 50m;
             invoice.Items.Add(new SaleInvoiceItem
             {
-                ItemId = itemId, Quantity = qty, Count = 0m, UnitPrice = unitPrice
+                ItemId = itemId,
+                Quantity = qty,
+                Count = 0m,
+                UnitPrice = unitPrice
             });
         }
         invoice.TotalAmount = decimal.Round(invoice.Items.Sum(i => (i.Quantity > 0 ? i.Quantity : i.Count) * i.UnitPrice), 2);
@@ -145,7 +159,9 @@ public sealed class PaymentReturnAllocationTests : IDisposable
         {
             db.DeliveryOrderItems.Add(new DeliveryOrderItem
             {
-                DeliveryOrderId = order.Id, ItemId = itemId, Quantity = qty
+                DeliveryOrderId = order.Id,
+                ItemId = itemId,
+                Quantity = qty
             });
             rawValue += qty * invoice.Items.First(i => i.ItemId == itemId).UnitPrice;
         }
@@ -157,7 +173,10 @@ public sealed class PaymentReturnAllocationTests : IDisposable
         {
             var share = rawValue / invoice.TotalAmount;
             value = invoice.NetAmount * share;
-            if (invoice.Tax > 0m) taxShare = invoice.Tax * share;
+            if (invoice.Tax > 0m)
+            {
+                taxShare = invoice.Tax * share;
+            }
         }
 
         await new AccountingService(db).RecordSaleDeliveryAsync(invoice.InvoiceDate, invoice.CustomerId,

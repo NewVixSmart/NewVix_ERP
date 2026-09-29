@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +15,6 @@ using NewVixSmart.Web.Api;
 using NewVixSmart.Web.Api.Dtos;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Infrastructure;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Xunit;
 
 namespace NewVixSmart.Web.Tests;

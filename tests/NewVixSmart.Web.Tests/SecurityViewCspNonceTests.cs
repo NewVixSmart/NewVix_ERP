@@ -89,7 +89,10 @@ public sealed class SecurityViewCspNonceTests
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web");
-            if (Directory.Exists(candidate)) return candidate;
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
         }
 
         throw new DirectoryNotFoundException(

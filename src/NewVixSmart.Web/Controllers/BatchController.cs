@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -83,7 +83,9 @@ public class BatchController : Controller
         }
 
         if (blocks.Count == 0)
+        {
             ModelState.AddModelError("", "لا توجد فواتير صالحة — أضف صنفًا واحدًا على الأقل لكل فاتورة");
+        }
 
         vm.Invoices = blocks.Count > 0 ? blocks : new List<BatchInvoiceBlock> { new() };
         await PopulateSalesAsync(vm);
@@ -127,7 +129,9 @@ public class BatchController : Controller
         }
 
         if (lines.Count == 0)
+        {
             ModelState.AddModelError("", "لا توجد أصناف صالحة للجرد — أضف صنفًا واحدًا على الأقل");
+        }
 
         vm.Lines = lines.Count > 0 ? lines : new List<BatchAdjustmentLineInput> { new() };
         vm.ItemsData = await ItemsDataAsync();

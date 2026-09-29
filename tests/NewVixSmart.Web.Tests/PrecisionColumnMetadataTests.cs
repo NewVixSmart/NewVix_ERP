@@ -57,8 +57,16 @@ public sealed class PrecisionColumnMetadataTests
             foreach (var property in entity.GetProperties())
             {
                 var clr = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
-                if (clr != typeof(decimal)) continue;
-                if (property.GetColumnType() is not { } columnType) continue;
+                if (clr != typeof(decimal))
+                {
+                    continue;
+                }
+
+                if (property.GetColumnType() is not { } columnType)
+                {
+                    continue;
+                }
+
                 found[$"{entity.ClrType.Name}.{property.Name}"] = columnType;
             }
         }
@@ -250,11 +258,21 @@ public sealed class PrecisionColumnMetadataTests
             foreach (var property in entity.GetProperties())
             {
                 var clr = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
-                if (clr != typeof(decimal)) continue;
-                if (property.GetColumnType() is null) continue;
+                if (clr != typeof(decimal))
+                {
+                    continue;
+                }
+
+                if (property.GetColumnType() is null)
+                {
+                    continue;
+                }
 
                 var name = $"{entity.ClrType.Name}.{property.Name}";
-                if (!expected.TryGetValue(name, out var want)) continue;
+                if (!expected.TryGetValue(name, out var want))
+                {
+                    continue;
+                }
 
                 var gotPrecision = property.GetPrecision();
                 var gotScale = property.GetScale();

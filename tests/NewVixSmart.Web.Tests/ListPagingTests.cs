@@ -376,7 +376,9 @@ public sealed class ListPagingTests : IDisposable
         public void SaveTempData(HttpContext context, IDictionary<string, object?> values)
         {
             foreach (var kv in values)
+            {
                 _data[kv.Key] = kv.Value;
+            }
         }
     }
 

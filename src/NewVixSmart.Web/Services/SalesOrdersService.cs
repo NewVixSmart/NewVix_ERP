@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -34,7 +34,9 @@ public sealed class SalesOrdersService : ISalesOrdersService
             .AsQueryable();
 
         if (status.HasValue)
+        {
             query = query.Where(o => o.Status == status.Value);
+        }
 
         return await query.OrderByDescending(o => o.OrderDate).ToListAsync();
     }
@@ -55,12 +57,20 @@ public sealed class SalesOrdersService : ISalesOrdersService
     public async Task<(bool Success, string? Error)> CreateOrderAsync(SalesOrder order, List<SalesOrderItem> items, string? user)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل");
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+        }
 
         if (await _db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId) == null)
+        {
             return (false, "العميل غير موجود");
+        }
 
         order.Status = SalesOrderStatus.Draft;
         order.CreatedBy = user;
@@ -72,7 +82,9 @@ public sealed class SalesOrdersService : ISalesOrdersService
             order.OrderNumber = await NextOrderNumberAsync();
 
             foreach (var item in valid)
+            {
                 item.SalesOrderId = order.Id;
+            }
 
             _db.SalesOrders.Add(order);
             try
@@ -85,7 +97,10 @@ public sealed class SalesOrdersService : ISalesOrdersService
                 var colliding = order.OrderNumber;
                 _db.ChangeTracker.Clear();
                 if (!await _db.SalesOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == colliding))
+                {
                     return (false, "تعذر حفظ الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
+                }
+
                 order.Id = 0;
                 foreach (var item in valid) { item.Id = 0; item.SalesOrderId = 0; }
                 order.Items = valid;
@@ -97,19 +112,37 @@ public sealed class SalesOrdersService : ISalesOrdersService
     public async Task<(bool Success, string? Error)> UpdateOrderAsync(SalesOrder order, List<SalesOrderItem> items, string? user)
     {
         var existing = await _db.SalesOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == order.Id);
-        if (existing == null) return (false, "أمر البيع غير موجود");
-        if (existing.Status != SalesOrderStatus.Draft) return (false, "لا يمكن تعديل أمر بيع غير مسودة");
+        if (existing == null)
+        {
+            return (false, "أمر البيع غير موجود");
+        }
+
+        if (existing.Status != SalesOrderStatus.Draft)
+        {
+            return (false, "لا يمكن تعديل أمر بيع غير مسودة");
+        }
+
         if (await _db.StockReservations.AnyAsync(r => r.SalesOrderId == order.Id &&
             (r.Status == StockReservationStatus.Active || r.Status == StockReservationStatus.PartiallyConsumed)))
+        {
             return (false, "يوجد حجز قائم لهذا الأمر — ألغِ الحجز قبل التعديل");
+        }
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل");
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر");
+        }
 
         if (await _db.Customers.FirstOrDefaultAsync(c => c.Id == order.CustomerId) == null)
+        {
             return (false, "العميل غير موجود");
+        }
 
         existing.CustomerId = order.CustomerId;
         existing.OrderDate = order.OrderDate;
@@ -119,7 +152,10 @@ public sealed class SalesOrdersService : ISalesOrdersService
         var oldItemIds = existing.Items.Select(i => i.Id).ToHashSet();
         var newItemIds = valid.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
         var toRemove = existing.Items.Where(i => !newItemIds.Contains(i.Id)).ToList();
-        foreach (var r in toRemove) existing.Items.Remove(r);
+        foreach (var r in toRemove)
+        {
+            existing.Items.Remove(r);
+        }
 
         foreach (var item in valid)
         {
@@ -148,15 +184,26 @@ public sealed class SalesOrdersService : ISalesOrdersService
     /// </summary>
     public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(ApproveOrderAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(ApproveOrderAsync));
+        }
+
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 var order = await _db.SalesOrders.FindAsync(orderId);
-                if (order == null) return (false, "أمر البيع غير موجود");
-                if (order.Status != SalesOrderStatus.Draft) return (false, "يمكن اعتماد المسودات فقط");
+                if (order == null)
+                {
+                    return (false, "أمر البيع غير موجود");
+                }
+
+                if (order.Status != SalesOrderStatus.Draft)
+                {
+                    return (false, "يمكن اعتماد المسودات فقط");
+                }
 
                 order.Status = SalesOrderStatus.Approved;
                 await _db.SaveChangesAsync();
@@ -169,11 +216,27 @@ public sealed class SalesOrdersService : ISalesOrdersService
                     return (false, reserveError);
                 }
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 return (true, null);
             }
-            catch (DbUpdateConcurrencyException) { await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction) throw; }
-            catch (DbUpdateException) { await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction) throw; }
+            catch (DbUpdateConcurrencyException)
+            {
+                await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction)
+                {
+                    throw;
+                }
+            }
+            catch (DbUpdateException)
+            {
+                await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction)
+                {
+                    throw;
+                }
+            }
         }
         return (false, "تعذر اعتماد أمر البيع بسبب تعارض في البيانات، حاول مرة أخرى");
     }
@@ -186,9 +249,20 @@ public sealed class SalesOrdersService : ISalesOrdersService
             try
             {
                 var order = await _db.SalesOrders.FindAsync(orderId);
-                if (order == null) return (false, "أمر البيع غير موجود");
-                if (order.Status == SalesOrderStatus.Invoiced) return (false, "لا يمكن إلغاء أمر تمت فوترته");
-                if (order.Status == SalesOrderStatus.Cancelled) return (false, "الأمر ملغي بالفعل");
+                if (order == null)
+                {
+                    return (false, "أمر البيع غير موجود");
+                }
+
+                if (order.Status == SalesOrderStatus.Invoiced)
+                {
+                    return (false, "لا يمكن إلغاء أمر تمت فوترته");
+                }
+
+                if (order.Status == SalesOrderStatus.Cancelled)
+                {
+                    return (false, "الأمر ملغي بالفعل");
+                }
 
                 if (await _db.DeliveryIssues.AnyAsync(i => i.SalesOrderId == orderId && i.Status == DeliveryIssueStatus.Issued))
                 {
@@ -213,10 +287,14 @@ public sealed class SalesOrdersService : ISalesOrdersService
     public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user)
     {
         if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == orderId))
+        {
             return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
+        }
 
         if (await _db.DeliveryOrders.AnyAsync(d => d.SalesOrderId == orderId && d.Status != DeliveryOrderStatus.Cancelled))
+        {
             return (false, "يوجد أذن تسليم لهذا الأمر — أنشئ الفاتورة من أوامر التسليم المرحّلة");
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -226,9 +304,16 @@ public sealed class SalesOrdersService : ISalesOrdersService
                 var order = await _db.SalesOrders
                     .Include(o => o.Items)
                     .FirstOrDefaultAsync(o => o.Id == orderId);
-                if (order == null) return (false, "أمر البيع غير موجود");
+                if (order == null)
+                {
+                    return (false, "أمر البيع غير موجود");
+                }
+
                 if (order.Status != SalesOrderStatus.Approved && order.Status != SalesOrderStatus.PartiallyInvoiced)
+                {
                     return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط");
+                }
+
                 if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == order.Id))
                 {
                     await tx.RollbackAsync(); _db.ChangeTracker.Clear();
@@ -239,7 +324,9 @@ public sealed class SalesOrdersService : ISalesOrdersService
                     .Where(i => i.Quantity - i.InvoicedQty > 0 || i.Count - i.InvoicedCount > 0)
                     .ToList();
                 if (remainingLines.Count == 0)
+                {
                     return (false, "لا توجد كمية متبقية للتحويل إلى فاتورة");
+                }
 
                 var invoiceItems = remainingLines.Select(line => new SaleInvoiceItem
                 {
@@ -280,7 +367,9 @@ public sealed class SalesOrdersService : ISalesOrdersService
             {
                 await tx.RollbackAsync(); _db.ChangeTracker.Clear();
                 if (await _db.SaleInvoices.AnyAsync(s => s.SalesOrderId == orderId))
+                {
                     return (false, "تم إنشاء فاتورة لهذا الأمر بالفعل");
+                }
             }
         }
         return (false, "تعذر فوترة الأمر بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -290,13 +379,26 @@ public sealed class SalesOrdersService : ISalesOrdersService
         int orderId, string? user, int? branchId = null)
     {
         var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null) return (false, "أمر البيع غير موجود", null);
-        if (order.Status == SalesOrderStatus.Draft) return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط", null);
-        if (order.Status == SalesOrderStatus.Cancelled) return (false, "لا يمكن فاتورة أمر ملغي", null);
+        if (order == null)
+        {
+            return (false, "أمر البيع غير موجود", null);
+        }
+
+        if (order.Status == SalesOrderStatus.Draft)
+        {
+            return (false, "يمكن إنشاء فاتورة لأمر معتمد فقط", null);
+        }
+
+        if (order.Status == SalesOrderStatus.Cancelled)
+        {
+            return (false, "لا يمكن فاتورة أمر ملغي", null);
+        }
 
         var issueIds = await _deliveriesInvoicing.GetOutstandingIssueIdsAsync(orderId);
         if (issueIds.Count == 0)
+        {
             return (false, "لا توجد تسليمات غير مفوترة لهذا الأمر", null);
+        }
 
         var invoice = new SaleInvoice
         {
@@ -315,7 +417,11 @@ public sealed class SalesOrdersService : ISalesOrdersService
     /// </summary>
     private static async Task TryRollbackAsync(IDbContextTransaction? tx)
     {
-        if (tx == null) return;
+        if (tx == null)
+        {
+            return;
+        }
+
         try { await tx.RollbackAsync(); }
         catch (Exception) { }
     }
@@ -327,8 +433,10 @@ public sealed class SalesOrdersService : ISalesOrdersService
     private void RequireAmbientTransaction(string operation)
     {
         if (_db.Database.CurrentTransaction == null)
+        {
             throw new InvalidOperationException(
                 $"لا يمكن تنفيذ «{operation}» دون معاملة قائمة؛ ابدأ معاملة قبل الاستدعاء أو اترك القيمة الافتراضية لتفتح العملية معاملتها الخاصة");
+        }
     }
 
     private async Task<string> NextOrderNumberAsync()
@@ -353,9 +461,15 @@ public sealed class SalesOrdersService : ISalesOrdersService
         int max = 0;
         foreach (var value in values)
         {
-            if (value.Length <= seriesPrefix.Length) continue;
+            if (value.Length <= seriesPrefix.Length)
+            {
+                continue;
+            }
+
             if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+            {
                 max = parsed;
+            }
         }
         return max;
     }

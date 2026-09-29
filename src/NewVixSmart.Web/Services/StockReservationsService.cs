@@ -21,7 +21,11 @@ public sealed class StockReservationsService : IStockReservationsService
     public async Task<IReadOnlyList<ItemAvailability>> GetAvailabilityAsync(IEnumerable<int> itemIds)
     {
         var ids = itemIds.Distinct().ToList();
-        if (ids.Count == 0) return [];
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
         return await _db.Items.AsNoTracking()
             .Where(i => ids.Contains(i.Id))
             .Select(i => new ItemAvailability(i.Id, i.Name, i.CurrentQuantity, i.CurrentCount, i.ReservedQuantity, i.ReservedCount))
@@ -51,13 +55,20 @@ public sealed class StockReservationsService : IStockReservationsService
             .Include(r => r.SalesOrder)
             .Include(r => r.Customer)
             .AsQueryable();
-        if (status.HasValue) query = query.Where(r => r.Status == status.Value);
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
         return await query.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Take(500).ToListAsync();
     }
 
     public async Task<(bool Success, string? Error)> ReserveOrderAsync(int salesOrderId, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) return await ReserveOrderCoreAsync(salesOrderId, user);
+        if (!beginOwnTransaction)
+        {
+            return await ReserveOrderCoreAsync(salesOrderId, user);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -78,13 +89,26 @@ public sealed class StockReservationsService : IStockReservationsService
     private async Task<(bool Success, string? Error)> ReserveOrderCoreAsync(int salesOrderId, string? user)
     {
         var order = await _db.SalesOrders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == salesOrderId);
-        if (order == null) return (false, "أمر البيع غير موجود");
-        if (order.Status == SalesOrderStatus.Draft) return (false, "يمكن حجز الكميات لأمر معتمد فقط");
-        if (order.Status == SalesOrderStatus.Cancelled) return (false, "لا يمكن الحجز لأمر ملغي");
+        if (order == null)
+        {
+            return (false, "أمر البيع غير موجود");
+        }
+
+        if (order.Status == SalesOrderStatus.Draft)
+        {
+            return (false, "يمكن حجز الكميات لأمر معتمد فقط");
+        }
+
+        if (order.Status == SalesOrderStatus.Cancelled)
+        {
+            return (false, "لا يمكن الحجز لأمر ملغي");
+        }
 
         var holding = HoldingStatuses;
         if (await _db.StockReservations.AnyAsync(r => r.SalesOrderId == order.Id && holding.Contains(r.Status)))
+        {
             return (false, "يوجد حجز ساري لهذا الأمر بالفعل");
+        }
 
         var wanted = order.Items
             .Where(i => !DeliveryOpenLines.IsLineSettled(i.Quantity, i.Count, i.DeliveredQty, i.DeliveredCount))
@@ -95,7 +119,10 @@ public sealed class StockReservationsService : IStockReservationsService
                 Count = Math.Max(0m, i.Count - i.DeliveredCount)
             })
             .ToList();
-        if (wanted.Count == 0) return (false, "لا توجد كميات متبقية للحجز في هذا الأمر");
+        if (wanted.Count == 0)
+        {
+            return (false, "لا توجد كميات متبقية للحجز في هذا الأمر");
+        }
 
         var items = await _db.Items
             .Where(i => wanted.Select(w => w.Line.ItemId).Contains(i.Id))
@@ -110,12 +137,19 @@ public sealed class StockReservationsService : IStockReservationsService
                 continue;
             }
             if (w.Quantity > item.AvailableQuantity)
+            {
                 shortages.Add($"«{item.Name}»: المطلوب {w.Quantity:N2} كمية والمتاح {item.AvailableQuantity:N2}");
+            }
+
             if (w.Count > item.AvailableCount)
+            {
                 shortages.Add($"«{item.Name}»: المطلوب {w.Count:N2} عدد والمتاح {item.AvailableCount:N2}");
+            }
         }
         if (shortages.Count > 0)
+        {
             return (false, "الرصيد المتاح غير كافٍ للحجز — " + string.Join(" — ", shortages));
+        }
 
         var reservation = new StockReservation
         {
@@ -150,17 +184,36 @@ public sealed class StockReservationsService : IStockReservationsService
         StockReservation reservation, List<StockReservationLine> lines, string? user, bool beginOwnTransaction = true)
     {
         var valid = lines.Where(l => l.ItemId > 0 && (l.Quantity > 0 || l.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
-        if (valid.Any(l => l.Quantity < 0 || l.Count < 0)) return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
+        }
+
+        if (valid.Any(l => l.Quantity < 0 || l.Count < 0))
+        {
+            return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        }
+
         if (valid.GroupBy(l => l.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر", null);
+        }
+
         if (valid.Any(l => l.SalesOrderItemId.HasValue))
+        {
             return (false, "الحجز المستقل لا يرتبط بسطر أمر بيع", null);
+        }
+
         if (reservation.CustomerId.HasValue &&
             !await _db.Customers.AnyAsync(c => c.Id == reservation.CustomerId.Value))
+        {
             return (false, "العميل غير موجود", null);
+        }
 
-        if (!beginOwnTransaction) return await CreateStandaloneCoreAsync(reservation, valid, user);
+        if (!beginOwnTransaction)
+        {
+            return await CreateStandaloneCoreAsync(reservation, valid, user);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -194,12 +247,19 @@ public sealed class StockReservationsService : IStockReservationsService
                 continue;
             }
             if (line.Quantity > item.AvailableQuantity)
+            {
                 shortages.Add($"«{item.Name}»: المطلوب {line.Quantity:N2} كمية والمتاح {item.AvailableQuantity:N2}");
+            }
+
             if (line.Count > item.AvailableCount)
+            {
                 shortages.Add($"«{item.Name}»: المطلوب {line.Count:N2} عدد والمتاح {item.AvailableCount:N2}");
+            }
         }
         if (shortages.Count > 0)
+        {
             return (false, "الرصيد المتاح غير كافٍ للحجز — " + string.Join(" — ", shortages), null);
+        }
 
         reservation.ReservationNumber = await NextReservationNumberAsync();
         reservation.Status = StockReservationStatus.Active;
@@ -217,7 +277,10 @@ public sealed class StockReservationsService : IStockReservationsService
 
     public async Task<(bool Success, string? Error)> ReleaseAsync(int reservationId, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) return await ReleaseCoreAsync(reservationId, user);
+        if (!beginOwnTransaction)
+        {
+            return await ReleaseCoreAsync(reservationId, user);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -239,11 +302,20 @@ public sealed class StockReservationsService : IStockReservationsService
     {
         var reservation = await _db.StockReservations.Include(r => r.Items)
             .FirstOrDefaultAsync(r => r.Id == reservationId);
-        if (reservation == null) return (false, "الحجز غير موجود");
+        if (reservation == null)
+        {
+            return (false, "الحجز غير موجود");
+        }
+
         if (reservation.Status is StockReservationStatus.Released or StockReservationStatus.Cancelled)
+        {
             return (false, "الحجز محرَّر أو ملغي بالفعل");
+        }
+
         if (reservation.Items.Any(i => i.ConsumedQuantity > 0 || i.ConsumedCount > 0))
+        {
             return (false, "لا يمكن تحرير حجز تم استهلاك جزء منه");
+        }
 
         var orderId = reservation.SalesOrderId;
         var itemIds = reservation.Items.Select(i => i.ItemId).Distinct().ToList();
@@ -264,12 +336,19 @@ public sealed class StockReservationsService : IStockReservationsService
         var reservations = await _db.StockReservations.Include(r => r.Items)
             .Where(r => r.SalesOrderId == salesOrderId && holding.Contains(r.Status))
             .ToListAsync();
-        if (reservations.Count == 0) return;
+        if (reservations.Count == 0)
+        {
+            return;
+        }
 
         var itemIds = reservations.SelectMany(r => r.Items).Select(i => i.ItemId).Distinct().ToList();
         foreach (var reservation in reservations)
         {
-            if (reservation.Items.Any(i => i.ConsumedQuantity > 0 || i.ConsumedCount > 0)) continue;
+            if (reservation.Items.Any(i => i.ConsumedQuantity > 0 || i.ConsumedCount > 0))
+            {
+                continue;
+            }
+
             reservation.Status = StockReservationStatus.Cancelled;
             reservation.ReleasedBy = user;
             reservation.ReleasedAt = DateTime.UtcNow;
@@ -283,8 +362,15 @@ public sealed class StockReservationsService : IStockReservationsService
     public async Task<(bool Success, string? Error)> ConsumeForIssuesAsync(
         IReadOnlyCollection<DeliveryIssueItemLine> lines, int? customerId, DateTime date, bool beginOwnTransaction = true)
     {
-        if (lines.Count == 0) return (true, null);
-        if (!beginOwnTransaction) return await ConsumeForIssuesCoreAsync(lines, customerId);
+        if (lines.Count == 0)
+        {
+            return (true, null);
+        }
+
+        if (!beginOwnTransaction)
+        {
+            return await ConsumeForIssuesCoreAsync(lines, customerId);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -312,7 +398,10 @@ public sealed class StockReservationsService : IStockReservationsService
             .Where(r => holding.Contains(r.Status) && r.Items.Any(i => itemIds.Contains(i.ItemId)))
             .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
             .ToListAsync();
-        if (reservations.Count == 0) return (true, null);
+        if (reservations.Count == 0)
+        {
+            return (true, null);
+        }
 
         foreach (var line in lines)
         {
@@ -324,7 +413,10 @@ public sealed class StockReservationsService : IStockReservationsService
             // no longer existed.
             var needQty = line.Quantity;
             var needCnt = line.Count;
-            if (needQty <= 0 && needCnt <= 0) continue;
+            if (needQty <= 0 && needCnt <= 0)
+            {
+                continue;
+            }
 
             var candidates = reservations
                 .Where(r => customerId == null || r.CustomerId == null || r.CustomerId == customerId)
@@ -337,10 +429,17 @@ public sealed class StockReservationsService : IStockReservationsService
 
             foreach (var candidate in candidates)
             {
-                if (needQty <= 0 && needCnt <= 0) break;
+                if (needQty <= 0 && needCnt <= 0)
+                {
+                    break;
+                }
+
                 var takeQty = Math.Min(needQty, candidate.Line.Quantity - candidate.Line.ConsumedQuantity);
                 var takeCnt = Math.Min(needCnt, candidate.Line.Count - candidate.Line.ConsumedCount);
-                if (takeQty <= 0 && takeCnt <= 0) continue;
+                if (takeQty <= 0 && takeCnt <= 0)
+                {
+                    continue;
+                }
 
                 candidate.Line.ConsumedQuantity += takeQty;
                 candidate.Line.ConsumedCount += takeCnt;
@@ -363,9 +462,15 @@ public sealed class StockReservationsService : IStockReservationsService
             .Select(r => r.SalesOrderId!.Value).Distinct().ToList();
         await _db.SaveChangesAsync();
         foreach (var orderId in touchedOrders)
+        {
             await RecalculateForOrderAsync(orderId, itemIds);
+        }
+
         foreach (var itemId in itemIds)
+        {
             await RecalculateItemReservedAsync(itemId);
+        }
+
         await _db.SaveChangesAsync();
         return (true, null);
     }
@@ -388,10 +493,16 @@ public sealed class StockReservationsService : IStockReservationsService
             .SumAsync(l => (decimal?)(l.Count - l.ConsumedCount)) ?? 0m;
 
         var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == itemId);
-        if (item == null) return;
+        if (item == null)
+        {
+            return;
+        }
+
         if (item.CurrentQuantity < reserved || item.CurrentCount < reservedCount)
+        {
             throw new InvalidOperationException(
                 $"المحجوز يتجاوز رصيد الصنف «{item.Name}» — رصيد {item.CurrentQuantity:N2} كمية / {item.CurrentCount:N2} عدد ومحجوز {reserved:N2} / {reservedCount:N2}");
+        }
 
         item.ReservedQuantity = reserved;
         item.ReservedCount = reservedCount;
@@ -428,7 +539,11 @@ public sealed class StockReservationsService : IStockReservationsService
                 foreach (var sum in sums)
                 {
                     var line = orderLines.FirstOrDefault(i => i.Id == sum.OrderItemId);
-                    if (line == null) continue;
+                    if (line == null)
+                    {
+                        continue;
+                    }
+
                     line.ReservedQty = sum.Quantity;
                     line.ReservedCount = sum.Count;
                 }
@@ -436,7 +551,9 @@ public sealed class StockReservationsService : IStockReservationsService
         }
 
         foreach (var itemId in ids)
+        {
             await RecalculateItemReservedAsync(itemId);
+        }
     }
 
     private async Task<string> NextReservationNumberAsync()
@@ -451,7 +568,9 @@ public sealed class StockReservationsService : IStockReservationsService
         {
             if (value.Length > seriesPrefix.Length &&
                 int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed >= next)
+            {
                 next = parsed + 1;
+            }
         }
         string num = $"{seriesPrefix}{next:D3}";
         while (await _db.StockReservations.AnyAsync(r => r.ReservationNumber == num))
@@ -465,6 +584,8 @@ public sealed class StockReservationsService : IStockReservationsService
     private void DetachAll()
     {
         foreach (var entry in _db.ChangeTracker.Entries().ToList())
+        {
             entry.State = EntityState.Detached;
+        }
     }
 }

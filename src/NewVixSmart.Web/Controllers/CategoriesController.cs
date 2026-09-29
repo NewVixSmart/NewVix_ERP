@@ -18,7 +18,9 @@ public class CategoriesController : Controller
     {
         var query = _db.ItemCategories.OrderBy(c => c.Name).AsQueryable();
         if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
             return PartialView(await query.ToListAsync());
+        }
 
         var model = await query.ToListAsync();
         return View(model);
@@ -32,9 +34,15 @@ public class CategoriesController : Controller
         if (ModelState.IsValid)
         {
             var name = category.Name?.Trim();
-            if (string.IsNullOrWhiteSpace(name)) return BadRequest("يرجى إدخال اسم التصنيف");
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest("يرجى إدخال اسم التصنيف");
+            }
+
             if (await _db.ItemCategories.AnyAsync(c => c.Name == name))
+            {
                 return BadRequest("التصنيف بهذا الاسم موجود بالفعل");
+            }
 
             category.Name = name;
             _db.ItemCategories.Add(category);
@@ -51,18 +59,31 @@ public class CategoriesController : Controller
     public async Task<IActionResult> Edit(ItemCategory category)
     {
         var existing = await _db.ItemCategories.FindAsync(category.Id);
-        if (existing == null) return NotFound();
+        if (existing == null)
+        {
+            return NotFound();
+        }
+
         if (!string.IsNullOrWhiteSpace(category.Name))
         {
             var name = category.Name.Trim();
             if (await _db.ItemCategories.AnyAsync(c => c.Id != category.Id && c.Name == name))
+            {
                 return BadRequest("التصنيف بهذا الاسم موجود بالفعل");
+            }
+
             existing.Name = name;
         }
         if (category.Notes != null)
+        {
             existing.Notes = category.Notes;
+        }
+
         if (category.IsActive != existing.IsActive)
+        {
             existing.IsActive = category.IsActive;
+        }
+
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم تعديل التصنيف بنجاح";
         return Ok(new { id = existing.Id, name = existing.Name });
@@ -74,9 +95,15 @@ public class CategoriesController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var category = await _db.ItemCategories.Include(c => c.Items).FirstOrDefaultAsync(c => c.Id == id);
-        if (category == null) return NotFound();
+        if (category == null)
+        {
+            return NotFound();
+        }
+
         if (category.Items.Any())
+        {
             return BadRequest("لا يمكن حذف تصنيف يحتوي على أصناف");
+        }
 
         _db.ItemCategories.Remove(category);
         await _db.SaveChangesAsync();

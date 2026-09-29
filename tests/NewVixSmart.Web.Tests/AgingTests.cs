@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -30,7 +30,7 @@ public sealed class AgingTests : IDisposable
 
     private static async Task<(int customerId, int supplierId)> SeedPartiesAsync(AppDbContext db)
     {
-var customer = new Customer { Name = "عميل أ" };
+        var customer = new Customer { Name = "عميل أ" };
         var supplier = new Supplier { Name = "مورد ب" };
         db.Customers.Add(customer);
         db.Suppliers.Add(supplier);
@@ -51,7 +51,7 @@ var customer = new Customer { Name = "عميل أ" };
         IsPaid = paid >= net
     };
 
-private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, DateTime date, decimal net, decimal paid, DateTime? due = null) => new()
+    private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, DateTime date, decimal net, decimal paid, DateTime? due = null) => new()
     {
         InvoiceNumber = number,
         SupplierId = supplierId,
@@ -95,7 +95,9 @@ private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, Da
         await db.SaveChangesAsync();
 
         foreach (var inv in db.SaleInvoices.ToList())
+        {
             await MarkDeliveredAsync(db, inv.Id, customerId, $"DLV-{inv.InvoiceNumber}");
+        }
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await svc.AgingAsync();
@@ -155,13 +157,13 @@ private static PurchaseInvoice PurchaseInvoice(int supplierId, string number, Da
         var (customerId, _) = await SeedPartiesAsync(db);
         var today = DateTime.Today;
 
-var sOr = SaleInvoice(customerId, "S-OR", today.AddDays(-100), 250, 0, due: null);
+        var sOr = SaleInvoice(customerId, "S-OR", today.AddDays(-100), 250, 0, due: null);
         db.SaleInvoices.Add(sOr);
         await db.SaveChangesAsync();
         await MarkDeliveredAsync(db, sOr.Id, customerId, "DLV-S-OR");
 
         var svc = new ReportService(db, new FinancialReportService(db));
-var vm = await svc.AgingAsync();
+        var vm = await svc.AgingAsync();
 
         var row = Assert.Single(vm.Receivables);
         Assert.Equal(250m, row.Days90Plus);
@@ -179,14 +181,16 @@ var vm = await svc.AgingAsync();
             PurchaseInvoice(supplierId, "P-OVER", today.AddDays(-60), 800, 0, due: today.AddDays(-5)),
             PurchaseInvoice(supplierId, "P-FUT", today.AddDays(-60), 900, 0, due: today.AddDays(3))
         );
-db.SaleInvoices.AddRange(
-            SaleInvoice(customerId, "S-PAID2", today.AddDays(-40), 200, 200, due: today.AddDays(-10)),
-            SaleInvoice(customerId, "S-FUT2", today.AddDays(-40), 300, 0, due: today.AddDays(2))
-        );
+        db.SaleInvoices.AddRange(
+                    SaleInvoice(customerId, "S-PAID2", today.AddDays(-40), 200, 200, due: today.AddDays(-10)),
+                    SaleInvoice(customerId, "S-FUT2", today.AddDays(-40), 300, 0, due: today.AddDays(2))
+                );
         await db.SaveChangesAsync();
 
         foreach (var inv in db.SaleInvoices.Where(s => s.CustomerId == customerId).ToList())
+        {
             await MarkDeliveredAsync(db, inv.Id, customerId, $"DLV-{inv.InvoiceNumber}");
+        }
 
         var svc = new ReportService(db, new FinancialReportService(db));
         var vm = await svc.AgingAsync();
@@ -226,13 +230,13 @@ db.SaleInvoices.AddRange(
         var (customerId, supplierId) = await SeedPartiesAsync(db);
         var today = DateTime.Today;
 
-db.SaleInvoices.Add(SaleInvoice(customerId, "S-X", today.AddDays(-15), 100, 0, due: today.AddDays(-10)));
+        db.SaleInvoices.Add(SaleInvoice(customerId, "S-X", today.AddDays(-15), 100, 0, due: today.AddDays(-10)));
         db.PurchaseInvoices.Add(PurchaseInvoice(supplierId, "P-X", today.AddDays(-15), 150, 0, due: today.AddDays(-10)));
         await db.SaveChangesAsync();
         var sx = await db.SaleInvoices.SingleAsync(s => s.InvoiceNumber == "S-X");
         await MarkDeliveredAsync(db, sx.Id, customerId, "DLV-S-X");
 
-var svc = new ReportService(db, new FinancialReportService(db));
+        var svc = new ReportService(db, new FinancialReportService(db));
         var bytes = await svc.ExportAgingXlsxAsync();
 
         Assert.NotNull(bytes);

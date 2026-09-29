@@ -1,7 +1,5 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
-using QuestPDF.Fluent;
-using QuestPDF.Infrastructure;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
@@ -9,6 +7,8 @@ using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.ViewModels.Core;
 using NewVixSmart.Web.ViewModels.Reports;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 
 namespace NewVixSmart.Web.Services;
 
@@ -274,8 +274,10 @@ public class ReportService : IReportService
             .ToListAsync();
 
         if (lowOnly)
+        {
             items = items.Where(i => (i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount <= i.MinCount)
                 || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity <= i.MinQuantity)).ToList();
+        }
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add(lowOnly ? "انخفاض المخزون" : "لقطة المخزون");
@@ -467,9 +469,14 @@ public class ReportService : IReportService
             .ThenInclude(l => l.Account)
             .Where(j => j.IsPosted && j.Date >= from.Value && j.Date <= to.Value);
         if (source is not null)
+        {
             entryQuery = entryQuery.Where(j => j.Source == source);
+        }
+
         if (accountId is not null)
+        {
             entryQuery = entryQuery.Where(j => j.Lines.Any(l => l.AccountId == accountId));
+        }
 
         var entries = await entryQuery.OrderBy(j => j.EntryNumber).ToListAsync();
 
@@ -756,7 +763,9 @@ public class ReportService : IReportService
                 OpenAmountRule.PaidBase(s.PaidAmount, allocatedBySale.GetValueOrDefault(s.Id)),
                 returnsBySaleInvoice.GetValueOrDefault(s.Id));
             if (outstanding > 0.005m)
+            {
                 receivableLines.Add((s.CustomerId, s.Customer?.Name ?? "—", s.DueDate ?? s.InvoiceDate, outstanding));
+            }
         }
 
         var standaloneSaleReturns = await _db.SaleReturns
@@ -814,7 +823,9 @@ public class ReportService : IReportService
                 OpenAmountRule.PaidBase(p.PaidAmount, allocatedByPurchase.GetValueOrDefault(p.Id)),
                 returnsByPurchaseInvoice.GetValueOrDefault(p.Id));
             if (outstanding > 0.005m)
+            {
                 payableLines.Add((p.SupplierId, p.Supplier?.Name ?? "—", p.DueDate ?? p.InvoiceDate, outstanding));
+            }
         }
 
         var standalonePurchaseReturns = await _db.PurchaseReturns
@@ -848,11 +859,26 @@ public class ReportService : IReportService
         foreach (var (due, amount) in items)
         {
             var days = (asOf.Date - due.Date).TotalDays;
-            if (days <= 0) row.Current += amount;
-            else if (days <= 30) row.Days1To30 += amount;
-            else if (days <= 60) row.Days31To60 += amount;
-            else if (days <= 90) row.Days61To90 += amount;
-            else row.Days90Plus += amount;
+            if (days <= 0)
+            {
+                row.Current += amount;
+            }
+            else if (days <= 30)
+            {
+                row.Days1To30 += amount;
+            }
+            else if (days <= 60)
+            {
+                row.Days31To60 += amount;
+            }
+            else if (days <= 90)
+            {
+                row.Days61To90 += amount;
+            }
+            else
+            {
+                row.Days90Plus += amount;
+            }
         }
         return row;
     }
@@ -963,13 +989,20 @@ public class ReportService : IReportService
 
         foreach (var p in payments)
         {
-            if (p.PaymentDate >= fromDate) break;
+            if (p.PaymentDate >= fromDate)
+            {
+                break;
+            }
+
             var amount = p.Amount;
             vm.OpeningBalance += p.Type == PaymentType.Receipt ? amount : -amount;
         }
         foreach (var s in onReceiptPurchases)
         {
-            if (s.InvoiceDate < fromDate) vm.OpeningBalance -= s.Base;
+            if (s.InvoiceDate < fromDate)
+            {
+                vm.OpeningBalance -= s.Base;
+            }
         }
 
         var period = payments.Where(p => p.PaymentDate >= fromDate && p.PaymentDate <= toDate).ToList();
@@ -977,12 +1010,21 @@ public class ReportService : IReportService
         foreach (var p in period)
         {
             var amount = p.Amount;
-            if (p.Type == PaymentType.Receipt) vm.TotalReceipts += amount;
-            else vm.TotalDisbursements += amount;
+            if (p.Type == PaymentType.Receipt)
+            {
+                vm.TotalReceipts += amount;
+            }
+            else
+            {
+                vm.TotalDisbursements += amount;
+            }
         }
         foreach (var p in onReceiptPurchases)
         {
-            if (p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate) vm.TotalDisbursements += p.Base;
+            if (p.InvoiceDate >= fromDate && p.InvoiceDate <= toDate)
+            {
+                vm.TotalDisbursements += p.Base;
+            }
         }
 
         var byMethod = period
@@ -1130,7 +1172,9 @@ public class ReportService : IReportService
                 && (i.Quantity - i.DeliveredQty > 0 || i.Count - i.DeliveredCount > 0));
 
         if (customerId.HasValue)
+        {
             query = query.Where(i => i.SalesOrder.CustomerId == customerId.Value);
+        }
 
         var rows = await query
             .Select(i => new
@@ -1214,7 +1258,10 @@ public class ReportService : IReportService
     public async Task<byte[]> ExportCustomerStatementXlsxAsync(int customerId)
     {
         var customer = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == customerId);
-        if (customer == null) return Array.Empty<byte>();
+        if (customer == null)
+        {
+            return Array.Empty<byte>();
+        }
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == customerId).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
         var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == customerId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
@@ -1227,10 +1274,19 @@ public class ReportService : IReportService
         {
             lines.Add((inv.InvoiceDate, "فاتورة بيع", inv.InvoiceNumber, decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+            {
                 lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount, 2)));
+            }
         }
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
-        foreach (var r in receipts) lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.Amount));
+        foreach (var r in returns)
+        {
+            lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+        }
+
+        foreach (var r in receipts)
+        {
+            lines.Add((r.PaymentDate, "قبض", r.ReceiptNumber, 0, r.Amount));
+        }
 
         var pendingValue = await GetPendingDeliveriesValueAsync(customerId);
 
@@ -1240,7 +1296,10 @@ public class ReportService : IReportService
     public async Task<byte[]> ExportSupplierStatementXlsxAsync(int supplierId)
     {
         var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == supplierId);
-        if (supplier == null) return Array.Empty<byte>();
+        if (supplier == null)
+        {
+            return Array.Empty<byte>();
+        }
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == supplierId).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
         var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == supplierId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
@@ -1253,10 +1312,19 @@ public class ReportService : IReportService
         {
             lines.Add((inv.InvoiceDate, "فاتورة شراء", inv.InvoiceNumber, decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+            {
                 lines.Add((inv.InvoiceDate, "مدفوع عند الاستلام", inv.InvoiceNumber, 0, decimal.Round(inv.PaidAmount, 2)));
+            }
         }
-        foreach (var r in returns) lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
-        foreach (var d in disbursements) lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.Amount));
+        foreach (var r in returns)
+        {
+            lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+        }
+
+        foreach (var d in disbursements)
+        {
+            lines.Add((d.PaymentDate, "صرف", d.ReceiptNumber, 0, d.Amount));
+        }
 
         return BuildStatementWorkbook($"كشف حساب — {supplier.Name}", supplier.OpeningBalance, lines);
     }
@@ -1355,7 +1423,9 @@ internal static class OpenAmountRule
     public static decimal SaleDeliveredNet(SaleInvoice invoice, IReadOnlyList<DeliveryOrder>? deliveredOrders)
     {
         if (deliveredOrders == null || deliveredOrders.Count == 0)
+        {
             return decimal.Round(invoice.NetAmount, 2);
+        }
 
         var unitPriceByItem = invoice.Items
             .GroupBy(i => i.ItemId)
@@ -1367,15 +1437,28 @@ internal static class OpenAmountRule
             decimal rawValue = 0m;
             foreach (var item in order.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)))
             {
-                if (!unitPriceByItem.TryGetValue(item.ItemId, out var unitPrice)) continue;
+                if (!unitPriceByItem.TryGetValue(item.ItemId, out var unitPrice))
+                {
+                    continue;
+                }
+
                 rawValue += (item.Quantity > 0 ? item.Quantity : item.Count) * unitPrice;
             }
 
             decimal orderBase;
-            if (rawValue <= 0m) orderBase = invoice.NetAmount;
+            if (rawValue <= 0m)
+            {
+                orderBase = invoice.NetAmount;
+            }
             else if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m)
+            {
                 orderBase = decimal.Round(invoice.NetAmount * (rawValue / invoice.TotalAmount), 2);
-            else orderBase = rawValue;
+            }
+            else
+            {
+                orderBase = rawValue;
+            }
+
             total += decimal.Round(orderBase, 2);
         }
 
@@ -1403,11 +1486,17 @@ internal static class OpenAmountRule
         AppDbContext db, IReadOnlyCollection<int>? invoiceIds = null)
     {
         var query = db.SaleInvoices.AsNoTracking().Include(s => s.Items).AsQueryable();
-        if (invoiceIds != null) query = query.Where(s => invoiceIds.Contains(s.Id));
+        if (invoiceIds != null)
+        {
+            query = query.Where(s => invoiceIds.Contains(s.Id));
+        }
 
         var invoices = await query.ToListAsync();
         var open = new Dictionary<int, decimal>();
-        if (invoices.Count == 0) return open;
+        if (invoices.Count == 0)
+        {
+            return open;
+        }
 
         var ordersByInvoice = (await db.DeliveryOrders
                 .AsNoTracking()
@@ -1455,11 +1544,17 @@ internal static class OpenAmountRule
         AppDbContext db, IReadOnlyCollection<int>? invoiceIds = null)
     {
         var query = db.PurchaseInvoices.AsNoTracking().AsQueryable();
-        if (invoiceIds != null) query = query.Where(p => invoiceIds.Contains(p.Id));
+        if (invoiceIds != null)
+        {
+            query = query.Where(p => invoiceIds.Contains(p.Id));
+        }
 
         var invoices = await query.ToListAsync();
         var open = new Dictionary<int, decimal>();
-        if (invoices.Count == 0) return open;
+        if (invoices.Count == 0)
+        {
+            return open;
+        }
 
         var returnCredits = ReturnCredits(await db.PurchaseReturns
             .AsNoTracking()

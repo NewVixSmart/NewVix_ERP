@@ -127,7 +127,9 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var result = await controller.Create(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<ViewResult>(result);
@@ -155,7 +157,9 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var result = await controller.Create(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -172,7 +176,8 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
         {
-            CustomerId = custId, ReturnDate = DateTime.Today
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem>
         {
             new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 999999m }
@@ -194,7 +199,8 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var (ok, err) = await svc.CreatePurchaseReturnAsync(new PurchaseReturn
         {
-            SupplierId = supplierId, ReturnDate = DateTime.Today
+            SupplierId = supplierId,
+            ReturnDate = DateTime.Today
         }, new List<PurchaseReturnItem>
         {
             new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 999999m }
@@ -228,7 +234,9 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem>
         {
             new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 999999m }
@@ -272,7 +280,9 @@ public sealed class Round20FinancialSecurityTests : IDisposable
 
         var (ok, err) = await svc.CreatePurchaseReturnAsync(new PurchaseReturn
         {
-            PurchaseInvoiceId = invoice.Id, SupplierId = supplierId, ReturnDate = DateTime.Today
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supplierId,
+            ReturnDate = DateTime.Today
         }, new List<PurchaseReturnItem>
         {
             new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 999999m }
@@ -367,7 +377,11 @@ public sealed class Round20FinancialSecurityTests : IDisposable
         var svc = new InventoryService(db, new AccountingService(db));
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = qty, Count = 0 } }, "test");
-        if (!ok) return (false, err);
+        if (!ok)
+        {
+            return (false, err);
+        }
+
         return await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
     }
 

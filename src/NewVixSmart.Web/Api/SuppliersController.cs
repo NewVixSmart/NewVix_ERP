@@ -30,7 +30,11 @@ public class SuppliersController : ControllerBase
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            if (term.Length > 100) term = term[..100];
+            if (term.Length > 100)
+            {
+                term = term[..100];
+            }
+
             query = query.Where(s => s.Name.Contains(term) || (s.Code != null && s.Code.Contains(term)));
         }
 

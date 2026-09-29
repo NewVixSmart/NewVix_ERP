@@ -68,7 +68,10 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
+        {
             db.GLAccounts.Add(new GLAccount { Code = code, Name = name, Type = type, NormalBalance = normal, IsActive = true });
+        }
+
         db.SaveChanges();
     }
 
@@ -111,7 +114,10 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
     {
         var text = "رقم القيد,التاريخ,بيان القيد,رمز الحساب,مدين,دائن,بيان البند\n";
         foreach (var (number, date) in entries)
+        {
             text += $"{number},{date},قيد مستورد,1000,500,,\n{number},{date},قيد مستورد,3000,,500,\n";
+        }
+
         return CsvBytes(text);
     }
 
@@ -296,8 +302,14 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
         var (itemId, custId) = await SeedStockAsync(db, 100);
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0,
-            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 10,
+            Count = 0,
+            UnitCost = 40m,
+            RemainingQty = 10,
+            RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1),
+            CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
         var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));

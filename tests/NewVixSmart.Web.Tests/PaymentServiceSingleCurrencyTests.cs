@@ -153,8 +153,12 @@ public sealed class PaymentServiceSingleCurrencyTests : IDisposable
         var svc = new PaymentService(db, new AccountingService(db));
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            ReceiptNumber = "PAY-ORD-1", Type = PaymentType.Receipt, CustomerId = cust,
-            Amount = 7500m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            ReceiptNumber = "PAY-ORD-1",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 7500m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
 
         Assert.True(ok, error);
@@ -176,8 +180,12 @@ public sealed class PaymentServiceSingleCurrencyTests : IDisposable
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            ReceiptNumber = "PAY-R-OVER", Type = PaymentType.Receipt, CustomerId = cust,
-            Amount = 1000.5m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            ReceiptNumber = "PAY-R-OVER",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 1000.5m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
 
         Assert.False(ok);
@@ -199,8 +207,12 @@ public sealed class PaymentServiceSingleCurrencyTests : IDisposable
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            ReceiptNumber = "PAY-R-1", Type = PaymentType.Receipt, CustomerId = cust,
-            Amount = 1000m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            ReceiptNumber = "PAY-R-1",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 1000m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
 
         Assert.True(ok, error);
@@ -234,8 +246,12 @@ public sealed class PaymentServiceSingleCurrencyTests : IDisposable
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            ReceiptNumber = "PAY-R-2", Type = PaymentType.Receipt, CustomerId = cust,
-            Amount = 1100m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            ReceiptNumber = "PAY-R-2",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 1100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
 
         Assert.False(ok);
@@ -259,8 +275,12 @@ public sealed class PaymentServiceSingleCurrencyTests : IDisposable
 
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            ReceiptNumber = "PAY-R-3", Type = PaymentType.Receipt, CustomerId = cust,
-            Amount = 400m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            ReceiptNumber = "PAY-R-3",
+            Type = PaymentType.Receipt,
+            CustomerId = cust,
+            Amount = 400m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok, error);
 

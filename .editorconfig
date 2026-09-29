@@ -47,9 +47,17 @@ dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 
 # --- naming: private fields are _camelCase
+# Severity is `suggestion`, not `warning`, and that is load-bearing rather than
+# cosmetic. Roslyn's NamingStyleCodeFixProvider cannot "Fix All in Solution":
+# `dotnet format` reports IDE1006 but refuses to fix it ("Unable to fix IDE1006.
+# Code fix NamingStyleCodeFixProvider doesn't support Fix All in Solution"), on
+# every invocation and for every file. A `warning`-severity naming rule would
+# therefore be a finding the enforcing tool can never clear, and the CI format
+# gate below would be red forever. These rules stay active as IDE guidance for
+# new code; the 73 existing violations are left alone deliberately.
 dotnet_naming_rule.private_fields_underscore.symbols = private_fields
 dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case
-dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
 dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel_case.required_prefix = _
@@ -57,7 +65,7 @@ dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 
 dotnet_naming_rule.types_pascal.symbols = types
 dotnet_naming_rule.types_pascal.style = pascal_case
-dotnet_naming_rule.types_pascal.severity = warning
+dotnet_naming_rule.types_pascal.severity = suggestion
 dotnet_naming_symbols.types.applicable_kinds = class,struct,interface,enum,delegate
 dotnet_naming_symbols.types.applicable_accessibilities = *
 dotnet_naming_style.pascal_case.capitalization = pascal_case
@@ -88,24 +96,36 @@ dotnet_diagnostic.CA1848.severity = suggestion    # LoggerMessage delegates
 dotnet_diagnostic.CA1305.severity = suggestion    # StringComparison / IFormatProvider must be explicit
 dotnet_diagnostic.CA1861.severity = suggestion    # no constant arrays as arguments
 dotnet_diagnostic.CA1852.severity = suggestion    # seal internal types
-# NOT enforced anywhere today, on purpose. There is no `dotnet format --verify-no-changes`
-# step in .github/workflows/ci.yml and no EnforceCodeStyleInBuild, because neither
-# passes on the current tree (measured 2026-09-29 on a Release build):
-#   dotnet format NewVixSmart.slnx --verify-no-changes --no-restore  ->  exit 2,
-#   13922 findings across 236 .cs files:
-#     ENDOFLINE    12224 findings /  69 files  (working tree is CRLF on this
-#                                                  checkout; goes away once
-#                                                  .gitattributes is renormalised)
-#     IDE0011       1132 findings /  92 files  (add braces)
-#     WHITESPACE     268 findings /  23 files
-#     FINALNEWLINE   107 findings / 107 files
-#     CHARSET         81 findings /  81 files
-#     IDE1006         53 findings /  30 files  (naming)
-#     IDE0161         37 findings /  37 files  (file-scoped namespace)
-#     IMPORTS         18 findings /  18 files
-#     IDE0065          2 findings /   2 files
-# Turning this on is a whole-tree reformat, so it needs its own change. Until
-# then this rule is guidance for new code, not a gate.
+# Formatting IS enforced, in exactly one place: the `build-and-test` job in
+# .github/workflows/ci.yml runs, before the build and test steps,
+#     dotnet format NewVixSmart.slnx --verify-no-changes --no-restore
+# That command is the single source of truth. `EnforceCodeStyleInBuild` is
+# deliberately NOT set anywhere: two gates for one contract drift, and the IDE
+# analyzers are not error-level at build time regardless, so it would add a
+# second, weaker opinion rather than a second safety net.
+#
+# What the gate now enforces on the tree. The figures are the whole-tree reformat
+# of 2026-09-30 (Release build, .NET SDK 10.0.401), 15,642 findings -> 0:
+#     ENDOFLINE     13844 findings /  70 files  CRLF -> LF
+#     IDE0011        1201 findings / 100 files  add braces
+#     WHITESPACE      277 findings /  23 files
+#     FINALNEWLINE    107 findings / 107 files
+#     CHARSET          81 findings /  81 files  strip the UTF-8 BOM
+#     IDE0161          38 findings /  38 files  file-scoped namespace
+#     IMPORTS          19 findings /  19 files  using order
+#     IDE0065           2 findings /   2 files  usings outside the namespace
+# `charset = utf-8` above is why the 81 BOMs went: the tree is now uniformly
+# UTF-8 without BOM, which is also what a `git add --renormalize .` on a
+# `text=auto eol=lf` checkout produces.
+#
+# Deliberately outside the gate:
+#   - IDE0055 (the C# formatter) stays `none` for .cs and .cshtml below, so the
+#     gate checks layout, not the full formatter opinion.
+#   - .cshtml is not in the gate's scope at all. Razor views are never reported
+#     (0 findings across all 122 of them) and were left byte-identical, so the
+#     `nonce` / `scope` / `<caption>` accessibility work is not exposed to it.
+#   - IDE1006 is `suggestion`; see the naming rules above for why it cannot be a
+#     gate and why that is a tool limitation rather than a backlog.
 dotnet_diagnostic.IDE0055.severity = none
 
 # --- historical migrations are frozen: they describe schemas that no longer exist

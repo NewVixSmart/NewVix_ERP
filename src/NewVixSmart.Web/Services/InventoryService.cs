@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -38,19 +38,33 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CreateSaleAsync(SaleInvoice invoice, List<SaleInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        }
+
         var badPrice = items.FirstOrDefault(i => i.ItemId > 0 && i.UnitPrice < 0);
         if (badPrice != null)
+        {
             return (false, "سعر الوحدة يجب ألا يكون سالباً");
+        }
+
         var badQty = items.FirstOrDefault(i => i.ItemId > 0 && (i.Quantity < 0 || i.Count < 0));
         if (badQty != null)
+        {
             return (false, "الكمية أو العدد يجب ألا يكون سالباً");
+        }
+
         var duplicateSale = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicateSale != null)
+        {
             return (false, $"الصنف رقم {duplicateSale.Key} مكرر أكثر من مرة في الفاتورة");
+        }
 
         if (!beginOwnTransaction)
+        {
             return await CreateSaleCoreAsync(invoice, valid, user, branchId);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -77,7 +91,9 @@ public sealed class InventoryService : IInventoryService
     private async Task<(bool Success, string? Error)> CreateSaleCoreAsync(SaleInvoice invoice, List<SaleInvoiceItem> valid, string? user, int? branchId)
     {
         if (await IsPeriodClosedAsync(invoice.InvoiceDate))
+        {
             return (false, $"السنة المالية {invoice.InvoiceDate.Year} مغلقة — لا يمكن إدراج فاتورة بيع فيها");
+        }
 
         invoice.InvoiceNumber = await NextInvoiceNumberAsync(
             _db.SaleInvoices.Select(s => s.InvoiceNumber), "SI");
@@ -99,7 +115,9 @@ public sealed class InventoryService : IInventoryService
         if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
             && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
             && invoice.DueDate == null)
+        {
             invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
+        }
 
         invoice.PaidAmount = 0m;
         invoice.IsPaid = false;
@@ -118,11 +136,21 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CreateDeliveryOrderAsync(DeliveryOrder delivery, List<DeliveryOrderItem> items, string? user)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        }
+
         var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicate != null)
+        {
             return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم");
-        if (!delivery.SaleInvoiceId.HasValue) return (false, "يجب ربط أذن التسليم بفاتورة بيع");
+        }
+
+        if (!delivery.SaleInvoiceId.HasValue)
+        {
+            return (false, "يجب ربط أذن التسليم بفاتورة بيع");
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -131,7 +159,10 @@ public sealed class InventoryService : IInventoryService
             {
                 var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
                     .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
-                if (invoice == null) return (false, "فاتورة البيع غير موجودة");
+                if (invoice == null)
+                {
+                    return (false, "فاتورة البيع غير موجودة");
+                }
 
                 delivery.DeliveryNumber = await NextDeliveryNumberAsync();
                 delivery.CustomerId = invoice.CustomerId;
@@ -180,34 +211,73 @@ public sealed class InventoryService : IInventoryService
         DateTime? deliveryDate = null, string? notes = null)
     {
         if (salesOrderId.HasValue && saleInvoiceId.HasValue)
+        {
             return (false, "لا يمكن ربط أذن التسليم بأمر بيع وفاتورة في نفس الوقت", null);
+        }
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
-        if (valid.Any(i => i.Quantity < 0 || i.Count < 0)) return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
+        }
+
+        if (valid.Any(i => i.Quantity < 0 || i.Count < 0))
+        {
+            return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        }
+
         var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
-        if (duplicate != null) return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم", null);
+        if (duplicate != null)
+        {
+            return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أذن التسليم", null);
+        }
 
         var unknownItem = valid.Select(i => i.ItemId).FirstOrDefault(id => !_db.Items.Any(i => i.Id == id));
-        if (unknownItem > 0) return (false, $"الصنف رقم {unknownItem} غير موجود", null);
+        if (unknownItem > 0)
+        {
+            return (false, $"الصنف رقم {unknownItem} غير موجود", null);
+        }
 
         if (salesOrderId.HasValue)
         {
             var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == salesOrderId.Value);
-            if (order == null) return (false, "أمر البيع غير موجود", null);
-            if (order.Status == SalesOrderStatus.Draft) return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع مسودة", null);
-            if (order.Status == SalesOrderStatus.Cancelled) return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع ملغي", null);
+            if (order == null)
+            {
+                return (false, "أمر البيع غير موجود", null);
+            }
+
+            if (order.Status == SalesOrderStatus.Draft)
+            {
+                return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع مسودة", null);
+            }
+
+            if (order.Status == SalesOrderStatus.Cancelled)
+            {
+                return (false, "لا يمكن إنشاء أذن تسليم من أمر بيع ملغي", null);
+            }
+
             customerId = order.CustomerId;
         }
         else if (saleInvoiceId.HasValue)
         {
             var invoice = await _db.SaleInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == saleInvoiceId.Value);
-            if (invoice == null) return (false, "فاتورة البيع غير موجودة", null);
+            if (invoice == null)
+            {
+                return (false, "فاتورة البيع غير موجودة", null);
+            }
+
             customerId = invoice.CustomerId;
         }
 
-        if (!customerId.HasValue || customerId.Value <= 0) return (false, "يرجى اختيار العميل", null);
-        if (!await _db.Customers.AnyAsync(c => c.Id == customerId.Value)) return (false, "العميل غير موجود", null);
+        if (!customerId.HasValue || customerId.Value <= 0)
+        {
+            return (false, "يرجى اختيار العميل", null);
+        }
+
+        if (!await _db.Customers.AnyAsync(c => c.Id == customerId.Value))
+        {
+            return (false, "العميل غير موجود", null);
+        }
 
         if (salesOrderId.HasValue)
         {
@@ -217,11 +287,17 @@ public sealed class InventoryService : IInventoryService
             foreach (var line in valid)
             {
                 var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
-                if (orderLine == null) return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع", null);
+                if (orderLine == null)
+                {
+                    return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع", null);
+                }
+
                 var remainingQty = orderLine.Quantity - orderLine.DeliveredQty - (open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m);
                 var remainingCount = orderLine.Count - orderLine.DeliveredCount - (open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m);
                 if (line.Quantity > remainingQty || line.Count > remainingCount)
+                {
                     return (false, $"الكمية في أذن التسليم أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}", null);
+                }
             }
         }
 
@@ -262,25 +338,48 @@ public sealed class InventoryService : IInventoryService
         string? carrier = null, string? trackingNumber = null)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
-        if (valid.Any(i => i.Quantity < 0 || i.Count < 0)) return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد", null);
+        }
+
+        if (valid.Any(i => i.Quantity < 0 || i.Count < 0))
+        {
+            return (false, "الكمية أو العدد يجب ألا يكون سالباً", null);
+        }
+
         var duplicate = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
-        if (duplicate != null) return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أمر التسليم", null);
+        if (duplicate != null)
+        {
+            return (false, $"الصنف رقم {duplicate.Key} مكرر أكثر من مرة في أمر التسليم", null);
+        }
 
         var delivery = await _db.DeliveryOrders.AsNoTracking().FirstOrDefaultAsync(d => d.Id == deliveryId);
-        if (delivery == null) return (false, "أذن التسليم غير موجود", null);
-        if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "لا يمكن إنشاء أمر تسليم من أذن ملغي", null);
+        if (delivery == null)
+        {
+            return (false, "أذن التسليم غير موجود", null);
+        }
+
+        if (delivery.Status == DeliveryOrderStatus.Cancelled)
+        {
+            return (false, "لا يمكن إنشاء أمر تسليم من أذن ملغي", null);
+        }
         // An issue on an invoice-backed note posts the cost only (Dr 3000 / Cr 1300) and the
         // revenue path (DeliverDeliveryOrderAsync) is then permanently blocked for that note, so
         // the sale would leave the books with a cost and no revenue. Such a note is delivered by
         // posting the note itself.
         if (delivery.SaleInvoiceId.HasValue)
+        {
             return (false, "أذن التسليم مرتبط بفاتورة بيع — سلّمه بترحيل أذن التسليم نفسه ولا تنشئ له أمر تسليم", null);
+        }
 
         foreach (var line in valid)
         {
             if (!await _db.DeliveryOrderItems.AnyAsync(x => x.DeliveryOrderId == deliveryId && x.ItemId == line.ItemId))
+            {
                 return (false, $"الصنف رقم {line.ItemId} غير موجود في أذن التسليم", null);
+            }
+
             if (line.DeliveryOrderItemId <= 0)
             {
                 line.DeliveryOrderItemId = await _db.DeliveryOrderItems
@@ -305,18 +404,24 @@ public sealed class InventoryService : IInventoryService
                 var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
                 var noteLine = noteLines.FirstOrDefault(i => i.ItemId == line.ItemId);
                 if (orderLine == null || noteLine == null)
+                {
                     return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع أو أذن التسليم", null);
+                }
 
                 var openQty = open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m;
                 var openCount = open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m;
                 if (noteLine.Quantity + orderLine.DeliveredQty + openQty > orderLine.Quantity ||
                     noteLine.Count + orderLine.DeliveredCount + openCount > orderLine.Count)
+                {
                     return (false, $"الكمية في أذن التسليم أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}", null);
+                }
 
                 var issuedQty = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
                 var issuedCount = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
                 if (line.Quantity + issuedQty > noteLine.Quantity || line.Count + issuedCount > noteLine.Count)
+                {
                     return (false, $"الكمية أكبر من المتبقي في أذن التسليم للصنف رقم {line.ItemId}", null);
+                }
             }
         }
 
@@ -364,28 +469,57 @@ public sealed class InventoryService : IInventoryService
             {
                 var issue = await _db.DeliveryIssues.Include(i => i.Items)
                     .FirstOrDefaultAsync(i => i.Id == issueId);
-                if (issue == null) return (false, "أمر التسليم غير موجود");
-                if (issue.Status != DeliveryIssueStatus.Draft) return (false, "أمر التسليم مرحّل أو ملغي بالفعل");
+                if (issue == null)
+                {
+                    return (false, "أمر التسليم غير موجود");
+                }
+
+                if (issue.Status != DeliveryIssueStatus.Draft)
+                {
+                    return (false, "أمر التسليم مرحّل أو ملغي بالفعل");
+                }
+
                 if (await IsPeriodClosedAsync(issue.IssueDate))
+                {
                     return (false, $"السنة المالية {issue.IssueDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
+                }
 
                 var delivery = await _db.DeliveryOrders.AsNoTracking()
                     .FirstOrDefaultAsync(d => d.Id == issue.DeliveryOrderId);
-                if (delivery == null) return (false, "أذن التسليم غير موجود");
-                if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "أذن التسليم ملغي");
+                if (delivery == null)
+                {
+                    return (false, "أذن التسليم غير موجود");
+                }
+
+                if (delivery.Status == DeliveryOrderStatus.Cancelled)
+                {
+                    return (false, "أذن التسليم ملغي");
+                }
 
                 if (delivery.SalesOrderId.HasValue)
                 {
                     var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == delivery.SalesOrderId.Value);
-                    if (order == null) return (false, "أمر البيع غير موجود");
-                    if (order.Status == SalesOrderStatus.Cancelled) return (false, "أمر البيع ملغي — لا يمكن التسليم");
+                    if (order == null)
+                    {
+                        return (false, "أمر البيع غير موجود");
+                    }
+
+                    if (order.Status == SalesOrderStatus.Cancelled)
+                    {
+                        return (false, "أمر البيع ملغي — لا يمكن التسليم");
+                    }
                 }
                 if (delivery.SaleInvoiceId.HasValue &&
                     !await _db.SaleInvoices.AnyAsync(i => i.Id == delivery.SaleInvoiceId.Value))
+                {
                     return (false, "فاتورة البيع المرتبطة غير موجودة");
+                }
 
                 var valid = issue.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-                if (valid.Count == 0) return (false, "أمر التسليم لا يحتوي على أصناف صالحة للتسليم");
+                if (valid.Count == 0)
+                {
+                    return (false, "أمر التسليم لا يحتوي على أصناف صالحة للتسليم");
+                }
 
                 if (delivery.SalesOrderId.HasValue)
                 {
@@ -395,7 +529,11 @@ public sealed class InventoryService : IInventoryService
                     foreach (var line in valid)
                     {
                         var orderLine = orderLines.FirstOrDefault(i => i.ItemId == line.ItemId);
-                        if (orderLine == null) return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع");
+                        if (orderLine == null)
+                        {
+                            return (false, $"الصنف رقم {line.ItemId} غير موجود في أمر البيع");
+                        }
+
                         var remainingQty = orderLine.Quantity - orderLine.DeliveredQty - (open.TryGetValue(line.ItemId, out var o) ? o.Qty : 0m);
                         var remainingCount = orderLine.Count - orderLine.DeliveredCount - (open.TryGetValue(line.ItemId, out var o2) ? o2.Count : 0m);
                         if (line.Quantity > remainingQty || line.Count > remainingCount)
@@ -410,7 +548,11 @@ public sealed class InventoryService : IInventoryService
                     var invoice = await _db.SaleInvoices.AsNoTracking()
                         .Include(i => i.Items)
                         .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId.Value);
-                    if (invoice == null) return (false, "فاتورة البيع المرتبطة غير موجودة");
+                    if (invoice == null)
+                    {
+                        return (false, "فاتورة البيع المرتبطة غير موجودة");
+                    }
+
                     var delivered = await _db.DeliveryIssues.AsNoTracking()
                         .Where(i => i.SaleInvoiceId == invoice.Id && i.Id != issue.Id && i.Status != DeliveryIssueStatus.Cancelled)
                         .SelectMany(i => i.Items)
@@ -448,9 +590,14 @@ public sealed class InventoryService : IInventoryService
                     var allowedQty = item.AvailableQuantity + held.Qty;
                     var allowedCount = item.AvailableCount + held.Count;
                     if (line.Quantity > allowedQty)
+                    {
                         shortages.Add($"«{item.Name}»: المطلوب {line.Quantity:N2} كمية والمتاح {allowedQty:N2}");
+                    }
+
                     if (line.Count > allowedCount)
+                    {
                         shortages.Add($"«{item.Name}»: المطلوب {line.Count:N2} عدد والمتاح {allowedCount:N2}");
+                    }
                 }
                 if (shortages.Count > 0)
                 {
@@ -483,8 +630,10 @@ public sealed class InventoryService : IInventoryService
                 var costTotal = consumed.DominantTotal;
 
                 if (_accounting != null && costTotal > 0)
+                {
                     await _accounting.RecordSaleIssueCostAsync(issue.IssueDate, issue.Id, costTotal,
                         user, branchId);
+                }
 
                 issue.Status = DeliveryIssueStatus.Issued;
                 issue.IssuedBy = user;
@@ -496,8 +645,11 @@ public sealed class InventoryService : IInventoryService
                     {
                         var orderLine = await _db.SalesOrderItems.FirstOrDefaultAsync(i => i.Id == orderLineId);
                         if (orderLine == null)
+                        {
                             orderLine = await _db.SalesOrderItems.FirstOrDefaultAsync(
                                 i => i.SalesOrderId == delivery.SalesOrderId && i.ItemId == line.ItemId);
+                        }
+
                         if (orderLine != null)
                         {
                             orderLine.DeliveredQty += line.Quantity;
@@ -523,9 +675,20 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CancelDeliveryIssueAsync(int issueId, string? user)
     {
         var issue = await _db.DeliveryIssues.FirstOrDefaultAsync(i => i.Id == issueId);
-        if (issue == null) return (false, "أمر التسليم غير موجود");
-        if (issue.Status == DeliveryIssueStatus.Issued) return (false, "لا يمكن إلغاء أمر تسليم مرحّل — استخدم المرتجع");
-        if (issue.Status == DeliveryIssueStatus.Cancelled) return (false, "أمر التسليم ملغي بالفعل");
+        if (issue == null)
+        {
+            return (false, "أمر التسليم غير موجود");
+        }
+
+        if (issue.Status == DeliveryIssueStatus.Issued)
+        {
+            return (false, "لا يمكن إلغاء أمر تسليم مرحّل — استخدم المرتجع");
+        }
+
+        if (issue.Status == DeliveryIssueStatus.Cancelled)
+        {
+            return (false, "أمر التسليم ملغي بالفعل");
+        }
 
         issue.Status = DeliveryIssueStatus.Cancelled;
         await _db.SaveChangesAsync();
@@ -538,7 +701,10 @@ public sealed class InventoryService : IInventoryService
     private async Task RefreshDeliveryStatusAsync(int deliveryId)
     {
         var delivery = await _db.DeliveryOrders.FirstOrDefaultAsync(d => d.Id == deliveryId);
-        if (delivery == null || delivery.Status == DeliveryOrderStatus.Cancelled) return;
+        if (delivery == null || delivery.Status == DeliveryOrderStatus.Cancelled)
+        {
+            return;
+        }
 
         var issues = await _db.DeliveryIssues.AsNoTracking()
             .Include(i => i.Items)
@@ -571,9 +737,16 @@ public sealed class InventoryService : IInventoryService
     private async Task<Dictionary<int, (decimal Qty, decimal Count)>> OwnReservationRemainingAsync(int? salesOrderId)
     {
         if (!salesOrderId.HasValue)
+        {
             return new Dictionary<int, (decimal Qty, decimal Count)>();
+        }
+
         var reservation = await _reservations.GetForOrderAsync(salesOrderId.Value);
-        if (reservation == null) return new Dictionary<int, (decimal Qty, decimal Count)>();
+        if (reservation == null)
+        {
+            return new Dictionary<int, (decimal Qty, decimal Count)>();
+        }
+
         return reservation.Items
             .GroupBy(l => l.ItemId)
             .ToDictionary(g => g.Key, g => (Qty: g.Sum(l => l.RemainingQuantity), Count: g.Sum(l => l.RemainingCount)));
@@ -611,7 +784,9 @@ public sealed class InventoryService : IInventoryService
             foreach (var (itemId, value) in excluded)
             {
                 if (noted.TryGetValue(itemId, out var current))
+                {
                     noted[itemId] = (current.Qty - value.Qty, current.Cnt - value.Cnt);
+                }
             }
         }
 
@@ -633,21 +808,43 @@ public sealed class InventoryService : IInventoryService
             {
                 var delivery = await _db.DeliveryOrders.Include(d => d.Items)
                     .FirstOrDefaultAsync(d => d.Id == deliveryId);
-                if (delivery == null) return (false, "أذن التسليم غير موجود");
-                if (delivery.Status != DeliveryOrderStatus.Draft) return (false, "أذن التسليم مرحّل أو ملغي بالفعل");
+                if (delivery == null)
+                {
+                    return (false, "أذن التسليم غير موجود");
+                }
+
+                if (delivery.Status != DeliveryOrderStatus.Draft)
+                {
+                    return (false, "أذن التسليم مرحّل أو ملغي بالفعل");
+                }
+
                 if (delivery.IsOrderBacked)
+                {
                     return (false, "أذن التسليم مرتبط بأمر بيع — سلّمه عبر أمر التسليم");
+                }
+
                 if (await _db.DeliveryIssues.AnyAsync(i => i.DeliveryOrderId == deliveryId && i.Status != DeliveryIssueStatus.Cancelled))
+                {
                     return (false, "يوجد أمر تسليم مرحّل لهذا الأذن — لا يمكن ترحيل الأذن مرة أخرى");
+                }
+
                 if (await IsPeriodClosedAsync(delivery.DeliveryDate))
+                {
                     return (false, $"السنة المالية {delivery.DeliveryDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
+                }
 
                 var invoice = await _db.SaleInvoices.Include(i => i.Items).Include(i => i.Customer).AsNoTracking()
                     .FirstOrDefaultAsync(i => i.Id == delivery.SaleInvoiceId);
-                if (invoice == null) return (false, "فاتورة البيع المرتبطة غير موجودة");
+                if (invoice == null)
+                {
+                    return (false, "فاتورة البيع المرتبطة غير موجودة");
+                }
 
                 var valid = delivery.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-                if (valid.Count == 0) return (false, "أذن التسليم لا يحتوي على أصناف صالحة للتسليم");
+                if (valid.Count == 0)
+                {
+                    return (false, "أذن التسليم لا يحتوي على أصناف صالحة للتسليم");
+                }
 
                 var delivered = await _db.DeliveryOrders
                     .Where(d => d.SaleInvoiceId == invoice.Id && d.Id != deliveryId && d.Status == DeliveryOrderStatus.Delivered)
@@ -658,7 +855,11 @@ public sealed class InventoryService : IInventoryService
                 foreach (var item in valid)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
-                    if (invLine == null) continue;
+                    if (invLine == null)
+                    {
+                        continue;
+                    }
+
                     decimal deliveredCount = delivered.Where(x => x.ItemId == item.ItemId).Sum(x => x.Count);
                     decimal deliveredQty = delivered.Where(x => x.ItemId == item.ItemId).Sum(x => x.Quantity);
                     if (item.Count + deliveredCount > invLine.Count || item.Quantity + deliveredQty > invLine.Quantity)
@@ -678,7 +879,11 @@ public sealed class InventoryService : IInventoryService
                 foreach (var item in valid)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
-                    if (invLine == null) continue;
+                    if (invLine == null)
+                    {
+                        continue;
+                    }
+
                     decimal effective = item.Quantity > 0 ? item.Quantity : item.Count;
                     rawValue += effective * invLine.UnitPrice;
                 }
@@ -689,11 +894,15 @@ public sealed class InventoryService : IInventoryService
                     decimal share = rawValue / invoice.TotalAmount;
                     value = invoice.NetAmount * share;
                     if (invoice.Tax > 0m)
+                    {
                         taxShare = invoice.Tax * share;
+                    }
                 }
                 if (_accounting != null && (value > 0 || costTotal > 0))
+                {
                     await _accounting.RecordSaleDeliveryAsync(delivery.DeliveryDate, invoice.CustomerId,
                         value, costTotal, user, branchId, delivery.Id, taxShare);
+                }
 
                 delivery.Status = DeliveryOrderStatus.Delivered;
                 delivery.DeliveredBy = user;
@@ -724,11 +933,25 @@ public sealed class InventoryService : IInventoryService
             try
             {
                 var delivery = await _db.DeliveryOrders.FirstOrDefaultAsync(d => d.Id == deliveryId);
-                if (delivery == null) return (false, "أذن التسليم غير موجود");
-                if (delivery.Status == DeliveryOrderStatus.Delivered) return (false, "لا يمكن إلغاء أذن تسليم تم ترحيله");
-                if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "أذن التسليم ملغي بالفعل");
+                if (delivery == null)
+                {
+                    return (false, "أذن التسليم غير موجود");
+                }
+
+                if (delivery.Status == DeliveryOrderStatus.Delivered)
+                {
+                    return (false, "لا يمكن إلغاء أذن تسليم تم ترحيله");
+                }
+
+                if (delivery.Status == DeliveryOrderStatus.Cancelled)
+                {
+                    return (false, "أذن التسليم ملغي بالفعل");
+                }
+
                 if (await _db.DeliveryIssues.AnyAsync(i => i.DeliveryOrderId == deliveryId && i.Status != DeliveryIssueStatus.Cancelled))
+                {
                     return (false, "يوجد أمر تسليم مرحّل لهذا الأذن — ألغِ أمر التسليم أولاً");
+                }
 
                 delivery.Status = DeliveryOrderStatus.Cancelled;
                 await _db.SaveChangesAsync();
@@ -751,22 +974,38 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true)
     {
         if (await IsPeriodClosedAsync(invoice.InvoiceDate))
+        {
             return (false, $"السنة المالية {invoice.InvoiceDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
+        }
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        }
+
         var badPrice = items.FirstOrDefault(i => i.ItemId > 0 && i.UnitPrice < 0);
         if (badPrice != null)
+        {
             return (false, "سعر الوحدة يجب ألا يكون سالباً");
+        }
+
         var badQty = items.FirstOrDefault(i => i.ItemId > 0 && (i.Quantity < 0 || i.Count < 0));
         if (badQty != null)
+        {
             return (false, "الكمية أو العدد يجب ألا يكون سالباً");
+        }
+
         var duplicatePurchase = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicatePurchase != null)
+        {
             return (false, $"الصنف رقم {duplicatePurchase.Key} مكرر أكثر من مرة في الفاتورة");
+        }
 
         if (!beginOwnTransaction)
+        {
             return await CreatePurchaseCoreAsync(invoice, valid, user, branchId);
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -799,10 +1038,16 @@ public sealed class InventoryService : IInventoryService
         foreach (var group in valid.GroupBy(i => i.ItemId))
         {
             var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == group.Key);
-            if (item == null) continue;
+            if (item == null)
+            {
+                continue;
+            }
+
             var priceLine = group.LastOrDefault(l => l.Quantity > 0);
             if (priceLine != null)
+            {
                 item.PurchasePrice = priceLine.UnitPrice;
+            }
         }
 
         if (valid.Any(i => i.Discount > i.Gross))
@@ -821,7 +1066,10 @@ public sealed class InventoryService : IInventoryService
         if (invoice.PaymentTerms != InvoicePaymentTerms.OnReceipt
             && invoice.PaymentTerms != InvoicePaymentTerms.OpenTerm
             && invoice.DueDate == null)
+        {
             invoice.DueDate = invoice.InvoiceDate.AddDays(PaymentTermDays(invoice.PaymentTerms));
+        }
+
         if (invoice.SupplierId > 0)
         {
             foreach (var line in valid)
@@ -849,12 +1097,16 @@ public sealed class InventoryService : IInventoryService
         await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate);
 
         if (_accounting != null && invoice.NetAmount > 0)
+        {
             await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, user, branchId);
+        }
 
         if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
+        {
             await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
                 invoice.NetAmount,
                 PaymentMethod.Cash, invoice.SupplierId, user, branchId);
+        }
 
         _logger?.LogInformation("فُتحت فاتورة شراء {Owner} رقم {Number} صافي {Net:C} بفاتورة {InvId}",
             user, invoice.InvoiceNumber, invoice.NetAmount, invoice.Id);
@@ -867,24 +1119,48 @@ public sealed class InventoryService : IInventoryService
     /// </summary>
     public async Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateSaleReturnAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreateSaleReturnAsync));
+        }
+
         var (draftOk, draftErr, returnId) = await CreateSaleReturnDraftAsync(saleReturn, items, user, beginOwnTransaction);
-        if (!draftOk) return (false, draftErr);
+        if (!draftOk)
+        {
+            return (false, draftErr);
+        }
+
         var (postOk, postErr) = await PostSaleReturnAsync(returnId, user, beginOwnTransaction);
-        if (!postOk) return (false, postErr);
+        if (!postOk)
+        {
+            return (false, postErr);
+        }
+
         return (true, null);
     }
 
     public async Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
         if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+        {
             return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
+        }
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع البيع", 0);
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateSaleReturnDraftAsync));
+        }
+
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreateSaleReturnDraftAsync));
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -912,19 +1188,29 @@ public sealed class InventoryService : IInventoryService
                 _db.SaleReturns.Add(saleReturn);
                 await _db.SaveChangesAsync();
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 _logger?.LogInformation("أُنشئت مسودة مرتجع بيع {Owner} رقم {Number} بمبلغ {Amt:C}", user, saleReturn.ReturnNumber, saleReturn.TotalAmount);
                 return (true, null, saleReturn.Id);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(saleReturn);
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(saleReturn);
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر حفظ مسودة مرتجع البيع بسبب تعارض في البيانات، حاول مرة أخرى", 0);
@@ -936,7 +1222,11 @@ public sealed class InventoryService : IInventoryService
     /// </summary>
     public async Task<(bool Success, string? Error)> PostSaleReturnAsync(int saleReturnId, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(PostSaleReturnAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(PostSaleReturnAsync));
+        }
+
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
@@ -944,16 +1234,32 @@ public sealed class InventoryService : IInventoryService
             {
                 var saleReturn = await _db.SaleReturns.Include(r => r.Items)
                     .FirstOrDefaultAsync(r => r.Id == saleReturnId);
-                if (saleReturn == null) return (false, "مرتجع البيع غير موجود");
-                if (saleReturn.Status == ReturnStatus.Posted) return (false, "مرتجع البيع مرحّل بالفعل");
+                if (saleReturn == null)
+                {
+                    return (false, "مرتجع البيع غير موجود");
+                }
+
+                if (saleReturn.Status == ReturnStatus.Posted)
+                {
+                    return (false, "مرتجع البيع مرحّل بالفعل");
+                }
+
                 if (await IsPeriodClosedAsync(saleReturn.ReturnDate))
+                {
                     return (false, $"السنة المالية {saleReturn.ReturnDate.Year} مغلقة — لا يمكن ترحيل مرتجع فيها");
+                }
 
                 if (saleReturn.Items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+                {
                     return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع");
+                }
 
                 var valid = saleReturn.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-                if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
+                if (valid.Count == 0)
+                {
+                    return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
+                }
+
                 saleReturn.TotalAmount = valid.Sum(i => i.Total);
 
                 var returnError = await ValidateSaleReturnQuantitiesAsync(saleReturn, valid);
@@ -996,36 +1302,50 @@ public sealed class InventoryService : IInventoryService
                         .Select(i => new { i.Tax, i.TotalAmount, i.NetAmount })
                         .FirstOrDefaultAsync();
                     if (invTotals != null)
+                    {
                         mirror = ReturnMirror.ProratedAgainst(saleReturn.TotalAmount,
                             invTotals.TotalAmount, invTotals.NetAmount, invTotals.Tax);
+                    }
                 }
 
                 await _db.SaveChangesAsync();
 
                 if (_accounting != null && mirror.Receivable > 0m)
+                {
                     await _accounting.RecordSaleReturnWithCostAsync(
                         saleReturn.ReturnDate, saleReturn.Id, saleReturn.CustomerId,
                         mirror.ContraValue, costTotal,
                         user, saleReturn.BranchId, mirror.Tax);
+                }
 
                 saleReturn.Status = ReturnStatus.Posted;
                 saleReturn.PostedBy = user;
                 saleReturn.PostedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 _logger?.LogInformation("رحّل مرتجع بيع {Owner} رقم {Number} بمبلغ {Amt:C}", user, saleReturn.ReturnNumber, saleReturn.TotalAmount);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر ترحيل مرتجع البيع بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -1037,24 +1357,48 @@ public sealed class InventoryService : IInventoryService
     /// </summary>
     public async Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreatePurchaseReturnAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreatePurchaseReturnAsync));
+        }
+
         var (draftOk, draftErr, returnId) = await CreatePurchaseReturnDraftAsync(purchaseReturn, items, user, beginOwnTransaction);
-        if (!draftOk) return (false, draftErr);
+        if (!draftOk)
+        {
+            return (false, draftErr);
+        }
+
         var (postOk, postErr) = await PostPurchaseReturnAsync(returnId, user, beginOwnTransaction);
-        if (!postOk) return (false, postErr);
+        if (!postOk)
+        {
+            return (false, postErr);
+        }
+
         return (true, null);
     }
 
     public async Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
         if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+        {
             return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
+        }
 
         var valid = items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع الشراء", 0);
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreatePurchaseReturnDraftAsync));
+        }
+
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreatePurchaseReturnDraftAsync));
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -1079,19 +1423,29 @@ public sealed class InventoryService : IInventoryService
                 _db.PurchaseReturns.Add(purchaseReturn);
                 await _db.SaveChangesAsync();
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 _logger?.LogInformation("أُنشئت مسودة مرتجع شراء {Owner} رقم {Number} بمبلغ {Amt:C}", user, purchaseReturn.ReturnNumber, purchaseReturn.TotalAmount);
                 return (true, null, purchaseReturn.Id);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(purchaseReturn);
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(purchaseReturn);
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر حفظ مسودة مرتجع الشراء بسبب تعارض في البيانات، حاول مرة أخرى", 0);
@@ -1103,7 +1457,11 @@ public sealed class InventoryService : IInventoryService
     /// </summary>
     public async Task<(bool Success, string? Error)> PostPurchaseReturnAsync(int purchaseReturnId, string? user, bool beginOwnTransaction = true)
     {
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(PostPurchaseReturnAsync));
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(PostPurchaseReturnAsync));
+        }
+
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
@@ -1111,16 +1469,32 @@ public sealed class InventoryService : IInventoryService
             {
                 var purchaseReturn = await _db.PurchaseReturns.Include(r => r.Items)
                     .FirstOrDefaultAsync(r => r.Id == purchaseReturnId);
-                if (purchaseReturn == null) return (false, "مرتجع الشراء غير موجود");
-                if (purchaseReturn.Status == ReturnStatus.Posted) return (false, "مرتجع الشراء مرحّل بالفعل");
+                if (purchaseReturn == null)
+                {
+                    return (false, "مرتجع الشراء غير موجود");
+                }
+
+                if (purchaseReturn.Status == ReturnStatus.Posted)
+                {
+                    return (false, "مرتجع الشراء مرحّل بالفعل");
+                }
+
                 if (await IsPeriodClosedAsync(purchaseReturn.ReturnDate))
+                {
                     return (false, $"السنة المالية {purchaseReturn.ReturnDate.Year} مغلقة — لا يمكن ترحيل مرتجع فيها");
+                }
 
                 if (purchaseReturn.Items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
+                {
                     return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع");
+                }
 
                 var valid = purchaseReturn.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-                if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
+                if (valid.Count == 0)
+                {
+                    return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
+                }
+
                 purchaseReturn.TotalAmount = valid.Sum(i => i.Total);
 
                 var returnError = await ValidatePurchaseReturnQuantitiesAsync(purchaseReturn, valid);
@@ -1165,36 +1539,50 @@ public sealed class InventoryService : IInventoryService
                         .Select(i => new { i.Tax, i.TotalAmount, i.NetAmount })
                         .FirstOrDefaultAsync();
                     if (invTotals != null)
+                    {
                         mirror = ReturnMirror.ProratedAgainst(purchaseReturn.TotalAmount,
                             invTotals.TotalAmount, invTotals.NetAmount, invTotals.Tax);
+                    }
                 }
 
                 await _db.SaveChangesAsync();
 
                 if (_accounting != null && mirror.Receivable > 0m)
+                {
                     await _accounting.RecordPurchaseReturnWithCostAsync(
                         purchaseReturn.ReturnDate, purchaseReturn.Id, purchaseReturn.SupplierId,
                         mirror.Receivable, costTotal,
                         user, purchaseReturn.BranchId);
+                }
 
                 purchaseReturn.Status = ReturnStatus.Posted;
                 purchaseReturn.PostedBy = user;
                 purchaseReturn.PostedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 _logger?.LogInformation("رحّل مرتجع شراء {Owner} رقم {Number} بمبلغ {Amt:C}", user, purchaseReturn.ReturnNumber, purchaseReturn.TotalAmount);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر ترحيل مرتجع الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -1208,11 +1596,19 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CreateAdjustmentAsync(InventoryAdjustment adjustment, string? user, bool beginOwnTransaction = true)
     {
         if (await IsPeriodClosedAsync(adjustment.AdjustmentDate))
+        {
             return (false, $"السنة المالية {adjustment.AdjustmentDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
+        }
 
         if (adjustment.NewCount < 0 || adjustment.NewQuantity < 0)
+        {
             return (false, "لا يمكن أن يكون الرصيد بعد الجرد سالباً");
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateAdjustmentAsync));
+        }
+
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreateAdjustmentAsync));
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -1220,7 +1616,10 @@ public sealed class InventoryService : IInventoryService
             try
             {
                 var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == adjustment.ItemId);
-                if (item == null) return (false, "الصنف غير موجود");
+                if (item == null)
+                {
+                    return (false, "الصنف غير موجود");
+                }
 
                 adjustment.ReferenceNumber = await NextReturnNumberAsync(
                     _db.InventoryAdjustments.Select(a => a.ReferenceNumber), "ADJ");
@@ -1240,6 +1639,7 @@ public sealed class InventoryService : IInventoryService
                 decimal outQty = Math.Min(qtyDelta, 0);
 
                 if (inCount > 0 || inQty > 0)
+                {
                     _db.StockMovements.Add(new StockMovement
                     {
                         ItemId = item.Id,
@@ -1255,8 +1655,10 @@ public sealed class InventoryService : IInventoryService
                         MovementDate = adjustment.AdjustmentDate,
                         CreatedBy = user
                     });
+                }
 
                 if (outCount < 0 || outQty < 0)
+                {
                     _db.StockMovements.Add(new StockMovement
                     {
                         ItemId = item.Id,
@@ -1272,6 +1674,7 @@ public sealed class InventoryService : IInventoryService
                         MovementDate = adjustment.AdjustmentDate,
                         CreatedBy = user
                     });
+                }
 
                 _db.InventoryAdjustments.Add(adjustment);
                 await _db.SaveChangesAsync();
@@ -1293,27 +1696,43 @@ public sealed class InventoryService : IInventoryService
                         var writtenQty = Math.Max(-addedQty, 0);
                         var writtenCount = Math.Max(-addedCount, 0);
                         if (consumed.QtyCost > 0 || consumed.CountCost > 0)
+                        {
                             await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user, date: adjustment.AdjustmentDate);
+                        }
                         else if (writtenQty > 0 || writtenCount > 0)
+                        {
                             await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user, date: adjustment.AdjustmentDate);
+                        }
                     }
                 }
 
                 if (_accounting != null && (addedQty > 0 || addedCount > 0))
+                {
                     await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user, date: adjustment.AdjustmentDate);
+                }
 
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll(); adjustment.Id = 0;
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll(); adjustment.Id = 0;
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر حفظ الجرد بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -1327,10 +1746,15 @@ public sealed class InventoryService : IInventoryService
             try
             {
                 var adj = await _db.InventoryAdjustments.FirstOrDefaultAsync(a => a.Id == adjustmentId);
-                if (adj == null) return (false, "سجل الجرد غير موجود");
+                if (adj == null)
+                {
+                    return (false, "سجل الجرد غير موجود");
+                }
 
                 if (await _db.JournalEntries.AnyAsync(j => j.Source == JournalSource.OpeningStock && j.SourceId == adj.ItemId))
+                {
                     return (false, "لا يمكن حذف هذا الجرد لأن بياناته رُحّلت إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
+                }
 
                 var movements = await _db.StockMovements
                     .Where(s => s.DocumentType == DocumentType.Adjustment && s.DocumentNumber == adj.ReferenceNumber)
@@ -1341,10 +1765,16 @@ public sealed class InventoryService : IInventoryService
                     var last = movements[^1];
                     var hasLaterMovements = await _db.StockMovements.AnyAsync(m => m.ItemId == last.ItemId && m.Id > last.Id);
                     if (hasLaterMovements)
+                    {
                         return (false, "لا يمكن حذف هذا الجرد لأن حركات مخزون لاحقة تمت على نفس الصنف؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
+                    }
 
                     var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == last.ItemId);
-                    if (item == null) return (false, "الصنف المرتبط بالجرد غير موجود");
+                    if (item == null)
+                    {
+                        return (false, "الصنف المرتبط بالجرد غير موجود");
+                    }
+
                     item.CurrentCount = movements[0].CountBefore;
                     item.CurrentQuantity = movements[0].BalanceBefore;
                     _db.StockMovements.RemoveRange(movements);
@@ -1371,7 +1801,10 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<ConsumedCostResult?> GetConsumedCostAsync(int itemId, IReadOnlyCollection<StockLine> lines)
     {
-        if (lines.Count == 0) return null;
+        if (lines.Count == 0)
+        {
+            return null;
+        }
 
         var totalQtyCost = 0m;
         var totalCountCost = 0m;
@@ -1380,7 +1813,10 @@ public sealed class InventoryService : IInventoryService
             .Where(l => l.ItemId == itemId)
             .GroupBy(l => l.ItemId)
             .ToDictionary(g => g.Key, g => new StockLine(g.Key, g.Sum(x => x.Count), g.Sum(x => x.Quantity)));
-        if (grouped.Count == 0) return null;
+        if (grouped.Count == 0)
+        {
+            return null;
+        }
 
         var neededQty = grouped.Values.Where(l => l.Quantity > 0).Sum(l => l.Quantity);
         var neededCount = grouped.Values.Where(l => l.Count > 0).Sum(l => l.Count);
@@ -1407,7 +1843,10 @@ public sealed class InventoryService : IInventoryService
                 totalCountCost += take * layer.CountCost;
                 tempCount -= take;
             }
-            if (tempQty <= 0 && tempCount <= 0) break;
+            if (tempQty <= 0 && tempCount <= 0)
+            {
+                break;
+            }
         }
 
         return new ConsumedCostResult(totalQtyCost, totalCountCost, neededQty > 0 ? totalQtyCost : totalCountCost);
@@ -1443,15 +1882,25 @@ public sealed class InventoryService : IInventoryService
                 var remaining = line.Quantity;
                 foreach (var layer in layers)
                 {
-                    if (remaining <= 0) break;
-                    if (layer.RemainingQty <= 0) continue;
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+
+                    if (layer.RemainingQty <= 0)
+                    {
+                        continue;
+                    }
+
                     var take = Math.Min(remaining, layer.RemainingQty);
                     lineQtyCost += take * layer.UnitCost;
                     layer.RemainingQty -= take;
                     remaining -= take;
                 }
                 if (remaining > 0)
+                {
                     lineQtyCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
+                }
             }
 
             if (line.Count > 0)
@@ -1459,15 +1908,25 @@ public sealed class InventoryService : IInventoryService
                 var remaining = line.Count;
                 foreach (var layer in layers)
                 {
-                    if (remaining <= 0) break;
-                    if (layer.RemainingCount <= 0) continue;
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+
+                    if (layer.RemainingCount <= 0)
+                    {
+                        continue;
+                    }
+
                     var take = Math.Min(remaining, layer.RemainingCount);
                     lineCountCost += take * layer.CountCost;
                     layer.RemainingCount -= take;
                     remaining -= take;
                 }
                 if (remaining > 0)
+                {
                     lineCountCost += remaining * prices.GetValueOrDefault(line.ItemId, 0m);
+                }
             }
 
             qtyCost += lineQtyCost;
@@ -1482,7 +1941,10 @@ public sealed class InventoryService : IInventoryService
     {
         var qtyCost = 0m;
         var countCost = 0m;
-        if (qtyToRemove <= 0 && countToRemove <= 0) return new ConsumedCostResult(0, 0, 0);
+        if (qtyToRemove <= 0 && countToRemove <= 0)
+        {
+            return new ConsumedCostResult(0, 0, 0);
+        }
 
         var layers = await _db.StockLayers
             .Where(sl => sl.ItemId == itemId && (sl.RemainingQty > 0 || sl.RemainingCount > 0))
@@ -1507,7 +1969,10 @@ public sealed class InventoryService : IInventoryService
                 layer.RemainingCount -= takeCount;
                 c -= takeCount;
             }
-            if (q <= 0 && c <= 0) break;
+            if (q <= 0 && c <= 0)
+            {
+                break;
+            }
         }
 
         return new ConsumedCostResult(qtyCost, countCost, qtyCost > 0 ? qtyCost : countCost);
@@ -1517,7 +1982,10 @@ public sealed class InventoryService : IInventoryService
     {
         foreach (var line in lines)
         {
-            if (line.Quantity <= 0 && line.Count <= 0) continue;
+            if (line.Quantity <= 0 && line.Count <= 0)
+            {
+                continue;
+            }
             // StockLayer.UnitCost is decimal(18,6) - the six-decimal per-unit cost documented on
             // DecimalPrecision.CostScale - and this is where a purchase price becomes that cost. The
             // price itself is three decimals, so rounding it here used to discard the third decimal
@@ -1540,7 +2008,10 @@ public sealed class InventoryService : IInventoryService
 
         foreach (var item in items)
         {
-            if (item.Quantity <= 0 && item.Count <= 0) continue;
+            if (item.Quantity <= 0 && item.Count <= 0)
+            {
+                continue;
+            }
 
             var layers = await _db.StockLayers
                 .Where(sl => sl.ItemId == item.ItemId)
@@ -1560,7 +2031,11 @@ public sealed class InventoryService : IInventoryService
                     {
                         var take = Math.Min(remainingQty, capacity);
                         layer.RemainingQty += take;
-                        if (quantityDriven) totalCost += take * layer.UnitCost;
+                        if (quantityDriven)
+                        {
+                            totalCost += take * layer.UnitCost;
+                        }
+
                         remainingQty -= take;
                     }
                 }
@@ -1571,11 +2046,18 @@ public sealed class InventoryService : IInventoryService
                     {
                         var take = Math.Min(remainingCount, capacity);
                         layer.RemainingCount += take;
-                        if (!quantityDriven) totalCost += take * layer.CountCost;
+                        if (!quantityDriven)
+                        {
+                            totalCost += take * layer.CountCost;
+                        }
+
                         remainingCount -= take;
                     }
                 }
-                if (remainingQty <= 0 && remainingCount <= 0) break;
+                if (remainingQty <= 0 && remainingCount <= 0)
+                {
+                    break;
+                }
             }
 
             if (remainingQty > 0 || remainingCount > 0)
@@ -1598,7 +2080,10 @@ public sealed class InventoryService : IInventoryService
     private void CreateOrTopUpLayer(int itemId, decimal addQty, decimal addCount,
         decimal unitCost, decimal countCost, DateTime dateReceived)
     {
-        if (addQty <= 0 && addCount <= 0) return;
+        if (addQty <= 0 && addCount <= 0)
+        {
+            return;
+        }
 
         var existing = _db.StockLayers.Local
             .FirstOrDefault(sl => sl.ItemId == itemId
@@ -1633,17 +2118,31 @@ public sealed class InventoryService : IInventoryService
     private async Task<string?> ValidateSaleReturnQuantitiesAsync(SaleReturn saleReturn, List<SaleReturnItem> valid)
     {
         if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
+        {
             return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
+        }
 
         if (valid.GroupBy(l => l.ItemId).Any(g => g.Count() > 1))
+        {
             return "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع البيع";
+        }
 
-        if (saleReturn.SaleInvoiceId == null) return null;
+        if (saleReturn.SaleInvoiceId == null)
+        {
+            return null;
+        }
 
         var invoice = await _db.SaleInvoices.Include(i => i.Items).AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == saleReturn.SaleInvoiceId.Value);
-        if (invoice == null) return "الفاتورة الأصلية غير موجودة";
-        if (invoice.CustomerId != saleReturn.CustomerId) return "الفاتورة الأصلية لا تخص هذا العميل";
+        if (invoice == null)
+        {
+            return "الفاتورة الأصلية غير موجودة";
+        }
+
+        if (invoice.CustomerId != saleReturn.CustomerId)
+        {
+            return "الفاتورة الأصلية لا تخص هذا العميل";
+        }
 
         var alreadyReturned = await _db.SaleReturnItems
             .Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturnId != saleReturn.Id
@@ -1673,13 +2172,19 @@ public sealed class InventoryService : IInventoryService
         foreach (var line in valid)
         {
             var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
-            if (invLine == null) return $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية";
+            if (invLine == null)
+            {
+                return $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية";
+            }
+
             decimal returnedCount = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Count);
             decimal returnedQty = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Quantity);
             decimal deliveredCount = deliveredItems.Where(d => d.ItemId == line.ItemId).Sum(d => d.Count);
             decimal deliveredQty = deliveredItems.Where(d => d.ItemId == line.ItemId).Sum(d => d.Quantity);
             if (line.Count + returnedCount > deliveredCount || line.Quantity + returnedQty > deliveredQty)
+            {
                 return $"الكمية المرتجعة أكبر من الكمية المسلّمة في أذونات التسليم للصنف رقم {line.ItemId}";
+            }
         }
         return null;
     }
@@ -1687,17 +2192,31 @@ public sealed class InventoryService : IInventoryService
     private async Task<string?> ValidatePurchaseReturnQuantitiesAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> valid)
     {
         if (valid.Any(l => l.Count < 0 || l.Quantity < 0))
+        {
             return "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع";
+        }
 
         if (valid.GroupBy(l => l.ItemId).Any(g => g.Count() > 1))
+        {
             return "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع الشراء";
+        }
 
-        if (purchaseReturn.PurchaseInvoiceId == null) return null;
+        if (purchaseReturn.PurchaseInvoiceId == null)
+        {
+            return null;
+        }
 
         var invoice = await _db.PurchaseInvoices.Include(i => i.Items).AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == purchaseReturn.PurchaseInvoiceId.Value);
-        if (invoice == null) return "الفاتورة الأصلية غير موجودة";
-        if (invoice.SupplierId != purchaseReturn.SupplierId) return "الفاتورة الأصلية لا تخص هذا المورد";
+        if (invoice == null)
+        {
+            return "الفاتورة الأصلية غير موجودة";
+        }
+
+        if (invoice.SupplierId != purchaseReturn.SupplierId)
+        {
+            return "الفاتورة الأصلية لا تخص هذا المورد";
+        }
 
         var alreadyReturned = await _db.PurchaseReturnItems
             .Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id
@@ -1707,11 +2226,17 @@ public sealed class InventoryService : IInventoryService
         foreach (var line in valid)
         {
             var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
-            if (invLine == null) return $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية";
+            if (invLine == null)
+            {
+                return $"الصنف رقم {line.ItemId} غير موجود في الفاتورة الأصلية";
+            }
+
             decimal returnedCount = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Count);
             decimal returnedQty = alreadyReturned.Where(r => r.ItemId == line.ItemId).Sum(r => r.Quantity);
             if (line.Count + returnedCount > invLine.Count || line.Quantity + returnedQty > invLine.Quantity)
+            {
                 return $"الكمية المرتجعة أكبر من الكمية المشتراة في الفاتورة الأصلية للصنف رقم {line.ItemId}";
+            }
         }
         return null;
     }
@@ -1728,7 +2253,11 @@ public sealed class InventoryService : IInventoryService
         foreach (var key in grouped.Keys)
         {
             var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == key);
-            if (item == null) return $"الصنف رقم {key} غير موجود";
+            if (item == null)
+            {
+                return $"الصنف رقم {key} غير موجود";
+            }
+
             items[key] = item;
         }
 
@@ -1741,7 +2270,10 @@ public sealed class InventoryService : IInventoryService
                 errors.Add($"الرصيد غير كافٍ للصنف «{item.Name}» — المتاح {item.CurrentCount} عدد / {item.CurrentQuantity} كمية");
             }
         }
-        if (errors.Count > 0) return string.Join(" — ", errors);
+        if (errors.Count > 0)
+        {
+            return string.Join(" — ", errors);
+        }
 
         foreach (var line in grouped.Values)
         {
@@ -1822,9 +2354,15 @@ public sealed class InventoryService : IInventoryService
         int max = 0;
         foreach (var value in values)
         {
-            if (value == null || value.Length <= seriesPrefix.Length) continue;
+            if (value == null || value.Length <= seriesPrefix.Length)
+            {
+                continue;
+            }
+
             if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+            {
                 max = parsed;
+            }
         }
         return max;
     }
@@ -1882,7 +2420,9 @@ public sealed class InventoryService : IInventoryService
     private void DetachAll()
     {
         foreach (var entry in _db.ChangeTracker.Entries().ToList())
+        {
             entry.State = EntityState.Detached;
+        }
     }
 
     /// <summary>
@@ -1892,7 +2432,11 @@ public sealed class InventoryService : IInventoryService
     /// </summary>
     private static async Task TryRollbackAsync(IDbContextTransaction? tx)
     {
-        if (tx == null) return;
+        if (tx == null)
+        {
+            return;
+        }
+
         try { await tx.RollbackAsync(); }
         catch (Exception) { }
     }
@@ -1904,8 +2448,10 @@ public sealed class InventoryService : IInventoryService
     private void RequireAmbientTransaction(string operation)
     {
         if (_db.Database.CurrentTransaction == null)
+        {
             throw new InvalidOperationException(
                 $"لا يمكن تنفيذ «{operation}» دون معاملة قائمة؛ ابدأ معاملة قبل الاستدعاء أو اترك القيمة الافتراضية لتفتح العملية معاملتها الخاصة");
+        }
     }
 
     private static void ResetInvoiceKeys(SaleInvoice invoice)
@@ -1966,15 +2512,31 @@ public sealed class InventoryService : IInventoryService
     public async Task<(bool Success, string? Error)> CreateTransferAsync(StockTransfer transfer, List<StockTransferItem> items, string? user, bool beginOwnTransaction = true)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
+        }
+
         var duplicateTransfer = valid.GroupBy(i => i.ItemId).FirstOrDefault(g => g.Count() > 1);
         if (duplicateTransfer != null)
+        {
             return (false, $"الصنف رقم {duplicateTransfer.Key} مكرر أكثر من مرة في التحويل");
+        }
+
         if (transfer.SourceWarehouseId == transfer.TargetWarehouseId)
+        {
             return (false, "لا يمكن التحويل من مستودع إلى نفسه");
+        }
+
         if (await IsPeriodClosedAsync(transfer.TransferDate))
+        {
             return (false, $"السنة المالية {transfer.TransferDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
-        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateTransferAsync));
+        }
+
+        if (!beginOwnTransaction)
+        {
+            RequireAmbientTransaction(nameof(CreateTransferAsync));
+        }
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
@@ -2007,7 +2569,10 @@ public sealed class InventoryService : IInventoryService
                     foreach (var layer in sourceLayers)
                     {
                         if (layer.WarehouseId == null)
+                        {
                             layer.WarehouseId = transfer.SourceWarehouseId;
+                        }
+
                         if (needQty > 0 && layer.RemainingQty > 0)
                         {
                             var take = Math.Min(needQty, layer.RemainingQty);
@@ -2024,7 +2589,10 @@ public sealed class InventoryService : IInventoryService
                             lineCountCost += take * layer.CountCost;
                             CreateTransferLayer(item.ItemId, transfer.TargetWarehouseId, 0, take, layer.UnitCost, layer.CountCost, layer.DateReceived);
                         }
-                        if (needQty <= 0 && needCount <= 0) break;
+                        if (needQty <= 0 && needCount <= 0)
+                        {
+                            break;
+                        }
                     }
 
                     if (needQty > 0 || needCount > 0)
@@ -2091,18 +2659,28 @@ public sealed class InventoryService : IInventoryService
 
                 _db.StockTransfers.Add(transfer);
                 await _db.SaveChangesAsync();
-                if (tx is not null) await tx.CommitAsync();
+                if (tx is not null)
+                {
+                    await tx.CommitAsync();
+                }
+
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException)
             {
                 await TryRollbackAsync(tx); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
-                if (!beginOwnTransaction) throw;
+                if (!beginOwnTransaction)
+                {
+                    throw;
+                }
             }
         }
         return (false, "تعذر حفظ التحويل بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -2138,7 +2716,10 @@ public sealed class InventoryService : IInventoryService
     private void CreateTransferLayer(int itemId, int? warehouseId, decimal addQty, decimal addCount,
         decimal unitCost, decimal countCost, DateTime dateReceived)
     {
-        if (addQty <= 0 && addCount <= 0) return;
+        if (addQty <= 0 && addCount <= 0)
+        {
+            return;
+        }
 
         var existing = _db.StockLayers.Local
             .FirstOrDefault(sl => sl.ItemId == itemId
@@ -2196,9 +2777,15 @@ public sealed class InventoryService : IInventoryService
         decimal quantityCost, decimal transferredQuantity, decimal countCost, decimal transferredCount)
     {
         if (transferredQuantity > 0)
+        {
             return decimal.Round(quantityCost / transferredQuantity, DecimalPrecision.CostScale);
+        }
+
         if (transferredCount > 0)
+        {
             return decimal.Round(countCost / transferredCount, DecimalPrecision.CostScale);
+        }
+
         return 0m;
     }
 

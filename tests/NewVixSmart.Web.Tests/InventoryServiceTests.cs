@@ -64,12 +64,18 @@ public sealed class InventoryServiceTests : IDisposable
 
     private static SaleInvoiceItem QtyLine(int itemId, decimal qty, decimal price) => new()
     {
-        ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = price
+        ItemId = itemId,
+        Quantity = qty,
+        Count = 0,
+        UnitPrice = price
     };
 
     private static SaleInvoiceItem CountLine(int itemId, decimal count, decimal price) => new()
     {
-        ItemId = itemId, Quantity = 0, Count = count, UnitPrice = price
+        ItemId = itemId,
+        Quantity = 0,
+        Count = count,
+        UnitPrice = price
     };
 
     private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty, decimal? count = null)
@@ -78,9 +84,17 @@ public sealed class InventoryServiceTests : IDisposable
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = count.HasValue ? 0 : qty, Count = count ?? 0 } };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, items, "test");
-        if (!ok) throw new InvalidOperationException(err);
+        if (!ok)
+        {
+            throw new InvalidOperationException(err);
+        }
+
         var (dok, derr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
-        if (!dok) throw new InvalidOperationException(derr);
+        if (!dok)
+        {
+            throw new InvalidOperationException(derr);
+        }
+
         return delivery.Id;
     }
 
@@ -195,13 +209,27 @@ public sealed class InventoryServiceTests : IDisposable
         // Quantity-primary valuation must price the quantity dimension only (H-2/M-1).
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 20, Count = 0, UnitCost = 40m, CountCost = 40m,
-            RemainingQty = 20, RemainingCount = 0, DateReceived = DateTime.Today.AddDays(-5), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 20,
+            Count = 0,
+            UnitCost = 40m,
+            CountCost = 40m,
+            RemainingQty = 20,
+            RemainingCount = 0,
+            DateReceived = DateTime.Today.AddDays(-5),
+            CreatedAt = DateTime.UtcNow
         });
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 0, Count = 20, UnitCost = 0m, CountCost = 80m,
-            RemainingQty = 0, RemainingCount = 20, DateReceived = DateTime.Today.AddDays(-5), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 0,
+            Count = 20,
+            UnitCost = 0m,
+            CountCost = 80m,
+            RemainingQty = 0,
+            RemainingCount = 20,
+            DateReceived = DateTime.Today.AddDays(-5),
+            CreatedAt = DateTime.UtcNow
         });
         db.GLAccounts.Add(new GLAccount { Code = "1200", Name = "المدينون", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true });
         db.GLAccounts.Add(new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true });

@@ -1,4 +1,4 @@
-﻿namespace NewVixSmart.Web.Api.Dtos;
+namespace NewVixSmart.Web.Api.Dtos;
 
 public record TokenRequest(string Username, string Password);
 

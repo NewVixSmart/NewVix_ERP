@@ -1,4 +1,4 @@
-﻿using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Accounting;
 
 namespace NewVixSmart.Web.Services;
 

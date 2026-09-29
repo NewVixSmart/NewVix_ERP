@@ -1,4 +1,4 @@
-﻿using NewVixSmart.Web.ViewModels.Core;
+using NewVixSmart.Web.ViewModels.Core;
 using NewVixSmart.Web.ViewModels.PrintStudio;
 
 namespace NewVixSmart.Web.Services;

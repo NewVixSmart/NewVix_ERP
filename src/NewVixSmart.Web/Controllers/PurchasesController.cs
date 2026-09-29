@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
-using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.ViewModels.Purchases;
 
 namespace NewVixSmart.Web.Controllers;
@@ -21,7 +21,7 @@ public class PurchasesController : Controller
         _inventory = inventory;
     }
 
-[RequirePerm("Purchases.View")]
+    [RequirePerm("Purchases.View")]
     public async Task<IActionResult> Index()
     {
         var query = _db.PurchaseInvoices.Include(p => p.Supplier).AsNoTracking().OrderByDescending(p => p.InvoiceDate);
@@ -48,7 +48,7 @@ public class PurchasesController : Controller
         return View(vm);
     }
 
-[HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("Purchases.Create")]
     public async Task<IActionResult> Create(PurchaseInvoiceViewModel vm)
     {
@@ -85,10 +85,18 @@ public class PurchasesController : Controller
             .AsNoTracking();
 
         PurchaseInvoice? invoice;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         invoice = await query.FirstOrDefaultAsync(p => p.PublicId == publicId);
 
-        if (invoice == null) return NotFound();
+        if (invoice == null)
+        {
+            return NotFound();
+        }
+
         return View(invoice);
     }
 
@@ -98,7 +106,11 @@ public class PurchasesController : Controller
         var invoice = await _db.PurchaseInvoices.Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(p => p.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
-        if (invoice == null) return NotFound();
+        if (invoice == null)
+        {
+            return NotFound();
+        }
+
         return View(invoice);
     }
 }

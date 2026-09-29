@@ -1,7 +1,7 @@
-namespace NewVixSmart.Web.Services;
 
 using System.Globalization;
 
+namespace NewVixSmart.Web.Services;
 /// <summary>
 /// The single source of truth for money in this system. The application is
 /// single-currency: every amount in every table, journal line, report and printed

@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -166,14 +166,20 @@ public class ExportCenterService : IExportCenterService
     public async Task<byte[]> ExportXlsxAsync(string key)
     {
         if (_xlsx.TryGetValue(key, out var factory))
+        {
             return await factory();
+        }
+
         return Array.Empty<byte>();
     }
 
     public async Task<byte[]> ExportCsvAsync(string key)
     {
         if (_csv.TryGetValue(key, out var factory))
+        {
             return await factory();
+        }
+
         return Array.Empty<byte>();
     }
 
@@ -1715,9 +1721,15 @@ public class ExportCenterService : IExportCenterService
     {
         value ??= string.Empty;
         if (value.Length > 0 && "=+-\t@\r\n".IndexOf(value[0]) >= 0)
+        {
             value = "'" + value;
+        }
+
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+        {
             return "\"" + value.Replace("\"", "\"\"") + "\"";
+        }
+
         return value;
     }
 
@@ -1735,13 +1747,18 @@ public class ExportCenterService : IExportCenterService
         var ws = wb.Worksheets.Add(sheetName);
         ws.Range(1, 1, 1, headers.Count).Style.Font.Bold = true;
         for (int c = 0; c < headers.Count; c++)
+        {
             WriteCell(ws, 1, c + 1, headers[c]);
+        }
 
         int row = 2;
         foreach (var r in rows.Take(MaxExportRows))
         {
             for (int c = 0; c < r.Length; c++)
+            {
                 WriteCell(ws, row, c + 1, r[c]);
+            }
+
             row++;
         }
         ws.Columns().AdjustToContents();

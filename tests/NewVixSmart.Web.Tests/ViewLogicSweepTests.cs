@@ -205,7 +205,10 @@ public sealed class ViewLogicSweepTests
     {
         var note = new DeliveryOrder { Status = DeliveryOrderStatus.PartiallyIssued };
         foreach (var (itemId, quantity, count) in lines)
+        {
             note.Items.Add(new DeliveryOrderItem { ItemId = itemId, Quantity = quantity, Count = count });
+        }
+
         return note;
     }
 
@@ -214,7 +217,10 @@ public sealed class ViewLogicSweepTests
     {
         var issue = new DeliveryIssue { Status = status };
         foreach (var (itemId, quantity, count) in lines)
+        {
             issue.Items.Add(new DeliveryIssueItem { ItemId = itemId, Quantity = quantity, Count = count });
+        }
+
         note.Issues.Add(issue);
     }
 
@@ -373,10 +379,14 @@ public sealed class ViewLogicSweepTests
     {
         var byQuantity = new SalesOrderItem
         {
-            Quantity = 10m, Count = 4m,
-            DeliveredQty = 6m, DeliveredCount = 2m,
-            InvoicedQty = 3m, InvoicedCount = 1m,
-            ReservedQty = 2m, ReservedCount = 1m
+            Quantity = 10m,
+            Count = 4m,
+            DeliveredQty = 6m,
+            DeliveredCount = 2m,
+            InvoicedQty = 3m,
+            InvoicedCount = 1m,
+            ReservedQty = 2m,
+            ReservedCount = 1m
         };
         Assert.Equal(10m, OrderProgress.OrderedForDisplay(byQuantity));
         Assert.Equal(6m, OrderProgress.DeliveredForDisplay(byQuantity));
@@ -385,10 +395,14 @@ public sealed class ViewLogicSweepTests
 
         var byCount = new SalesOrderItem
         {
-            Quantity = 0m, Count = 10m,
-            DeliveredQty = 6m, DeliveredCount = 2m,
-            InvoicedQty = 3m, InvoicedCount = 1m,
-            ReservedQty = 2m, ReservedCount = 1m
+            Quantity = 0m,
+            Count = 10m,
+            DeliveredQty = 6m,
+            DeliveredCount = 2m,
+            InvoicedQty = 3m,
+            InvoicedCount = 1m,
+            ReservedQty = 2m,
+            ReservedCount = 1m
         };
         Assert.Equal(10m, OrderProgress.OrderedForDisplay(byCount));
         Assert.Equal(2m, OrderProgress.DeliveredForDisplay(byCount));
@@ -452,7 +466,7 @@ public sealed class ViewLogicSweepTests
     public void HasReceived_IsTrueWhenAnyLineHasComeInOnEitherAxis()
     {
         Assert.False(OrderProgress.HasReceived(new PurchaseOrder()));
-        Assert.False(OrderProgress.HasReceived(Order(new (0m, 0m), (0m, 0m))));
+        Assert.False(OrderProgress.HasReceived(Order(new(0m, 0m), (0m, 0m))));
 
         Assert.True(OrderProgress.HasReceived(Order((0m, 3m), (0m, 0m))));
         Assert.True(OrderProgress.HasReceived(Order((0m, 0m), (2m, 0m))));
@@ -462,7 +476,10 @@ public sealed class ViewLogicSweepTests
         {
             var order = new PurchaseOrder();
             foreach (var (qty, count) in lines)
+            {
                 order.Items.Add(new PurchaseOrderItem { Quantity = qty, ReceivedQty = qty, ReceivedCount = count });
+            }
+
             return order;
         }
     }
@@ -630,11 +647,20 @@ public sealed class ViewLogicSweepTests
     {
         var offenders = new List<string>();
         if (GuardRegex.Tolerance.IsMatch(source))
+        {
             offenders.Add("عتبة تقريب مكتوبة مباشرةً (0.005 أو 0.00005)");
+        }
+
         if (GuardRegex.ReconstructsIssuedTotals.IsMatch(source))
+        {
             offenders.Add("إعادة بناء مجموع الصادر لكل صنف داخل الوحدة");
+        }
+
         if (!source.Contains("DeliveryOpenLines.", StringComparison.Ordinal))
+        {
             offenders.Add("لا استدعاء لقاعدة DeliveryOpenLines المشتركة");
+        }
+
         return offenders;
     }
 
@@ -716,11 +742,17 @@ public sealed class ViewLogicSweepTests
         {
             views++;
             var markup = exemptScriptBodies ? StripScriptBodies(File.ReadAllText(view)) : File.ReadAllText(view);
-            if (!offender(markup)) continue;
+            if (!offender(markup))
+            {
+                continue;
+            }
 
             foreach (var (number, line) in markup.Split('\n').Select((l, i) => (i + 1, l)))
             {
-                if (offender(line)) hits.Add($"{Relative(view)}:{number}: {line.Trim()}");
+                if (offender(line))
+                {
+                    hits.Add($"{Relative(view)}:{number}: {line.Trim()}");
+                }
             }
         }
 
@@ -749,7 +781,10 @@ public sealed class ViewLogicSweepTests
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web");
-            if (Directory.Exists(candidate)) return candidate;
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
         }
 
         throw new DirectoryNotFoundException(

@@ -97,7 +97,11 @@ public static class PermissionCatalog
     public static string ModuleDisplayName(string permissionKey)
     {
         var dot = permissionKey.IndexOf('.');
-        if (dot <= 0) return permissionKey;
+        if (dot <= 0)
+        {
+            return permissionKey;
+        }
+
         var module = permissionKey[..dot];
         var m = Modules.FirstOrDefault(x => x.Key == module);
         return m?.TitleAr ?? module;

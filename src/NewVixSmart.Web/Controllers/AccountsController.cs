@@ -26,9 +26,15 @@ public class AccountsController : Controller
     {
         var query = _db.GLAccounts.AsNoTracking().AsQueryable();
         if (type.HasValue)
+        {
             query = query.Where(a => a.Type == type.Value);
+        }
+
         if (active.HasValue)
+        {
             query = query.Where(a => a.IsActive == active.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -97,7 +103,11 @@ public class AccountsController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var account = await _db.GLAccounts.FindAsync(id);
-        if (account == null) return NotFound();
+        if (account == null)
+        {
+            return NotFound();
+        }
+
         ViewBag.ParentList = new SelectList(
             _db.GLAccounts.AsNoTracking().Where(a => a.IsActive && a.Id != id).OrderBy(a => a.Code).Select(a => new { a.Id, Display = a.Code + " — " + a.Name }).ToList(),
             "Id", "Display");
@@ -111,7 +121,10 @@ public class AccountsController : Controller
     public async Task<IActionResult> Edit(GLAccount model)
     {
         var account = await _db.GLAccounts.FindAsync(model.Id);
-        if (account == null) return NotFound();
+        if (account == null)
+        {
+            return NotFound();
+        }
 
         var result = await _accounts.ApplyEditAsync(account, model);
         if (!result.Ok)
@@ -130,7 +143,10 @@ public class AccountsController : Controller
     public async Task<IActionResult> Deactivate(int id)
     {
         var account = await _db.GLAccounts.FindAsync(id);
-        if (account == null) return NotFound();
+        if (account == null)
+        {
+            return NotFound();
+        }
 
         if (_accounts.IsSystemAccount(account.Code))
         {
@@ -149,15 +165,23 @@ public class AccountsController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var account = await _db.GLAccounts.FindAsync(id);
-        if (account == null) return NotFound();
+        if (account == null)
+        {
+            return NotFound();
+        }
 
         var info = await _accounts.GetDeleteInfoAsync(account);
         if (!info.CanDelete)
         {
             if (info.IsSystem)
+            {
                 TempData["Error"] = "لا يمكن حذف حساب نظامي مُعرَّف بالبذرة";
+            }
             else
+            {
                 TempData["Error"] = "لا يمكن حذف هذا الحساب لأنه له قيود مرحلة؛ يمكنك تعطيله بدلاً من ذلك";
+            }
+
             return RedirectToAction(nameof(Index));
         }
 

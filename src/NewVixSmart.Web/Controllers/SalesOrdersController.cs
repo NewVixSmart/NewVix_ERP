@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -100,7 +100,11 @@ public class SalesOrdersController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var order = await _orders.GetOrderAsync(id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         if (order.Status != SalesOrderStatus.Draft)
         {
             TempData["Error"] = "لا يمكن تعديل أمر بيع غير مسودة";
@@ -142,16 +146,27 @@ public class SalesOrdersController : Controller
     [RequirePerm("SalesOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var targetOrderId = await _db.SalesOrders.AsNoTracking()
             .Where(o => o.PublicId == publicId)
             .Select(o => (int?)o.Id)
             .FirstOrDefaultAsync();
-        if (targetOrderId == null) return NotFound();
+        if (targetOrderId == null)
+        {
+            return NotFound();
+        }
+
         var orderId = targetOrderId.Value;
 
         var order = await _orders.GetOrderAsync(orderId);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
 
         ViewBag.Reservation = await _reservations.GetForOrderAsync(order.Id);
         ViewBag.Invoices = await _db.SaleInvoices.AsNoTracking()
@@ -165,7 +180,11 @@ public class SalesOrdersController : Controller
     public async Task<IActionResult> Print(int id)
     {
         var order = await _orders.GetOrderAsync(id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         return View(order);
     }
 
@@ -174,8 +193,15 @@ public class SalesOrdersController : Controller
     public async Task<IActionResult> Approve(int id)
     {
         var (ok, error) = await _orders.ApproveOrderAsync(id);
-        if (ok) TempData["Success"] = "تم اعتماد أمر البيع";
-        else TempData["Error"] = error;
+        if (ok)
+        {
+            TempData["Success"] = "تم اعتماد أمر البيع";
+        }
+        else
+        {
+            TempData["Error"] = error;
+        }
+
         return await RedirectToDetailsAsync(id);
     }
 
@@ -184,8 +210,15 @@ public class SalesOrdersController : Controller
     public async Task<IActionResult> Cancel(int id)
     {
         var (ok, error) = await _orders.CancelOrderAsync(id);
-        if (ok) TempData["Success"] = "تم إلغاء أمر البيع";
-        else TempData["Error"] = error;
+        if (ok)
+        {
+            TempData["Success"] = "تم إلغاء أمر البيع";
+        }
+        else
+        {
+            TempData["Error"] = error;
+        }
+
         return await RedirectToDetailsAsync(id);
     }
 
@@ -213,7 +246,11 @@ public class SalesOrdersController : Controller
             .Where(o => o.Id == id)
             .Select(o => (Guid?)o.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 

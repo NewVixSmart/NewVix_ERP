@@ -15,7 +15,9 @@ public static class ReturnValuation
     public static decimal ReceivableBase(decimal returnedGross, decimal invoiceGross, decimal invoiceNet)
     {
         if (returnedGross <= 0m || invoiceGross <= 0m || invoiceNet < 0m)
+        {
             return returnedGross;
+        }
 
         return decimal.Round(returnedGross * (invoiceNet / invoiceGross), 2);
     }
@@ -39,12 +41,17 @@ public readonly record struct ReturnMirror(decimal ContraValue, decimal Tax, dec
         decimal invoiceNet, decimal invoiceTax)
     {
         if (returnedGross <= 0m || invoiceGross <= 0m || invoiceNet < 0m)
+        {
             return ForGross(returnedGross);
+        }
 
         var fraction = returnedGross / invoiceGross;
         var net = NonNegative(decimal.Round(invoiceNet * fraction, 2));
         var tax = NonNegative(decimal.Round(invoiceTax * fraction, 2));
-        if (tax < 0.005m) tax = 0m;
+        if (tax < 0.005m)
+        {
+            tax = 0m;
+        }
 
         var contra = decimal.Round(net - tax, 2);
         if (contra < 0m)

@@ -91,7 +91,11 @@ public class PurchaseOrdersController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var order = await _db.PurchaseOrders.Include(o => o.Items).AsNoTracking().FirstOrDefaultAsync(o => o.Id == id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         if (order.Status != PurchaseOrderStatus.Draft)
         {
             TempData["Error"] = "لا يمكن تعديل أمر شراء غير مسودة";
@@ -143,16 +147,28 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var targetOrderId = await _db.PurchaseOrders.AsNoTracking()
             .Where(o => o.PublicId == publicId)
             .Select(o => (int?)o.Id)
             .FirstOrDefaultAsync();
-        if (targetOrderId == null) return NotFound();
+        if (targetOrderId == null)
+        {
+            return NotFound();
+        }
+
         var orderId = targetOrderId.Value;
 
         var order = await _procurement.GetOrderAsync(orderId);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         return View(order);
     }
 
@@ -160,7 +176,11 @@ public class PurchaseOrdersController : Controller
     public async Task<IActionResult> Print(int id)
     {
         var order = await _procurement.GetOrderAsync(id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         return View(order);
     }
 
@@ -168,7 +188,11 @@ public class PurchaseOrdersController : Controller
     public async Task<IActionResult> Pdf(int id)
     {
         var order = await _procurement.GetOrderAsync(id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         var bytes = PrintPdfBuilder.RenderPurchaseOrderPdf(order);
         return File(bytes, "application/pdf", $"purchase-order-{order.OrderNumber}.pdf");
     }
@@ -180,8 +204,14 @@ public class PurchaseOrdersController : Controller
         try
         {
             var (ok, error) = await _procurement.ApproveOrderAsync(id);
-            if (ok) TempData["Success"] = "تم اعتماد أمر الشراء";
-            else TempData["Error"] = error;
+            if (ok)
+            {
+                TempData["Success"] = "تم اعتماد أمر الشراء";
+            }
+            else
+            {
+                TempData["Error"] = error;
+            }
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -198,8 +228,14 @@ public class PurchaseOrdersController : Controller
         try
         {
             var (ok, error) = await _procurement.CancelOrderAsync(id);
-            if (ok) TempData["Success"] = "تم إلغاء أمر الشراء";
-            else TempData["Error"] = error;
+            if (ok)
+            {
+                TempData["Success"] = "تم إلغاء أمر الشراء";
+            }
+            else
+            {
+                TempData["Error"] = error;
+            }
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -213,7 +249,11 @@ public class PurchaseOrdersController : Controller
     public async Task<IActionResult> Receive(int id)
     {
         var order = await _procurement.GetOrderAsync(id);
-        if (order == null) return NotFound();
+        if (order == null)
+        {
+            return NotFound();
+        }
+
         if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
         {
             TempData["Error"] = "لا يمكن الاستلام على هذا الأمر";
@@ -229,8 +269,14 @@ public class PurchaseOrdersController : Controller
         try
         {
             var (ok, error) = await _procurement.ReceiveOrderLineAsync(id, orderItemId, receiveQty, receiveCount);
-            if (ok) TempData["Success"] = "تم تسجيل الاستلام";
-            else TempData["Error"] = error;
+            if (ok)
+            {
+                TempData["Success"] = "تم تسجيل الاستلام";
+            }
+            else
+            {
+                TempData["Error"] = error;
+            }
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -273,7 +319,11 @@ public class PurchaseOrdersController : Controller
             .Where(o => o.Id == id)
             .Select(o => (Guid?)o.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 }

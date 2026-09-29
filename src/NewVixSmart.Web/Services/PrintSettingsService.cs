@@ -1,12 +1,12 @@
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.ViewModels.Core;
-using System.Globalization;
-using System.Text;
-using System.Text.Json;
 
 namespace NewVixSmart.Web.Services;
 
@@ -45,7 +45,9 @@ public class PrintSettingsService : IPrintSettingsService
     public async Task<PrintSettingsViewModel> LoadAsync()
     {
         if (_cache.TryGetValue(CacheKey, out PrintSettingsViewModel? cached) && cached != null)
+        {
             return cached;
+        }
 
         var rows = await _db.SystemSettings.AsNoTracking().ToListAsync();
         var vm = new PrintSettingsViewModel
@@ -132,7 +134,11 @@ public class PrintSettingsService : IPrintSettingsService
         var legacyKeys = await _db.SystemSettings
             .Where(s => s.Key.StartsWith($"Print.{slug}."))
             .ToListAsync();
-        if (legacyKeys.Count > 0) _db.SystemSettings.RemoveRange(legacyKeys);
+        if (legacyKeys.Count > 0)
+        {
+            _db.SystemSettings.RemoveRange(legacyKeys);
+        }
+
         await _db.SaveChangesAsync();
         Invalidate();
     }
@@ -190,7 +196,11 @@ public class PrintSettingsService : IPrintSettingsService
 
     public static PrintLayoutOptions? DecodeState(string? state)
     {
-        if (string.IsNullOrWhiteSpace(state)) return null;
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return null;
+        }
+
         try
         {
             var bytes = WebEncoders.Base64UrlDecode(state);
@@ -206,7 +216,9 @@ public class PrintSettingsService : IPrintSettingsService
     private async Task<Dictionary<PrintGroup, PrintLayoutOptions>> LoadStudioAsync()
     {
         if (_cache.TryGetValue(StudioCacheKey, out Dictionary<PrintGroup, PrintLayoutOptions>? cached) && cached != null)
+        {
             return cached;
+        }
 
         var rows = await _db.SystemSettings.AsNoTracking()
             .Where(s => s.Key.StartsWith("PrintStudio."))
@@ -214,7 +226,9 @@ public class PrintSettingsService : IPrintSettingsService
 
         var dict = new Dictionary<PrintGroup, PrintLayoutOptions>();
         foreach (var g in Enum.GetValues<PrintGroup>())
+        {
             dict[g] = BuildLayout(rows, g);
+        }
 
         _cache.Set(StudioCacheKey, dict, new MemoryCacheEntryOptions
         {
@@ -392,7 +406,10 @@ public class PrintSettingsService : IPrintSettingsService
     private static TEnum AsEnum<TEnum>(string? value, TEnum fallback) where TEnum : struct, Enum
     {
         if (value != null && Enum.TryParse<TEnum>(value, true, out var parsed) && Enum.IsDefined(parsed))
+        {
             return parsed;
+        }
+
         return fallback;
     }
 
@@ -414,11 +431,25 @@ public class PrintSettingsService : IPrintSettingsService
 
     private static string AsHex(string? value, string fallback)
     {
-        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
         var v = value.Trim().TrimStart('#');
-        if (v.Length != 6) return fallback;
+        if (v.Length != 6)
+        {
+            return fallback;
+        }
+
         foreach (var c in v)
-            if (!Uri.IsHexDigit(c)) return fallback;
+        {
+            if (!Uri.IsHexDigit(c))
+            {
+                return fallback;
+            }
+        }
+
         return $"#{v.ToLowerInvariant()}";
     }
 

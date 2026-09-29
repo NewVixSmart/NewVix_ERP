@@ -65,22 +65,48 @@ public sealed class A11yGateManifestTests
     /// </summary>
     private static bool ReturnsView(Type returnType)
     {
-        if (returnType == typeof(void)) return false;
-        if (typeof(ViewResult).IsAssignableFrom(returnType)) return true;
-        if (typeof(IActionResult).IsAssignableFrom(returnType)) return true;
+        if (returnType == typeof(void))
+        {
+            return false;
+        }
+
+        if (typeof(ViewResult).IsAssignableFrom(returnType))
+        {
+            return true;
+        }
+
+        if (typeof(IActionResult).IsAssignableFrom(returnType))
+        {
+            return true;
+        }
+
         if (returnType.IsGenericType)
         {
             var arg = returnType.GetGenericArguments()[0];
-            if (arg == typeof(void)) return false;
-            if (typeof(ViewResult).IsAssignableFrom(arg) || typeof(IActionResult).IsAssignableFrom(arg)) return true;
+            if (arg == typeof(void))
+            {
+                return false;
+            }
+
+            if (typeof(ViewResult).IsAssignableFrom(arg) || typeof(IActionResult).IsAssignableFrom(arg))
+            {
+                return true;
+            }
         }
         return false;
     }
 
     private static bool IsGetAction(MethodInfo method)
     {
-        if (method.GetCustomAttribute<NonActionAttribute>(inherit: true) is not null) return false;
-        if (method.GetCustomAttributes<HttpPostAttribute>(inherit: true).Any()) return false;
+        if (method.GetCustomAttribute<NonActionAttribute>(inherit: true) is not null)
+        {
+            return false;
+        }
+
+        if (method.GetCustomAttributes<HttpPostAttribute>(inherit: true).Any())
+        {
+            return false;
+        }
 
         var verb = method.GetCustomAttributes()
             .FirstOrDefault(a => a.GetType().Name.StartsWith("Http", StringComparison.Ordinal)
@@ -106,7 +132,9 @@ public sealed class A11yGateManifestTests
             text, "ROUTE_MANIFEST\\s*=\\s*\\[(?<body>[\\s\\S]*?)\\];");
 
         if (!block.Success)
+        {
             throw new InvalidOperationException("ROUTE_MANIFEST array not found in e2e/a11y-gate.cjs");
+        }
 
         return System.Text.RegularExpressions.Regex.Matches(block.Groups["body"].Value, "'(?<r>/[^']*)'")
             .Select(m => m.Groups["r"].Value)
@@ -117,7 +145,10 @@ public sealed class A11yGateManifestTests
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "NewVixSmart.slnx")))
+        {
             dir = dir.Parent;
+        }
+
         Assert.NotNull(dir);
         return dir!.FullName;
     }
@@ -143,10 +174,17 @@ public sealed class A11yGateManifestTests
                          .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                          .Where(m => IsGetAction(m) && ReturnsView(m.ReturnType)))
             {
-                if (Excluded.Contains($"{name}.{action.Name}") || IsFileReturning(action.Name)) continue;
+                if (Excluded.Contains($"{name}.{action.Name}") || IsFileReturning(action.Name))
+                {
+                    continue;
+                }
 
                 var route = action.Name == "Index" ? $"/{name}" : $"/{name}/{action.Name}";
-                if (Aliases.TryGetValue(route, out var alias)) route = alias;
+                if (Aliases.TryGetValue(route, out var alias))
+                {
+                    route = alias;
+                }
+
                 if (IsCovered(route, manifest)) { covered.Add(route); continue; }
                 missing.Add(route);
             }

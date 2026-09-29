@@ -13,9 +13,13 @@ public static class CurrentBranchExtensions
     public static void SetCurrentBranchId(this ISession session, int? branchId)
     {
         if (branchId.HasValue && branchId > 0)
+        {
             session.SetString(Key, branchId.Value.ToString());
+        }
         else
+        {
             session.Remove(Key);
+        }
     }
 
     public static int? GetCurrentBranchId(this IHttpContextAccessor http) =>
@@ -25,6 +29,8 @@ public static class CurrentBranchExtensions
     {
         var session = http.HttpContext?.Features.Get<ISessionFeature>()?.Session;
         if (session != null)
+        {
             session.SetCurrentBranchId(branchId);
+        }
     }
 }

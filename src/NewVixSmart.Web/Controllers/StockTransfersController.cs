@@ -20,7 +20,7 @@ public class StockTransfersController : Controller
         _inventory = inventory;
     }
 
-[RequirePerm("StockTransfers.View")]
+    [RequirePerm("StockTransfers.View")]
     public async Task<IActionResult> Index()
     {
         var list = await _inventory.GetTransfersAsync();
@@ -71,7 +71,11 @@ public class StockTransfersController : Controller
 .Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id);
-        if (transfer == null) return NotFound();
+        if (transfer == null)
+        {
+            return NotFound();
+        }
+
         return View(transfer);
     }
 
@@ -85,7 +89,11 @@ public class StockTransfersController : Controller
 .Include(t => t.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id);
-        if (transfer == null) return NotFound();
+        if (transfer == null)
+        {
+            return NotFound();
+        }
+
         var bytes = PrintPdfBuilder.RenderStockTransferPdf(transfer);
         return File(bytes, "application/pdf", $"stock-transfer-{transfer.TransferNumber}.pdf");
     }

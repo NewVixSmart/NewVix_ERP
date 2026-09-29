@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
-using NewVixSmart.Web.Extensions;
 
 namespace NewVixSmart.Web.Controllers;
 
@@ -23,7 +23,7 @@ public class PurchaseReturnsController : Controller
         _permissions = permissions;
     }
 
-[RequirePerm("PurchaseReturns.View")]
+    [RequirePerm("PurchaseReturns.View")]
     public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
         var query = _db.PurchaseReturns
@@ -47,21 +47,21 @@ public class PurchaseReturnsController : Controller
         return View(list);
     }
 
-[RequirePerm("PurchaseReturns.Create")]
-public async Task<IActionResult> Create()
+    [RequirePerm("PurchaseReturns.Create")]
+    public async Task<IActionResult> Create()
     {
         await PopulateDropdowns();
         return View();
     }
 
-[HttpPost]
+    [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("PurchaseReturns.Create")]
     public async Task<IActionResult> Create(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items)
     {
         items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<PurchaseReturnItem>();
         ModelState.IgnoreEmptyLineItemRows();
-if (items.Count == 0)
+        if (items.Count == 0)
         {
             ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية");
         }
@@ -74,7 +74,7 @@ if (items.Count == 0)
             {
                 ModelState.AddModelError("PurchaseInvoiceId", "الفاتورة الأصلية غير موجودة");
             }
-else if (invoice.SupplierId != purchaseReturn.SupplierId)
+            else if (invoice.SupplierId != purchaseReturn.SupplierId)
             {
                 ModelState.AddModelError("PurchaseInvoiceId", "الفاتورة الأصلية لا تخص هذا المورد");
             }
@@ -99,7 +99,7 @@ else if (invoice.SupplierId != purchaseReturn.SupplierId)
             }
         }
 
-if (ModelState.IsValid)
+        if (ModelState.IsValid)
         {
             var submit = Request.Form["submitAction"].ToString();
             if (submit == "post" && !await _permissions.HasAsync("PurchaseReturns.Post"))
@@ -108,24 +108,24 @@ if (ModelState.IsValid)
             }
             else
             {
-            var (ok, error, returnId) = await _inventory.CreatePurchaseReturnDraftAsync(purchaseReturn, items, User.Identity?.Name);
-            if (ok)
-            {
-                if (submit == "post")
+                var (ok, error, returnId) = await _inventory.CreatePurchaseReturnDraftAsync(purchaseReturn, items, User.Identity?.Name);
+                if (ok)
                 {
-                    var (posted, postError) = await _inventory.PostPurchaseReturnAsync(returnId, User.Identity?.Name);
-                    if (posted)
+                    if (submit == "post")
                     {
-                        TempData["Success"] = "تم ترحيل مرتجع الشراء وخصم الكمية من المخزون";
-                        return RedirectToAction(nameof(Index));
+                        var (posted, postError) = await _inventory.PostPurchaseReturnAsync(returnId, User.Identity?.Name);
+                        if (posted)
+                        {
+                            TempData["Success"] = "تم ترحيل مرتجع الشراء وخصم الكمية من المخزون";
+                            return RedirectToAction(nameof(Index));
+                        }
+                        TempData["Error"] = postError ?? "تعذر ترحيل مرتجع الشراء";
+                        return await RedirectToDetailsAsync(returnId);
                     }
-                    TempData["Error"] = postError ?? "تعذر ترحيل مرتجع الشراء";
+                    TempData["Success"] = "تم حفظ مرتجع الشراء كمسودة";
                     return await RedirectToDetailsAsync(returnId);
                 }
-                TempData["Success"] = "تم حفظ مرتجع الشراء كمسودة";
-                return await RedirectToDetailsAsync(returnId);
-            }
-            ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع الشراء");
+                ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع الشراء");
             }
         }
 
@@ -163,7 +163,11 @@ if (ModelState.IsValid)
             .Where(r => r.Id == id)
             .Select(r => (Guid?)r.PublicId)
             .FirstOrDefaultAsync();
-        if (publicId == null) return RedirectToAction(nameof(Index));
+        if (publicId == null)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
@@ -178,10 +182,18 @@ if (ModelState.IsValid)
             .AsNoTracking();
 
         PurchaseReturn? purchaseReturn;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         purchaseReturn = await query.FirstOrDefaultAsync(r => r.PublicId == publicId);
 
-        if (purchaseReturn == null) return NotFound();
+        if (purchaseReturn == null)
+        {
+            return NotFound();
+        }
+
         return View(purchaseReturn);
     }
 
@@ -195,7 +207,11 @@ if (ModelState.IsValid)
 .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (purchaseReturn == null) return NotFound();
+        if (purchaseReturn == null)
+        {
+            return NotFound();
+        }
+
         return View(purchaseReturn);
     }
 
@@ -209,16 +225,20 @@ if (ModelState.IsValid)
 .Include(r => r.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (purchaseReturn == null) return NotFound();
+        if (purchaseReturn == null)
+        {
+            return NotFound();
+        }
+
         var bytes = PrintPdfBuilder.RenderPurchaseReturnPdf(purchaseReturn);
         return File(bytes, "application/pdf", $"purchase-return-{purchaseReturn.ReturnNumber}.pdf");
     }
 
-private async Task PopulateDropdowns()
+    private async Task PopulateDropdowns()
     {
         ViewBag.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         ViewBag.Items = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();
-ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
+        ViewBag.PurchaseInvoices = new SelectList(await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(s => s.Id).Take(200).ToListAsync(), "Id", "InvoiceNumber");
         var prefix = $"PRTN-{DateTime.Now:yyyyMMdd}-";
         var taken = await _db.PurchaseReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;

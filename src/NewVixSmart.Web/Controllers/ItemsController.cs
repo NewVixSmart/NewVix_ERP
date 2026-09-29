@@ -22,7 +22,9 @@ public class ItemsController : Controller
         var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType).AsNoTracking().AsQueryable();
 
         if (categoryId.HasValue)
+        {
             query = query.Where(i => i.CategoryId == categoryId.Value);
+        }
 
         ViewBag.CategoryId = categoryId;
 
@@ -67,7 +69,9 @@ public class ItemsController : Controller
         }
 
         if (!string.IsNullOrWhiteSpace(item.Code) && await _db.Items.AnyAsync(i => i.Code == item.Code))
+        {
             ModelState.AddModelError(nameof(Item.Code), "الكود مستخدم بالفعل لصنف آخر");
+        }
 
         if (ModelState.IsValid)
         {
@@ -80,11 +84,17 @@ public class ItemsController : Controller
                 item.ReservedCount = 0;
                 item.BranchId = null;
                 if (string.IsNullOrWhiteSpace(item.Barcode))
+                {
                     item.Barcode = string.IsNullOrWhiteSpace(item.Code) ? $"ITM{item.Id:D8}" : item.Code;
+                }
+
                 _db.Items.Add(item);
                 await _db.SaveChangesAsync();
                 if (item.Barcode!.StartsWith("ITM"))
+                {
                     item.Barcode = $"ITM{item.Id:D8}";
+                }
+
                 await _db.SaveChangesAsync();
                 TempData["Success"] = "تم إضافة الصنف بنجاح";
                 return RedirectToAction(nameof(Index));
@@ -102,7 +112,11 @@ public class ItemsController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var item = await _db.Items.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
-        if (item == null) return NotFound();
+        if (item == null)
+        {
+            return NotFound();
+        }
+
         await PopulateDropdowns();
         return View(item);
     }
@@ -112,11 +126,18 @@ public class ItemsController : Controller
     [RequirePerm("Items.Edit")]
     public async Task<IActionResult> Edit(int id, Item item)
     {
-        if (id != item.Id) return NotFound();
+        if (id != item.Id)
+        {
+            return NotFound();
+        }
+
         if (ModelState.IsValid)
         {
             var existing = await _db.Items.FirstOrDefaultAsync(i => i.Id == id);
-            if (existing == null) return NotFound();
+            if (existing == null)
+            {
+                return NotFound();
+            }
 
             existing.Code = item.Code;
             existing.Name = item.Name;
@@ -137,14 +158,19 @@ public class ItemsController : Controller
             existing.IsActive = item.IsActive;
 
             if (!string.IsNullOrWhiteSpace(existing.Code) && await _db.Items.AnyAsync(i => i.Id != id && i.Code == existing.Code))
+            {
                 ModelState.AddModelError(nameof(Item.Code), "الكود مستخدم بالفعل لصنف آخر");
+            }
 
             if (ModelState.IsValid)
             {
                 try
                 {
                     if (item.RowVersion != null)
+                    {
                         _db.Entry(existing).Property(i => i.RowVersion).OriginalValue = item.RowVersion;
+                    }
+
                     await _db.SaveChangesAsync();
                     TempData["Success"] = "تم تعديل الصنف بنجاح";
                     return RedirectToAction(nameof(Index));
@@ -170,7 +196,10 @@ public class ItemsController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var item = await _db.Items.FindAsync(id);
-        if (item == null) return NotFound();
+        if (item == null)
+        {
+            return NotFound();
+        }
 
         item.IsActive = false;
         await _db.SaveChangesAsync();
@@ -184,10 +213,18 @@ public class ItemsController : Controller
         var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType);
 
         Item? item;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         item = await query.FirstOrDefaultAsync(i => i.PublicId == publicId);
 
-        if (item == null) return NotFound();
+        if (item == null)
+        {
+            return NotFound();
+        }
+
         return View(item);
     }
 
@@ -195,7 +232,11 @@ public class ItemsController : Controller
     public async Task<IActionResult> PrintLabel(int id)
     {
         var item = await _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType).FirstOrDefaultAsync(i => i.Id == id);
-        if (item == null) return NotFound();
+        if (item == null)
+        {
+            return NotFound();
+        }
+
         if (string.IsNullOrWhiteSpace(item.Barcode))
         {
             item.Barcode = string.IsNullOrWhiteSpace(item.Code) ? $"ITM{item.Id:D8}" : item.Code;

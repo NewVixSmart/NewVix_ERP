@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -468,8 +468,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         var (itemId, custId) = await SeedAsync(db);
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 100, Count = 0, UnitCost = 60m, RemainingQty = 100, RemainingCount = 0,
-            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 100,
+            Count = 0,
+            UnitCost = 60m,
+            RemainingQty = 100,
+            RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1),
+            CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
 
@@ -761,8 +767,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         var (itemId, custId) = await SeedAsync(db);
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 100, Count = 0, UnitCost = 60m, RemainingQty = 100, RemainingCount = 0,
-            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 100,
+            Count = 0,
+            UnitCost = 60m,
+            RemainingQty = 100,
+            RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1),
+            CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
 
@@ -834,8 +846,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         var (itemId, custId) = await SeedAsync(db);
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 100, Count = 0, UnitCost = 60m, RemainingQty = 100, RemainingCount = 0,
-            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 100,
+            Count = 0,
+            UnitCost = 60m,
+            RemainingQty = 100,
+            RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1),
+            CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
 
@@ -862,8 +880,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
             new[] { issue!.Id },
             new SaleInvoice
             {
-                CustomerId = custId, InvoiceDate = new DateTime(2026, 5, 4),
-                Tax = 0m, Discount = 2000m
+                CustomerId = custId,
+                InvoiceDate = new DateTime(2026, 5, 4),
+                Tax = 0m,
+                Discount = 2000m
             },
             "tester");
 
@@ -1080,7 +1100,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         var (itemId, custId) = await SeedAsync(db, qty: 40m);
         var reservations = new StockReservationsService(db);
         var inventory = new InventoryService(db, null, null, reservations);
-        var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 40m);        Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
+        var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 40m); Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
 
         var item = await db.Items.SingleAsync();
         Assert.Equal(0m, item.AvailableQuantity);
@@ -1286,8 +1306,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         var (itemId, custId) = await SeedAsync(db);
         db.StockLayers.Add(new StockLayer
         {
-            ItemId = itemId, Qty = 100, Count = 0, UnitCost = 60m, RemainingQty = 100, RemainingCount = 0,
-            DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow
+            ItemId = itemId,
+            Qty = 100,
+            Count = 0,
+            UnitCost = 60m,
+            RemainingQty = 100,
+            RemainingCount = 0,
+            DateReceived = new DateTime(2026, 1, 1),
+            CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
 

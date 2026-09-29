@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using ClosedXML.Excel;
@@ -274,7 +274,10 @@ public class ImportCenterService : IImportCenterService
     public Task<byte[]> DownloadTemplateAsync(string entityKey)
     {
         var def = FindEntity(entityKey);
-        if (def is null) return Task.FromResult(Array.Empty<byte>());
+        if (def is null)
+        {
+            return Task.FromResult(Array.Empty<byte>());
+        }
 
         using var wb = new XLWorkbook();
 
@@ -308,9 +311,20 @@ public class ImportCenterService : IImportCenterService
     public async Task<ImportPreviewViewModel> ParseAsync(string entityKey, string fileName, byte[] data)
     {
         var def = FindEntity(entityKey);
-        if (def is null) return FatalVm("الوحدة غير معروفة");
-        if (data is null || data.Length == 0) return FatalVm("الملف فارغ أو تعذرت قراءته");
-        if (data.Length > MaxFileBytes) return FatalVm("حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)");
+        if (def is null)
+        {
+            return FatalVm("الوحدة غير معروفة");
+        }
+
+        if (data is null || data.Length == 0)
+        {
+            return FatalVm("الملف فارغ أو تعذرت قراءته");
+        }
+
+        if (data.Length > MaxFileBytes)
+        {
+            return FatalVm("حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)");
+        }
 
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
         List<List<string>> rows;
@@ -331,7 +345,10 @@ public class ImportCenterService : IImportCenterService
         }
 
         rows = rows.Where(r => r.Any(cell => cell.Trim().Length > 0)).ToList();
-        if (rows.Count == 0) return FatalVm("الملف لا يحتوي على بيانات");
+        if (rows.Count == 0)
+        {
+            return FatalVm("الملف لا يحتوي على بيانات");
+        }
 
         var headers = rows[0].Select(h => h.Trim().TrimStart('\uFEFF')).ToList();
 
@@ -340,27 +357,46 @@ public class ImportCenterService : IImportCenterService
         for (int i = 0; i < headers.Count; i++)
         {
             var h = headers[i];
-            if (h.Length == 0) continue;
+            if (h.Length == 0)
+            {
+                continue;
+            }
+
             var col = def.Columns.FirstOrDefault(c => c.HeaderAr == h || (c.Aliases?.Contains(h, StringComparer.Ordinal) ?? false));
             if (col is null)
             {
-                if (def.IgnoredHeaders?.Contains(h, StringComparer.Ordinal) ?? false) continue;
+                if (def.IgnoredHeaders?.Contains(h, StringComparer.Ordinal) ?? false)
+                {
+                    continue;
+                }
+
                 unknown.Add(h);
                 continue;
             }
             matched.Add((col, i));
         }
         if (matched.Count == 0)
+        {
             return FatalVm("لا يوجد تطابق بين ترويسة الملف وأعمدة القالب؛ حمّل القالب الصحيح واستخدمه");
+        }
 
         var dataRows = rows.Skip(1).ToList();
-        if (dataRows.Count == 0) return FatalVm("الملف يحتوي على ترويسة فقط ولا توجد صفوف بيانات");
-        if (dataRows.Count > MaxRows) return FatalVm($"عدد الصفوف ({dataRows.Count}) يتجاوز الحد الأقصى ({MaxRows})");
+        if (dataRows.Count == 0)
+        {
+            return FatalVm("الملف يحتوي على ترويسة فقط ولا توجد صفوف بيانات");
+        }
+
+        if (dataRows.Count > MaxRows)
+        {
+            return FatalVm($"عدد الصفوف ({dataRows.Count}) يتجاوز الحد الأقصى ({MaxRows})");
+        }
 
         var db = await BuildReferenceCacheAsync();
 
         if (IsDocumentEntity(def.Key))
+        {
             return await ParseDocumentAsync(def, matched, dataRows, db);
+        }
 
         var fileKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenSelf = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -371,7 +407,10 @@ public class ImportCenterService : IImportCenterService
             foreach (var dr in dataRows)
             {
                 var v0 = BuildCells(matched, dr).GetValueOrDefault(selfColumn, "").Trim();
-                if (v0.Length > 0) seenSelf.Add(NormKey(v0));
+                if (v0.Length > 0)
+                {
+                    seenSelf.Add(NormKey(v0));
+                }
             }
         }
 
@@ -387,7 +426,10 @@ public class ImportCenterService : IImportCenterService
             foreach (var (col, i) in matched)
             {
                 var v = i < values.Count ? values[i].Trim() : "";
-                if (v.Length > 0) cells[col.Key] = v;
+                if (v.Length > 0)
+                {
+                    cells[col.Key] = v;
+                }
             }
 
             var errors = ValidateRow(def, cells, db, seenSelf);
@@ -399,10 +441,16 @@ public class ImportCenterService : IImportCenterService
 
             var candidates = KeyCandidates(def, cells);
             var isDuplicate = candidates.Any(fileKeys.Contains);
-            foreach (var c in candidates) fileKeys.Add(c);
+            foreach (var c in candidates)
+            {
+                fileKeys.Add(c);
+            }
 
             var selfRaw = selfColumn == null ? "" : cells.GetValueOrDefault(selfColumn, "").Trim();
-            if (selfRaw.Length > 0) seenSelf.Add(NormKey(selfRaw));
+            if (selfRaw.Length > 0)
+            {
+                seenSelf.Add(NormKey(selfRaw));
+            }
 
             var exists = candidates.Any(c => db.EntityKeyExists(def.Key, c));
             var notice = isDuplicate
@@ -441,32 +489,50 @@ public class ImportCenterService : IImportCenterService
     public async Task<ImportResult> ImportAsync(string entityKey, string payload, string applyToken)
     {
         var def = FindEntity(entityKey);
-        if (def is null) return new ImportResult(false, "الوحدة غير معروفة", 0, 0, 0, 0);
+        if (def is null)
+        {
+            return new ImportResult(false, "الوحدة غير معروفة", 0, 0, 0, 0);
+        }
 
         var key = "ImportPreview:" + applyToken;
         if (!_cache.TryGetValue(key, out string? cachedPayload) || string.IsNullOrEmpty(cachedPayload))
+        {
             return new ImportResult(false, "انتهت صلاحية رابط المعاينة؛ أعد رفع الملف واعاينه مجددًا قبل الاعتماد", 0, 0, 0, 0);
+        }
+
         _cache.Remove(key);
 
         ImportPayloadEnvelope? envelope = DeserializeEnvelope(cachedPayload);
         if (envelope is null || envelope.EntityKey != entityKey || envelope.Rows.Count == 0)
+        {
             return new ImportResult(false, "رابط المعاينة غير صالح أو منتهي الصلاحية؛ أعد رفع الملف واعاينه مجددًا", 0, 0, 0, 0);
+        }
+
         if (envelope.Rows.Count > MaxRows)
+        {
             return new ImportResult(false, $"لا يمكن استيراد أكثر من {MaxRows} صف في المرة الواحدة", 0, 0, 0, 0);
+        }
 
         var cache = await BuildReferenceCacheAsync();
 
         if (IsDocumentEntity(def.Key))
+        {
             return await ImportDocumentAsync(def, envelope, cache);
+        }
 
         var selfColumn = SelfIdentityColumn(def.Key);
         var applySeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (selfColumn is not null)
+        {
             foreach (var row in envelope.Rows)
             {
                 var v = (row.Fields?.GetValueOrDefault(selfColumn) ?? "").Trim();
-                if (v.Length > 0) applySeen.Add(NormKey(v));
+                if (v.Length > 0)
+                {
+                    applySeen.Add(NormKey(v));
+                }
             }
+        }
 
         var unitParentLinks = new List<(Unit Child, string ParentName)>();
         var accountParentLinks = new List<(GLAccount Child, string ParentCode)>();
@@ -497,12 +563,20 @@ public class ImportCenterService : IImportCenterService
         }
 
         foreach (var (child, parentName) in unitParentLinks)
+        {
             if (cache.UnitsByName.TryGetValue(NormKey(parentName), out var parent) && parent != child)
+            {
                 child.ParentUnit = parent;
+            }
+        }
 
         foreach (var (child, parentCode) in accountParentLinks)
+        {
             if (cache.AccountsByCode.TryGetValue(NormKey(parentCode), out var parent) && parent != child)
+            {
                 child.ParentAccount = parent;
+            }
+        }
 
         try
         {
@@ -534,7 +608,10 @@ public class ImportCenterService : IImportCenterService
         foreach (var (col, i) in matched)
         {
             var v = i < values.Count ? values[i].Trim() : "";
-            if (v.Length > 0) cells[col.Key] = v;
+            if (v.Length > 0)
+            {
+                cells[col.Key] = v;
+            }
         }
         return cells;
     }
@@ -546,9 +623,16 @@ public class ImportCenterService : IImportCenterService
         var merged = new Dictionary<string, string>(StringComparer.Ordinal);
         var headerKeys = def.Columns.Where(c => !c.IsLineOnly).Select(c => c.Key).ToList();
         foreach (var cells in rows)
+        {
             foreach (var key in headerKeys)
+            {
                 if (!merged.ContainsKey(key) && cells.TryGetValue(key, out var value) && value.Trim().Length > 0)
+                {
                     merged[key] = value.Trim();
+                }
+            }
+        }
+
         return merged;
     }
 
@@ -602,7 +686,10 @@ public class ImportCenterService : IImportCenterService
                 }
                 list.Add((idx + 2, values, cells));
             }
-            foreach (var norm in order) docRows.Add(byGroup[norm]);
+            foreach (var norm in order)
+            {
+                docRows.Add(byGroup[norm]);
+            }
         }
 
         int valid = 0;
@@ -628,7 +715,11 @@ public class ImportCenterService : IImportCenterService
                     continue;
                 }
                 var combined = new Dictionary<string, string>(headerCells, StringComparer.Ordinal);
-                foreach (var kvp in cells) combined[kvp.Key] = kvp.Value;
+                foreach (var kvp in cells)
+                {
+                    combined[kvp.Key] = kvp.Value;
+                }
+
                 payloadRows.Add(new ImportRowPayload(rowNumber, combined));
                 valid++;
             }
@@ -670,7 +761,10 @@ public class ImportCenterService : IImportCenterService
 
         if (groupCol is null)
         {
-            foreach (var row in envelope.Rows) docs.Add([row]);
+            foreach (var row in envelope.Rows)
+            {
+                docs.Add([row]);
+            }
         }
         else
         {
@@ -683,7 +777,10 @@ public class ImportCenterService : IImportCenterService
                 if (!byGroup.ContainsKey(norm)) { byGroup[norm] = []; order.Add(norm); }
                 byGroup[norm].Add(row);
             }
-            foreach (var norm in order) docs.Add(byGroup[norm]);
+            foreach (var norm in order)
+            {
+                docs.Add(byGroup[norm]);
+            }
         }
 
         var created = 0;
@@ -706,7 +803,9 @@ public class ImportCenterService : IImportCenterService
                 errors = ValidateHeader(def, header, cache);
                 errors.AddRange(ValidateDocument(def, header, doc, cache));
                 foreach (var line in doc)
+                {
                     errors.AddRange(ValidateLine(def, line.Fields ?? new Dictionary<string, string>(), cache));
+                }
             }
 
             errors = errors.Distinct().ToList();
@@ -714,7 +813,9 @@ public class ImportCenterService : IImportCenterService
             {
                 invalidDocs.Add(doc);
                 if (validationExamples.Count < 5)
+                {
                     validationExamples.Add(string.Join("؛ ", errors.Take(2)));
+                }
             }
         }
 
@@ -750,7 +851,11 @@ public class ImportCenterService : IImportCenterService
             if (ok) { created++; continue; }
 
             failed += doc.Count;
-            if (docFailures.Count < 5 && error is not null) docFailures.Add(error);
+            if (docFailures.Count < 5 && error is not null)
+            {
+                docFailures.Add(error);
+            }
+
             if (tx is not null)
             {
                 await tx.RollbackAsync();
@@ -761,7 +866,10 @@ public class ImportCenterService : IImportCenterService
             }
         }
 
-        if (tx is not null) await tx.CommitAsync();
+        if (tx is not null)
+        {
+            await tx.CommitAsync();
+        }
 
         var duplicateNote = duplicates == 0 ? "" :
             $"، وتُخطى {duplicates} {(groupCol is null ? "مستندًا" : "سطرًا")} لأن أرقامه مستوردة مسبقًا";
@@ -810,7 +918,11 @@ public class ImportCenterService : IImportCenterService
 
     private static string? DocumentIdentity(ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows)
     {
-        if (def.GroupColumn is null) return null;
+        if (def.GroupColumn is null)
+        {
+            return null;
+        }
+
         var raw = DocumentHeader(def, rows).GetValueOrDefault(def.GroupColumn, "").Trim();
         return raw.Length == 0 ? null : raw;
     }
@@ -831,7 +943,11 @@ public class ImportCenterService : IImportCenterService
 
     private async Task StampDocumentNumberAsync(string? number, string current, Action<string> setNumber)
     {
-        if (number is null || string.Equals(current, number, StringComparison.Ordinal)) return;
+        if (number is null || string.Equals(current, number, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         setNumber(number);
         await _db.SaveChangesAsync();
     }
@@ -872,10 +988,15 @@ public class ImportCenterService : IImportCenterService
         var customerRaw = header.GetValueOrDefault("PartyName", "").Trim();
         if (payment.Type == PaymentType.Receipt
             && cache.CustomersByName.TryGetValue(NormKey(customerRaw), out var customer))
+        {
             payment.CustomerId = customer.Id;
+        }
+
         if (payment.Type == PaymentType.Disbursement
             && cache.SuppliersByName.TryGetValue(NormKey(customerRaw), out var supplier))
+        {
             payment.SupplierId = supplier.Id;
+        }
 
         var result = await _payments.CreatePaymentAsync(payment, null, null);
         return (result.Success, result.Error);
@@ -887,18 +1008,28 @@ public class ImportCenterService : IImportCenterService
         var header = DocumentHeader(def, rows);
         var entryNumber = header.GetValueOrDefault("EntryNumber", "").Trim();
         if (entryNumber.Length == 0)
+        {
             return (false, "رقم القيد مطلوب لتحديد هوية المستند");
+        }
 
         var lines = new List<JournalLine>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var code = cells.GetValueOrDefault("AccountCode", "").Trim();
-            if (code.Length == 0 || !cache.AccountsByCode.TryGetValue(NormKey(code), out var account)) continue;
+            if (code.Length == 0 || !cache.AccountsByCode.TryGetValue(NormKey(code), out var account))
+            {
+                continue;
+            }
+
             lines.Add(new JournalLine(account.Code, CellDecimal(cells, "Debit"), CellDecimal(cells, "Credit"),
                 OptNull(cells, "EntryDescription")));
         }
-        if (lines.Count == 0) return (false, "القيد لا يحتوي على أسطر صالحة");
+        if (lines.Count == 0)
+        {
+            return (false, "القيد لا يحتوي على أسطر صالحة");
+        }
+
         await _accounting.PostAsync(JournalSource.Import, sourceId, CellDate(header, "EntryDate", DateTime.Today),
             OptNull(header, "Description") ?? "قيد مستورد", lines.ToArray(), null, entryNumber: entryNumber);
         return (true, null);
@@ -910,7 +1041,9 @@ public class ImportCenterService : IImportCenterService
         var header = DocumentHeader(def, rows);
         var customerRaw = header.GetValueOrDefault("CustomerName", "").Trim();
         if (!cache.CustomersByName.TryGetValue(NormKey(customerRaw), out var customer))
+        {
             return (false, "العميل غير موجود");
+        }
 
         var invoice = new SaleInvoice
         {
@@ -929,7 +1062,11 @@ public class ImportCenterService : IImportCenterService
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
-            if (item is null) continue;
+            if (item is null)
+            {
+                continue;
+            }
+
             items.Add(new SaleInvoiceItem
             {
                 ItemId = item.Id,
@@ -939,9 +1076,17 @@ public class ImportCenterService : IImportCenterService
                 Discount = CellDecimal(cells, "ItemDiscount")
             });
         }
-        if (items.Count == 0) return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+        if (items.Count == 0)
+        {
+            return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+        }
+
         var (ok, error) = await _inventory.CreateSaleAsync(invoice, items, null, null, beginOwnTransaction: false);
-        if (!ok) return (false, error);
+        if (!ok)
+        {
+            return (false, error);
+        }
+
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
         return (true, null);
     }
@@ -952,7 +1097,9 @@ public class ImportCenterService : IImportCenterService
         var header = DocumentHeader(def, rows);
         var supplierRaw = header.GetValueOrDefault("SupplierName", "").Trim();
         if (!cache.SuppliersByName.TryGetValue(NormKey(supplierRaw), out var supplier))
+        {
             return (false, "المورد غير موجود");
+        }
 
         var invoice = new PurchaseInvoice
         {
@@ -971,7 +1118,11 @@ public class ImportCenterService : IImportCenterService
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
-            if (item is null) continue;
+            if (item is null)
+            {
+                continue;
+            }
+
             items.Add(new PurchaseInvoiceItem
             {
                 ItemId = item.Id,
@@ -981,9 +1132,17 @@ public class ImportCenterService : IImportCenterService
                 Discount = CellDecimal(cells, "ItemDiscount")
             });
         }
-        if (items.Count == 0) return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+        if (items.Count == 0)
+        {
+            return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+        }
+
         var (purchaseOk, purchaseError) = await _inventory.CreatePurchaseAsync(invoice, items, null, null, beginOwnTransaction: false);
-        if (!purchaseOk) return (false, purchaseError);
+        if (!purchaseOk)
+        {
+            return (false, purchaseError);
+        }
+
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
         return (true, null);
     }
@@ -994,7 +1153,9 @@ public class ImportCenterService : IImportCenterService
         var header = DocumentHeader(def, rows);
         var customerRaw = header.GetValueOrDefault("CustomerName", "").Trim();
         if (!cache.CustomersByName.TryGetValue(NormKey(customerRaw), out var customer))
+        {
             return (false, "العميل غير موجود");
+        }
 
         var saleReturn = new SaleReturn
         {
@@ -1004,14 +1165,20 @@ public class ImportCenterService : IImportCenterService
         };
         var invoiceRaw = header.GetValueOrDefault("SaleInvoiceNumber", "").Trim();
         if (invoiceRaw.Length > 0 && cache.SaleInvoicesByNumber.TryGetValue(NormKey(invoiceRaw), out var saleInvoice))
+        {
             saleReturn.SaleInvoiceId = saleInvoice.Id;
+        }
 
         var items = new List<SaleReturnItem>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
-            if (item is null) continue;
+            if (item is null)
+            {
+                continue;
+            }
+
             items.Add(new SaleReturnItem
             {
                 ItemId = item.Id,
@@ -1020,9 +1187,17 @@ public class ImportCenterService : IImportCenterService
                 UnitPrice = CellDecimal(cells, "UnitPrice")
             });
         }
-        if (items.Count == 0) return (false, "المرتجع لا يحتوي على أصناف صالحة");
+        if (items.Count == 0)
+        {
+            return (false, "المرتجع لا يحتوي على أصناف صالحة");
+        }
+
         var (saleReturnOk, saleReturnError) = await _inventory.CreateSaleReturnAsync(saleReturn, items, null);
-        if (!saleReturnOk) return (false, saleReturnError);
+        if (!saleReturnOk)
+        {
+            return (false, saleReturnError);
+        }
+
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), saleReturn.ReturnNumber, number => saleReturn.ReturnNumber = number);
         return (true, null);
     }
@@ -1033,7 +1208,9 @@ public class ImportCenterService : IImportCenterService
         var header = DocumentHeader(def, rows);
         var supplierRaw = header.GetValueOrDefault("SupplierName", "").Trim();
         if (!cache.SuppliersByName.TryGetValue(NormKey(supplierRaw), out var supplier))
+        {
             return (false, "المورد غير موجود");
+        }
 
         var purchaseReturn = new PurchaseReturn
         {
@@ -1043,14 +1220,20 @@ public class ImportCenterService : IImportCenterService
         };
         var invoiceRaw = header.GetValueOrDefault("PurchaseInvoiceNumber", "").Trim();
         if (invoiceRaw.Length > 0 && cache.PurchaseInvoicesByNumber.TryGetValue(NormKey(invoiceRaw), out var purchaseInvoice))
+        {
             purchaseReturn.PurchaseInvoiceId = purchaseInvoice.Id;
+        }
 
         var items = new List<PurchaseReturnItem>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
-            if (item is null) continue;
+            if (item is null)
+            {
+                continue;
+            }
+
             items.Add(new PurchaseReturnItem
             {
                 ItemId = item.Id,
@@ -1059,9 +1242,17 @@ public class ImportCenterService : IImportCenterService
                 UnitPrice = CellDecimal(cells, "UnitPrice")
             });
         }
-        if (items.Count == 0) return (false, "المرتجع لا يحتوي على أصناف صالحة");
+        if (items.Count == 0)
+        {
+            return (false, "المرتجع لا يحتوي على أصناف صالحة");
+        }
+
         var (purchaseReturnOk, purchaseReturnError) = await _inventory.CreatePurchaseReturnAsync(purchaseReturn, items, null);
-        if (!purchaseReturnOk) return (false, purchaseReturnError);
+        if (!purchaseReturnOk)
+        {
+            return (false, purchaseReturnError);
+        }
+
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), purchaseReturn.ReturnNumber, number => purchaseReturn.ReturnNumber = number);
         return (true, null);
     }
@@ -1071,7 +1262,11 @@ public class ImportCenterService : IImportCenterService
     {
         var header = DocumentHeader(def, rows);
         var item = ResolveItem(header, cache);
-        if (item is null) return (false, "الصنف غير موجود");
+        if (item is null)
+        {
+            return (false, "الصنف غير موجود");
+        }
+
         var adjustment = new InventoryAdjustment
         {
             ItemId = item.Id,
@@ -1091,12 +1286,20 @@ public class ImportCenterService : IImportCenterService
         var tgtRaw = header.GetValueOrDefault("TargetWarehouseCode", "").Trim();
         var source = ResolveWarehouse(srcRaw, cache);
         if (source is null)
+        {
             return (false, "مخزن المصدر غير موجود");
+        }
+
         var target = ResolveWarehouse(tgtRaw, cache);
         if (target is null)
+        {
             return (false, "مخزن الهدف غير موجود");
+        }
+
         if (target == source)
+        {
             return (false, "لا يمكن التحويل من مستودع إلى نفسه");
+        }
 
         var transfer = new StockTransfer
         {
@@ -1110,7 +1313,11 @@ public class ImportCenterService : IImportCenterService
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
-            if (item is null) continue;
+            if (item is null)
+            {
+                continue;
+            }
+
             items.Add(new StockTransferItem
             {
                 ItemId = item.Id,
@@ -1120,9 +1327,17 @@ public class ImportCenterService : IImportCenterService
                 DateReceived = transfer.TransferDate
             });
         }
-        if (items.Count == 0) return (false, "التحويل لا يحتوي على أصناف صالحة");
+        if (items.Count == 0)
+        {
+            return (false, "التحويل لا يحتوي على أصناف صالحة");
+        }
+
         var (transferOk, transferError) = await _inventory.CreateTransferAsync(transfer, items, null);
-        if (!transferOk) return (false, transferError);
+        if (!transferOk)
+        {
+            return (false, transferError);
+        }
+
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), transfer.TransferNumber, number => transfer.TransferNumber = number);
         return (true, null);
     }
@@ -1130,27 +1345,59 @@ public class ImportCenterService : IImportCenterService
     private static Item? ResolveItem(IReadOnlyDictionary<string, string> cells, ReferenceCache cache)
     {
         var raw = cells.GetValueOrDefault("ItemName", "").Trim();
-        if (raw.Length == 0) return null;
+        if (raw.Length == 0)
+        {
+            return null;
+        }
+
         var key = NormKey(raw);
-        if (cache.ItemsByName.TryGetValue(key, out var byName)) return byName;
-        if (cache.ItemsByBarcode.TryGetValue(key, out var byBarcode)) return byBarcode;
-        if (cache.ItemsByCode.TryGetValue(key, out var byCode)) return byCode;
+        if (cache.ItemsByName.TryGetValue(key, out var byName))
+        {
+            return byName;
+        }
+
+        if (cache.ItemsByBarcode.TryGetValue(key, out var byBarcode))
+        {
+            return byBarcode;
+        }
+
+        if (cache.ItemsByCode.TryGetValue(key, out var byCode))
+        {
+            return byCode;
+        }
+
         return null;
     }
 
     private static Warehouse? ResolveWarehouse(string raw, ReferenceCache cache)
     {
-        if (raw.Trim().Length == 0) return null;
+        if (raw.Trim().Length == 0)
+        {
+            return null;
+        }
+
         var key = NormKey(raw);
-        if (cache.WarehousesByCode.TryGetValue(key, out var byCode)) return byCode;
-        if (cache.WarehousesByName.TryGetValue(key, out var byName)) return byName;
+        if (cache.WarehousesByCode.TryGetValue(key, out var byCode))
+        {
+            return byCode;
+        }
+
+        if (cache.WarehousesByName.TryGetValue(key, out var byName))
+        {
+            return byName;
+        }
+
         return null;
     }
 
     private static decimal? CellOptionalDecimal(IReadOnlyDictionary<string, string> cells, string key)
     {
         var raw = cells.GetValueOrDefault(key, "").Trim();
-        if (raw.Length == 0) return null;
+        if (raw.Length == 0)
+        {
+            return null;
+        }
+
         return TryParseDecimal(raw, out var value) ? value : null;
     }
 
@@ -1160,25 +1407,49 @@ public class ImportCenterService : IImportCenterService
     private static DateTime CellDate(IReadOnlyDictionary<string, string> cells, string key, DateTime fallback)
     {
         var raw = cells.GetValueOrDefault(key, "").Trim();
-        if (raw.Length == 0) return fallback;
+        if (raw.Length == 0)
+        {
+            return fallback;
+        }
+
         return TryParseDate(raw, out var value) ? value : fallback;
     }
 
     private static bool TryParseDate(string raw, out DateTime value)
     {
         var s = NormalizeDigits(raw.Trim());
-        if (DateTime.TryParseExact(s, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out value)) return true;
-        if (DateTime.TryParseExact(s, "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out value)) return true;
-        if (DateTime.TryParseExact(s, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out value)) return true;
+        if (DateTime.TryParseExact(s, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out value))
+        {
+            return true;
+        }
+
+        if (DateTime.TryParseExact(s, "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out value))
+        {
+            return true;
+        }
+
+        if (DateTime.TryParseExact(s, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out value))
+        {
+            return true;
+        }
+
         return DateTime.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
     }
 
     private static int? OptionalEnum(ImportEntityDefinition def, IReadOnlyDictionary<string, string> cells, string colKey)
     {
         var col = def.Columns.FirstOrDefault(c => c.Key == colKey);
-        if (col is null || col.EnumMap is null) return null;
+        if (col is null || col.EnumMap is null)
+        {
+            return null;
+        }
+
         var raw = cells.GetValueOrDefault(colKey, "").Trim();
-        if (raw.Length == 0) return null;
+        if (raw.Length == 0)
+        {
+            return null;
+        }
+
         return TryParseEnum(raw, col, out var value) ? value : null;
     }
 
@@ -1196,89 +1467,161 @@ public class ImportCenterService : IImportCenterService
                 var partyRaw = header.GetValueOrDefault("PartyName", "").Trim();
                 if (payType == (int)PaymentType.Receipt)
                 {
-                    if (partyRaw.Length == 0) errors.Add("النوع «قبض» يتطلب تحديد العميل");
-                    else if (!cache.CustomersByName.ContainsKey(NormKey(partyRaw))) errors.Add($"«{partyRaw}» ليس عميلاً موجودًا");
+                    if (partyRaw.Length == 0)
+                    {
+                        errors.Add("النوع «قبض» يتطلب تحديد العميل");
+                    }
+                    else if (!cache.CustomersByName.ContainsKey(NormKey(partyRaw)))
+                    {
+                        errors.Add($"«{partyRaw}» ليس عميلاً موجودًا");
+                    }
                 }
                 if (payType == (int)PaymentType.Disbursement)
                 {
-                    if (partyRaw.Length == 0) errors.Add("النوع «صرف» يتطلب تحديد المورد");
-                    else if (!cache.SuppliersByName.ContainsKey(NormKey(partyRaw))) errors.Add($"«{partyRaw}» ليس موردًا موجودًا");
+                    if (partyRaw.Length == 0)
+                    {
+                        errors.Add("النوع «صرف» يتطلب تحديد المورد");
+                    }
+                    else if (!cache.SuppliersByName.ContainsKey(NormKey(partyRaw)))
+                    {
+                        errors.Add($"«{partyRaw}» ليس موردًا موجودًا");
+                    }
                 }
                 break;
             case "journalEntries":
-                if (rows.Count == 0) errors.Add("القيد لا يحتوي على أسطر");
+                if (rows.Count == 0)
+                {
+                    errors.Add("القيد لا يحتوي على أسطر");
+                }
+
                 foreach (var row in rows)
                 {
                     var cells = row.Fields ?? new Dictionary<string, string>();
                     var debit = CellDecimal(cells, "Debit");
                     var credit = CellDecimal(cells, "Credit");
                     if ((debit > 0) == (credit > 0))
+                    {
                         errors.Add("كل سطر في القيد يجب أن يكون مدينًا أو دائنًا وليس كلاهما");
+                    }
+
                     if (debit < 0 || credit < 0)
+                    {
                         errors.Add("لا يمكن أن يكون المبلغ سالبًا");
+                    }
                 }
                 var totalDebit = rows.Sum(r => CellDecimal(r.Fields ?? new Dictionary<string, string>(), "Debit"));
                 var totalCredit = rows.Sum(r => CellDecimal(r.Fields ?? new Dictionary<string, string>(), "Credit"));
                 if (decimal.Round(totalDebit, 2) != decimal.Round(totalCredit, 2))
+                {
                     errors.Add("مجموع المدين لا يساوي مجموع الدائن في القيد");
+                }
+
                 break;
             case "saleInvoices":
             case "purchaseInvoices":
-                if (rows.Count == 0) errors.Add("الفاتورة لا تحتوي على أصناف");
+                if (rows.Count == 0)
+                {
+                    errors.Add("الفاتورة لا تحتوي على أصناف");
+                }
+
                 var seenItems = new HashSet<int>();
                 foreach (var row in rows)
                 {
                     var cells = row.Fields ?? new Dictionary<string, string>();
                     var item = ResolveItem(cells, cache);
                     if (item is not null && !seenItems.Add(item.Id))
+                    {
                         errors.Add($"الصنف «{item.Name}» مكرر أكثر من مرة في الفاتورة");
+                    }
+
                     if (CellDecimal(cells, "Quantity") < 0 || CellDecimal(cells, "Count") < 0)
+                    {
                         errors.Add("الكمية والعدد لا يمكن أن يكونا سالبين");
+                    }
                 }
                 if (InvoiceNet(header, rows) < 0)
+                {
                     errors.Add("الخصم أكبر من إجمالي الفاتورة؛ لا يمكن أن يكون الصافي سالباً");
+                }
+
                 break;
             case "saleReturns":
             case "purchaseReturns":
-                if (rows.Count == 0) errors.Add("المرتجع لا يحتوي على أصناف");
+                if (rows.Count == 0)
+                {
+                    errors.Add("المرتجع لا يحتوي على أصناف");
+                }
+
                 foreach (var row in rows)
                 {
                     var cells = row.Fields ?? new Dictionary<string, string>();
                     if (ResolveItem(cells, cache) is null)
+                    {
                         errors.Add("لم يتم التعرف على صنف في سطر المرتجع");
+                    }
+
                     var qty = CellDecimal(cells, "Quantity");
                     var count = CellDecimal(cells, "Count");
                     if (qty < 0 || count < 0 || (qty == 0 && count == 0))
+                    {
                         errors.Add("حدد عددًا أو كمية موجبة لكل صنف في المرتجع");
+                    }
                 }
                 break;
             case "inventoryAdjustments":
                 if (ResolveItem(header, cache) is null)
+                {
                     errors.Add("حدد صنفًا للتسوية");
+                }
+
                 if (CellDecimal(header, "NewCount") < 0 || CellDecimal(header, "NewQuantity") < 0)
+                {
                     errors.Add("العدد والكمية الجديدة لا يمكن أن يكونا سالبين");
+                }
+
                 if (CellDecimal(header, "NewCount") == 0 && CellDecimal(header, "NewQuantity") == 0)
+                {
                     errors.Add("حدد عددًا أو كمية جديدة للتسوية");
+                }
+
                 break;
             case "stockTransfers":
                 var srcRaw = header.GetValueOrDefault("SourceWarehouseCode", "").Trim();
                 var tgtRaw = header.GetValueOrDefault("TargetWarehouseCode", "").Trim();
                 if (srcRaw.Length > 0 && ResolveWarehouse(srcRaw, cache) is null)
+                {
                     errors.Add($"«{srcRaw}» غير موجودة ضمن المخازن");
+                }
+
                 if (tgtRaw.Length > 0 && ResolveWarehouse(tgtRaw, cache) is null)
+                {
                     errors.Add($"«{tgtRaw}» غير موجودة ضمن المخازن");
+                }
+
                 if (srcRaw.Length > 0 && tgtRaw.Length > 0 && ResolveWarehouse(srcRaw, cache) is not null && ResolveWarehouse(tgtRaw, cache) == ResolveWarehouse(srcRaw, cache))
+                {
                     errors.Add("لا يمكن التحويل من مستودع إلى نفسه");
-                if (rows.Count == 0) errors.Add("التحويل لا يحتوي على أصناف");
+                }
+
+                if (rows.Count == 0)
+                {
+                    errors.Add("التحويل لا يحتوي على أصناف");
+                }
+
                 foreach (var row in rows)
                 {
                     var cells = row.Fields ?? new Dictionary<string, string>();
                     if (ResolveItem(cells, cache) is null)
+                    {
                         errors.Add("لم يتم التعرف على صنف في سطر التحويل");
+                    }
+
                     var qty = CellDecimal(cells, "Quantity");
                     var count = CellDecimal(cells, "Count");
                     if (qty < 0 || count < 0 || (qty == 0 && count == 0))
+                    {
                         errors.Add("حدد عددًا أو كمية موجبة لكل صنف في التحويل");
+                    }
                 }
                 break;
         }
@@ -1305,7 +1648,10 @@ public class ImportCenterService : IImportCenterService
     {
         var result = new List<string>(matched.Count);
         foreach (var (_, i) in matched)
+        {
             result.Add(i < values.Count ? values[i] : "");
+        }
+
         return result;
     }
 
@@ -1322,11 +1668,18 @@ public class ImportCenterService : IImportCenterService
     {
         var keys = new List<string>(2);
         var primary = cells.GetValueOrDefault(def.MatchPrimaryColumn, "").Trim();
-        if (primary.Length > 0) keys.Add(NormKey(primary));
+        if (primary.Length > 0)
+        {
+            keys.Add(NormKey(primary));
+        }
+
         if (def.MatchFallbackColumn is not null)
         {
             var fallback = cells.GetValueOrDefault(def.MatchFallbackColumn, "").Trim();
-            if (fallback.Length > 0) keys.Add(NormKey(fallback));
+            if (fallback.Length > 0)
+            {
+                keys.Add(NormKey(fallback));
+            }
         }
         return keys;
     }
@@ -1342,12 +1695,24 @@ public class ImportCenterService : IImportCenterService
         var errors = new List<string>();
         foreach (var col in def.Columns)
         {
-            if (headerOnly && col.IsLineOnly) continue;
-            if (lineOnly && !col.IsLineOnly) continue;
+            if (headerOnly && col.IsLineOnly)
+            {
+                continue;
+            }
+
+            if (lineOnly && !col.IsLineOnly)
+            {
+                continue;
+            }
+
             var raw = cells.GetValueOrDefault(col.Key, "").Trim();
             if (raw.Length == 0)
             {
-                if (col.IsRequired) errors.Add($"الحقل «{col.HeaderAr}» مطلوب");
+                if (col.IsRequired)
+                {
+                    errors.Add($"الحقل «{col.HeaderAr}» مطلوب");
+                }
+
                 continue;
             }
 
@@ -1355,31 +1720,53 @@ public class ImportCenterService : IImportCenterService
             {
                 case ImportValueType.Text:
                     if (col.MaxLength.HasValue && raw.Length > col.MaxLength.Value)
+                    {
                         errors.Add($"«{col.HeaderAr}» تتجاوز الحد الأقصى ({col.MaxLength}) حرفًا");
+                    }
+
                     break;
                 case ImportValueType.Integer:
                     if (!TryParseInt(raw, out _))
+                    {
                         errors.Add($"«{raw}» ليست عددًا صحيحًا صالحًا");
+                    }
                     else if (IsOutOfRange(col, raw))
+                    {
                         errors.Add(OutOfRangeMessage(col));
+                    }
+
                     break;
                 case ImportValueType.Decimal:
                     if (!TryParseDecimal(raw, out _))
+                    {
                         errors.Add($"«{raw}» ليست رقمًا صالحًا");
+                    }
                     else if (IsOutOfRange(col, raw))
+                    {
                         errors.Add(OutOfRangeMessage(col));
+                    }
+
                     break;
                 case ImportValueType.Bool:
                     if (!TryParseBool(raw, out _))
+                    {
                         errors.Add($"«{raw}» غير صالحة؛ القيم المقبولة: نعم/لا أو 1/0 أو نشط/معطل");
+                    }
+
                     break;
                 case ImportValueType.Date:
                     if (!TryParseDate(raw, out _))
+                    {
                         errors.Add($"التاريخ غير صالح: «{raw}»؛ الصيغ المقبولة: dd/MM/yyyy أو yyyy/MM/dd أو dd-MM-yyyy أو yyyy-MM-dd");
+                    }
+
                     break;
                 case ImportValueType.Enum:
                     if (!TryParseEnum(raw, col, out _))
+                    {
                         errors.Add($"«{raw}» غير صالحة؛ القيم المقبولة: {EnumLabels(col)}");
+                    }
+
                     break;
                 case ImportValueType.Lookup:
                     var selfKey = NormKey(raw);
@@ -1387,7 +1774,9 @@ public class ImportCenterService : IImportCenterService
                     if (col.LookupKey == def.Key)
                     {
                         if (!known && (seenSelf is null || !seenSelf.Contains(selfKey)))
+                        {
                             errors.Add($"«{raw}» غير موجودة في قاعدة البيانات أو في الصفوف السابقة من الملف");
+                        }
                     }
                     else if (!known)
                     {
@@ -1417,14 +1806,26 @@ public class ImportCenterService : IImportCenterService
 
     private static bool IsOutOfRange(ImportColumnDefinition col, string raw)
     {
-        if (col.MinInclusive is null && col.MaxInclusive is null) return false;
+        if (col.MinInclusive is null && col.MaxInclusive is null)
+        {
+            return false;
+        }
+
         if (col.Type == ImportValueType.Integer)
         {
-            if (!int.TryParse(StripNumber(raw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)) return false;
+            if (!int.TryParse(StripNumber(raw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+            {
+                return false;
+            }
+
             return col.MinInclusive.HasValue && n < col.MinInclusive.Value
                 || col.MaxInclusive.HasValue && n > col.MaxInclusive.Value;
         }
-        if (!decimal.TryParse(NormalizeNumber(raw), NumberStyles.Number, CultureInfo.InvariantCulture, out var d)) return false;
+        if (!decimal.TryParse(NormalizeNumber(raw), NumberStyles.Number, CultureInfo.InvariantCulture, out var d))
+        {
+            return false;
+        }
+
         return col.MinInclusive.HasValue && d < col.MinInclusive.Value
             || col.MaxInclusive.HasValue && d > col.MaxInclusive.Value;
     }
@@ -1434,9 +1835,15 @@ public class ImportCenterService : IImportCenterService
         var min = col.MinInclusive;
         var max = col.MaxInclusive;
         if (min.HasValue && max.HasValue)
+        {
             return $"«{col.HeaderAr}» يجب أن تكون بين {min} و{max}";
+        }
+
         if (min.HasValue)
+        {
             return $"«{col.HeaderAr}» يجب ألا تقل عن {min}";
+        }
+
         return $"«{col.HeaderAr}» يجب ألا تزيد عن {max}";
     }
 
@@ -1447,12 +1854,21 @@ public class ImportCenterService : IImportCenterService
         string? code = codeRaw.Length == 0 ? null : codeRaw;
 
         Supplier? entity = null;
-        if (code is not null && cache.SuppliersByCode.TryGetValue(NormKey(code), out var byCode)) entity = byCode;
-        else if (cache.SuppliersByName.TryGetValue(NormKey(name), out var byName)) entity = byName;
+        if (code is not null && cache.SuppliersByCode.TryGetValue(NormKey(code), out var byCode))
+        {
+            entity = byCode;
+        }
+        else if (cache.SuppliersByName.TryGetValue(NormKey(name), out var byName))
+        {
+            entity = byName;
+        }
 
         var isNew = entity is null;
         entity ??= new Supplier();
-        if (isNew) _db.Suppliers.Add(entity);
+        if (isNew)
+        {
+            _db.Suppliers.Add(entity);
+        }
 
         entity.Name = name;
         entity.Code = code;
@@ -1461,15 +1877,28 @@ public class ImportCenterService : IImportCenterService
         entity.Email = OptKeep(cells, "Email", entity.Email);
         entity.TaxNumber = OptKeep(cells, "TaxNumber", entity.TaxNumber);
         if (isNew)
+        {
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
+        }
+
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
-        if (code is not null) cache.SuppliersByCode[NormKey(code)] = entity;
+        if (code is not null)
+        {
+            cache.SuppliersByCode[NormKey(code)] = entity;
+        }
+
         cache.SuppliersByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
     }
@@ -1481,12 +1910,21 @@ public class ImportCenterService : IImportCenterService
         string? code = codeRaw.Length == 0 ? null : codeRaw;
 
         Customer? entity = null;
-        if (code is not null && cache.CustomersByCode.TryGetValue(NormKey(code), out var byCode)) entity = byCode;
-        else if (cache.CustomersByName.TryGetValue(NormKey(name), out var byName)) entity = byName;
+        if (code is not null && cache.CustomersByCode.TryGetValue(NormKey(code), out var byCode))
+        {
+            entity = byCode;
+        }
+        else if (cache.CustomersByName.TryGetValue(NormKey(name), out var byName))
+        {
+            entity = byName;
+        }
 
         var isNew = entity is null;
         entity ??= new Customer();
-        if (isNew) _db.Customers.Add(entity);
+        if (isNew)
+        {
+            _db.Customers.Add(entity);
+        }
 
         entity.Name = name;
         entity.Code = code;
@@ -1495,15 +1933,28 @@ public class ImportCenterService : IImportCenterService
         entity.Email = OptKeep(cells, "Email", entity.Email);
         entity.TaxNumber = OptKeep(cells, "TaxNumber", entity.TaxNumber);
         if (isNew)
+        {
             entity.OpeningBalance = TryCellDecimal(cells, "OpeningBalance", out var openingBalance) ? openingBalance : 0m;
+        }
+
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
-        if (code is not null) cache.CustomersByCode[NormKey(code)] = entity;
+        if (code is not null)
+        {
+            cache.CustomersByCode[NormKey(code)] = entity;
+        }
+
         cache.CustomersByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
     }
@@ -1516,21 +1967,37 @@ public class ImportCenterService : IImportCenterService
         string? barcode = barcodeRaw.Length == 0 ? null : barcodeRaw;
 
         Item? entity = null;
-        if (barcode is not null && cache.ItemsByBarcode.TryGetValue(NormKey(barcode), out var byBarcode)) entity = byBarcode;
-        else if (cache.ItemsByName.TryGetValue(NormKey(name), out var byName)) entity = byName;
+        if (barcode is not null && cache.ItemsByBarcode.TryGetValue(NormKey(barcode), out var byBarcode))
+        {
+            entity = byBarcode;
+        }
+        else if (cache.ItemsByName.TryGetValue(NormKey(name), out var byName))
+        {
+            entity = byName;
+        }
 
         var isNew = entity is null;
         entity ??= new Item();
-        if (isNew) _db.Items.Add(entity);
+        if (isNew)
+        {
+            _db.Items.Add(entity);
+        }
 
         entity.Name = name;
         entity.Code = code;
         entity.Barcode = barcode;
 
         var typeRaw = cells.GetValueOrDefault("ItemTypeName", "").Trim();
-        if (cache.ItemTypesByName.TryGetValue(NormKey(typeRaw), out var itemType)) entity.ItemTypeId = itemType.Id;
+        if (cache.ItemTypesByName.TryGetValue(NormKey(typeRaw), out var itemType))
+        {
+            entity.ItemTypeId = itemType.Id;
+        }
+
         var catRaw = cells.GetValueOrDefault("CategoryName", "").Trim();
-        if (cache.CategoriesByName.TryGetValue(NormKey(catRaw), out var category)) entity.CategoryId = category.Id;
+        if (cache.CategoriesByName.TryGetValue(NormKey(catRaw), out var category))
+        {
+            entity.CategoryId = category.Id;
+        }
 
         if (cells.ContainsKey("CountUnitName"))
         {
@@ -1548,14 +2015,42 @@ public class ImportCenterService : IImportCenterService
                 : cache.UnitsByName.TryGetValue(NormKey(qtyUnitRaw), out var qtyUnit) ? qtyUnit.Id : null;
         }
 
-        if (TryCellDecimal(cells, "PurchasePrice", out var purchasePrice)) entity.PurchasePrice = purchasePrice;
-        else if (isNew) entity.PurchasePrice = 0m;
-        if (TryCellDecimal(cells, "SalePrice", out var salePrice)) entity.SalePrice = salePrice;
-        else if (isNew) entity.SalePrice = 0m;
-        if (TryCellDecimal(cells, "MinCount", out var minCount)) entity.MinCount = minCount;
-        else if (isNew) entity.MinCount = 0m;
-        if (TryCellDecimal(cells, "MinQuantity", out var minQuantity)) entity.MinQuantity = minQuantity;
-        else if (isNew) entity.MinQuantity = 0m;
+        if (TryCellDecimal(cells, "PurchasePrice", out var purchasePrice))
+        {
+            entity.PurchasePrice = purchasePrice;
+        }
+        else if (isNew)
+        {
+            entity.PurchasePrice = 0m;
+        }
+
+        if (TryCellDecimal(cells, "SalePrice", out var salePrice))
+        {
+            entity.SalePrice = salePrice;
+        }
+        else if (isNew)
+        {
+            entity.SalePrice = 0m;
+        }
+
+        if (TryCellDecimal(cells, "MinCount", out var minCount))
+        {
+            entity.MinCount = minCount;
+        }
+        else if (isNew)
+        {
+            entity.MinCount = 0m;
+        }
+
+        if (TryCellDecimal(cells, "MinQuantity", out var minQuantity))
+        {
+            entity.MinQuantity = minQuantity;
+        }
+        else if (isNew)
+        {
+            entity.MinQuantity = 0m;
+        }
+
         if (isNew)
         {
             entity.CurrentCount = 0m;
@@ -1564,14 +2059,30 @@ public class ImportCenterService : IImportCenterService
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
 
         var sellable = OptionalBool(cells, "IsSellable");
-        if (sellable.HasValue) entity.IsSellable = sellable.Value;
-        else if (isNew) entity.IsSellable = true;
+        if (sellable.HasValue)
+        {
+            entity.IsSellable = sellable.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsSellable = true;
+        }
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
-        if (barcode is not null) cache.ItemsByBarcode[NormKey(barcode)] = entity;
+        if (barcode is not null)
+        {
+            cache.ItemsByBarcode[NormKey(barcode)] = entity;
+        }
+
         cache.ItemsByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
     }
@@ -1582,13 +2093,22 @@ public class ImportCenterService : IImportCenterService
         cache.CategoriesByName.TryGetValue(NormKey(name), out var entity);
         var isNew = entity is null;
         entity ??= new ItemCategory();
-        if (isNew) _db.ItemCategories.Add(entity);
+        if (isNew)
+        {
+            _db.ItemCategories.Add(entity);
+        }
 
         entity.Name = name;
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.CategoriesByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1600,13 +2120,22 @@ public class ImportCenterService : IImportCenterService
         cache.ItemTypesByName.TryGetValue(NormKey(name), out var entity);
         var isNew = entity is null;
         entity ??= new ItemType();
-        if (isNew) _db.ItemTypes.Add(entity);
+        if (isNew)
+        {
+            _db.ItemTypes.Add(entity);
+        }
 
         entity.Name = name;
         entity.Notes = OptKeep(cells, "Notes", entity.Notes);
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.ItemTypesByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1619,7 +2148,10 @@ public class ImportCenterService : IImportCenterService
         cache.UnitsByName.TryGetValue(NormKey(name), out var entity);
         var isNew = entity is null;
         entity ??= new Unit();
-        if (isNew) _db.Units.Add(entity);
+        if (isNew)
+        {
+            _db.Units.Add(entity);
+        }
 
         entity.Name = name;
         entity.ShortName = OptKeep(cells, "ShortName", entity.ShortName);
@@ -1629,7 +2161,10 @@ public class ImportCenterService : IImportCenterService
             var subRaw = cells.GetValueOrDefault("SubUnits", "").Trim();
             if (subRaw.Length == 0)
             {
-                if (isNew) entity.SubUnits = null;
+                if (isNew)
+                {
+                    entity.SubUnits = null;
+                }
             }
             else if (int.TryParse(StripNumber(subRaw), NumberStyles.Integer, CultureInfo.InvariantCulture, out var subVal))
             {
@@ -1642,14 +2177,21 @@ public class ImportCenterService : IImportCenterService
             var parentRaw = cells.GetValueOrDefault("ParentUnitName", "").Trim();
             if (parentRaw.Length == 0)
             {
-                if (isNew) entity.ParentUnitId = null;
+                if (isNew)
+                {
+                    entity.ParentUnitId = null;
+                }
             }
             else if (cache.UnitsByName.TryGetValue(NormKey(parentRaw), out var parent))
             {
                 if (parent != entity)
+                {
                     entity.ParentUnit = parent;
+                }
                 else
+                {
                     entity.ParentUnitId = null;
+                }
             }
             else
             {
@@ -1658,8 +2200,14 @@ public class ImportCenterService : IImportCenterService
         }
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.UnitsByName[NormKey(name)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1671,7 +2219,10 @@ public class ImportCenterService : IImportCenterService
         cache.BranchesByCode.TryGetValue(NormKey(codeRaw), out var entity);
         var isNew = entity is null;
         entity ??= new Branch();
-        if (isNew) _db.Branches.Add(entity);
+        if (isNew)
+        {
+            _db.Branches.Add(entity);
+        }
 
         entity.Code = codeRaw;
         entity.Name = cells.GetValueOrDefault("Name", "").Trim();
@@ -1679,8 +2230,14 @@ public class ImportCenterService : IImportCenterService
         entity.Phone = OptKeep(cells, "Phone", entity.Phone);
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.BranchesByCode[NormKey(codeRaw)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1692,14 +2249,23 @@ public class ImportCenterService : IImportCenterService
         cache.WarehousesByCode.TryGetValue(NormKey(codeRaw), out var entity);
         var isNew = entity is null;
         entity ??= new Warehouse();
-        if (isNew) _db.Warehouses.Add(entity);
+        if (isNew)
+        {
+            _db.Warehouses.Add(entity);
+        }
 
         entity.Code = codeRaw;
         entity.Name = cells.GetValueOrDefault("Name", "").Trim();
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.WarehousesByCode[NormKey(codeRaw)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1712,7 +2278,10 @@ public class ImportCenterService : IImportCenterService
         cache.AccountsByCode.TryGetValue(NormKey(codeRaw), out var entity);
         var isNew = entity is null;
         entity ??= new GLAccount();
-        if (isNew) _db.GLAccounts.Add(entity);
+        if (isNew)
+        {
+            _db.GLAccounts.Add(entity);
+        }
 
         entity.Code = codeRaw;
         entity.Name = cells.GetValueOrDefault("Name", "").Trim();
@@ -1724,14 +2293,21 @@ public class ImportCenterService : IImportCenterService
             var parentRaw = cells.GetValueOrDefault("ParentCode", "").Trim();
             if (parentRaw.Length == 0)
             {
-                if (isNew) entity.ParentAccountId = null;
+                if (isNew)
+                {
+                    entity.ParentAccountId = null;
+                }
             }
             else if (cache.AccountsByCode.TryGetValue(NormKey(parentRaw), out var parent))
             {
                 if (parent != entity)
+                {
                     entity.ParentAccount = parent;
+                }
                 else
+                {
                     entity.ParentAccountId = null;
+                }
             }
             else
             {
@@ -1740,8 +2316,14 @@ public class ImportCenterService : IImportCenterService
         }
 
         var active = OptionalBool(cells, "IsActive");
-        if (active.HasValue) entity.IsActive = active.Value;
-        else if (isNew) entity.IsActive = true;
+        if (active.HasValue)
+        {
+            entity.IsActive = active.Value;
+        }
+        else if (isNew)
+        {
+            entity.IsActive = true;
+        }
 
         cache.AccountsByCode[NormKey(codeRaw)] = entity;
         return isNew ? (1, 0) : (0, 1);
@@ -1752,49 +2334,131 @@ public class ImportCenterService : IImportCenterService
         var cache = new ReferenceCache();
 
         foreach (var u in await _db.Units.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(u.Name)) cache.UnitsByName[NormKey(u.Name)] = u;
+        {
+            if (!string.IsNullOrWhiteSpace(u.Name))
+            {
+                cache.UnitsByName[NormKey(u.Name)] = u;
+            }
+        }
+
         foreach (var cat in await _db.ItemCategories.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(cat.Name)) cache.CategoriesByName[NormKey(cat.Name)] = cat;
+        {
+            if (!string.IsNullOrWhiteSpace(cat.Name))
+            {
+                cache.CategoriesByName[NormKey(cat.Name)] = cat;
+            }
+        }
+
         foreach (var t in await _db.ItemTypes.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(t.Name)) cache.ItemTypesByName[NormKey(t.Name)] = t;
+        {
+            if (!string.IsNullOrWhiteSpace(t.Name))
+            {
+                cache.ItemTypesByName[NormKey(t.Name)] = t;
+            }
+        }
+
         foreach (var b in await _db.Branches.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(b.Code)) cache.BranchesByCode[NormKey(b.Code)] = b;
+        {
+            if (!string.IsNullOrWhiteSpace(b.Code))
+            {
+                cache.BranchesByCode[NormKey(b.Code)] = b;
+            }
+        }
+
         foreach (var w in await _db.Warehouses.ToListAsync())
         {
-            if (!string.IsNullOrWhiteSpace(w.Code)) cache.WarehousesByCode[NormKey(w.Code)] = w;
-            if (!string.IsNullOrWhiteSpace(w.Name)) cache.WarehousesByName[NormKey(w.Name)] = w;
+            if (!string.IsNullOrWhiteSpace(w.Code))
+            {
+                cache.WarehousesByCode[NormKey(w.Code)] = w;
+            }
+
+            if (!string.IsNullOrWhiteSpace(w.Name))
+            {
+                cache.WarehousesByName[NormKey(w.Name)] = w;
+            }
         }
         foreach (var a in await _db.GLAccounts.ToListAsync())
-            if (!string.IsNullOrWhiteSpace(a.Code)) cache.AccountsByCode[NormKey(a.Code)] = a;
+        {
+            if (!string.IsNullOrWhiteSpace(a.Code))
+            {
+                cache.AccountsByCode[NormKey(a.Code)] = a;
+            }
+        }
+
         foreach (var s in await _db.Suppliers.ToListAsync())
         {
-            if (!string.IsNullOrWhiteSpace(s.Code)) cache.SuppliersByCode[NormKey(s.Code)] = s;
-            if (!string.IsNullOrWhiteSpace(s.Name)) cache.SuppliersByName[NormKey(s.Name)] = s;
+            if (!string.IsNullOrWhiteSpace(s.Code))
+            {
+                cache.SuppliersByCode[NormKey(s.Code)] = s;
+            }
+
+            if (!string.IsNullOrWhiteSpace(s.Name))
+            {
+                cache.SuppliersByName[NormKey(s.Name)] = s;
+            }
         }
         foreach (var cu in await _db.Customers.ToListAsync())
         {
-            if (!string.IsNullOrWhiteSpace(cu.Code)) cache.CustomersByCode[NormKey(cu.Code)] = cu;
-            if (!string.IsNullOrWhiteSpace(cu.Name)) cache.CustomersByName[NormKey(cu.Name)] = cu;
+            if (!string.IsNullOrWhiteSpace(cu.Code))
+            {
+                cache.CustomersByCode[NormKey(cu.Code)] = cu;
+            }
+
+            if (!string.IsNullOrWhiteSpace(cu.Name))
+            {
+                cache.CustomersByName[NormKey(cu.Name)] = cu;
+            }
         }
         foreach (var i in await _db.Items.ToListAsync())
         {
-            if (!string.IsNullOrWhiteSpace(i.Code)) cache.ItemsByCode[NormKey(i.Code)] = i;
-            if (!string.IsNullOrWhiteSpace(i.Barcode)) cache.ItemsByBarcode[NormKey(i.Barcode)] = i;
-            if (!string.IsNullOrWhiteSpace(i.Name)) cache.ItemsByName[NormKey(i.Name)] = i;
+            if (!string.IsNullOrWhiteSpace(i.Code))
+            {
+                cache.ItemsByCode[NormKey(i.Code)] = i;
+            }
+
+            if (!string.IsNullOrWhiteSpace(i.Barcode))
+            {
+                cache.ItemsByBarcode[NormKey(i.Barcode)] = i;
+            }
+
+            if (!string.IsNullOrWhiteSpace(i.Name))
+            {
+                cache.ItemsByName[NormKey(i.Name)] = i;
+            }
         }
         foreach (var si in await _db.SaleInvoices.AsNoTracking().ToListAsync())
-            if (!string.IsNullOrWhiteSpace(si.InvoiceNumber)) cache.SaleInvoicesByNumber[NormKey(si.InvoiceNumber)] = si;
+        {
+            if (!string.IsNullOrWhiteSpace(si.InvoiceNumber))
+            {
+                cache.SaleInvoicesByNumber[NormKey(si.InvoiceNumber)] = si;
+            }
+        }
+
         foreach (var pi in await _db.PurchaseInvoices.AsNoTracking().ToListAsync())
-            if (!string.IsNullOrWhiteSpace(pi.InvoiceNumber)) cache.PurchaseInvoicesByNumber[NormKey(pi.InvoiceNumber)] = pi;
+        {
+            if (!string.IsNullOrWhiteSpace(pi.InvoiceNumber))
+            {
+                cache.PurchaseInvoicesByNumber[NormKey(pi.InvoiceNumber)] = pi;
+            }
+        }
+
         return cache;
     }
 
     private static int EnumValue(ImportEntityDefinition def, IReadOnlyDictionary<string, string> cells, string colKey, int defaultValue)
     {
         var col = def.Columns.FirstOrDefault(c => c.Key == colKey);
-        if (col is null || col.EnumMap is null) return defaultValue;
+        if (col is null || col.EnumMap is null)
+        {
+            return defaultValue;
+        }
+
         var raw = cells.GetValueOrDefault(colKey, "").Trim();
-        if (raw.Length == 0) return defaultValue;
+        if (raw.Length == 0)
+        {
+            return defaultValue;
+        }
+
         return TryParseEnum(raw, col, out var v) ? v : defaultValue;
     }
 
@@ -1807,7 +2471,11 @@ public class ImportCenterService : IImportCenterService
     private static string? OptKeep(IReadOnlyDictionary<string, string> cells, string key, string? current)
     {
         var value = cells.GetValueOrDefault(key, "").Trim();
-        if (value.Length == 0) return current;
+        if (value.Length == 0)
+        {
+            return current;
+        }
+
         return value;
     }
 
@@ -1821,7 +2489,11 @@ public class ImportCenterService : IImportCenterService
     private static bool? OptionalBool(IReadOnlyDictionary<string, string> cells, string key)
     {
         var raw = cells.GetValueOrDefault(key, "").Trim();
-        if (raw.Length == 0) return null;
+        if (raw.Length == 0)
+        {
+            return null;
+        }
+
         return TryParseBool(raw, out var value) ? value : null;
     }
 
@@ -1856,7 +2528,11 @@ public class ImportCenterService : IImportCenterService
         value = 0;
         var map = BuildEnumMap(col);
         var normalized = NormalizeDigits(raw.Trim());
-        if (normalized.Length == 0) return false;
+        if (normalized.Length == 0)
+        {
+            return false;
+        }
+
         if (map.TryGetValue(normalized, out var v)) { value = v; return true; }
         if (int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && map.Values.Contains(n)) { value = n; return true; }
         return false;
@@ -1875,12 +2551,18 @@ public class ImportCenterService : IImportCenterService
                     foreach (var label in parts[0].Split('|', StringSplitOptions.RemoveEmptyEntries))
                     {
                         var trimmed = label.Trim();
-                        if (trimmed.Length > 0) result[trimmed] = aliasValue;
+                        if (trimmed.Length > 0)
+                        {
+                            result[trimmed] = aliasValue;
+                        }
                     }
                     continue;
                 }
                 var bare = parts[0].Trim();
-                if (bare.Length > 0) result[bare] = result.Count + 1;
+                if (bare.Length > 0)
+                {
+                    result[bare] = result.Count + 1;
+                }
             }
         }
         foreach (var pair in (col.EnumMap ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
@@ -1888,14 +2570,24 @@ public class ImportCenterService : IImportCenterService
             var parts = pair.Split('=', 2);
             var labels = parts[0].Split('|', StringSplitOptions.RemoveEmptyEntries)
                 .Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
-            if (labels.Count == 0) continue;
+            if (labels.Count == 0)
+            {
+                continue;
+            }
+
             if (parts.Length == 2 && int.TryParse(NormalizeDigits(parts[1]), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
             {
-                foreach (var label in labels) result[label] = value;
+                foreach (var label in labels)
+                {
+                    result[label] = value;
+                }
             }
             else
             {
-                foreach (var label in labels) result[label] = result.Count + 1;
+                foreach (var label in labels)
+                {
+                    result[label] = result.Count + 1;
+                }
             }
         }
         return result;
@@ -1905,7 +2597,13 @@ public class ImportCenterService : IImportCenterService
     {
         var first = new Dictionary<int, string>();
         foreach (var kvp in BuildEnumMap(col))
-            if (!first.ContainsKey(kvp.Value)) first[kvp.Value] = kvp.Key;
+        {
+            if (!first.ContainsKey(kvp.Value))
+            {
+                first[kvp.Value] = kvp.Key;
+            }
+        }
+
         return string.Join("، ", first.OrderBy(kv => kv.Key).Select(kv => kv.Value));
     }
 
@@ -1925,9 +2623,13 @@ public class ImportCenterService : IImportCenterService
         {
             var parts = s.Split(',');
             if (parts.Length == 2 && parts[1].Length > 0 && parts[1].Length <= 2 && parts[1].IndexOf('.') < 0)
+            {
                 s = parts[0] + "." + parts[1];
+            }
             else
+            {
                 s = s.Replace(",", "");
+            }
         }
         return s;
     }
@@ -1980,17 +2682,26 @@ public class ImportCenterService : IImportCenterService
         var ws = wb.Worksheets.First();
 
         var lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
-        if (lastRow == 0) return [];
+        if (lastRow == 0)
+        {
+            return [];
+        }
 
         var lastCol = ws.Row(1).LastCellUsed()?.Address.ColumnNumber ?? 0;
-        if (lastCol == 0) return [];
+        if (lastCol == 0)
+        {
+            return [];
+        }
 
         var rows = new List<List<string>>();
         for (int r = 1; r <= lastRow; r++)
         {
             var row = new List<string>(lastCol);
             for (int c = 1; c <= lastCol; c++)
+            {
                 row.Add(CellText(ws.Cell(r, c)));
+            }
+
             rows.Add(row);
         }
         return rows;
@@ -1998,18 +2709,38 @@ public class ImportCenterService : IImportCenterService
 
     private static string CellText(IXLCell cell)
     {
-        if (cell.IsEmpty()) return "";
+        if (cell.IsEmpty())
+        {
+            return "";
+        }
+
         var value = cell.Value;
-        if (value.IsNumber) return value.GetNumber().ToString(CultureInfo.InvariantCulture);
-        if (value.IsBoolean) return value.GetBoolean() ? "نعم" : "لا";
-        if (value.IsDateTime) return value.GetDateTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        if (value.IsNumber)
+        {
+            return value.GetNumber().ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (value.IsBoolean)
+        {
+            return value.GetBoolean() ? "نعم" : "لا";
+        }
+
+        if (value.IsDateTime)
+        {
+            return value.GetDateTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        }
+
         return value.GetText().Trim();
     }
 
     private static List<List<string>> ReadCsv(byte[] data)
     {
         var text = Encoding.UTF8.GetString(data);
-        if (text.StartsWith('\uFEFF')) text = text[1..];
+        if (text.StartsWith('\uFEFF'))
+        {
+            text = text[1..];
+        }
+
         return ParseCsv(text, DetectDelimiter(text));
     }
 
@@ -2037,7 +2768,10 @@ public class ImportCenterService : IImportCenterService
                 if (c == '"')
                 {
                     if (i + 1 < text.Length && text[i + 1] == '"') { field.Append('"'); i++; }
-                    else inQuotes = false;
+                    else
+                    {
+                        inQuotes = false;
+                    }
                 }
                 else
                 {
@@ -2061,7 +2795,10 @@ public class ImportCenterService : IImportCenterService
                     field.Clear();
                     rows.Add(row);
                     row = new List<string>();
-                    if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
+                    if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+                    {
+                        i++;
+                    }
                 }
                 else
                 {
@@ -2092,7 +2829,9 @@ public class ImportCenterService : IImportCenterService
         };
 
         foreach (var col in def.Columns.Where(c => c.Type == ImportValueType.Enum && c.EnumMap is not null))
+        {
             lines.Add($"قيم «{col.HeaderAr}»: {EnumLabels(col)}.");
+        }
 
         lines.AddRange(
         [
@@ -2134,8 +2873,8 @@ public class ImportCenterService : IImportCenterService
             "itemCategories" => CategoriesByName.ContainsKey(normKey),
             "itemTypes" => ItemTypesByName.ContainsKey(normKey),
             "units" => UnitsByName.ContainsKey(normKey),
-"branches" => BranchesByCode.ContainsKey(normKey),
-                    "warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),
+            "branches" => BranchesByCode.ContainsKey(normKey),
+            "warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),
             "glAccounts" => AccountsByCode.ContainsKey(normKey),
             _ => false
         };
@@ -2143,15 +2882,18 @@ public class ImportCenterService : IImportCenterService
         public bool LookupHas(string lookupKey, bool useCode, string normKey)
         {
             if (useCode)
+            {
                 return lookupKey switch
                 {
                     "glAccounts" => AccountsByCode.ContainsKey(normKey),
                     "branches" => BranchesByCode.ContainsKey(normKey),
-"warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),
+                    "warehouses" => WarehousesByCode.ContainsKey(normKey) || WarehousesByName.ContainsKey(normKey),
                     "suppliers" => SuppliersByCode.ContainsKey(normKey),
                     "customers" => CustomersByCode.ContainsKey(normKey),
                     _ => false
                 };
+            }
+
             return lookupKey switch
             {
                 "units" => UnitsByName.ContainsKey(normKey),

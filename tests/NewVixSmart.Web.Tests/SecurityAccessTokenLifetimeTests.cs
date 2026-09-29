@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,6 @@ using NewVixSmart.Web.Api;
 using NewVixSmart.Web.Api.Dtos;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Infrastructure;
-using System.IdentityModel.Tokens.Jwt;
 using Xunit;
 
 namespace NewVixSmart.Web.Tests;
@@ -246,7 +246,10 @@ internal static class TestPaths
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web");
-            if (Directory.Exists(candidate)) return candidate;
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
         }
 
         throw new DirectoryNotFoundException(

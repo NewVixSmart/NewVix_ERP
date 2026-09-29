@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -100,16 +100,28 @@ public class PaymentsController : Controller
     [RequirePerm("Payments.View")]
     public async Task<IActionResult> Details(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var targetPaymentId = await _db.Payments.AsNoTracking()
             .Where(p => p.PublicId == publicId)
             .Select(p => (int?)p.Id)
             .FirstOrDefaultAsync();
-        if (targetPaymentId == null) return NotFound();
+        if (targetPaymentId == null)
+        {
+            return NotFound();
+        }
+
         var paymentId = targetPaymentId.Value;
 
         var payment = await _payment.GetPaymentAsync(paymentId);
-        if (payment == null) return NotFound();
+        if (payment == null)
+        {
+            return NotFound();
+        }
+
         return View(payment);
     }
 }

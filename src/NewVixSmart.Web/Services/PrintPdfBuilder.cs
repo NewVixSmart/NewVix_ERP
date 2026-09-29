@@ -1,14 +1,14 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.ViewModels.Core;
-using System.Globalization;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace NewVixSmart.Web.Services;
 
@@ -51,7 +51,10 @@ public static class PrintPdfBuilder
                 if (settings != null)
                 {
                     var layout = settings.GetLayoutAsync(group).GetAwaiter().GetResult();
-                    if (layout != null) return layout;
+                    if (layout != null)
+                    {
+                        return layout;
+                    }
                 }
             }
             catch
@@ -73,7 +76,10 @@ public static class PrintPdfBuilder
                 if (branding != null)
                 {
                     var profile = branding.LoadAsync().GetAwaiter().GetResult().Profile;
-                    if (profile != null) return profile;
+                    if (profile != null)
+                    {
+                        return profile;
+                    }
                 }
             }
             catch
@@ -122,48 +128,144 @@ public static class PrintPdfBuilder
     public static IReadOnlyList<PdfColumn> InvoiceColumns(PrintLayoutOptions layout, bool showCost)
     {
         var cols = new List<PdfColumn> { new("الصنف", false, 2f) };
-        if (layout.ShowItemCode) cols.Add(new PdfColumn("الكود", false, 1f));
-        if (layout.ShowBarcode) cols.Add(new PdfColumn("الباركود", false, 1f));
-        if (layout.ShowCount) cols.Add(new PdfColumn("العدد", true, 1f));
-        if (layout.ShowQuantity) cols.Add(new PdfColumn("الكمية", true, 1f));
-        if (layout.ShowUnitPrice && showCost) cols.Add(new PdfColumn("سعر الوحدة", true, 1f));
-        if (layout.ShowDiscountColumn && showCost) cols.Add(new PdfColumn("الخصم", true, 1f));
-        if (layout.ShowSubtotal && showCost) cols.Add(new PdfColumn("الإجمالي", true, 1f));
+        if (layout.ShowItemCode)
+        {
+            cols.Add(new PdfColumn("الكود", false, 1f));
+        }
+
+        if (layout.ShowBarcode)
+        {
+            cols.Add(new PdfColumn("الباركود", false, 1f));
+        }
+
+        if (layout.ShowCount)
+        {
+            cols.Add(new PdfColumn("العدد", true, 1f));
+        }
+
+        if (layout.ShowQuantity)
+        {
+            cols.Add(new PdfColumn("الكمية", true, 1f));
+        }
+
+        if (layout.ShowUnitPrice && showCost)
+        {
+            cols.Add(new PdfColumn("سعر الوحدة", true, 1f));
+        }
+
+        if (layout.ShowDiscountColumn && showCost)
+        {
+            cols.Add(new PdfColumn("الخصم", true, 1f));
+        }
+
+        if (layout.ShowSubtotal && showCost)
+        {
+            cols.Add(new PdfColumn("الإجمالي", true, 1f));
+        }
+
         return cols;
     }
 
     public static IReadOnlyList<PdfColumn> TransferColumns(PrintLayoutOptions layout)
     {
         var cols = new List<PdfColumn> { new("الصنف", false, 2f) };
-        if (layout.ShowItemCode) cols.Add(new PdfColumn("الكود", false, 1f));
-        if (layout.ShowBarcode) cols.Add(new PdfColumn("الباركود", false, 1f));
-        if (layout.ShowCount) cols.Add(new PdfColumn("العدد", true, 1f));
-        if (layout.ShowQuantity) cols.Add(new PdfColumn("الكمية", true, 1f));
-        if (layout.ShowUnitPrice) cols.Add(new PdfColumn("تكلفة الوحدة", true, 1f));
+        if (layout.ShowItemCode)
+        {
+            cols.Add(new PdfColumn("الكود", false, 1f));
+        }
+
+        if (layout.ShowBarcode)
+        {
+            cols.Add(new PdfColumn("الباركود", false, 1f));
+        }
+
+        if (layout.ShowCount)
+        {
+            cols.Add(new PdfColumn("العدد", true, 1f));
+        }
+
+        if (layout.ShowQuantity)
+        {
+            cols.Add(new PdfColumn("الكمية", true, 1f));
+        }
+
+        if (layout.ShowUnitPrice)
+        {
+            cols.Add(new PdfColumn("تكلفة الوحدة", true, 1f));
+        }
+
         return cols;
     }
 
     public static IReadOnlyList<string?> LineRow(PrintLayoutOptions layout, string name, string? code, string? barcode, decimal count, decimal quantity, decimal unitPrice, decimal discount, decimal subtotal)
     {
         var row = new List<string?> { name };
-        if (layout.ShowItemCode) row.Add(code);
-        if (layout.ShowBarcode) row.Add(barcode);
-        if (layout.ShowCount) row.Add(Fmt(count, layout.Decimals));
-        if (layout.ShowQuantity) row.Add(Fmt(quantity, layout.Decimals));
-        if (layout.ShowUnitPrice) row.Add(Fmt(unitPrice, layout.Decimals));
-        if (layout.ShowDiscountColumn) row.Add(Fmt(discount, layout.Decimals));
-        if (layout.ShowSubtotal) row.Add(Fmt(subtotal, layout.Decimals));
+        if (layout.ShowItemCode)
+        {
+            row.Add(code);
+        }
+
+        if (layout.ShowBarcode)
+        {
+            row.Add(barcode);
+        }
+
+        if (layout.ShowCount)
+        {
+            row.Add(Fmt(count, layout.Decimals));
+        }
+
+        if (layout.ShowQuantity)
+        {
+            row.Add(Fmt(quantity, layout.Decimals));
+        }
+
+        if (layout.ShowUnitPrice)
+        {
+            row.Add(Fmt(unitPrice, layout.Decimals));
+        }
+
+        if (layout.ShowDiscountColumn)
+        {
+            row.Add(Fmt(discount, layout.Decimals));
+        }
+
+        if (layout.ShowSubtotal)
+        {
+            row.Add(Fmt(subtotal, layout.Decimals));
+        }
+
         return row;
     }
 
     public static IReadOnlyList<string?> TransferRow(PrintLayoutOptions layout, string name, string? code, string? barcode, decimal count, decimal quantity, decimal unitCost)
     {
         var row = new List<string?> { name };
-        if (layout.ShowItemCode) row.Add(code);
-        if (layout.ShowBarcode) row.Add(barcode);
-        if (layout.ShowCount) row.Add(Fmt(count, layout.Decimals));
-        if (layout.ShowQuantity) row.Add(Fmt(quantity, layout.Decimals));
-        if (layout.ShowUnitPrice) row.Add(Fmt(unitCost, layout.Decimals));
+        if (layout.ShowItemCode)
+        {
+            row.Add(code);
+        }
+
+        if (layout.ShowBarcode)
+        {
+            row.Add(barcode);
+        }
+
+        if (layout.ShowCount)
+        {
+            row.Add(Fmt(count, layout.Decimals));
+        }
+
+        if (layout.ShowQuantity)
+        {
+            row.Add(Fmt(quantity, layout.Decimals));
+        }
+
+        if (layout.ShowUnitPrice)
+        {
+            row.Add(Fmt(unitCost, layout.Decimals));
+        }
+
         return row;
     }
 
@@ -174,9 +276,13 @@ public static class PrintPdfBuilder
             for (int i = 0; i < fields.Count; i++)
             {
                 if (i > 0)
+                {
                     row.RelativeItem().AlignLeft().Text(fields[i]);
+                }
                 else
+                {
                     row.RelativeItem().Text(fields[i]);
+                }
             }
         });
     }
@@ -190,16 +296,23 @@ public static class PrintPdfBuilder
     {
         t.ColumnsDefinition(cd =>
         {
-            foreach (var c in columns) cd.RelativeColumn(c.Weight);
+            foreach (var c in columns)
+            {
+                cd.RelativeColumn(c.Weight);
+            }
         });
         t.Header(hd =>
         {
             foreach (var c in columns)
             {
                 if (c.Right)
+                {
                     hd.Cell().Element(x => HeaderCell(x, layout)).AlignRight().Text(c.Header);
+                }
                 else
+                {
                     hd.Cell().Element(x => HeaderCell(x, layout)).Text(c.Header);
+                }
             }
         });
         foreach (var row in rows)
@@ -207,19 +320,39 @@ public static class PrintPdfBuilder
             for (int i = 0; i < columns.Count; i++)
             {
                 if (columns[i].Right)
+                {
                     t.Cell().AlignRight().Text(row.Count > i ? row[i] ?? "" : "");
+                }
                 else
+                {
                     t.Cell().Text(row.Count > i ? row[i] ?? "" : "");
+                }
             }
         }
     }
 
     public static void DrawTotals(ColumnDescriptor col, PrintLayoutOptions layout, PdfTotals totals)
     {
-        if (layout.ShowSubtotal && totals.Total != null) TotalRow(col, layout, "الإجمالي", totals.Total, false);
-        if (layout.ShowTotalDiscount && totals.TotalDiscount != null) TotalRow(col, layout, "الخصم", totals.TotalDiscount, false);
-        if (layout.ShowTotalTax && totals.TotalTax != null) TotalRow(col, layout, "الضريبة", totals.TotalTax, false);
-        if (layout.ShowGrandTotal && totals.GrandTotal != null) TotalRow(col, layout, "الصافي", totals.GrandTotal, true);
+        if (layout.ShowSubtotal && totals.Total != null)
+        {
+            TotalRow(col, layout, "الإجمالي", totals.Total, false);
+        }
+
+        if (layout.ShowTotalDiscount && totals.TotalDiscount != null)
+        {
+            TotalRow(col, layout, "الخصم", totals.TotalDiscount, false);
+        }
+
+        if (layout.ShowTotalTax && totals.TotalTax != null)
+        {
+            TotalRow(col, layout, "الضريبة", totals.TotalTax, false);
+        }
+
+        if (layout.ShowGrandTotal && totals.GrandTotal != null)
+        {
+            TotalRow(col, layout, "الصافي", totals.GrandTotal, true);
+        }
+
         if (layout.ShowPaidBadge && totals.Paid != null && totals.Remaining != null)
         {
             col.Item().PaddingTop(6).Row(row =>
@@ -229,11 +362,19 @@ public static class PrintPdfBuilder
             });
         }
         if (!string.IsNullOrWhiteSpace(totals.Notes))
+        {
             col.Item().PaddingTop(6).Text($"ملاحظات: {totals.Notes}").FontSize(9);
+        }
+
         if (layout.ShowCreatedBy && !string.IsNullOrWhiteSpace(totals.CreatedBy))
+        {
             col.Item().PaddingTop(4).Text($"أنشئ بواسطة: {totals.CreatedBy}").FontSize(8).FontColor(Colors.Grey.Darken1);
+        }
+
         if (layout.ShowAmountInWords && totals.AmountInWords != null)
+        {
             col.Item().PaddingTop(6).Text($"فقط: {totals.AmountInWords}").FontSize(9).SemiBold();
+        }
     }
 
     public static void DocumentBody(PageDescriptor page, PrintLayoutOptions layout, Action<ColumnDescriptor> body)
@@ -262,7 +403,11 @@ public static class PrintPdfBuilder
         var w = (long)Math.Abs(whole);
         var parts = new List<string> { w == 0 ? "صفر" : IntegerWords(w) };
         var fracValue = (int)Math.Min(frac, 99);
-        if (fracValue > 0) parts.Add(UnderHundred(fracValue) + " من مائة");
+        if (fracValue > 0)
+        {
+            parts.Add(UnderHundred(fracValue) + " من مائة");
+        }
+
         parts.Add("فقط");
         var result = string.Join(" و ", parts);
         return negative && w > 0 ? "ناقص " + result : result;
@@ -381,7 +526,9 @@ public static class PrintPdfBuilder
                 InfoRow(col, new[] { $"{partyName}", $"من: {from:dd/MM/yyyy}", $"إلى: {to:dd/MM/yyyy}" });
                 StatementTable(col, layout, opening, lines, closing);
                 if (pendingValue.HasValue)
+                {
                     TotalRow(col, layout, "تسليمات معلّقة (غير محسوبة في الرصيد)", Fmt(pendingValue.Value, layout.Decimals), false);
+                }
             }));
     }
 
@@ -559,9 +706,13 @@ public static class PrintPdfBuilder
                 foreach (var (label, right) in headers)
                 {
                     if (right)
+                    {
                         hd.Cell().Element(x => HeaderCell(x, layout)).AlignRight().Text(label);
+                    }
                     else
+                    {
                         hd.Cell().Element(x => HeaderCell(x, layout)).Text(label);
+                    }
                 }
             });
             t.Cell().Text("الرصيد الافتتاحي");
@@ -610,14 +761,26 @@ public static class PrintPdfBuilder
         page.Header().Column(col =>
         {
             if (layout.ShowLogo && profile.HasLogo && profile.LogoData is { Length: > 0 })
+            {
                 col.Item().AlignCenter().Element(c => c.Height((float)(64 * layout.LogoScalePercent / 100d)).Image(profile.LogoData).FitHeight());
+            }
+
             if (layout.ShowCompanyName && !string.IsNullOrWhiteSpace(profile.CompanyName))
+            {
                 col.Item().AlignCenter().Text(profile.CompanyName).FontSize((float)(18 * scale)).Bold();
+            }
+
             if (layout.ShowTagline && !string.IsNullOrWhiteSpace(profile.Tagline))
+            {
                 col.Item().AlignCenter().Text(profile.Tagline).FontSize((float)(10 * scale));
+            }
+
             var contact = BuildContact(layout, profile);
             if (contact.Length > 0)
+            {
                 col.Item().AlignCenter().Text(contact).FontSize((float)(8 * scale)).FontColor(Colors.Grey.Darken1);
+            }
+
             if (layout.ShowDocTitle)
             {
                 col.Item().PaddingTop(4).AlignCenter().Text(title).FontSize((float)(13 * scale)).SemiBold().FontColor(Color.FromHex(accent));
@@ -632,7 +795,11 @@ public static class PrintPdfBuilder
 
     private static void BuildFooter(PageDescriptor page, PrintLayoutOptions layout, CompanyProfile profile)
     {
-        if (!layout.ShowFooter && !layout.ShowPageNumbers) return;
+        if (!layout.ShowFooter && !layout.ShowPageNumbers)
+        {
+            return;
+        }
+
         page.Footer().Column(col =>
         {
             if (layout.ShowFooter)
@@ -660,12 +827,26 @@ public static class PrintPdfBuilder
         var contact = new List<string>(4);
         if (layout.ShowCompanyContact)
         {
-            if (!string.IsNullOrWhiteSpace(profile.Address)) contact.Add(profile.Address);
-            if (!string.IsNullOrWhiteSpace(profile.Phone)) contact.Add(profile.Phone);
-            if (!string.IsNullOrWhiteSpace(profile.Email)) contact.Add(profile.Email);
+            if (!string.IsNullOrWhiteSpace(profile.Address))
+            {
+                contact.Add(profile.Address);
+            }
+
+            if (!string.IsNullOrWhiteSpace(profile.Phone))
+            {
+                contact.Add(profile.Phone);
+            }
+
+            if (!string.IsNullOrWhiteSpace(profile.Email))
+            {
+                contact.Add(profile.Email);
+            }
         }
         if (layout.ShowTaxNumber && !string.IsNullOrWhiteSpace(profile.TaxNumber))
+        {
             contact.Add($"الرقم الضريبي: {profile.TaxNumber}");
+        }
+
         return string.Join(" • ", contact);
     }
 
@@ -752,7 +933,11 @@ public static class PrintPdfBuilder
     private static string NormalizeHex(string? hex, string fallback)
     {
         var value = (hex ?? "").Trim();
-        if (value.Length == 0) return fallback;
+        if (value.Length == 0)
+        {
+            return fallback;
+        }
+
         try
         {
             _ = ColorUtil.HexToRgb(value);
@@ -771,17 +956,41 @@ public static class PrintPdfBuilder
         long millions = (n / 1000000) % 1000;
         long thousands = (n / 1000) % 1000;
         long rest = n % 1000;
-        if (billions > 0) parts.Add(UnderThousand((int)billions) + (billions == 1 ? " مليار" : billions == 2 ? " ملياران" : " مليارات"));
-        if (millions > 0) parts.Add(UnderThousand((int)millions) + (millions == 1 ? " مليون" : millions == 2 ? " مليونان" : " ملايين"));
-        if (thousands > 0) parts.Add(UnderThousand((int)thousands) + (thousands == 1 ? " ألف" : thousands == 2 ? " ألفان" : " ألفاً"));
-        if (rest > 0) parts.Add(UnderThousand((int)rest));
+        if (billions > 0)
+        {
+            parts.Add(UnderThousand((int)billions) + (billions == 1 ? " مليار" : billions == 2 ? " ملياران" : " مليارات"));
+        }
+
+        if (millions > 0)
+        {
+            parts.Add(UnderThousand((int)millions) + (millions == 1 ? " مليون" : millions == 2 ? " مليونان" : " ملايين"));
+        }
+
+        if (thousands > 0)
+        {
+            parts.Add(UnderThousand((int)thousands) + (thousands == 1 ? " ألف" : thousands == 2 ? " ألفان" : " ألفاً"));
+        }
+
+        if (rest > 0)
+        {
+            parts.Add(UnderThousand((int)rest));
+        }
+
         return string.Join(" و ", parts);
     }
 
     private static string UnderThousand(int n)
     {
-        if (n <= 0) return "";
-        if (n < 100) return UnderHundred(n);
+        if (n <= 0)
+        {
+            return "";
+        }
+
+        if (n < 100)
+        {
+            return UnderHundred(n);
+        }
+
         int hundreds = n / 100;
         int rest = n % 100;
         return rest == 0 ? ArabicHundreds[hundreds] : ArabicHundreds[hundreds] + " و" + UnderHundred(rest);
@@ -789,8 +998,16 @@ public static class PrintPdfBuilder
 
     private static string UnderHundred(int n)
     {
-        if (n < 0 || n > 99) return "";
-        if (n < 20) return ArabicOnes[n];
+        if (n < 0 || n > 99)
+        {
+            return "";
+        }
+
+        if (n < 20)
+        {
+            return ArabicOnes[n];
+        }
+
         int ones = n % 10;
         int tens = n / 10;
         return ones == 0 ? ArabicTens[tens] : ArabicOnes[ones] + " و" + ArabicTens[tens];

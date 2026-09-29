@@ -31,7 +31,9 @@ public class SalesController : ControllerBase
     {
         string? validationError = ValidateCreateSale(request);
         if (validationError != null)
+        {
             return BadRequest(new { error = validationError });
+        }
 
         var invoice = new SaleInvoice
         {
@@ -56,34 +58,64 @@ public class SalesController : ControllerBase
 
         var branchId = _http.GetCurrentBranchId();
         var (ok, error) = await _inventory.CreateSaleAsync(invoice, items, User.Identity?.Name, branchId);
-        if (!ok) return BadRequest(new { message = error });
+        if (!ok)
+        {
+            return BadRequest(new { message = error });
+        }
+
         return Ok(new ApiResponse { Success = true, Data = new { invoice.Id, invoice.InvoiceNumber, invoice.NetAmount } });
     }
 
     private static string? ValidateCreateSale(CreateSaleRequest request)
     {
         if (request.Items.Count == 0)
+        {
             return "يرجى إضافة صنف واحد على الأقل";
+        }
+
         if (request.CustomerId <= 0)
+        {
             return "العميل مطلوب";
+        }
+
         if (request.Discount < 0 || (request.Discount2 ?? 0) < 0 || (request.Discount3 ?? 0) < 0 || request.Tax < 0)
+        {
             return "الخصومات والضريبة يجب ألا تكون سالبة";
+        }
+
         if (request.Discount > 99999999.99m || request.Tax > 99999999.99m)
+        {
             return "قيمة الخصم أو الضريبة خارج النطاق المسموح";
+        }
+
         var year = request.InvoiceDate.Year;
         if (year < 2000 || year > 2100)
+        {
             return "تاريخ الفاتورة خارج النطاق المسموح";
+        }
+
         for (int i = 0; i < request.Items.Count; i++)
         {
             var item = request.Items[i];
             if (item.ItemId <= 0)
+            {
                 return $"الصنف في البند {i + 1} مطلوب";
+            }
+
             if (item.Quantity < 0 || item.Count < 0 || item.UnitPrice < 0 || item.Discount < 0)
+            {
                 return $"قيم البند {i + 1} يجب ألا تكون سالبة";
+            }
+
             if (item.Quantity <= 0 && item.Count <= 0)
+            {
                 return $"الكمية أو العدد في البند {i + 1} يجب أن يكون أكبر من صفر";
+            }
+
             if (item.UnitPrice > 99999999.99m)
+            {
                 return $"سعر الوحدة في البند {i + 1} خارج النطاق المسموح";
+            }
         }
         return null;
     }

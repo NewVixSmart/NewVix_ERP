@@ -64,7 +64,11 @@ public class PurchaseRequestsController : Controller
     public async Task<IActionResult> Remove(int id)
     {
         var quote = await _db.SupplierQuotes.FindAsync(id);
-        if (quote == null) return NotFound();
+        if (quote == null)
+        {
+            return NotFound();
+        }
+
         _db.SupplierQuotes.Remove(quote);
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم حذف عرض السعر";

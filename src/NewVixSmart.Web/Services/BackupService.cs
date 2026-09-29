@@ -23,7 +23,10 @@ public sealed class BackupService : IBackupService
         _connectionString = raw;
         var builder = new SqlConnectionStringBuilder(raw);
         if (string.IsNullOrWhiteSpace(builder.InitialCatalog))
+        {
             throw new InvalidOperationException("اسم قاعدة البيانات (Initial Catalog) غير موجود في connectionString.");
+        }
+
         _dbName = builder.InitialCatalog;
         _backupDir = Path.Combine(env.ContentRootPath, "App_Data", "Backups");
         Directory.CreateDirectory(_backupDir);
@@ -33,7 +36,9 @@ public sealed class BackupService : IBackupService
     {
         var dir = new DirectoryInfo(_backupDir);
         if (!dir.Exists)
+        {
             return Array.Empty<BackupFileInfo>();
+        }
 
         return dir.GetFiles("*.bak")
             .OrderByDescending(f => f.Name)
@@ -44,7 +49,9 @@ public sealed class BackupService : IBackupService
     public async Task<string> CreateBackupAsync()
     {
         if (!await _operationLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
             throw new InvalidOperationException("عملية أخرى قيد التنفيذ. يرجى الانتظار.");
+        }
 
         try
         {
@@ -58,7 +65,10 @@ public sealed class BackupService : IBackupService
             {
                 int seq = 2;
                 while (File.Exists(Path.Combine(_backupDir, $"VixSmart_{stamp}_{seq}.bak")))
+                {
                     seq++;
+                }
+
                 baseName = $"VixSmart_{stamp}_{seq}.bak";
                 filePath = Path.Combine(_backupDir, baseName);
             }
@@ -88,7 +98,9 @@ public sealed class BackupService : IBackupService
     public async Task DeleteAsync(string fileName)
     {
         if (!await _operationLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
             throw new InvalidOperationException("عملية أخرى قيد التنفيذ. يرجى الانتظار.");
+        }
 
         try
         {
@@ -105,7 +117,9 @@ public sealed class BackupService : IBackupService
     public async Task<byte[]> ReadBackupBytesAsync(string fileName)
     {
         if (!await _operationLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
             throw new InvalidOperationException("عملية أخرى قيد التنفيذ. يرجى الانتظار.");
+        }
 
         try
         {
@@ -121,7 +135,9 @@ public sealed class BackupService : IBackupService
     public async Task RestoreAsync(string fileName)
     {
         if (!await _operationLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
             throw new InvalidOperationException("عملية أخرى قيد التنفيذ. يرجى الانتظار.");
+        }
 
         try
         {
@@ -137,7 +153,9 @@ public sealed class BackupService : IBackupService
             await conn.OpenAsync();
 
             await using (var cmd1 = new SqlCommand($"ALTER DATABASE {dbQuoted} SET SINGLE_USER WITH ROLLBACK IMMEDIATE", conn) { CommandTimeout = 300 })
+            {
                 await cmd1.ExecuteNonQueryAsync();
+            }
 
             try
             {
@@ -182,7 +200,9 @@ public sealed class BackupService : IBackupService
     public async Task ResetSystemAsync()
     {
         if (!await _operationLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
             throw new InvalidOperationException("عملية أخرى قيد التنفيذ. يرجى الانتظار.");
+        }
 
         try
         {
@@ -207,7 +227,9 @@ public sealed class BackupService : IBackupService
                     await ExecuteNonQueryAsync(conn, transaction, $"DELETE FROM {tquoted}");
 
                     if (await HasIdentityColumnAsync(conn, transaction, table))
+                    {
                         await ExecuteNonQueryAsync(conn, transaction, $"DBCC CHECKIDENT (N'{EscapeSqlString(table)}', RESEED, 0)");
+                    }
                 }
 
                 foreach (var table in tables)
@@ -218,7 +240,9 @@ public sealed class BackupService : IBackupService
 
                 string[] childTables = ["AspNetUserTokens", "AspNetUserLogins", "AspNetUserClaims", "AspNetUserRoles"];
                 foreach (var child in childTables)
+                {
                     await ExecuteNonQueryAsync(conn, transaction, $"DELETE FROM [{child}] WHERE UserId <> @adminId", adminId);
+                }
 
                 await ExecuteNonQueryAsync(conn, transaction, "DELETE FROM [dbo].[AspNetUsers] WHERE Id <> @adminId", adminId);
 
@@ -234,7 +258,10 @@ public sealed class BackupService : IBackupService
                 }
 
                 if (ex is InvalidOperationException)
+                {
                     throw;
+                }
+
                 throw new InvalidOperationException("حدث خطأ أثناء إعادة ضبط النظام.", ex);
             }
         }
@@ -247,15 +274,21 @@ public sealed class BackupService : IBackupService
     public string ResolveBackupPath(string fileName)
     {
         if (!BackupFileName.IsValid(fileName))
+        {
             throw new ArgumentException("اسم الملف غير صالح.", nameof(fileName));
+        }
 
         var dirFull = Path.GetFullPath(_backupDir);
         var fullPath = Path.GetFullPath(Path.Combine(dirFull, fileName));
         if (!fullPath.StartsWith(dirFull, StringComparison.OrdinalIgnoreCase))
+        {
             throw new ArgumentException("المسار غير مسموح.", nameof(fileName));
+        }
 
         if (!File.Exists(fullPath))
+        {
             throw new FileNotFoundException("الملف غير موجود.", fileName);
+        }
 
         return fullPath;
     }
@@ -266,7 +299,10 @@ public sealed class BackupService : IBackupService
     {
         await using var cmd = new SqlCommand(sql, conn, transaction) { CommandTimeout = 300 };
         if (adminId != null)
+        {
             cmd.Parameters.AddWithValue("@adminId", adminId);
+        }
+
         await cmd.ExecuteNonQueryAsync();
     }
 
@@ -275,7 +311,10 @@ public sealed class BackupService : IBackupService
         await using var cmd = new SqlCommand("SELECT Id FROM AspNetUsers WHERE UserName = 'admin'", conn, transaction);
         var result = await cmd.ExecuteScalarAsync();
         if (result == null || result == DBNull.Value)
+        {
             throw new InvalidOperationException("لا يمكن إعادة الضبط: لم يتم العثور على مستخدم admin");
+        }
+
         return result.ToString()!;
     }
 
@@ -285,7 +324,10 @@ public sealed class BackupService : IBackupService
         var tables = new List<string>();
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
+        {
             tables.Add(reader.GetString(0));
+        }
+
         return tables;
     }
 

@@ -27,13 +27,23 @@ public sealed class AuthorizationSweepTests
 
     private static bool ReturnsActionResult(Type t)
     {
-        if (t == typeof(void)) return false;
-        if (typeof(IActionResult).IsAssignableFrom(t)) return true;
+        if (t == typeof(void))
+        {
+            return false;
+        }
+
+        if (typeof(IActionResult).IsAssignableFrom(t))
+        {
+            return true;
+        }
+
         if (t.IsGenericType)
         {
             var def = t.GetGenericTypeDefinition();
             if (def == typeof(Task<>) || def == typeof(ValueTask<>))
+            {
                 return typeof(IActionResult).IsAssignableFrom(t.GetGenericArguments()[0]);
+            }
         }
         return false;
     }
@@ -62,12 +72,17 @@ public sealed class AuthorizationSweepTests
                 if (anonymous)
                 {
                     if (!AnonymousAllowed.Contains((controller.Name, action.Name)))
+                    {
                         offenders.Add($"UNEXPECTED ANONYMOUS: {controller.Name}.{action.Name}");
+                    }
+
                     continue;
                 }
 
                 if (!classAuthorize && !methodAuthorize && !AnonymousAllowed.Contains((controller.Name, action.Name)))
+                {
                     offenders.Add($"UNAUTHORIZED ACTION: {controller.Name}.{action.Name}");
+                }
             }
         }
 
@@ -87,10 +102,16 @@ public sealed class AuthorizationSweepTests
             {
                 // An action may now stack several keys (Reports.Export + Sales.View), so the
                 // attribute collection has to be enumerated rather than resolved to a single one.
-                if (!action.GetCustomAttributes<RequirePermAttribute>(inherit: true).Any()) continue;
+                if (!action.GetCustomAttributes<RequirePermAttribute>(inherit: true).Any())
+                {
+                    continue;
+                }
+
                 var methodAuthorize = action.GetCustomAttribute<AuthorizeAttribute>(inherit: true) is not null;
                 if (!classAuthorize && !methodAuthorize)
+                {
                     offenders.Add($"{controller.Name}.{action.Name}");
+                }
             }
         }
 

@@ -54,7 +54,9 @@ public sealed class TransactionEnlistmentTests : IDisposable
         {
             if (FailWhenAdded is not null && eventData.Context!.ChangeTracker.Entries()
                     .Any(e => e.State == EntityState.Added && e.Entity.GetType() == FailWhenAdded))
+            {
                 throw new InvalidOperationException(FailureMessage);
+            }
 
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }

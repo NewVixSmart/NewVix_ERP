@@ -1,10 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using QuestPDF.Fluent;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.ViewModels.Core;
+using QuestPDF.Fluent;
 
 namespace NewVixSmart.Web.Services;
 
@@ -35,14 +35,25 @@ public sealed class SalesQuotesService : ISalesQuotesService
     {
         var allItems = items ?? new List<SaleQuoteItem>();
         if (allItems.Any(i => i.Quantity < 0 || i.Count < 0))
+        {
             return (false, "الكمية لا يمكن أن تكون سالبة", null);
+        }
+
         if (allItems.Any(i => i.UnitPrice < 0))
+        {
             return (false, "السعر لا يمكن أن يكون سالباً", null);
+        }
 
         var valid = allItems.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-        if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", null);
+        if (valid.Count == 0)
+        {
+            return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", null);
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "لا يمكن إضافة الصنف نفسه في أكثر من سطر", null);
+        }
 
         var autoNumber = string.IsNullOrWhiteSpace(quote.QuoteNumber);
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
@@ -52,7 +63,10 @@ public sealed class SalesQuotesService : ISalesQuotesService
                 quote.QuoteNumber = autoNumber ? await NextQuoteNumberAsync() : quote.QuoteNumber;
                 quote.TotalAmount = valid.Sum(i => i.Total);
                 if (quote.Discount > quote.TotalAmount + quote.Tax)
+                {
                     return (false, "الخصم أكبر من إجمالي قيمة العرض مع الضرائب", null);
+                }
+
                 quote.NetAmount = quote.TotalAmount - quote.Discount + quote.Tax;
                 quote.Status = SaleQuoteStatus.Draft;
                 quote.CreatedBy = user;
@@ -76,19 +90,34 @@ public sealed class SalesQuotesService : ISalesQuotesService
     {
         var quote = await _db.SaleQuotes.AsNoTracking().Include(q => q.Items)
             .FirstOrDefaultAsync(q => q.Id == quoteId);
-        if (quote == null) return (false, "عرض السعر غير موجود", null);
-        if (quote.Status == SaleQuoteStatus.Cancelled) return (false, "لا يمكن تحويل عرض سعر ملغي", null);
+        if (quote == null)
+        {
+            return (false, "عرض السعر غير موجود", null);
+        }
+
+        if (quote.Status == SaleQuoteStatus.Cancelled)
+        {
+            return (false, "لا يمكن تحويل عرض سعر ملغي", null);
+        }
 
         var valid = quote.Items.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
-        if (valid.Count == 0) return (false, "عرض السعر لا يحتوي على أصناف صالحة للتحويل", null);
+        if (valid.Count == 0)
+        {
+            return (false, "عرض السعر لا يحتوي على أصناف صالحة للتحويل", null);
+        }
+
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
+        {
             return (false, "عرض السعر يحتوي على الصنف نفسه في أكثر من سطر", null);
+        }
 
         var claimed = await _db.SaleQuotes
             .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Draft)
             .ExecuteUpdateAsync(s => s.SetProperty(q => q.Status, SaleQuoteStatus.Converting));
         if (claimed == 0)
+        {
             return (false, "عرض السعر محوّل إلى أمر بيع بالفعل، أو جارٍ تحويله حالياً", null);
+        }
 
         var order = new SalesOrder
         {
@@ -148,7 +177,11 @@ public sealed class SalesQuotesService : ISalesQuotesService
             }
             catch
             {
-                if (!committed) await TryRollbackAsync(tx);
+                if (!committed)
+                {
+                    await TryRollbackAsync(tx);
+                }
+
                 await DeleteCreatedOrderAsync(order.Id);
                 await ReleaseClaimAsync(quoteId);
                 throw;
@@ -200,7 +233,11 @@ public sealed class SalesQuotesService : ISalesQuotesService
     {
         foreach (var entry in _db.ChangeTracker.Entries<SaleQuote>().ToList())
         {
-            if (entry.Entity.Id != quoteId) continue;
+            if (entry.Entity.Id != quoteId)
+            {
+                continue;
+            }
+
             apply(entry.Entity);
             entry.State = EntityState.Unchanged;
         }
@@ -209,10 +246,25 @@ public sealed class SalesQuotesService : ISalesQuotesService
     public async Task<(bool Success, string? Error)> DeleteAsync(int quoteId)
     {
         var quote = await _db.SaleQuotes.AsNoTracking().FirstOrDefaultAsync(q => q.Id == quoteId);
-        if (quote == null) return (false, "عرض السعر غير موجود");
-        if (quote.Status == SaleQuoteStatus.Converted) return (false, "لا يمكن حذف عرض تم تحويله إلى أمر بيع");
-        if (quote.Status == SaleQuoteStatus.Cancelled) return (false, "لا يمكن حذف عرض سعر ملغي");
-        if (quote.Status == SaleQuoteStatus.Converting) return (false, "عرض السعر جارٍ تحويله حالياً، أعد المحاولة بعد لحظات");
+        if (quote == null)
+        {
+            return (false, "عرض السعر غير موجود");
+        }
+
+        if (quote.Status == SaleQuoteStatus.Converted)
+        {
+            return (false, "لا يمكن حذف عرض تم تحويله إلى أمر بيع");
+        }
+
+        if (quote.Status == SaleQuoteStatus.Cancelled)
+        {
+            return (false, "لا يمكن حذف عرض سعر ملغي");
+        }
+
+        if (quote.Status == SaleQuoteStatus.Converting)
+        {
+            return (false, "عرض السعر جارٍ تحويله حالياً، أعد المحاولة بعد لحظات");
+        }
 
         await _db.SaleQuotes.Where(q => q.Id == quoteId).ExecuteDeleteAsync();
         return (true, null);
@@ -280,7 +332,9 @@ public sealed class SalesQuotesService : ISalesQuotesService
     private void DetachAll()
     {
         foreach (var entry in _db.ChangeTracker.Entries().ToList())
+        {
             entry.State = EntityState.Detached;
+        }
     }
 
     private static void ResetQuoteKeys(SaleQuote quote)

@@ -32,8 +32,16 @@ public class DeliveryIssuesController : Controller
             .Include(i => i.Customer)
             .AsNoTracking()
             .AsQueryable();
-        if (status.HasValue) query = query.Where(i => i.Status == status.Value);
-        if (deliveryOrderId.HasValue) query = query.Where(i => i.DeliveryOrderId == deliveryOrderId.Value);
+        if (status.HasValue)
+        {
+            query = query.Where(i => i.Status == status.Value);
+        }
+
+        if (deliveryOrderId.HasValue)
+        {
+            query = query.Where(i => i.DeliveryOrderId == deliveryOrderId.Value);
+        }
+
         var list = await query.OrderByDescending(i => i.Id).Take(500).ToListAsync();
 
         ViewBag.StatusFilter = status;
@@ -45,7 +53,11 @@ public class DeliveryIssuesController : Controller
     public async Task<IActionResult> Details(string id)
     {
         var issue = await LoadAsync(id);
-        if (issue == null) return NotFound();
+        if (issue == null)
+        {
+            return NotFound();
+        }
+
         return View(issue);
     }
 
@@ -53,7 +65,11 @@ public class DeliveryIssuesController : Controller
     public async Task<IActionResult> Print(string id)
     {
         var issue = await LoadAsync(id);
-        if (issue == null) return NotFound();
+        if (issue == null)
+        {
+            return NotFound();
+        }
+
         return View(issue);
     }
 
@@ -194,13 +210,27 @@ public class DeliveryIssuesController : Controller
     [RequirePerm("DeliveryIssues.Issue")]
     public async Task<IActionResult> Issue(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var issue = await _db.DeliveryIssues.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId);
-        if (issue == null) return NotFound();
+        if (issue == null)
+        {
+            return NotFound();
+        }
 
         var (ok, error) = await _inventory.IssueDeliveryAsync(issue.Id, User.Identity?.Name);
-        if (!ok) TempData["Error"] = error ?? "تعذر ترحيل أمر التسليم";
-        else TempData["Success"] = $"تم ترحيل أمر التسليم {issue.IssueNumber} وخصم المخزون";
+        if (!ok)
+        {
+            TempData["Error"] = error ?? "تعذر ترحيل أمر التسليم";
+        }
+        else
+        {
+            TempData["Success"] = $"تم ترحيل أمر التسليم {issue.IssueNumber} وخصم المخزون";
+        }
+
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -208,13 +238,27 @@ public class DeliveryIssuesController : Controller
     [RequirePerm("DeliveryIssues.Issue")]
     public async Task<IActionResult> Cancel(string id)
     {
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         var issue = await _db.DeliveryIssues.AsNoTracking().FirstOrDefaultAsync(i => i.PublicId == publicId);
-        if (issue == null) return NotFound();
+        if (issue == null)
+        {
+            return NotFound();
+        }
 
         var (ok, error) = await _inventory.CancelDeliveryIssueAsync(issue.Id, User.Identity?.Name);
-        if (!ok) TempData["Error"] = error ?? "تعذر إلغاء أمر التسليم";
-        else TempData["Success"] = $"تم إلغاء أمر التسليم {issue.IssueNumber}";
+        if (!ok)
+        {
+            TempData["Error"] = error ?? "تعذر إلغاء أمر التسليم";
+        }
+        else
+        {
+            TempData["Success"] = $"تم إلغاء أمر التسليم {issue.IssueNumber}";
+        }
+
         return RedirectToAction(nameof(Details), new { id });
     }
 

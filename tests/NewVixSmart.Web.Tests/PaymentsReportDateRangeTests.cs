@@ -107,13 +107,23 @@ public sealed class PaymentsReportDateRangeTests : IDisposable
         db.Payments.AddRange(
             new Payment
             {
-                ReceiptNumber = "PAY-R", Type = PaymentType.Receipt, CustomerId = cust.Id,
-                PaymentDate = day.AddHours(10), Method = PaymentMethod.Cash, Amount = 1000m, CreatedAt = DateTime.UtcNow
+                ReceiptNumber = "PAY-R",
+                Type = PaymentType.Receipt,
+                CustomerId = cust.Id,
+                PaymentDate = day.AddHours(10),
+                Method = PaymentMethod.Cash,
+                Amount = 1000m,
+                CreatedAt = DateTime.UtcNow
             },
             new Payment
             {
-                ReceiptNumber = "PAY-D", Type = PaymentType.Disbursement, SupplierId = supp.Id,
-                PaymentDate = day.AddHours(16), Method = PaymentMethod.Cash, Amount = 400m, CreatedAt = DateTime.UtcNow
+                ReceiptNumber = "PAY-D",
+                Type = PaymentType.Disbursement,
+                SupplierId = supp.Id,
+                PaymentDate = day.AddHours(16),
+                Method = PaymentMethod.Cash,
+                Amount = 400m,
+                CreatedAt = DateTime.UtcNow
             });
         await db.SaveChangesAsync();
 

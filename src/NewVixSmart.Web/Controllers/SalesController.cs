@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
-using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.ViewModels.Sales;
 
 namespace NewVixSmart.Web.Controllers;
@@ -21,7 +21,7 @@ public class SalesController : Controller
         _inventory = inventory;
     }
 
-[RequirePerm("Sales.View")]
+    [RequirePerm("Sales.View")]
     public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
         var query = _db.SaleInvoices.Include(s => s.Customer).AsNoTracking().AsQueryable();
@@ -62,7 +62,7 @@ public class SalesController : Controller
         return View(vm);
     }
 
-[HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("Sales.Create")]
     public async Task<IActionResult> Create(SaleInvoiceViewModel vm)
     {
@@ -82,7 +82,7 @@ public class SalesController : Controller
             ModelState.AddModelError("", error ?? "تعذر حفظ فاتورة البيع");
         }
 
-var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).FirstOrDefaultAsync();
+        var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).FirstOrDefaultAsync();
         vm.Invoice.InvoiceNumber = $"SI-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
         ModelState.Remove("Invoice.InvoiceNumber");
 
@@ -100,10 +100,18 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
             .AsNoTracking();
 
         SaleInvoice? invoice;
-        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        if (!Guid.TryParse(id, out var publicId))
+        {
+            return NotFound();
+        }
+
         invoice = await query.FirstOrDefaultAsync(s => s.PublicId == publicId);
 
-        if (invoice == null) return NotFound();
+        if (invoice == null)
+        {
+            return NotFound();
+        }
+
         return View(invoice);
     }
 
@@ -113,7 +121,11 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
         var invoice = await _db.SaleInvoices.Include(s => s.Customer).Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.CountUnit)
 .Include(s => s.Items).ThenInclude(i => i.Item).ThenInclude(i => i.QuantityUnit)
             .AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (invoice == null) return NotFound();
+        if (invoice == null)
+        {
+            return NotFound();
+        }
+
         return View(invoice);
     }
 }

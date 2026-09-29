@@ -9,8 +9,16 @@ public static class TokenStampChecks
 
     public static bool StampMatches(string? tokenStamp, string currentStamp)
     {
-        if (tokenStamp is null) return false;
-        if (tokenStamp.Length != currentStamp.Length) return false;
+        if (tokenStamp is null)
+        {
+            return false;
+        }
+
+        if (tokenStamp.Length != currentStamp.Length)
+        {
+            return false;
+        }
+
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(tokenStamp),
             Encoding.UTF8.GetBytes(currentStamp));

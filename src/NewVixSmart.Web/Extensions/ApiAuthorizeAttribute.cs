@@ -31,7 +31,11 @@ public sealed class ApiAuthorizeFilter : IAsyncAuthorizationFilter
             context.Result = new UnauthorizedResult();
             return;
         }
-        if (await _permissions.HasAsync(_key)) return;
+        if (await _permissions.HasAsync(_key))
+        {
+            return;
+        }
+
         context.Result = new ObjectResult(new { message = "Forbidden" }) { StatusCode = 403 };
     }
 }

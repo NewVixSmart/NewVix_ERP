@@ -89,7 +89,9 @@ public class UsersController : Controller
                     return RedirectToAction(nameof(Permissions), new { id = user.Id });
                 }
                 foreach (var err in result.Errors)
+                {
                     ModelState.AddModelError(string.Empty, err.Description);
+                }
             }
         }
 
@@ -102,7 +104,10 @@ public class UsersController : Controller
     public async Task<IActionResult> ToggleDeactivated(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null)
+        {
+            return NotFound();
+        }
 
         // No admin can revoke their own access here: the only other route to recovery is
         // another admin, and a single-admin deployment would then be locked out for good.
@@ -137,7 +142,10 @@ public class UsersController : Controller
     public async Task<IActionResult> Permissions(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null)
+        {
+            return NotFound();
+        }
 
         var roles = (await _userManager.GetRolesAsync(user)).ToList();
         var granted = (await _db.UserPermissions.AsNoTracking()
@@ -175,7 +183,11 @@ public class UsersController : Controller
     public async Task<IActionResult> Permissions(string id, string[] perm)
     {
         var user = await _userManager.FindByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null)
+        {
+            return NotFound();
+        }
+
         if ((await _userManager.GetRolesAsync(user)).Contains("Admin"))
         {
             TempData["Error"] = "صلاحيات المدير لا تُعدَّل — يملك كل الصلاحيات تلقائيًا";
@@ -199,7 +211,9 @@ public class UsersController : Controller
             var viewKey = PermissionCatalog.Key(module.Key, PermissionCatalog.View);
             var moduleActions = selected.Where(x => x.StartsWith(module.Key + ".")).Select(x => x[(module.Key.Length + 1)..]).ToList();
             if (moduleActions.Count > 0 && !selected.Contains(viewKey))
+            {
                 selected.Add(viewKey);
+            }
         }
 
         var existing = await _db.UserPermissions.Where(p => p.UserId == user.Id).ToListAsync();

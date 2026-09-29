@@ -217,7 +217,10 @@ public sealed class OperationsIntegrityTests : IDisposable
 
     private static SaleInvoiceItem QtyLine(int itemId, decimal qty, decimal price) => new()
     {
-        ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = price
+        ItemId = itemId,
+        Quantity = qty,
+        Count = 0,
+        UnitPrice = price
     };
 
     private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty)
@@ -225,9 +228,17 @@ public sealed class OperationsIntegrityTests : IDisposable
         var svc = new InventoryService(db);
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = qty, Count = 0 } }, "test");
-        if (!ok) throw new InvalidOperationException(err);
+        if (!ok)
+        {
+            throw new InvalidOperationException(err);
+        }
+
         var (dok, derr) = await svc.DeliverDeliveryOrderAsync(delivery.Id, "test");
-        if (!dok) throw new InvalidOperationException(derr);
+        if (!dok)
+        {
+            throw new InvalidOperationException(derr);
+        }
+
         return delivery.Id;
     }
 
@@ -362,7 +373,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok1, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today.AddDays(-1)
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today.AddDays(-1)
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok1);
         var (okPost, errPost) = await svc.PostSaleReturnAsync(postedId, "test");
@@ -370,14 +383,18 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (okDraft, _, _) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(okDraft);
         Assert.Equal(ReturnStatus.Draft, (await db.SaleReturns.OrderByDescending(r => r.Id).FirstAsync()).Status);
 
         var (okBig, errBig, bigId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(okBig, errBig);
         var (okPostBig, errPostBig) = await svc.PostSaleReturnAsync(bigId, "test");
@@ -401,7 +418,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok1, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today.AddDays(-1)
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today.AddDays(-1)
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok1);
         var (okPost, errPost) = await svc.PostSaleReturnAsync(postedId, "test");
@@ -409,7 +428,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (okDraft, _, _) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(okDraft);
 
@@ -418,7 +439,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var result = await controller.Create(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<RedirectToActionResult>(result);
@@ -443,7 +466,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok, _, postedId) = await svc.CreateSaleReturnDraftAsync(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today.AddDays(-1)
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today.AddDays(-1)
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 8, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok);
         var (okPost, errPost) = await svc.PostSaleReturnAsync(postedId, "test");
@@ -454,7 +479,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var result = await controller.Create(new SaleReturn
         {
-            SaleInvoiceId = invoice.Id, CustomerId = custId, ReturnDate = DateTime.Today
+            SaleInvoiceId = invoice.Id,
+            CustomerId = custId,
+            ReturnDate = DateTime.Today
         }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<ViewResult>(result);
@@ -479,7 +506,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok, _, postedId) = await svc.CreatePurchaseReturnDraftAsync(new PurchaseReturn
         {
-            PurchaseInvoiceId = invoice.Id, SupplierId = supId, ReturnDate = DateTime.Today.AddDays(-1)
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supId,
+            ReturnDate = DateTime.Today.AddDays(-1)
         }, new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 16, Count = 16, UnitPrice = 45 } }, "test");
         Assert.True(ok);
         var (okPost, errPost) = await svc.PostPurchaseReturnAsync(postedId, "test");
@@ -490,7 +519,9 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var result = await controller.Create(new PurchaseReturn
         {
-            PurchaseInvoiceId = invoice.Id, SupplierId = supId, ReturnDate = DateTime.Today
+            PurchaseInvoiceId = invoice.Id,
+            SupplierId = supId,
+            ReturnDate = DateTime.Today
         }, new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 45 } });
 
         Assert.IsType<ViewResult>(result);
@@ -532,13 +563,21 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok1, e1, _) = await svc.CreatePaymentAsync(new Payment
         {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 200m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            Type = PaymentType.Receipt,
+            CustomerId = custId,
+            Amount = 200m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok1, e1);
 
         var (ok2, e2, _) = await svc.CreatePaymentAsync(new Payment
         {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 300m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            Type = PaymentType.Receipt,
+            CustomerId = custId,
+            Amount = 300m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok2, e2);
 
@@ -556,7 +595,11 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok, err, payment) = await svc.CreatePaymentAsync(new Payment
         {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 200m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            Type = PaymentType.Receipt,
+            CustomerId = custId,
+            Amount = 200m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
 
         Assert.True(ok, err);
@@ -576,13 +619,21 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var (ok1, e1, p1) = await svc.CreatePaymentAsync(new Payment
         {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 100m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            Type = PaymentType.Receipt,
+            CustomerId = custId,
+            Amount = 100m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok1, e1);
 
         var (ok2, e2, p2) = await svc.CreatePaymentAsync(new Payment
         {
-            Type = PaymentType.Receipt, CustomerId = custId, Amount = 250m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today
+            Type = PaymentType.Receipt,
+            CustomerId = custId,
+            Amount = 250m,
+            Method = PaymentMethod.Cash,
+            PaymentDate = DateTime.Today
         }, "test");
         Assert.True(ok2, e2);
 
@@ -607,7 +658,10 @@ public sealed class OperationsIntegrityTests : IDisposable
 
         var actionResult = await controller.CreatePayment(new CreatePaymentRequest
         {
-            Type = "receipt", CustomerId = custId, Amount = 30m, Method = "Cash"
+            Type = "receipt",
+            CustomerId = custId,
+            Amount = 30m,
+            Method = "Cash"
         });
 
         var objectResult = Assert.IsType<OkObjectResult>(actionResult);

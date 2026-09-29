@@ -281,7 +281,10 @@ public sealed class ConcurrencyTests : IDisposable
             CustomerId = customer.Id,
             InvoiceDate = DateTime.Today,
             PaymentTerms = InvoicePaymentTerms.OpenTerm,
-            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            TotalAmount = 100,
+            NetAmount = 100,
+            PaidAmount = 0,
+            IsPaid = false,
             SalesOrderId = order.Id
         });
         await db.SaveChangesAsync();
@@ -293,7 +296,10 @@ public sealed class ConcurrencyTests : IDisposable
             CustomerId = customer.Id,
             InvoiceDate = DateTime.Today,
             PaymentTerms = InvoicePaymentTerms.OpenTerm,
-            TotalAmount = 50, NetAmount = 50, PaidAmount = 0, IsPaid = false,
+            TotalAmount = 50,
+            NetAmount = 50,
+            PaidAmount = 0,
+            IsPaid = false,
             SalesOrderId = order.Id
         });
         await second.SaveChangesAsync();
@@ -321,7 +327,10 @@ public sealed class ConcurrencyTests : IDisposable
             InvoiceNumber = "PO-UNIQ-1",
             SupplierId = supplier.Id,
             InvoiceDate = DateTime.Today,
-            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            TotalAmount = 100,
+            NetAmount = 100,
+            PaidAmount = 0,
+            IsPaid = false,
             PurchaseOrderId = order.Id
         });
         await db.SaveChangesAsync();
@@ -332,7 +341,10 @@ public sealed class ConcurrencyTests : IDisposable
             InvoiceNumber = "PO-UNIQ-2",
             SupplierId = supplier.Id,
             InvoiceDate = DateTime.Today,
-            TotalAmount = 100, NetAmount = 100, PaidAmount = 0, IsPaid = false,
+            TotalAmount = 100,
+            NetAmount = 100,
+            PaidAmount = 0,
+            IsPaid = false,
             PurchaseOrderId = order.Id
         });
         await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync());

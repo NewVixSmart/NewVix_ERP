@@ -45,7 +45,11 @@ public static class OrderProgress
     public static decimal InvoicingPercent(SalesOrderItem item)
     {
         var ordered = OrderedForDisplay(item);
-        if (ordered <= 0) return 0m;
+        if (ordered <= 0)
+        {
+            return 0m;
+        }
+
         return Math.Min(100m, Math.Round(InvoicedForDisplay(item) / ordered * 100m));
     }
 

@@ -109,7 +109,11 @@ public sealed class SecurityResponseHeadersTests
             }
             catch (Exception) when (!IsDevelopment)
             {
-                if (context.Response.HasStarted) return;
+                if (context.Response.HasStarted)
+                {
+                    return;
+                }
+
                 context.Response.Clear();
                 ApplySecurityHeaders(context);
                 ApplyHstsHeader(context, hstsOptions);
@@ -173,10 +177,22 @@ public sealed class SecurityResponseHeadersTests
 
     private static void ApplyHstsHeader(HttpContext context, HstsOptions options)
     {
-        if (options.MaxAge <= TimeSpan.Zero || !context.Request.IsHttps) return;
+        if (options.MaxAge <= TimeSpan.Zero || !context.Request.IsHttps)
+        {
+            return;
+        }
+
         var value = "max-age=" + (long)options.MaxAge.TotalSeconds;
-        if (options.IncludeSubDomains) value += "; includeSubDomains";
-        if (options.Preload) value += "; preload";
+        if (options.IncludeSubDomains)
+        {
+            value += "; includeSubDomains";
+        }
+
+        if (options.Preload)
+        {
+            value += "; preload";
+        }
+
         context.Response.Headers["Strict-Transport-Security"] = value;
     }
 
@@ -391,7 +407,12 @@ public sealed class SecurityResponseHeadersTests
         // The Arabic body, the empty-detail contract and the development rethrow must all survive.
         Assert.Contains(ArabicErrorMessage, program, StringComparison.Ordinal);
         Assert.Contains("detail = string.Empty", program, StringComparison.Ordinal);
-        Assert.Matches(@"if \(app\.Environment\.IsDevelopment\(\)\)\s*\r?\n\s*throw;", program);
+        // Brace-agnostic: the rethrow must stay inside the IsDevelopment branch, whether or not
+        // the formatter has wrapped its body in braces.
+        Assert.Contains("if (app.Environment.IsDevelopment())", program, StringComparison.Ordinal);
+        var isDevelopment = program.IndexOf("if (app.Environment.IsDevelopment())", StringComparison.Ordinal);
+        var rethrow = program.IndexOf("throw;", isDevelopment, StringComparison.Ordinal);
+        Assert.True(rethrow > isDevelopment, "يجب إعادة رمي الاستثناء في بيئة التطوير.");
     }
 
     [Fact]
@@ -481,7 +502,10 @@ public sealed class SecurityResponseHeadersTests
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web", relative);
-            if (File.Exists(candidate)) return candidate;
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
         }
 
         throw new DirectoryNotFoundException(

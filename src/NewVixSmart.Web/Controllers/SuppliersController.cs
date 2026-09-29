@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
@@ -37,7 +37,9 @@ public class SuppliersController : Controller
     public async Task<IActionResult> Create(Supplier supplier)
     {
         if (!string.IsNullOrWhiteSpace(supplier.Code) && await _db.Suppliers.AnyAsync(s => s.Code == supplier.Code))
+        {
             ModelState.AddModelError(nameof(Supplier.Code), "الكود مستخدم بالفعل لمورد آخر");
+        }
 
         if (ModelState.IsValid)
         {
@@ -60,7 +62,11 @@ public class SuppliersController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (supplier == null) return NotFound();
+        if (supplier == null)
+        {
+            return NotFound();
+        }
+
         return View(supplier);
     }
 
@@ -68,11 +74,18 @@ public class SuppliersController : Controller
     [RequirePerm("Suppliers.Edit")]
     public async Task<IActionResult> Edit(int id, Supplier supplier)
     {
-        if (id != supplier.Id) return NotFound();
+        if (id != supplier.Id)
+        {
+            return NotFound();
+        }
+
         if (ModelState.IsValid)
         {
             var existing = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
-            if (existing == null) return NotFound();
+            if (existing == null)
+            {
+                return NotFound();
+            }
 
             existing.Name = supplier.Name;
             existing.Code = supplier.Code;
@@ -86,15 +99,21 @@ public class SuppliersController : Controller
                     || await _db.Payments.AnyAsync(p => p.SupplierId == id)
                     || await _db.PurchaseReturns.AnyAsync(r => r.SupplierId == id);
                 if (hasHistory)
+                {
                     ModelState.AddModelError(nameof(Supplier.OpeningBalance), "لا يمكن تغيير الرصيد الافتتاحي بعد وجود حركات مالية — عالج الرصيد بقيد تسوية");
+                }
                 else
+                {
                     existing.OpeningBalance = supplier.OpeningBalance;
+                }
             }
             existing.Notes = supplier.Notes;
             existing.IsActive = supplier.IsActive;
 
             if (!string.IsNullOrWhiteSpace(existing.Code) && await _db.Suppliers.AnyAsync(s => s.Id != id && s.Code == existing.Code))
+            {
                 ModelState.AddModelError(nameof(Supplier.Code), "الكود مستخدم بالفعل لمورد آخر");
+            }
 
             if (ModelState.IsValid)
             {
@@ -118,7 +137,11 @@ public class SuppliersController : Controller
     public async Task<IActionResult> Delete(int id)
     {
         var supplier = await _db.Suppliers.FindAsync(id);
-        if (supplier == null) return NotFound();
+        if (supplier == null)
+        {
+            return NotFound();
+        }
+
         supplier.IsActive = false;
         await _db.SaveChangesAsync();
         TempData["Success"] = "تم حذف المورد بنجاح";
@@ -129,7 +152,10 @@ public class SuppliersController : Controller
     public async Task<IActionResult> Ledger(int id)
     {
         var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (supplier == null) return NotFound();
+        if (supplier == null)
+        {
+            return NotFound();
+        }
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.InvoiceDate).ToListAsync();
         var payments = await _db.Payments.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
@@ -155,7 +181,11 @@ public class SuppliersController : Controller
     public async Task<IActionResult> LedgerXlsx(int id)
     {
         var bytes = await _report.ExportSupplierStatementXlsxAsync(id);
-        if (bytes.Length == 0) return NotFound();
+        if (bytes.Length == 0)
+        {
+            return NotFound();
+        }
+
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"supplier-statement-{id}.xlsx");
     }
 
@@ -163,7 +193,10 @@ public class SuppliersController : Controller
     public async Task<IActionResult> LedgerPdf(int id)
     {
         var supplier = await _db.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (supplier == null) return NotFound();
+        if (supplier == null)
+        {
+            return NotFound();
+        }
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
         var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
@@ -176,10 +209,20 @@ public class SuppliersController : Controller
         {
             lines.Add(new StatementLine(inv.InvoiceDate, $"فاتورة شراء {inv.InvoiceNumber}", decimal.Round(inv.NetAmount, 2), 0));
             if (inv.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && inv.PaidAmount > 0)
+            {
                 lines.Add(new StatementLine(inv.InvoiceDate, $"مدفوع عند الاستلام {inv.InvoiceNumber}", 0, decimal.Round(inv.PaidAmount, 2)));
+            }
         }
-        foreach (var r in returns) lines.Add(new StatementLine(r.ReturnDate, $"مرتجع شراء {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
-        foreach (var d in disbursements) lines.Add(new StatementLine(d.PaymentDate, $"سند صرف {d.ReceiptNumber}", 0, d.Amount));
+        foreach (var r in returns)
+        {
+            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع شراء {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
+        }
+
+        foreach (var d in disbursements)
+        {
+            lines.Add(new StatementLine(d.PaymentDate, $"سند صرف {d.ReceiptNumber}", 0, d.Amount));
+        }
+
         lines = lines.OrderBy(l => l.Date).ThenBy(l => l.Description).ToList();
 
         var from = lines.Count > 0 ? lines.Min(l => l.Date) : DateTime.Today;
@@ -199,7 +242,9 @@ public class SuppliersController : Controller
             .AsQueryable();
 
         if (supplierId.HasValue && supplierId > 0)
+        {
             query = query.Where(q => q.SupplierId == supplierId.Value);
+        }
 
         query = query.OrderByDescending(q => q.EffectiveDate);
 
