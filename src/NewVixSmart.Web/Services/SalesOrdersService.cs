@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
@@ -141,11 +142,16 @@ public sealed class SalesOrdersService : ISalesOrdersService
         return (true, null);
     }
 
-    public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId)
+    /// <summary>
+    /// يعتمد أمر بيع ويحجز كمياته. مع <c>beginOwnTransaction: false</c> ينضم الاعتماد
+    /// والحجز إلى معاملة المستدعي، فلا يبقى أمر معتمد بلا حجز لو فشل الحجز.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId, bool beginOwnTransaction = true)
     {
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(ApproveOrderAsync));
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 var order = await _db.SalesOrders.FindAsync(orderId);
@@ -158,16 +164,16 @@ public sealed class SalesOrdersService : ISalesOrdersService
                 var (reserved, reserveError) = await _reservations.ReserveOrderAsync(orderId, order.CreatedBy, beginOwnTransaction: false);
                 if (!reserved)
                 {
-                    await tx.RollbackAsync();
+                    await TryRollbackAsync(tx);
                     _db.ChangeTracker.Clear();
                     return (false, reserveError);
                 }
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 return (true, null);
             }
-            catch (DbUpdateConcurrencyException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
-            catch (DbUpdateException) { await tx.RollbackAsync(); _db.ChangeTracker.Clear(); }
+            catch (DbUpdateConcurrencyException) { await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction) throw; }
+            catch (DbUpdateException) { await TryRollbackAsync(tx); _db.ChangeTracker.Clear(); if (!beginOwnTransaction) throw; }
         }
         return (false, "تعذر اعتماد أمر البيع بسبب تعارض في البيانات، حاول مرة أخرى");
     }
@@ -302,15 +308,55 @@ public sealed class SalesOrdersService : ISalesOrdersService
         return await _deliveriesInvoicing.CreateInvoiceFromIssuesAsync(issueIds, invoice, user, branchId);
     }
 
+    /// <summary>
+    /// مسار استرجاع لا يبتلع الاستثناء الأصلي: فشل التراجع عن معاملة يجب ألا يحلّ محل
+    /// الاستثناء الذي تلتقطه الحلقة، وإلا ضاع التشخيص خلف خطأ آخر. وتمرير معاملة فارغة
+    /// (معاملة المستدعي) يعني ببساطة أن التراجع من اختصاصه.
+    /// </summary>
+    private static async Task TryRollbackAsync(IDbContextTransaction? tx)
+    {
+        if (tx == null) return;
+        try { await tx.RollbackAsync(); }
+        catch (Exception) { }
+    }
+
+    /// <summary>
+    /// يمنع معنى «بلا معاملة» الصامت: <c>beginOwnTransaction: false</c> بلا معاملة قائمة
+    /// يعني اعتمادًا محفوظًا بلا حجز، وهي حالة لا يستطيع أحد التراجع عنها.
+    /// </summary>
+    private void RequireAmbientTransaction(string operation)
+    {
+        if (_db.Database.CurrentTransaction == null)
+            throw new InvalidOperationException(
+                $"لا يمكن تنفيذ «{operation}» دون معاملة قائمة؛ ابدأ معاملة قبل الاستدعاء أو اترك القيمة الافتراضية لتفتح العملية معاملتها الخاصة");
+    }
+
     private async Task<string> NextOrderNumberAsync()
     {
-        var prefix = $"SO-{DateTime.Now:yyyyMMdd}-";
-        var last = await _db.SalesOrders.AsNoTracking()
-            .Where(o => o.OrderNumber.StartsWith(prefix))
-            .OrderByDescending(o => o.OrderNumber)
+        var seriesPrefix = $"SO-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D3}";
+        while (await _db.SalesOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == num))
+        {
+            next++;
+            num = $"{seriesPrefix}{next:D3}";
+        }
+        return num;
+    }
+
+    private async Task<int> MaxSeriesValueAsync(string seriesPrefix)
+    {
+        var values = await _db.SalesOrders.AsNoTracking()
+            .Where(o => o.OrderNumber.StartsWith(seriesPrefix))
             .Select(o => o.OrderNumber)
-            .FirstOrDefaultAsync();
-        int next = last != null && int.TryParse(last.AsSpan(prefix.Length), out var n) ? n + 1 : 1;
-        return $"{prefix}{next:D3}";
+            .ToListAsync();
+        int max = 0;
+        foreach (var value in values)
+        {
+            if (value.Length <= seriesPrefix.Length) continue;
+            if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+                max = parsed;
+        }
+        return max;
     }
 }

@@ -108,10 +108,10 @@ if (ModelState.IsValid)
                         return RedirectToAction(nameof(Index));
                     }
                     TempData["Error"] = postError ?? "تعذر ترحيل مرتجع البيع";
-                    return RedirectToAction(nameof(Details), new { id = returnId });
+                    return await RedirectToDetailsAsync(returnId);
                 }
                 TempData["Success"] = "تم حفظ مرتجع البيع كمسودة";
-                return RedirectToAction(nameof(Details), new { id = returnId });
+                return await RedirectToDetailsAsync(returnId);
             }
             ModelState.AddModelError("", error ?? "تعذر حفظ مرتجع البيع");
             }
@@ -135,10 +135,24 @@ if (ModelState.IsValid)
         if (ok)
         {
             TempData["Success"] = "تم ترحيل مرتجع البيع وإرجاع الكمية للمخزون";
-            return RedirectToAction(nameof(Details), new { id });
+            return await RedirectToDetailsAsync(id);
         }
         TempData["Error"] = error ?? "تعذر ترحيل مرتجع البيع";
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
+    }
+
+    /// <summary>
+    /// Details only resolves the public id now, so internal redirects translate the numeric id
+    /// they were handed instead of passing it straight through.
+    /// </summary>
+    private async Task<IActionResult> RedirectToDetailsAsync(int id)
+    {
+        var publicId = await _db.SaleReturns.AsNoTracking()
+            .Where(r => r.Id == id)
+            .Select(r => (Guid?)r.PublicId)
+            .FirstOrDefaultAsync();
+        if (publicId == null) return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
     [RequirePerm("SaleReturns.View")]
@@ -152,12 +166,8 @@ if (ModelState.IsValid)
             .AsNoTracking();
 
         SaleReturn? saleReturn;
-        if (Guid.TryParse(id, out var publicId))
-            saleReturn = await query.FirstOrDefaultAsync(r => r.PublicId == publicId);
-        else if (int.TryParse(id, out var numericId))
-            saleReturn = await query.FirstOrDefaultAsync(r => r.Id == numericId);
-        else
-            return NotFound();
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        saleReturn = await query.FirstOrDefaultAsync(r => r.PublicId == publicId);
 
         if (saleReturn == null) return NotFound();
         return View(saleReturn);

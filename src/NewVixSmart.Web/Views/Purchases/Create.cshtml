@@ -46,6 +46,7 @@
         <div class="card-header"><i class="bi bi-list-ul"></i> أصناف الفاتورة</div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0" id="itemsTable">
+                <caption class="visually-hidden">أصناف فاتورة الشراء المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
                 <thead>
                     <tr>
                         <th scope="col" style="width:25%">الصنف</th>
@@ -72,9 +73,9 @@
                                     { <option value="@item.Id" data-price="@item.PurchasePrice" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
                                 </select>
                             </td>
-                            <td><input name="items[@idx].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 1)" aria-label="العدد" /></td>
-                            <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
-                            <td><input name="items[@idx].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
+                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 1)" aria-label="العدد" /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
+                            <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                             <td><span class="total fw-bold">0.00</span></td>
                             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                         </tr>
@@ -133,9 +134,9 @@ document.getElementById('addRow').addEventListener('click', function() {
     items.forEach(i => { options += `<option value="${i.id}" data-price="${i.purchasePrice}">${escapeHtml(i.name)}</option>`; });
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
-        <td><input name="items[${rowIndex}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="1" aria-label="العدد" /></td>
-        <td><input name="items[${rowIndex}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-        <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+        <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="1" aria-label="العدد" /></td>
+        <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
+        <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><span class="total fw-bold">0.00</span></td>
         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;
     tbody.appendChild(tr);

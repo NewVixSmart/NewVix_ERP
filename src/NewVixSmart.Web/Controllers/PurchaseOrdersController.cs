@@ -95,7 +95,7 @@ public class PurchaseOrdersController : Controller
         if (order.Status != PurchaseOrderStatus.Draft)
         {
             TempData["Error"] = "لا يمكن تعديل أمر شراء غير مسودة";
-            return RedirectToAction(nameof(Details), new { id });
+            return RedirectToAction(nameof(Details), new { id = order.PublicId });
         }
 
         var vm = new PurchaseOrderViewModel
@@ -124,7 +124,7 @@ public class PurchaseOrdersController : Controller
                 if (ok)
                 {
                     TempData["Success"] = "تم تحديث أمر الشراء بنجاح";
-                    return RedirectToAction(nameof(Details), new { id = vm.Order.Id });
+                    return RedirectToAction(nameof(Details), new { id = vm.Order.PublicId });
                 }
                 ModelState.AddModelError("", error ?? "تعذر تحديث أمر الشراء");
             }
@@ -143,24 +143,13 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        int orderId;
-        if (Guid.TryParse(id, out var publicId))
-        {
-            var target = await _db.PurchaseOrders.AsNoTracking()
-                .Where(o => o.PublicId == publicId)
-                .Select(o => (int?)o.Id)
-                .FirstOrDefaultAsync();
-            if (target == null) return NotFound();
-            orderId = target.Value;
-        }
-        else if (int.TryParse(id, out var numericId))
-        {
-            orderId = numericId;
-        }
-        else
-        {
-            return NotFound();
-        }
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        var targetOrderId = await _db.PurchaseOrders.AsNoTracking()
+            .Where(o => o.PublicId == publicId)
+            .Select(o => (int?)o.Id)
+            .FirstOrDefaultAsync();
+        if (targetOrderId == null) return NotFound();
+        var orderId = targetOrderId.Value;
 
         var order = await _procurement.GetOrderAsync(orderId);
         if (order == null) return NotFound();
@@ -199,7 +188,7 @@ public class PurchaseOrdersController : Controller
             _db.ChangeTracker.Clear();
             TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
         }
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -217,7 +206,7 @@ public class PurchaseOrdersController : Controller
             _db.ChangeTracker.Clear();
             TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
         }
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
     }
 
     [RequirePerm("PurchaseOrders.Receive")]
@@ -228,7 +217,7 @@ public class PurchaseOrdersController : Controller
         if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
         {
             TempData["Error"] = "لا يمكن الاستلام على هذا الأمر";
-            return RedirectToAction(nameof(Details), new { id });
+            return await RedirectToDetailsAsync(id);
         }
         return View(order);
     }
@@ -269,8 +258,22 @@ public class PurchaseOrdersController : Controller
         {
             _db.ChangeTracker.Clear();
             TempData["Error"] = "تعذر تعديل أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى";
-            return RedirectToAction(nameof(Details), new { id });
+            return await RedirectToDetailsAsync(id);
         }
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
+    }
+
+    /// <summary>
+    /// Details only resolves the public id now, so internal redirects translate the numeric id
+    /// they were handed instead of passing it straight through.
+    /// </summary>
+    private async Task<IActionResult> RedirectToDetailsAsync(int id)
+    {
+        var publicId = await _db.PurchaseOrders.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => (Guid?)o.PublicId)
+            .FirstOrDefaultAsync();
+        if (publicId == null) return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 }

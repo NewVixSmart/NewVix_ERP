@@ -1,8 +1,50 @@
+# ============================================
+# NOT USED BY THE CURRENT BUILD - read this first.
+#
+# The build context for src/NewVixSmart.Web/Dockerfile is the REPOSITORY ROOT in
+# all three callers (docker-compose.yml, .github/workflows/ci.yml, and the
+# manual `docker build -f src/NewVixSmart.Web/Dockerfile .`), because the
+# Dockerfile copies global.json, Directory.Build.props and
+# aspire/Vix.ServiceDefaults from the root. Docker only ever reads the
+# .dockerignore at the root of the context, so this file has never applied to
+# any image this repository builds.
+#
+# It is kept only as the rules a standalone build of this project would need, and
+# it is deliberately kept in sync with the root .dockerignore so the two cannot
+# drift into disagreeing about secrets. If you add a Dockerfile here that really
+# does use this project as its own context, these are the rules it gets.
+#
+# Changes to secret handling must be made in BOTH files.
+# ============================================
+
 bin/
 obj/
-.vs/
 TestResults/
 *.user
 *.log
 logs/
+*.trx
+*.coverage
+
+# Never ship real credentials. appsettings.Development.json holds the
+# development JWT signing key and the three seed passwords; the csproj already
+# sets CopyToPublishDirectory="Never" for it, so it is never needed.
 appsettings.Development.json
+appsettings.*.local.json
+secrets.json
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+
+# Database dumps and live data files
+*.bak
+*.trn
+*.mdf
+*.ndf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+backups/

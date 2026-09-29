@@ -3,6 +3,20 @@
     Creates a SQL Server database backup using sqlcmd and applies retention.
 
 .DESCRIPTION
+    *** LOCAL DEVELOPMENT ONLY - THIS SCRIPT CANNOT BACK UP A PRODUCTION
+    DATABASE, INCLUDING THE DOCKER COMPOSE ONE. ***
+
+    It is hard-wired to Windows integrated authentication (-E, see the sqlcmd
+    invocation below) and defaults to "(localdb)\MSSQLLocalDB". Neither reaches
+    the SQL Server container started by docker-compose.yml: that server is
+    remote, listens on its own port, and authenticates as 'sa' with a password
+    held in the gitignored .env.
+
+    To back up the container database use:
+        .\scripts\backup-db-container.ps1
+    To restore anything, use:
+        .\scripts\restore-db-container.ps1
+
     Takes a full BACKUP DATABASE ... TO DISK for the supplied instance and
     database, then removes .bak files older than the retention window.
 
@@ -14,7 +28,9 @@
     "SQL Server Management Tools" / "SQLCMD Command Line Utilities".
 
 .PARAMETER Instance
-    SQL Server instance to back up from. Default: (localdb)\MSSQLLocalDB
+    SQL Server instance to back up from. Must be a LOCALDB instance; the
+    default is (localdb)\MSSQLLocalDB. Any other value is rejected because
+    integrated authentication would not work against it anyway.
 
 .PARAMETER Database
     Database name to back up. Default: NewVixSmartDb
@@ -65,6 +81,20 @@ if ([string]::IsNullOrWhiteSpace($BackupDir)) {
 try {
     if ($RetainDays -lt 1) {
         throw "RetainDays ($RetainDays) must be at least 1."
+    }
+
+    # ---- Refuse to pretend this covers a real deployment --------------------
+    if ($Instance -notmatch '(?i)localdb') {
+        throw @"
+'$Instance' is not a LocalDB instance, so this script cannot back it up: it
+authenticates with Windows integrated auth (-E) and has no way to supply a SQL
+login password.
+
+  * Docker Compose database (the production-shaped stack)
+      .\scripts\backup-db-container.ps1
+  * Local development database
+      .\scripts\backup-db.ps1        (default: (localdb)\MSSQLLocalDB)
+"@
     }
 
     # ---- Locate sqlcmd -----------------------------------------------------

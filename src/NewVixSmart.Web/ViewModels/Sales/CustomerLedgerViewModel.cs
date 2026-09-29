@@ -12,6 +12,19 @@ public class CustomerLedgerViewModel
     public decimal Balance { get; set; }
     public List<CustomerPendingLine> PendingLines { get; set; } = new();
 
+    /// <summary>
+    /// The three header totals. The customer ledger and the supplier ledger each used to re-derive
+    /// these with LINQ inside Razor - including the "which payment directions count" filter - so the
+    /// same word appeared twice in markup and neither copy had a name to test against.
+    /// </summary>
+    public decimal InvoicesTotal => Invoices.Sum(i => i.NetAmount);
+
+    public decimal ReceiptsTotal => Payments
+        .Where(p => p.Type == PaymentType.Receipt)
+        .Sum(p => p.Amount);
+
+    public decimal ReturnsTotal => Returns.Sum(r => r.TotalAmount);
+
     public decimal PendingValueTotal => PendingLines.Sum(l => l.PendingValue);
 }
 

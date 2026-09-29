@@ -85,7 +85,9 @@ public sealed class AuthorizationSweepTests
             var classAuthorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: true) is not null;
             foreach (var action in ActionMethods(controller))
             {
-                if (action.GetCustomAttribute<RequirePermAttribute>(inherit: true) is null) continue;
+                // An action may now stack several keys (Reports.Export + Sales.View), so the
+                // attribute collection has to be enumerated rather than resolved to a single one.
+                if (!action.GetCustomAttributes<RequirePermAttribute>(inherit: true).Any()) continue;
                 var methodAuthorize = action.GetCustomAttribute<AuthorizeAttribute>(inherit: true) is not null;
                 if (!classAuthorize && !methodAuthorize)
                     offenders.Add($"{controller.Name}.{action.Name}");
@@ -105,14 +107,16 @@ public sealed class AuthorizationSweepTests
         Assert.Contains(all, c => c.FullName == "NewVixSmart.Web.Api.TokensController");
     }
 
-    private static string? PermKeyOf(MethodInfo action) =>
-        action.GetCustomAttribute<RequirePermAttribute>(inherit: true)?.Arguments?.FirstOrDefault() as string;
+    private static IEnumerable<string> PermKeysOf(MethodInfo action) =>
+        action.GetCustomAttributes<RequirePermAttribute>(inherit: true)
+            .Select(a => a.Arguments?.FirstOrDefault() as string)
+            .Where(k => k is not null)
+            .Select(k => k!);
 
     private static IReadOnlyList<string> RequiredPerms(Type controller) =>
         ActionMethods(controller)
-            .Select(PermKeyOf)
-            .Where(k => k is not null)
-            .Select(k => k!)
+            .SelectMany(PermKeysOf)
+            .Distinct()
             .ToList();
 
     [Fact]
@@ -167,7 +171,8 @@ public sealed class AuthorizationSweepTests
         var stockReservationActions = NewVixSmart.Web.Services.PermissionCatalog.ActionsFor("StockReservations");
         var deliveryIssueActions = NewVixSmart.Web.Services.PermissionCatalog.ActionsFor("DeliveryIssues");
 
-        Assert.Equal(["View", "Create", "Release"], stockReservationActions);
+        // "Export" was added so the export centre can gate stock-reservation data on its own key.
+        Assert.Equal(["View", "Create", "Release", "Export"], stockReservationActions);
         Assert.Equal(["View", "Create", "Issue"], deliveryIssueActions);
 
         Assert.Contains(NewVixSmart.Web.Services.PermissionCatalog.Modules,

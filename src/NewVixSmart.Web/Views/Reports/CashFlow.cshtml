@@ -29,15 +29,15 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد افتتاحي</div><h3 class="mb-0">@Model.OpeningBalance.ToString("N2")</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات</div><h3 class="mb-0 text-success">@Model.TotalReceipts.ToString("N2")</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات</div><h3 class="mb-0 text-danger">@Model.TotalDisbursements.ToString("N2")</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد ختامي</div><h3 class="mb-0 fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger")">@Model.ClosingBalance.ToString("N2")</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد افتتاحي</div><h3 class="mb-0">@Money.Format(Model.OpeningBalance)</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalReceipts)</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات</div><h3 class="mb-0 text-danger">@Money.Format(Model.TotalDisbursements)</h3></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد ختامي</div><h3 class="mb-0 fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger")">@Money.Format(Model.ClosingBalance)</h3></div></div>
 </div>
 
 <div class="card mb-4">
     <div class="card-header">
-        <h3 class="mb-0 fs-5">صافي التدفق النقدي: <span class="@(Model.NetCashFlow >= 0 ? "text-success" : "text-danger")">@Model.NetCashFlow.ToString("N2")</span></h3>
+        <h3 class="mb-0 fs-5">صافي التدفق النقدي: <span class="@(Model.NetCashFlow >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetCashFlow)</span></h3>
     </div>
 </div>
 
@@ -63,9 +63,9 @@
                 {
                     <tr>
                         <td>@m.Method.GetDisplayName()</td>
-                        <td class="text-end">@m.Receipts.ToString("N2")</td>
-                        <td class="text-end">@m.Disbursements.ToString("N2")</td>
-                        <td class="text-end fw-bold @(m.Net >= 0 ? "text-success" : "text-danger")">@m.Net.ToString("N2")</td>
+                        <td class="text-end">@Money.Format(m.Receipts)</td>
+                        <td class="text-end">@Money.Format(m.Disbursements)</td>
+                        <td class="text-end fw-bold @(m.Net >= 0 ? "text-success" : "text-danger")">@Money.Format(m.Net)</td>
                     </tr>
                 }
             </tbody>
@@ -106,7 +106,7 @@
                         <td>@d.Party</td>
                         <td>@d.Method.GetDisplayName()</td>
                         <td>@(d.Reference ?? "—")</td>
-                        <td class="text-end fw-bold">@d.Amount.ToString("N2")</td>
+                        <td class="text-end fw-bold">@Money.Format(d.Amount)</td>
                     </tr>
                 }
             </tbody>
@@ -115,7 +115,7 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="6">مجموع التفاصيل</td>
-                        <td class="text-end">قبض: <span class="text-success">@Model.TotalReceipts.ToString("N2")</span> / صرف: <span class="text-danger">@Model.TotalDisbursements.ToString("N2")</span></td>
+                        <td class="text-end">قبض: <span class="text-success">@Money.Format(Model.TotalReceipts)</span> / صرف: <span class="text-danger">@Money.Format(Model.TotalDisbursements)</span></td>
                     </tr>
                 </tfoot>
             }

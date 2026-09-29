@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -104,11 +105,20 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// One HstsOptions instance is the single source of truth for the HSTS policy: UseHsts consumes
+// it below, and the outermost error handler re-asserts the very same header after
+// Response.Clear() (which runs inside UseHsts and would otherwise drop it from every 500).
+var hstsOptions = new HstsOptions
+{
+    MaxAge = TimeSpan.FromDays(365),
+    IncludeSubDomains = true,
+    Preload = true
+};
 builder.Services.AddHsts(options =>
 {
-    options.MaxAge = TimeSpan.FromDays(365);
-    options.IncludeSubDomains = true;
-    options.Preload = true;
+    options.MaxAge = hstsOptions.MaxAge;
+    options.IncludeSubDomains = hstsOptions.IncludeSubDomains;
+    options.Preload = hstsOptions.Preload;
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -288,6 +298,18 @@ if (app.Environment.IsDevelopment())
 
 PdfInvoiceService.ConfigureServices(app.Services);
 
+// Security headers FIRST, before every middleware that can answer without delegating further.
+// It used to sit below UseHttpsRedirection/UseStaticFiles, so the 307 of a plain-http request and
+// every JS/CSS/font response from the static file middleware left without nosniff,
+// Referrer-Policy or CSP. It is the outermost middleware now, so nothing downstream can produce a
+// response that misses them; the error handler below re-applies the same values after it clears
+// the response. Both paths call ApplySecurityHeaders, so the two cannot drift apart.
+app.Use(async (context, next) =>
+{
+    ApplySecurityHeaders(context);
+    await next();
+});
+
 app.Use(async (context, next) =>
 {
     try
@@ -299,7 +321,21 @@ app.Use(async (context, next) =>
         if (app.Environment.IsDevelopment())
             throw;
         app.Logger.LogError(ex, "Unhandled exception");
+        // Once any byte of the response is on the wire neither Clear() nor a status-code change is
+        // legal: both throw InvalidOperationException, so an exception raised while streaming (a
+        // failed PDF write, a client that vanished) used to escape this handler and abort the
+        // connection. Log it and leave the partial response alone instead.
+        if (context.Response.HasStarted)
+        {
+            app.Logger.LogWarning("Response already started; the 500 body cannot be written, the connection is left as-is.");
+            return;
+        }
         context.Response.Clear();
+        // Clear() wiped Strict-Transport-Security and the whole CSP block; put them back before
+        // writing the body. The IsDevelopment rethrow above means we are past it from here on.
+        ApplySecurityHeaders(context);
+        if (!app.Environment.IsDevelopment())
+            ApplyHstsHeader(context, hstsOptions);
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsJsonAsync(new { message = "حدث خطأ غير متوقع. حاول مرة أخرى.", detail = string.Empty });
@@ -334,8 +370,16 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-app.Use(async (context, next) =>
+// The single source of truth for the response security headers. Called from the outermost
+// middleware (on the way down, before anything can answer) and again from the error handler
+// after Response.Clear(), so a 500, a 404, a 307 and a static-file hit all carry the same set.
+static void ApplySecurityHeaders(HttpContext context)
 {
+    // style-src keeps 'unsafe-inline' on purpose: views carry ~136 style="..." attributes
+    // (widths, icon sizes, progress bars) and two <style> blocks, and a nonce never authorises
+    // a style ATTRIBUTE - style-src-attr falls back to style-src. Dropping 'unsafe-inline'
+    // without first moving every one of those into a nonced <style> block would strip the
+    // layout app-wide, so this stays as hardening backlog, not a live hole.
     context.SetCspNonce();
     var nonce = context.GetCspNonce();
     context.Response.Headers["Content-Security-Policy"] =
@@ -345,8 +389,18 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
-    await next();
-});
+}
+
+// Re-asserts Strict-Transport-Security with the same value UseHsts writes, for the same reason:
+// the error handler runs inside UseHsts and clears the header off every 500.
+static void ApplyHstsHeader(HttpContext context, HstsOptions options)
+{
+    if (options.MaxAge <= TimeSpan.Zero || !context.Request.IsHttps) return;
+    var value = "max-age=" + (long)options.MaxAge.TotalSeconds;
+    if (options.IncludeSubDomains) value += "; includeSubDomains";
+    if (options.Preload) value += "; preload";
+    context.Response.Headers["Strict-Transport-Security"] = value;
+}
 
 static string[] SplitForwardedHeaderSetting(string? value) =>
     (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

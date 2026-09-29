@@ -60,7 +60,7 @@
             <div class="label-meta">الكود: @(Model.Code ?? "—")</div>
             @if (_layout.ShowUnitPrice)
             {
-                <div class="label-price">@Model.SalePrice.ToString("N2") @(Model.CountUnit?.Name ?? Model.QuantityUnit?.Name ?? "")</div>
+                <div class="label-price">@Money.Format(Model.SalePrice) @(Model.CountUnit?.Name ?? Model.QuantityUnit?.Name ?? "")</div>
             }
             @if (_layout.ShowBarcode)
             {

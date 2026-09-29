@@ -70,17 +70,16 @@
         <tbody>
             @foreach (var item in Model.Items)
             {
-                var ordered = item.Quantity > 0 ? item.Quantity : item.Count;
-                var delivered = item.Quantity > 0 ? item.DeliveredQty : item.DeliveredCount;
-                var invoiced = item.Quantity > 0 ? item.InvoicedQty : item.InvoicedCount;
-                var reserved = item.Quantity > 0 ? item.ReservedQty : item.ReservedCount;
-                var progress = ordered > 0 ? Math.Min(100m, Math.Round((invoiced / ordered) * 100m)) : 0m;
+                var ordered = OrderProgress.OrderedForDisplay(item);
+                var delivered = OrderProgress.DeliveredForDisplay(item);
+                var reserved = OrderProgress.ReservedForDisplay(item);
+                var progress = OrderProgress.InvoicingPercent(item);
                 <tr>
                     <th scope="row">@item.Item.Name</th>
                     <td>@item.Count.ToString("N2")</td>
                     <td>@item.Quantity.ToString("N2")</td>
-                    <td>@item.UnitPrice.ToString("N2")</td>
-                    <td class="fw-bold">@item.Total.ToString("N2")</td>
+                    <td>@Money.Format(item.UnitPrice)</td>
+                    <td class="fw-bold">@Money.Format(item.Total)</td>
                     <td>@reserved.ToString("N2")</td>
                     <td>@item.InvoicedCount.ToString("N2")</td>
                     <td>@item.InvoicedQty.ToString("N2")</td>
@@ -185,10 +184,10 @@
                             <tr>
                                 <th scope="row"><a asp-controller="Sales" asp-action="Details" asp-route-id="@inv.PublicId">@inv.InvoiceNumber</a></th>
                                 <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                                <td>@inv.NetAmount.ToString("N2")</td>
-                                <td>@inv.Tax.ToString("N2")</td>
-                                <td>@inv.Discount.ToString("N2")</td>
-                                <td><span class="badge @(inv.IsPaid ? "bg-success" : "bg-warning text-dark")">@(inv.IsPaid ? "مسدّدة" : "غير مسدّدة")</span></td>
+                                <td>@Money.Format(inv.NetAmount)</td>
+                                <td>@Money.Format(inv.Tax)</td>
+                                <td>@Money.Format(inv.Discount)</td>
+                                <td><span class="badge @(inv.IsPaid ? "bg-success" : "bg-warning text-dark")">@OrderProgress.SettlementLabel(inv)</span></td>
                             </tr>
                         }
                     }
@@ -199,5 +198,5 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.Items.Sum(i => i.Total).ToString("N2")</h4></div></div></div>
+    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(OrderProgress.Summarize(Model).Total)</h4></div></div></div>
 </div>

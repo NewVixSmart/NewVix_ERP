@@ -10,7 +10,7 @@
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
 }
 
 <form asp-action="Adjustment" id="batchAdjustForm">
@@ -37,6 +37,7 @@
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
+                <caption class="visually-hidden">سطور الجرد: الصنف، الرصيد الحالي، العدد الجديد، الكمية الجديدة، الفرق بعد الحفظ</caption>
                 <thead>
                     <tr>
                         <th scope="col" style="width:30%">الصنف</th>
@@ -61,8 +62,8 @@
                                 </select>
                             </td>
                             <td><span class="stock-info small text-muted">—</span></td>
-                            <td><input name="Lines[@j].NewCount" type="number" step="0.01" class="form-control form-control-sm new-count" value="@Model.Lines[j].NewCount" aria-label="العدد الجديد" /></td>
-                            <td><input name="Lines[@j].NewQuantity" type="number" step="0.01" class="form-control form-control-sm new-qty" value="@Model.Lines[j].NewQuantity" aria-label="الكمية الجديدة" /></td>
+                            <td><input name="Lines[@j].NewCount" type="number" step="0.0001" class="form-control form-control-sm new-count" value="@Model.Lines[j].NewCount" aria-label="العدد الجديد" /></td>
+                            <td><input name="Lines[@j].NewQuantity" type="number" step="0.0001" class="form-control form-control-sm new-qty" value="@Model.Lines[j].NewQuantity" aria-label="الكمية الجديدة" /></td>
                             <td><span class="diff-info small fw-bold">—</span></td>
                             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                         </tr>
@@ -98,8 +99,8 @@ function rowHtml(idx) {
     return `<tr>
         <td><select name="Lines[${idx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
         <td><span class="stock-info small text-muted">—</span></td>
-        <td><input name="Lines[${idx}].NewCount" type="number" step="0.01" class="form-control form-control-sm new-count" value="0" aria-label="العدد الجديد" /></td>
-        <td><input name="Lines[${idx}].NewQuantity" type="number" step="0.01" class="form-control form-control-sm new-qty" value="0" aria-label="الكمية الجديدة" /></td>
+        <td><input name="Lines[${idx}].NewCount" type="number" step="0.0001" class="form-control form-control-sm new-count" value="0" aria-label="العدد الجديد" /></td>
+        <td><input name="Lines[${idx}].NewQuantity" type="number" step="0.0001" class="form-control form-control-sm new-qty" value="0" aria-label="الكمية الجديدة" /></td>
         <td><span class="diff-info small fw-bold">—</span></td>
         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
     </tr>`;

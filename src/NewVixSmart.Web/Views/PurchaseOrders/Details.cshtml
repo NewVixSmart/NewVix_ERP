@@ -16,7 +16,7 @@
         {
             <a asp-action="Receive" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-box-arrow-in-down"></i> استلام</a>
         }
-        @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived) && Model.Items.Any(i => i.ReceivedQty > 0 || i.ReceivedCount > 0))
+        @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived) && OrderProgress.HasReceived(Model))
         {
             <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline">
                 <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> تحويل إلى فاتورة</button>
@@ -55,6 +55,7 @@
 
 <div class="table-container mb-4">
     <table class="table mb-0">
+        <caption class="visually-hidden">أصناف أمر الشراء: الصنف، العدد المطلوب، الكمية المطلوبة، سعر الوحدة، الإجمالي، المستلم عدد، المستلم كمية</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المطلوب</th><th scope="col">الكمية المطلوبة</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th><th scope="col">المستلم عدد</th><th scope="col">المستلم كمية</th></tr></thead>
         <tbody>
             @foreach (var item in Model.Items)
@@ -63,8 +64,8 @@
                     <td>@item.Item.Name</td>
                     <td>@item.Count</td>
                     <td>@item.Quantity</td>
-                    <td>@item.UnitPrice.ToString("N2")</td>
-                    <td class="fw-bold">@item.Total.ToString("N2")</td>
+                    <td>@Money.Format(item.UnitPrice)</td>
+                    <td class="fw-bold">@Money.Format(item.Total)</td>
                     <td>@item.ReceivedCount</td>
                     <td>@item.ReceivedQty</td>
                 </tr>
@@ -74,5 +75,5 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.Items.Sum(i => i.Total).ToString("N2")</h4></div></div></div>
+    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(OrderProgress.Summarize(Model).Total)</h4></div></div></div>
 </div>

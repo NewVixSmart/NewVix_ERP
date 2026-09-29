@@ -22,6 +22,25 @@ project.lock.json
 *.sln.docstates
 
 # ============================================
+# Database dumps and live data files
+# ============================================
+# These are the highest-severity entries in this file. A .bak is a full copy of
+# the database, including every user's password hash and every JWT signing key
+# that was seeded into it. "backups/" only covers the folder the LocalDB script
+# happens to default to, so BackupService writing VixSmart_<stamp>.bak into the
+# web content root used to be committable on any case-sensitive host.
+*.bak
+*.trn
+*.mdf
+*.ndf
+*.ldf
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ============================================
 # Test / local artifacts
 # ============================================
 test-out*.txt
@@ -29,22 +48,28 @@ tests-result.txt
 *.log
 coverage*.xml
 coverage*.json
+artifacts/
+screenshots/
 
 # ============================================
 # Tooling (opencode/playwright temp)
 # ============================================
 .playwright-cli/
 node_modules/
-package-lock.json
-package.json
-!e2e/package.json
-!e2e/package-lock.json
+# Root-anchored on purpose: only the accidental repo-root npm manifest is
+# ignored. e2e/package.json and e2e/package-lock.json - and the manifest of any
+# future tool directory - stay tracked, so CI installs a pinned tree with
+# `npm ci` instead of resolving ^ ranges against the live registry.
+/package.json
+/package-lock.json
 
 # ============================================
 # Secrets / local config (never commit real credentials)
 # ============================================
 appsettings.Local.json
 appsettings.Development.local.json
+appsettings.*.local.json
+secrets.json
 *.pfx
 *.p12
 .env

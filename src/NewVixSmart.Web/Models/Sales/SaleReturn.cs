@@ -30,6 +30,7 @@ public class SaleReturn
     public SaleInvoice? SaleInvoice { get; set; }
 
     [Display(Name = "ط§ظ„ظپط±ط¹")]
+    [BindNever]
     public int? BranchId { get; set; }
 
     [Display(Name = "ط­ط§ظ„ط© ط§ظ„ظ…ط±طھط¬ط¹")]
@@ -63,6 +64,10 @@ public class SaleReturn
     [Display(Name = "طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،")]
     [BindNever]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Timestamp]
+    [BindNever]
+    public byte[]? RowVersion { get; set; }
 
     [BindNever]
     public ICollection<SaleReturnItem> Items { get; set; } = new List<SaleReturnItem>();

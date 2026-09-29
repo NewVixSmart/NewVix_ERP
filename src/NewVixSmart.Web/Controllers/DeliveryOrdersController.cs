@@ -41,24 +41,13 @@ public class DeliveryOrdersController : Controller
     [RequirePerm("DeliveryOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        int deliveryId;
-        if (Guid.TryParse(id, out var publicId))
-        {
-            var target = await _db.DeliveryOrders.AsNoTracking()
-                .Where(d => d.PublicId == publicId)
-                .Select(d => (int?)d.Id)
-                .FirstOrDefaultAsync();
-            if (target == null) return NotFound();
-            deliveryId = target.Value;
-        }
-        else if (int.TryParse(id, out var numericId))
-        {
-            deliveryId = numericId;
-        }
-        else
-        {
-            return NotFound();
-        }
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        var targetDeliveryId = await _db.DeliveryOrders.AsNoTracking()
+            .Where(d => d.PublicId == publicId)
+            .Select(d => (int?)d.Id)
+            .FirstOrDefaultAsync();
+        if (targetDeliveryId == null) return NotFound();
+        var deliveryId = targetDeliveryId.Value;
 
         var delivery = await LoadDeliveryAsync(deliveryId);
         if (delivery == null) return NotFound();
@@ -81,7 +70,7 @@ public class DeliveryOrdersController : Controller
         var (ok, error) = await _inventory.DeliverDeliveryOrderAsync(id, User.Identity?.Name, branchId);
         if (ok) TempData["Success"] = "تم ترحيل أذن التسليم: خُصم المخزون وسُجّلت قيود البيع";
         else TempData["Error"] = error;
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -91,7 +80,21 @@ public class DeliveryOrdersController : Controller
         var (ok, error) = await _inventory.CancelDeliveryOrderAsync(id, User.Identity?.Name);
         if (ok) TempData["Success"] = "تم إلغاء أذن التسليم";
         else TempData["Error"] = error;
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
+    }
+
+    /// <summary>
+    /// Details only resolves the public id now, so internal redirects translate the numeric id
+    /// they were handed instead of passing it straight through.
+    /// </summary>
+    private async Task<IActionResult> RedirectToDetailsAsync(int id)
+    {
+        var publicId = await _db.DeliveryOrders.AsNoTracking()
+            .Where(d => d.Id == id)
+            .Select(d => (Guid?)d.PublicId)
+            .FirstOrDefaultAsync();
+        if (publicId == null) return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
     [RequirePerm("DeliveryOrders.Create")]
@@ -230,10 +233,11 @@ public class DeliveryOrdersController : Controller
             return new DeliveryOrderItem
             {
                 ItemId = l.ItemId,
+                // What is still owed on this line, not what was ordered on it.
                 Quantity = l.Quantity - n.Qty + s.Qty,
                 Count = l.Count - n.Cnt + s.Cnt
             };
-        }).Where(i => i.Quantity > 0.005m || i.Count > 0.005m).ToList();
+        }).Where(i => DeliveryOpenLines.HasResidualLeft(i.Quantity, i.Count)).ToList();
     }
 
     private async Task<List<OrderOption>> OrderOptionsAsync()

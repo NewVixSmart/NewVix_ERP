@@ -41,7 +41,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">إجمالي المشتريات</div>
-                    <h3 class="mb-0 mt-1" data-count="@Model.TotalPurchaseAmount" data-decimals="0" data-count-formatted="@Model.TotalPurchaseAmount.ToString("N0")">@Model.TotalPurchaseAmount.ToString("N0")</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalPurchaseAmount" data-decimals="0" data-count-formatted="@Money.Format(Model.TotalPurchaseAmount)">@Money.Format(Model.TotalPurchaseAmount)</h3>
                 </div>
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-cart-dash"></i></div>
             </div>
@@ -55,7 +55,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">إجمالي المبيعات</div>
-                    <h3 class="mb-0 mt-1" data-count="@Model.TotalSaleAmount" data-decimals="0" data-count-formatted="@Model.TotalSaleAmount.ToString("N0")">@Model.TotalSaleAmount.ToString("N0")</h3>
+                    <h3 class="mb-0 mt-1" data-count="@Model.TotalSaleAmount" data-decimals="0" data-count-formatted="@Money.Format(Model.TotalSaleAmount)">@Money.Format(Model.TotalSaleAmount)</h3>
                 </div>
                 <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-cart-check"></i></div>
             </div>
@@ -96,19 +96,19 @@
                 <tbody>
                     @if (Model.OverdueReceivableCount > 0)
                     {
-                        <tr><td>عملاء</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverdueReceivableCount</td><td class="fw-bold">@Model.OverdueReceivableTotal.ToString("N2")</td></tr>
+                        <tr><td>عملاء</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverdueReceivableCount</td><td class="fw-bold">@Money.Format(Model.OverdueReceivableTotal)</td></tr>
                     }
                     @if (Model.OverduePayableCount > 0)
                     {
-                        <tr><td>موردون</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverduePayableCount</td><td class="fw-bold">@Model.OverduePayableTotal.ToString("N2")</td></tr>
+                        <tr><td>موردون</td><td><span class="badge bg-danger">متأخرة</span></td><td>@Model.OverduePayableCount</td><td class="fw-bold">@Money.Format(Model.OverduePayableTotal)</td></tr>
                     }
                     @if (Model.DueSoonReceivableCount > 0)
                     {
-                        <tr><td>عملاء</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonReceivableCount</td><td class="fw-bold">@Model.DueSoonReceivableTotal.ToString("N2")</td></tr>
+                        <tr><td>عملاء</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonReceivableCount</td><td class="fw-bold">@Money.Format(Model.DueSoonReceivableTotal)</td></tr>
                     }
                     @if (Model.DueSoonPayableCount > 0)
                     {
-                        <tr><td>موردون</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonPayableCount</td><td class="fw-bold">@Model.DueSoonPayableTotal.ToString("N2")</td></tr>
+                        <tr><td>موردون</td><td><span class="badge bg-warning text-dark">تستحق خلال 7 أيام</span></td><td>@Model.DueSoonPayableCount</td><td class="fw-bold">@Money.Format(Model.DueSoonPayableTotal)</td></tr>
                     }
                 </tbody>
             </table>
@@ -120,14 +120,15 @@
 {
     <div class="card mb-4 border-warning">
         <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-exclamation-triangle"></i> تنبيه: أصناف بمخزون منخفض (@Model.LowStockCount)</span>
+            <span id="home-lowstock-heading"><i class="bi bi-exclamation-triangle"></i> تنبيه: أصناف بمخزون منخفض (@Model.LowStockCount)</span>
             @if (await Perm.HasAsync("Stock.View"))
             {
                 <a asp-controller="Stock" asp-action="LowStock" class="btn btn-sm btn-dark"><i class="bi bi-boxes"></i> عرض الكل</a>
             }
         </div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" aria-labelledby="home-lowstock-heading">
+                <caption class="visually-hidden">أصناف بمخزون منخفض: الرصيد الحالي والحد الأدنى وقيمة النقص</caption>
                 <thead><tr><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد (عدد/كمية)</th><th scope="col">الحد الأدنى</th><th scope="col">النقص</th></tr></thead>
                 <tbody>
                     @foreach (var item in Model.LowStockItems)
@@ -169,11 +170,12 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-cart-dash"></i> آخر المشتريات</span>
+                <span id="home-recent-purchases-heading"><i class="bi bi-cart-dash"></i> آخر المشتريات</span>
                 <a asp-controller="Purchases" asp-action="Index" class="btn btn-sm btn-outline-primary">عرض الكل</a>
             </div>
             <div class="card-body p-0">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" aria-labelledby="home-recent-purchases-heading">
+                    <caption class="visually-hidden">آخر فواتير الشراء: رقم الفاتورة والمورد والتاريخ وصافي المبلغ</caption>
                     <thead><tr><th scope="col">الفاتورة</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
                     <tbody>
                         @foreach (var inv in Model.RecentPurchases)
@@ -182,7 +184,7 @@
                                 <td><code>@inv.InvoiceNumber</code></td>
                                 <td>@inv.PartyName</td>
                                 <td>@inv.InvoiceDate.ToString("dd/MM")</td>
-                                <td class="fw-bold">@inv.NetAmount.ToString("N2")</td>
+                                <td class="fw-bold">@Money.Format(inv.NetAmount)</td>
                             </tr>
                         }
                     </tbody>
@@ -196,11 +198,12 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-cart-check"></i> آخر المبيعات</span>
+                <span id="home-recent-sales-heading"><i class="bi bi-cart-check"></i> آخر المبيعات</span>
                 <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-primary">عرض الكل</a>
             </div>
             <div class="card-body p-0">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" aria-labelledby="home-recent-sales-heading">
+                    <caption class="visually-hidden">آخر فواتير البيع: رقم الفاتورة والعميل والتاريخ وصافي المبلغ</caption>
                     <thead><tr><th scope="col">الفاتورة</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
                     <tbody>
                         @foreach (var inv in Model.RecentSales)
@@ -209,7 +212,7 @@
                                 <td><code>@inv.InvoiceNumber</code></td>
                                 <td>@inv.PartyName</td>
                                 <td>@inv.InvoiceDate.ToString("dd/MM")</td>
-                                <td class="fw-bold">@inv.NetAmount.ToString("N2")</td>
+                                <td class="fw-bold">@Money.Format(inv.NetAmount)</td>
                             </tr>
                         }
                     </tbody>

@@ -731,19 +731,13 @@ public class ReportService : IReportService
         var saleReturns = await _db.SaleReturns
             .AsNoTracking()
             .Where(r => r.Status == ReturnStatus.Posted)
-            .Select(r => new
-            {
+            .Select(r => new PostedReturnRow(
                 r.SaleInvoiceId,
                 r.TotalAmount,
-                InvoiceGross = r.SaleInvoice != null ? r.SaleInvoice.TotalAmount : 0m,
-                InvoiceNet = r.SaleInvoice != null ? r.SaleInvoice.NetAmount : 0m
-            })
+                r.SaleInvoice != null ? r.SaleInvoice.TotalAmount : 0m,
+                r.SaleInvoice != null ? r.SaleInvoice.NetAmount : 0m))
             .ToListAsync();
-        var returnsBySaleInvoice = saleReturns
-            .Where(r => r.SaleInvoiceId.HasValue)
-            .GroupBy(r => r.SaleInvoiceId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
-                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet), 2)));
+        var returnsBySaleInvoice = OpenAmountRule.ReturnCredits(saleReturns);
 
         var saleAllocations = await _db.SalePaymentAllocations
             .AsNoTracking()
@@ -756,35 +750,11 @@ public class ReportService : IReportService
         var receivableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var s in saleInvoices)
         {
-            decimal deliveredBase = 0m;
-            if (ordersBySaleInvoice.TryGetValue(s.Id, out var orders))
-            {
-                foreach (var order in orders)
-                {
-                    decimal rawValue = 0m;
-                    foreach (var item in order.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)))
-                    {
-                        var invLine = s.Items.FirstOrDefault(i => i.ItemId == item.ItemId);
-                        if (invLine == null) continue;
-                        rawValue += (item.Quantity > 0 ? item.Quantity : item.Count) * invLine.UnitPrice;
-                    }
-                    decimal orderBase;
-                    if (rawValue <= 0m) orderBase = s.NetAmount;
-                    else if (s.TotalAmount > 0m && s.NetAmount >= 0m) orderBase = decimal.Round(s.NetAmount * (rawValue / s.TotalAmount), 2);
-                    else orderBase = rawValue;
-                    deliveredBase += decimal.Round(orderBase, 2);
-                }
-            }
-            else
-            {
-                deliveredBase = decimal.Round(s.NetAmount, 2);
-            }
-            var paidBase = allocatedBySale.GetValueOrDefault(s.Id);
-            if (paidBase <= 0m && s.PaidAmount > 0m)
-                paidBase = decimal.Round(s.PaidAmount, 2);
-            var outstanding = deliveredBase
-                - paidBase
-                - returnsBySaleInvoice.GetValueOrDefault(s.Id);
+            ordersBySaleInvoice.TryGetValue(s.Id, out var orders);
+            var outstanding = OpenAmountRule.Open(
+                OpenAmountRule.SaleDeliveredNet(s, orders),
+                OpenAmountRule.PaidBase(s.PaidAmount, allocatedBySale.GetValueOrDefault(s.Id)),
+                returnsBySaleInvoice.GetValueOrDefault(s.Id));
             if (outstanding > 0.005m)
                 receivableLines.Add((s.CustomerId, s.Customer?.Name ?? "—", s.DueDate ?? s.InvoiceDate, outstanding));
         }
@@ -820,19 +790,13 @@ public class ReportService : IReportService
         var purchaseReturns = await _db.PurchaseReturns
             .AsNoTracking()
             .Where(r => r.Status == ReturnStatus.Posted)
-            .Select(r => new
-            {
+            .Select(r => new PostedReturnRow(
                 r.PurchaseInvoiceId,
                 r.TotalAmount,
-                InvoiceGross = r.PurchaseInvoice != null ? r.PurchaseInvoice.TotalAmount : 0m,
-                InvoiceNet = r.PurchaseInvoice != null ? r.PurchaseInvoice.NetAmount : 0m
-            })
+                r.PurchaseInvoice != null ? r.PurchaseInvoice.TotalAmount : 0m,
+                r.PurchaseInvoice != null ? r.PurchaseInvoice.NetAmount : 0m))
             .ToListAsync();
-        var returnsByPurchaseInvoice = purchaseReturns
-            .Where(r => r.PurchaseInvoiceId.HasValue)
-            .GroupBy(r => r.PurchaseInvoiceId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
-                ReturnValuation.ReceivableBase(r.TotalAmount, r.InvoiceGross, r.InvoiceNet), 2)));
+        var returnsByPurchaseInvoice = OpenAmountRule.ReturnCredits(purchaseReturns);
 
         var purchaseAllocations = await _db.PurchasePaymentAllocations
             .AsNoTracking()
@@ -845,12 +809,10 @@ public class ReportService : IReportService
         var payableLines = new List<(int PartyId, string Name, DateTime Due, decimal Amount)>();
         foreach (var p in purchaseInvoices)
         {
-            var paidBase = allocatedByPurchase.GetValueOrDefault(p.Id);
-            if (paidBase <= 0m && p.PaidAmount > 0m)
-                paidBase = decimal.Round(p.PaidAmount, 2);
-            var outstanding = decimal.Round(p.NetAmount, 2)
-                - paidBase
-                - returnsByPurchaseInvoice.GetValueOrDefault(p.Id);
+            var outstanding = OpenAmountRule.Open(
+                decimal.Round(p.NetAmount, 2),
+                OpenAmountRule.PaidBase(p.PaidAmount, allocatedByPurchase.GetValueOrDefault(p.Id)),
+                returnsByPurchaseInvoice.GetValueOrDefault(p.Id));
             if (outstanding > 0.005m)
                 payableLines.Add((p.SupplierId, p.Supplier?.Name ?? "—", p.DueDate ?? p.InvoiceDate, outstanding));
         }
@@ -1346,3 +1308,192 @@ public class ReportService : IReportService
         return ms.ToArray();
     }
 }
+
+/// <summary>
+/// The one rule for how much of a document is still owed, shared by the receivable/payable
+/// aging report, the payment allocation (<see cref="PaymentService"/>), the dashboard due
+/// tiles (<see cref="DashboardService"/>) and the printed invoice
+/// (<see cref="PdfInvoiceService"/>) so none of them can drift apart. The open amount is
+/// exactly the receivable/payable the ledger carries for the
+/// document: the value the delivery booked (the invoice net on the purchase side), less what
+/// allocations already collected, less what posted returns credited back through
+/// <see cref="ReturnValuation"/>. A posted return never rewrites the invoice's own
+/// <c>NetAmount</c>/<c>PaidAmount</c> columns, so <c>PaidAmount &lt; NetAmount</c> on its own is
+/// NOT a collectable test: after a full return it still holds while the ledger and the report
+/// both consider the invoice closed.
+/// </summary>
+internal static class OpenAmountRule
+{
+    /// <summary>
+    /// What has actually been collected against the invoice. The allocation rows are the
+    /// sub-ledger; the stored column is only a fallback for documents settled outside the
+    /// allocation path (an "on receipt" invoice is booked paid at creation, with no rows).
+    /// </summary>
+    public static decimal PaidBase(decimal storedPaidAmount, decimal allocatedTotal)
+        => allocatedTotal > 0m ? allocatedTotal : decimal.Round(storedPaidAmount, 2);
+
+    /// <summary>
+    /// The credit a set of posted returns gave back, per source invoice. The proration is
+    /// delegated to <see cref="ReturnValuation.ReceivableBase"/> — the very figure
+    /// <c>ReturnMirror</c> posted to the journal — so a receipt can never be measured against
+    /// a different slice of the invoice than the one the ledger credited.
+    /// </summary>
+    public static Dictionary<int, decimal> ReturnCredits(IEnumerable<PostedReturnRow> postedReturns)
+        => postedReturns
+            .Where(r => r.InvoiceId.HasValue)
+            .GroupBy(r => r.InvoiceId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(r => decimal.Round(
+                ReturnValuation.ReceivableBase(r.ReturnedGross, r.InvoiceGross, r.InvoiceNet), 2)));
+
+    /// <summary>
+    /// The net value the ledger booked to account 1200 for this invoice: the invoice net
+    /// prorated over the value each delivered order carried, exactly as
+    /// <c>InventoryService</c> does before calling <c>RecordSaleDeliveryAsync</c>. An invoice
+    /// delivered only in part is collectable only to that part. With no delivered order of its
+    /// own the invoice is delivered through its delivery issues, so the whole net is booked.
+    /// </summary>
+    public static decimal SaleDeliveredNet(SaleInvoice invoice, IReadOnlyList<DeliveryOrder>? deliveredOrders)
+    {
+        if (deliveredOrders == null || deliveredOrders.Count == 0)
+            return decimal.Round(invoice.NetAmount, 2);
+
+        var unitPriceByItem = invoice.Items
+            .GroupBy(i => i.ItemId)
+            .ToDictionary(g => g.Key, g => g.First().UnitPrice);
+
+        decimal total = 0m;
+        foreach (var order in deliveredOrders)
+        {
+            decimal rawValue = 0m;
+            foreach (var item in order.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)))
+            {
+                if (!unitPriceByItem.TryGetValue(item.ItemId, out var unitPrice)) continue;
+                rawValue += (item.Quantity > 0 ? item.Quantity : item.Count) * unitPrice;
+            }
+
+            decimal orderBase;
+            if (rawValue <= 0m) orderBase = invoice.NetAmount;
+            else if (invoice.TotalAmount > 0m && invoice.NetAmount >= 0m)
+                orderBase = decimal.Round(invoice.NetAmount * (rawValue / invoice.TotalAmount), 2);
+            else orderBase = rawValue;
+            total += decimal.Round(orderBase, 2);
+        }
+
+        return total;
+    }
+
+    /// <summary>Booked value less what is collected less what returns credited back.</summary>
+    public static decimal Open(decimal bookedNet, decimal paidBase, decimal returnCredit)
+        => bookedNet - paidBase - returnCredit;
+
+    /// <summary>
+    /// The one materiality gate for "is this document still owed", so a caller that is not a
+    /// report cannot count a document the aging report has already dropped.
+    /// </summary>
+    public const decimal OpenTolerance = 0.005m;
+
+    /// <summary>
+    /// The open amount of every sale invoice, keyed by id, through this rule. Exposed so a surface
+    /// that is not a report — the dashboard's due tiles, the remaining line on the printed
+    /// invoice — reads the ledger's figure instead of re-deriving <c>NetAmount - PaidAmount</c>,
+    /// which a posted return leaves stale. Pass <paramref name="invoiceIds"/> to price a subset;
+    /// pass null to price every invoice.
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> SaleOpenByInvoiceAsync(
+        AppDbContext db, IReadOnlyCollection<int>? invoiceIds = null)
+    {
+        var query = db.SaleInvoices.AsNoTracking().Include(s => s.Items).AsQueryable();
+        if (invoiceIds != null) query = query.Where(s => invoiceIds.Contains(s.Id));
+
+        var invoices = await query.ToListAsync();
+        var open = new Dictionary<int, decimal>();
+        if (invoices.Count == 0) return open;
+
+        var ordersByInvoice = (await db.DeliveryOrders
+                .AsNoTracking()
+                .Include(d => d.Items)
+                .Where(d => d.Status == DeliveryOrderStatus.Delivered && d.SaleInvoiceId != null)
+                .ToListAsync())
+            .GroupBy(d => d.SaleInvoiceId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var returnCredits = ReturnCredits(await db.SaleReturns
+            .AsNoTracking()
+            .Where(r => r.Status == ReturnStatus.Posted)
+            .Select(r => new PostedReturnRow(
+                r.SaleInvoiceId,
+                r.TotalAmount,
+                r.SaleInvoice != null ? r.SaleInvoice.TotalAmount : 0m,
+                r.SaleInvoice != null ? r.SaleInvoice.NetAmount : 0m))
+            .ToListAsync());
+
+        var allocatedByInvoice = (await db.SalePaymentAllocations
+                .AsNoTracking()
+                .Select(a => new { a.SaleInvoiceId, a.AllocatedAmount })
+                .ToListAsync())
+            .GroupBy(a => a.SaleInvoiceId)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount));
+
+        foreach (var s in invoices)
+        {
+            ordersByInvoice.TryGetValue(s.Id, out var orders);
+            open[s.Id] = Open(
+                SaleDeliveredNet(s, orders),
+                PaidBase(s.PaidAmount, allocatedByInvoice.GetValueOrDefault(s.Id)),
+                returnCredits.GetValueOrDefault(s.Id));
+        }
+
+        return open;
+    }
+
+    /// <summary>
+    /// The payable mirror of <see cref="SaleOpenByInvoiceAsync"/>: a purchase invoice is booked
+    /// at the invoice, so its booked value is the whole net and the only deductions are the
+    /// disbursements allocated to it and the purchase returns credited back.
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> PurchaseOpenByInvoiceAsync(
+        AppDbContext db, IReadOnlyCollection<int>? invoiceIds = null)
+    {
+        var query = db.PurchaseInvoices.AsNoTracking().AsQueryable();
+        if (invoiceIds != null) query = query.Where(p => invoiceIds.Contains(p.Id));
+
+        var invoices = await query.ToListAsync();
+        var open = new Dictionary<int, decimal>();
+        if (invoices.Count == 0) return open;
+
+        var returnCredits = ReturnCredits(await db.PurchaseReturns
+            .AsNoTracking()
+            .Where(r => r.Status == ReturnStatus.Posted)
+            .Select(r => new PostedReturnRow(
+                r.PurchaseInvoiceId,
+                r.TotalAmount,
+                r.PurchaseInvoice != null ? r.PurchaseInvoice.TotalAmount : 0m,
+                r.PurchaseInvoice != null ? r.PurchaseInvoice.NetAmount : 0m))
+            .ToListAsync());
+
+        var allocatedByInvoice = (await db.PurchasePaymentAllocations
+                .AsNoTracking()
+                .Select(a => new { a.PurchaseInvoiceId, a.AllocatedAmount })
+                .ToListAsync())
+            .GroupBy(a => a.PurchaseInvoiceId)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AllocatedAmount));
+
+        foreach (var p in invoices)
+        {
+            open[p.Id] = Open(
+                decimal.Round(p.NetAmount, 2),
+                PaidBase(p.PaidAmount, allocatedByInvoice.GetValueOrDefault(p.Id)),
+                returnCredits.GetValueOrDefault(p.Id));
+        }
+
+        return open;
+    }
+}
+
+/// <summary>
+/// A posted return projected down to the four figures
+/// <see cref="OpenAmountRule.ReturnCredits"/> needs, so the query and the pricing rule can
+/// never be edited apart.
+/// </summary>
+internal readonly record struct PostedReturnRow(
+    int? InvoiceId, decimal ReturnedGross, decimal InvoiceGross, decimal InvoiceNet);

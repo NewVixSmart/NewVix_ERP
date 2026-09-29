@@ -10,9 +10,18 @@ on:
 permissions:
   contents: read
 
+# Without this, a superseded pull request keeps burning the runner until the
+# 360-minute per-job default. Every push to a PR branch supersedes the previous
+# run, so cancel-in-progress is the difference between one run per push and one
+# run per push queued behind the last one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -36,8 +45,8 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build NewVixSmart.slnx -c Release --no-restore
 
-      - name: Install dotnet-ef
-        run: dotnet tool install --global dotnet-ef
+      - name: Install dotnet-ef (pinned by .config/dotnet-tools.json)
+        run: dotnet tool restore
 
       - name: Verify EF model matches migrations snapshot
         run: dotnet ef migrations has-pending-model-changes --project src/NewVixSmart.Web/NewVixSmart.Web.csproj --startup-project src/NewVixSmart.Web/NewVixSmart.Web.csproj --configuration Release
@@ -55,6 +64,7 @@ jobs:
 
   package-vulnerability:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -88,6 +98,10 @@ jobs:
 
   docker-image:
     runs-on: ubuntu-latest
+    # The heaviest job by far: a SQL Server service container, a two-stage
+    # image build, a Playwright + Chromium download, then the axe gate walking
+    # ~38 pages against a real Production-mode app.
+    timeout-minutes: 90
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04
@@ -157,7 +171,12 @@ jobs:
 
       - name: Install accessibility gate dependencies
         working-directory: e2e
-        run: npm install --no-audit --no-fund
+        # npm ci, not npm install: e2e/package.json uses ^ ranges
+        # (axe-core ^4.13.0, playwright ^1.63.0) and e2e/package-lock.json is
+        # committed. `npm install` is free to resolve those ranges to whatever
+        # the registry serves today, so the accessibility gate - the one job
+        # that decides whether the UI ships - was not reproducible.
+        run: npm ci --no-audit --no-fund
 
       - name: Install Chromium for Playwright
         working-directory: e2e
@@ -174,9 +193,29 @@ jobs:
   codeql:
     name: CodeQL (C#)
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # `contents: read` is what the checkout and the C# extraction need;
+    # `security-events: write` is what lets analyze upload the SARIF results.
+    # Nothing else is granted - in particular not `actions: write` or
+    # `packages: write`, neither of which codeql-action needs.
     permissions:
       contents: read
       security-events: write
+    # FORK PULL REQUESTS. GitHub never grants `security-events: write` to the
+    # GITHUB_TOKEN of a `pull_request` coming from a fork, so the analyze step
+    # died there with "Resource not accessible by integration" - i.e. the scan
+    # could not run for external contributions at all, and the failure looked
+    # like a repository problem rather than a platform one.
+    #
+    # There is no token scope that fixes this: the fallback (reporting as a
+    # check run or PR comment) needs `checks: write` / `pull-requests: write`,
+    # which forks do not get either. `pull_request_target` would grant them, but
+    # it runs this workflow against untrusted head code and is not acceptable.
+    #
+    # So the job is skipped for forks and the skip is visible in the run.
+    # build-and-test, package-vulnerability, secret-scan and docker-image all
+    # still run on forks, so an external PR is not left unverified.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -195,8 +234,21 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # gitleaks-action does more than exit non-zero: on a pull_request it posts
+    # a findings comment, and on a non-PR push it files/updates a tracking
+    # issue. That is exactly the documented behaviour wanted here (a leak in a
+    # merge commit must not slip through), and it needs those two write scopes.
+    # `contents: read` covers the fetch-depth: 0 checkout it needs for the log.
     permissions:
       contents: read
+      pull-requests: write
+      issues: write
+    # FORK PULL REQUESTS: the GITHUB_TOKEN of a `pull_request` from a fork is
+    # read-only, so both write scopes above are downgraded to read and the
+    # action's comment/issue step fails. Skipped rather than failed; the other
+    # jobs still cover the fork.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout (full history, gitleaks needs the log)
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -216,8 +268,18 @@ jobs:
     # Only meaningful on the pull request: it diffs the proposed change set against the base.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # `contents: read` for the checkout; `pull-requests: write` is required by
+    # `comment-summary-in-pr` below, which posts the summary as a PR comment.
+    # Previously the job declared only `contents: read`, so the comment step
+    # could not have worked even on an internal pull request.
     permissions:
       contents: read
+      pull-requests: write
+    # FORK PULL REQUESTS: read-only token again, so the summary comment cannot
+    # be posted. The job still runs - the dependency *diff* itself works fine -
+    # and `fail-on-severity` still gates the build; only the comment is
+    # unavailable, which is the smaller loss of the two.
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

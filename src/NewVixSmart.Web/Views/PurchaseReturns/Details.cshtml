@@ -51,6 +51,7 @@
 
 <div class="table-container mb-4">
     <table class="table mb-0">
+        <caption class="visually-hidden">أصناف مرتجع المشتريات: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th></tr></thead>
         <tbody>
             @foreach (var item in Model.Items)
@@ -59,8 +60,8 @@
                     <td>@item.Item.Name</td>
                     <td>@item.Count</td>
                     <td>@item.Quantity</td>
-                    <td>@item.UnitPrice.ToString("N2")</td>
-                    <td class="fw-bold">@item.Total.ToString("N2")</td>
+                    <td>@Money.Format(item.UnitPrice)</td>
+                    <td class="fw-bold">@Money.Format(item.Total)</td>
                 </tr>
             }
         </tbody>

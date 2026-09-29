@@ -19,17 +19,22 @@ public interface IInventoryService
     Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null);
     Task<(bool Success, string? Error)> CancelDeliveryOrderAsync(int deliveryId, string? user);
     Task<(bool Success, string? Error)> CreatePurchaseAsync(PurchaseInvoice invoice, List<PurchaseInvoiceItem> items, string? user, int? branchId = null, bool beginOwnTransaction = true);
-    Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user);
-    Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user);
-    Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user);
-    Task<(bool Success, string? Error)> PostSaleReturnAsync(int saleReturnId, string? user);
-    Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user);
-    Task<(bool Success, string? Error)> PostPurchaseReturnAsync(int purchaseReturnId, string? user);
-    Task<(bool Success, string? Error)> CreateAdjustmentAsync(InventoryAdjustment adjustment, string? user);
+    /// <summary>
+    /// راية <c>beginOwnTransaction</c> تتبع اصطلاح <see cref="CreateSaleAsync"/>: القيمة
+    /// الافتراضية تفتح العملية معاملتها الخاصة، و<c>false</c> تعني أن المستدعي يفتح معاملة
+    /// قائمة وتضم العملية إليها كجزء من وحدتها الذرية.
+    /// </summary>
+    Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error)> PostSaleReturnAsync(int saleReturnId, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error)> PostPurchaseReturnAsync(int purchaseReturnId, string? user, bool beginOwnTransaction = true);
+    Task<(bool Success, string? Error)> CreateAdjustmentAsync(InventoryAdjustment adjustment, string? user, bool beginOwnTransaction = true);
     Task<(bool Success, string? Error)> DeleteAdjustmentAsync(int adjustmentId, string? user);
     Task<ConsumedCostResult?> GetConsumedCostAsync(int itemId, IReadOnlyCollection<StockLine> lines);
     Task<IReadOnlyList<StockTransfer>> GetTransfersAsync();
-    Task<(bool Success, string? Error)> CreateTransferAsync(StockTransfer transfer, List<StockTransferItem> items, string? user);
+    Task<(bool Success, string? Error)> CreateTransferAsync(StockTransfer transfer, List<StockTransferItem> items, string? user, bool beginOwnTransaction = true);
     Task<IReadOnlyList<StockSnapshotItem>> GetStockSnapshotAsync(int? warehouseId);
 }
 

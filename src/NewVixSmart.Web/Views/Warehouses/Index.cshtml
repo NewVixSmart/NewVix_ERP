@@ -12,6 +12,7 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">المستودعات: الرمز، الاسم، الحالة، تاريخ الإنشاء</caption>
         <thead>
             <tr>
                 <th scope="col">الرمز</th>
@@ -37,12 +38,12 @@
                     <td class="text-center d-flex gap-1 justify-content-center">
                         @if (await Perm.HasAsync("Warehouses.Edit"))
                         {
-                            <a asp-action="Edit" asp-route-id="@w.Id" class="btn btn-sm btn-outline-primary" title="تعديل"><i class="bi bi-pencil"></i></a>
+                            <a asp-action="Edit" asp-route-id="@w.Id" class="btn btn-sm btn-outline-primary" title="تعديل" aria-label="تعديل المستودع @w.Name"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                         }
                         @if (await Perm.HasAsync("Warehouses.Delete"))
                         {
                             <form asp-action="Delete" asp-route-id="@w.Id" method="post" class="d-inline" data-confirm="حذف هذا المستودع؟" data-confirm-ok="حذف">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف" aria-label="حذف المستودع @w.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                             </form>
                         }
                     </td>

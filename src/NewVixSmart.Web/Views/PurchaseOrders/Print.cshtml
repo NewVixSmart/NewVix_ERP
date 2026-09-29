@@ -15,7 +15,7 @@
         if (!string.IsNullOrWhiteSpace(_profile.Phone)) _contactParts.Add(_profile.Phone);
         if (!string.IsNullOrWhiteSpace(_profile.Email)) _contactParts.Add(_profile.Email);
     }
-    var _total = Model.Items.Sum(i => i.Total);
+    var _total = OrderProgress.Summarize(Model).Total;
     var _doc = new PrintDocModel
     {
         Group = PrintGroup.PurchaseOrder,

@@ -7,6 +7,12 @@
     Creates a scheduled task named "NewVixSmartDailyBackup" that runs
     scripts\backup-db.ps1 daily at the given time as the current user.
 
+    LOCAL DEVELOPMENT ONLY. backup-db.ps1 is hard-wired to LocalDB + Windows
+    integrated authentication, so this task backs up the developer's local
+    database and nothing else. The Docker Compose database is NOT covered by it -
+    schedule backup-db-container.ps1 (or run the "backup" compose profile) for
+    that, and see the backup section of README.md.
+
     Use -Unregister to remove the task.
 
 .PARAMETER Time
@@ -113,7 +119,7 @@ try {
         -Action $action `
         -Trigger $trigger `
         -Principal $principal `
-        -Description "Daily backup of NewVixSmartDb via scripts\backup-db.ps1" `
+        -Description "Daily LOCALDB backup of NewVixSmartDb via scripts\backup-db.ps1 (does NOT cover the Docker Compose database - use scripts\backup-db-container.ps1)" `
         -Force | Out-Null
 
     Write-Host "[  OK ] Scheduled task '$TaskName' registered." -ForegroundColor Green

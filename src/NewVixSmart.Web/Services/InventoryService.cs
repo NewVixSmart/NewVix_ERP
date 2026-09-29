@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
@@ -269,6 +270,12 @@ public sealed class InventoryService : IInventoryService
         var delivery = await _db.DeliveryOrders.AsNoTracking().FirstOrDefaultAsync(d => d.Id == deliveryId);
         if (delivery == null) return (false, "أذن التسليم غير موجود", null);
         if (delivery.Status == DeliveryOrderStatus.Cancelled) return (false, "لا يمكن إنشاء أمر تسليم من أذن ملغي", null);
+        // An issue on an invoice-backed note posts the cost only (Dr 3000 / Cr 1300) and the
+        // revenue path (DeliverDeliveryOrderAsync) is then permanently blocked for that note, so
+        // the sale would leave the books with a cost and no revenue. Such a note is delivered by
+        // posting the note itself.
+        if (delivery.SaleInvoiceId.HasValue)
+            return (false, "أذن التسليم مرتبط بفاتورة بيع — سلّمه بترحيل أذن التسليم نفسه ولا تنشئ له أمر تسليم", null);
 
         foreach (var line in valid)
         {
@@ -545,11 +552,18 @@ public sealed class InventoryService : IInventoryService
 
         var lines = await _db.DeliveryOrderItems.AsNoTracking()
             .Where(i => i.DeliveryOrderId == deliveryId).ToListAsync();
-        var issued = issues.SelectMany(i => i.Items).ToList();
-        var fullyIssued = lines.All(l => issued
-            .Where(x => x.ItemId == l.ItemId)
-            .Sum(x => x.Quantity) >= l.Quantity - 0.005m
-            && issued.Where(x => x.ItemId == l.ItemId).Sum(x => x.Count) >= l.Count - 0.005m);
+        // The "is this note fully issued?" boundary lives in DeliveryOpenLines so this status
+        // refresh, the invoicing-status refresh and the note screen cannot drift apart on it.
+        var issuedQty = issues.SelectMany(i => i.Items)
+            .GroupBy(x => x.ItemId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+        var issuedCount = issues.SelectMany(i => i.Items)
+            .GroupBy(x => x.ItemId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
+        var fullyIssued = lines.All(l => DeliveryOpenLines.IsLineSettled(
+            l.Quantity, l.Count,
+            issuedQty.GetValueOrDefault(l.ItemId),
+            issuedCount.GetValueOrDefault(l.ItemId)));
 
         delivery.Status = fullyIssued ? DeliveryOrderStatus.Delivered : DeliveryOrderStatus.PartiallyIssued;
     }
@@ -847,16 +861,21 @@ public sealed class InventoryService : IInventoryService
         return (true, null);
     }
 
-    public async Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user)
+    /// <summary>
+    /// ينشئ مرتجع بيع مسودة ثم يرحّله. مع <c>beginOwnTransaction: false</c> تنضم المسودة
+    /// والترحيل إلى معاملة المستدعي فيُحفظ المرتجع كاملًا أو لا يُحفظ منه شيء.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> CreateSaleReturnAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
-        var (draftOk, draftErr, returnId) = await CreateSaleReturnDraftAsync(saleReturn, items, user);
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateSaleReturnAsync));
+        var (draftOk, draftErr, returnId) = await CreateSaleReturnDraftAsync(saleReturn, items, user, beginOwnTransaction);
         if (!draftOk) return (false, draftErr);
-        var (postOk, postErr) = await PostSaleReturnAsync(returnId, user);
+        var (postOk, postErr) = await PostSaleReturnAsync(returnId, user, beginOwnTransaction);
         if (!postOk) return (false, postErr);
         return (true, null);
     }
 
-    public async Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user)
+    public async Task<(bool Success, string? Error, int ReturnId)> CreateSaleReturnDraftAsync(SaleReturn saleReturn, List<SaleReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
         if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
             return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
@@ -865,14 +884,24 @@ public sealed class InventoryService : IInventoryService
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
             return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع البيع", 0);
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateSaleReturnDraftAsync));
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            // A null transaction means the caller's transaction owns this unit of work: EF
+            // refuses a second transaction on the same connection, so the method enlists in
+            // the ambient one instead of opening its own.
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 saleReturn.ReturnNumber = await NextReturnNumberAsync(
                     _db.SaleReturns.Select(r => r.ReturnNumber), "SRTN");
+                // The branch is server-owned (BindNever on the model): it is inherited from the
+                // source invoice so a posted return can never book into a client-chosen branch.
+                saleReturn.BranchId = saleReturn.SaleInvoiceId.HasValue
+                    ? await _db.SaleInvoices.Where(i => i.Id == saleReturn.SaleInvoiceId.Value)
+                        .Select(i => i.BranchId).FirstOrDefaultAsync()
+                    : null;
                 saleReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
                 saleReturn.CreatedBy = user;
                 saleReturn.Status = ReturnStatus.Draft;
@@ -883,27 +912,34 @@ public sealed class InventoryService : IInventoryService
                 _db.SaleReturns.Add(saleReturn);
                 await _db.SaveChangesAsync();
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 _logger?.LogInformation("أُنشئت مسودة مرتجع بيع {Owner} رقم {Number} بمبلغ {Amt:C}", user, saleReturn.ReturnNumber, saleReturn.TotalAmount);
                 return (true, null, saleReturn.Id);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetReturnKeys(saleReturn);
+                await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(saleReturn);
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetReturnKeys(saleReturn);
+                await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(saleReturn);
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر حفظ مسودة مرتجع البيع بسبب تعارض في البيانات، حاول مرة أخرى", 0);
     }
 
-    public async Task<(bool Success, string? Error)> PostSaleReturnAsync(int saleReturnId, string? user)
+    /// <summary>
+    /// يرحّل مسودة مرتجع بيع. مع <c>beginOwnTransaction: false</c> ينضم الترحيل إلى معاملة
+    /// المستدعي، فلا يبقى في القاعدة أثر لمرتجع غير مرحّل.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> PostSaleReturnAsync(int saleReturnId, string? user, bool beginOwnTransaction = true)
     {
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(PostSaleReturnAsync));
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 var saleReturn = await _db.SaleReturns.Include(r => r.Items)
@@ -921,7 +957,7 @@ public sealed class InventoryService : IInventoryService
                 saleReturn.TotalAmount = valid.Sum(i => i.Total);
 
                 var returnError = await ValidateSaleReturnQuantitiesAsync(saleReturn, valid);
-                if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
+                if (returnError != null) { await TryRollbackAsync(tx); DetachAll(); return (false, returnError); }
 
                 var invPrices = await _db.SaleInvoiceItems.AsNoTracking()
                     .Where(i => i.SaleInvoiceId == saleReturn.SaleInvoiceId)
@@ -945,7 +981,7 @@ public sealed class InventoryService : IInventoryService
                     ToReturnStockLines(valid), sign: +1,
                     docNumber: saleReturn.ReturnNumber, docType: DocumentType.SaleReturn, docId: saleReturn.Id,
                     movementDate: saleReturn.ReturnDate, user);
-                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
+                if (stockError != null) { await TryRollbackAsync(tx); DetachAll(); return (false, stockError); }
 
                 var costTotal = await RestoreSaleReturnLayersAsync(valid, saleReturn.ReturnDate);
 
@@ -977,32 +1013,39 @@ public sealed class InventoryService : IInventoryService
                 saleReturn.PostedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 _logger?.LogInformation("رحّل مرتجع بيع {Owner} رقم {Number} بمبلغ {Amt:C}", user, saleReturn.ReturnNumber, saleReturn.TotalAmount);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll();
+                await TryRollbackAsync(tx); DetachAll();
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll();
+                await TryRollbackAsync(tx); DetachAll();
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر ترحيل مرتجع البيع بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
-    public async Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user)
+    /// <summary>
+    /// ينشئ مرتجع شراء مسودة ثم يرحّله. مع <c>beginOwnTransaction: false</c> تنضم المسودة
+    /// والترحيل إلى معاملة المستدعي فيُحفظ المرتجع كاملًا أو لا يُحفظ منه شيء.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> CreatePurchaseReturnAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
-        var (draftOk, draftErr, returnId) = await CreatePurchaseReturnDraftAsync(purchaseReturn, items, user);
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreatePurchaseReturnAsync));
+        var (draftOk, draftErr, returnId) = await CreatePurchaseReturnDraftAsync(purchaseReturn, items, user, beginOwnTransaction);
         if (!draftOk) return (false, draftErr);
-        var (postOk, postErr) = await PostPurchaseReturnAsync(returnId, user);
+        var (postOk, postErr) = await PostPurchaseReturnAsync(returnId, user, beginOwnTransaction);
         if (!postOk) return (false, postErr);
         return (true, null);
     }
 
-    public async Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user)
+    public async Task<(bool Success, string? Error, int ReturnId)> CreatePurchaseReturnDraftAsync(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items, string? user, bool beginOwnTransaction = true)
     {
         if (items.Any(i => i.ItemId > 0 && (i.Count < 0 || i.Quantity < 0)))
             return (false, "لا يمكن أن تكون الأعداد أو الكميات سالبة في المرتجع", 0);
@@ -1011,14 +1054,21 @@ public sealed class InventoryService : IInventoryService
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالعدد أو الكمية", 0);
         if (valid.GroupBy(i => i.ItemId).Any(g => g.Count() > 1))
             return (false, "لا يمكن تكرار نفس الصنف أكثر من مرة في مرتجع الشراء", 0);
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreatePurchaseReturnDraftAsync));
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 purchaseReturn.ReturnNumber = await NextReturnNumberAsync(
                     _db.PurchaseReturns.Select(r => r.ReturnNumber), "PRTN");
+                // The branch is server-owned (BindNever on the model): it is inherited from the
+                // source invoice so a posted return can never book into a client-chosen branch.
+                purchaseReturn.BranchId = purchaseReturn.PurchaseInvoiceId.HasValue
+                    ? await _db.PurchaseInvoices.Where(i => i.Id == purchaseReturn.PurchaseInvoiceId.Value)
+                        .Select(i => i.BranchId).FirstOrDefaultAsync()
+                    : null;
                 purchaseReturn.TotalAmount = decimal.Round(valid.Sum(i => i.Total), 2);
                 purchaseReturn.CreatedBy = user;
                 purchaseReturn.Status = ReturnStatus.Draft;
@@ -1029,27 +1079,34 @@ public sealed class InventoryService : IInventoryService
                 _db.PurchaseReturns.Add(purchaseReturn);
                 await _db.SaveChangesAsync();
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 _logger?.LogInformation("أُنشئت مسودة مرتجع شراء {Owner} رقم {Number} بمبلغ {Amt:C}", user, purchaseReturn.ReturnNumber, purchaseReturn.TotalAmount);
                 return (true, null, purchaseReturn.Id);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetReturnKeys(purchaseReturn);
+                await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(purchaseReturn);
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetReturnKeys(purchaseReturn);
+                await TryRollbackAsync(tx); DetachAll(); ResetReturnKeys(purchaseReturn);
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر حفظ مسودة مرتجع الشراء بسبب تعارض في البيانات، حاول مرة أخرى", 0);
     }
 
-    public async Task<(bool Success, string? Error)> PostPurchaseReturnAsync(int purchaseReturnId, string? user)
+    /// <summary>
+    /// يرحّل مسودة مرتجع شراء. مع <c>beginOwnTransaction: false</c> ينضم الترحيل إلى معاملة
+    /// المستدعي، فلا يبقى في القاعدة أثر لمرتجع غير مرحّل.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> PostPurchaseReturnAsync(int purchaseReturnId, string? user, bool beginOwnTransaction = true)
     {
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(PostPurchaseReturnAsync));
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 var purchaseReturn = await _db.PurchaseReturns.Include(r => r.Items)
@@ -1067,7 +1124,7 @@ public sealed class InventoryService : IInventoryService
                 purchaseReturn.TotalAmount = valid.Sum(i => i.Total);
 
                 var returnError = await ValidatePurchaseReturnQuantitiesAsync(purchaseReturn, valid);
-                if (returnError != null) { await tx.RollbackAsync(); DetachAll(); return (false, returnError); }
+                if (returnError != null) { await TryRollbackAsync(tx); DetachAll(); return (false, returnError); }
 
                 var invPrices = await _db.PurchaseInvoiceItems.AsNoTracking()
                     .Where(i => i.PurchaseInvoiceId == purchaseReturn.PurchaseInvoiceId)
@@ -1091,7 +1148,7 @@ public sealed class InventoryService : IInventoryService
                     ToReturnStockLines(valid), sign: -1,
                     docNumber: purchaseReturn.ReturnNumber, docType: DocumentType.PurchaseReturn, docId: purchaseReturn.Id,
                     movementDate: purchaseReturn.ReturnDate, user);
-                if (stockError != null) { await tx.RollbackAsync(); DetachAll(); return (false, stockError); }
+                if (stockError != null) { await TryRollbackAsync(tx); DetachAll(); return (false, stockError); }
 
                 var consumed = await ConsumeFifoLayersAsync(ToReturnStockLines(valid), purchaseReturn.ReturnDate);
                 var costTotal = consumed.DominantTotal;
@@ -1125,33 +1182,41 @@ public sealed class InventoryService : IInventoryService
                 purchaseReturn.PostedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 _logger?.LogInformation("رحّل مرتجع شراء {Owner} رقم {Number} بمبلغ {Amt:C}", user, purchaseReturn.ReturnNumber, purchaseReturn.TotalAmount);
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll();
+                await TryRollbackAsync(tx); DetachAll();
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll();
+                await TryRollbackAsync(tx); DetachAll();
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر ترحيل مرتجع الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
-    public async Task<(bool Success, string? Error)> CreateAdjustmentAsync(InventoryAdjustment adjustment, string? user)
+    /// <summary>
+    /// يسجّل جردًا ويعدّل رصيد الصنف وحركات المخزون وطبقات التقييم والقيود. مع
+    /// <c>beginOwnTransaction: false</c> ينضم الجرد إلى معاملة المستدعي فلا يبقى جرد
+    /// برصيد مخزون خاطئ إن فشل أي من هذه الخطوات.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> CreateAdjustmentAsync(InventoryAdjustment adjustment, string? user, bool beginOwnTransaction = true)
     {
         if (await IsPeriodClosedAsync(adjustment.AdjustmentDate))
             return (false, $"السنة المالية {adjustment.AdjustmentDate.Year} مغلقة — لا يمكن إدراج قيود فيها");
 
         if (adjustment.NewCount < 0 || adjustment.NewQuantity < 0)
             return (false, "لا يمكن أن يكون الرصيد بعد الجرد سالباً");
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateAdjustmentAsync));
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == adjustment.ItemId);
@@ -1228,25 +1293,27 @@ public sealed class InventoryService : IInventoryService
                         var writtenQty = Math.Max(-addedQty, 0);
                         var writtenCount = Math.Max(-addedCount, 0);
                         if (consumed.QtyCost > 0 || consumed.CountCost > 0)
-                            await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user);
+                            await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user, date: adjustment.AdjustmentDate);
                         else if (writtenQty > 0 || writtenCount > 0)
-                            await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user);
+                            await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user, date: adjustment.AdjustmentDate);
                     }
                 }
 
                 if (_accounting != null && (addedQty > 0 || addedCount > 0))
-                    await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user);
+                    await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user, date: adjustment.AdjustmentDate);
 
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll(); adjustment.Id = 0;
+                await TryRollbackAsync(tx); DetachAll(); adjustment.Id = 0;
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll(); adjustment.Id = 0;
+                await TryRollbackAsync(tx); DetachAll(); adjustment.Id = 0;
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر حفظ الجرد بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -1451,7 +1518,12 @@ public sealed class InventoryService : IInventoryService
         foreach (var line in lines)
         {
             if (line.Quantity <= 0 && line.Count <= 0) continue;
-            var unitCost = decimal.Round(line.UnitPrice, 2);
+            // StockLayer.UnitCost is decimal(18,6) - the six-decimal per-unit cost documented on
+            // DecimalPrecision.CostScale - and this is where a purchase price becomes that cost. The
+            // price itself is three decimals, so rounding it here used to discard the third decimal
+            // of a price the invoice had already stored in full, and the layer is the record every
+            // later valuation reads.
+            var unitCost = decimal.Round(line.UnitPrice, DecimalPrecision.CostScale);
             CreateOrTopUpLayer(line.ItemId, line.Quantity, line.Count,
                 unitCost, unitCost, dateReceived);
         }
@@ -1508,9 +1580,13 @@ public sealed class InventoryService : IInventoryService
 
             if (remainingQty > 0 || remainingCount > 0)
             {
+                // Same six-decimal cost width as the layer it tops up. A return price that is a third
+                // decimal finer than two was previously written to StockLayer.UnitCost already
+                // truncated, so the cost of the returned goods never matched the price they were
+                // returned at.
                 var price = itemsById.TryGetValue(item.ItemId, out var it)
                     ? it.PurchasePrice
-                    : decimal.Round(item.UnitPrice, 2);
+                    : decimal.Round(item.UnitPrice, DecimalPrecision.CostScale);
                 totalCost += (quantityDriven ? remainingQty : remainingCount) * price;
                 CreateOrTopUpLayer(item.ItemId, remainingQty, remainingCount, price, price, returnDate);
             }
@@ -1711,14 +1787,8 @@ public sealed class InventoryService : IInventoryService
     private async Task<string> NextIssueNumberAsync()
     {
         var seriesPrefix = $"ISS-{DateTime.Now:yyyyMMdd}-";
-        var existing = await _db.DeliveryIssues.Select(i => i.IssueNumber).ToListAsync();
-        int next = 1;
-        foreach (var value in existing)
-        {
-            if (value != null && value.Length > seriesPrefix.Length &&
-                int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed >= next)
-                next = parsed + 1;
-        }
+        int next = await MaxSeriesValueAsync(
+            _db.DeliveryIssues.Select(i => i.IssueNumber), seriesPrefix) + 1;
         string num = $"{seriesPrefix}{next:D3}";
         while (await _db.DeliveryIssues.AnyAsync(i => i.IssueNumber == num))
         {
@@ -1815,6 +1885,29 @@ public sealed class InventoryService : IInventoryService
             entry.State = EntityState.Detached;
     }
 
+    /// <summary>
+    /// مسار استرجاع لا يبتلع الاستثناء الأصلي: فشل التراجع عن معاملة (اتصال مقطوع أو معاملة
+    /// أُنهيت بالفعل) يجب ألا يحلّ محل استثناء التحديث الذي يعالجه حلقة إعادة المحاولة،
+    /// وإلا ضاع التشخيص الحقيقي خلف خطأ آخر لا علاقة له بسبب الفشل.
+    /// </summary>
+    private static async Task TryRollbackAsync(IDbContextTransaction? tx)
+    {
+        if (tx == null) return;
+        try { await tx.RollbackAsync(); }
+        catch (Exception) { }
+    }
+
+    /// <summary>
+    /// يضمن أن <c>beginOwnTransaction: false</c> لا تعني «بلا معاملة»: بدون معاملة قائمة
+    /// تكون كل كتابة داخل Unidad الذرية الخاصّة بها، فيبقى مستند ناقص دون وسيلة للتراجع عنه.
+    /// </summary>
+    private void RequireAmbientTransaction(string operation)
+    {
+        if (_db.Database.CurrentTransaction == null)
+            throw new InvalidOperationException(
+                $"لا يمكن تنفيذ «{operation}» دون معاملة قائمة؛ ابدأ معاملة قبل الاستدعاء أو اترك القيمة الافتراضية لتفتح العملية معاملتها الخاصة");
+    }
+
     private static void ResetInvoiceKeys(SaleInvoice invoice)
     {
         invoice.Id = 0;
@@ -1866,7 +1959,11 @@ public sealed class InventoryService : IInventoryService
             .ToListAsync();
     }
 
-    public async Task<(bool Success, string? Error)> CreateTransferAsync(StockTransfer transfer, List<StockTransferItem> items, string? user)
+    /// <summary>
+    /// ينقل كميات بين مستودعين. مع <c>beginOwnTransaction: false</c> ينضم التحويل إلى معاملة
+    /// المستدعي، فلا يبقى نزيف من المستودع المصدر بلا إضافة في الهدف.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> CreateTransferAsync(StockTransfer transfer, List<StockTransferItem> items, string? user, bool beginOwnTransaction = true)
     {
         var valid = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
         if (valid.Count == 0) return (false, "يرجى إضافة صنف واحد على الأقل بالكمية أو العدد");
@@ -1877,10 +1974,11 @@ public sealed class InventoryService : IInventoryService
             return (false, "لا يمكن التحويل من مستودع إلى نفسه");
         if (await IsPeriodClosedAsync(transfer.TransferDate))
             return (false, $"السنة المالية {transfer.TransferDate.Year} مغلقة — لا يمكن ترحيل قيود فيها");
+        if (!beginOwnTransaction) RequireAmbientTransaction(nameof(CreateTransferAsync));
 
         for (int attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
             {
                 transfer.TransferNumber = await NextTransferNumberAsync(
@@ -1892,7 +1990,7 @@ public sealed class InventoryService : IInventoryService
                 foreach (var item in valid)
                 {
                     var product = await _db.Items.FirstOrDefaultAsync(i => i.Id == item.ItemId);
-                    if (product == null) { await tx.RollbackAsync(); DetachAll(); return (false, $"الصنف رقم {item.ItemId} غير موجود"); }
+                    if (product == null) { await TryRollbackAsync(tx); DetachAll(); return (false, $"الصنف رقم {item.ItemId} غير موجود"); }
 
                     var sourceLayers = await _db.StockLayers
                         .Where(sl => sl.ItemId == item.ItemId
@@ -1931,7 +2029,7 @@ public sealed class InventoryService : IInventoryService
 
                     if (needQty > 0 || needCount > 0)
                     {
-                        await tx.RollbackAsync(); DetachAll();
+                        await TryRollbackAsync(tx); DetachAll();
                         return (false, $"الرصيد غير كافٍ للصنف «{product.Name}» في المستودع المصدر");
                     }
 
@@ -1986,25 +2084,25 @@ public sealed class InventoryService : IInventoryService
                         ItemId = item.ItemId,
                         Quantity = item.Quantity,
                         Count = item.Count,
-                        UnitCost = transferredQty > 0
-                            ? decimal.Round(lineQtyCost / transferredQty, 2)
-                            : transferredCount > 0 ? decimal.Round(lineCountCost / transferredCount, 2) : 0m,
+                        UnitCost = DeriveTransferUnitCost(lineQtyCost, transferredQty, lineCountCost, transferredCount),
                         DateReceived = item.DateReceived
                     });
                 }
 
                 _db.StockTransfers.Add(transfer);
                 await _db.SaveChangesAsync();
-                await tx.CommitAsync();
+                if (tx is not null) await tx.CommitAsync();
                 return (true, null);
             }
             catch (DbUpdateConcurrencyException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
+                await TryRollbackAsync(tx); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
+                if (!beginOwnTransaction) throw;
             }
             catch (DbUpdateException)
             {
-                await tx.RollbackAsync(); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
+                await TryRollbackAsync(tx); DetachAll(); ResetTransferKeys(transfer); transfer.Items.Clear();
+                if (!beginOwnTransaction) throw;
             }
         }
         return (false, "تعذر حفظ التحويل بسبب تعارض في البيانات، حاول مرة أخرى");
@@ -2070,6 +2168,38 @@ public sealed class InventoryService : IInventoryService
                 RemainingCount = addCount
             });
         }
+    }
+
+    /// <summary>
+    /// The per-unit cost a transfer line carries: the cost that moved, divided by the amount that
+    /// moved, at the six-decimal cost width of <c>StockTransferItem.UnitCost</c>.
+    /// <para>
+    /// Quantity leads, because a line is traded by quantity or by count or by both, and a
+    /// quantity-traded line is the one whose cost a reader expects on the document. The division was
+    /// previously rounded to two decimals into a six-decimal column, which threw away the only thing
+    /// a per-unit derived cost is for: a transfer that splits a layer whose cost has more decimals
+    /// than the quantity does has a cost per unit that is not itself on any grid, and forcing it onto
+    /// a hundredth means the layers on both sides of the transfer no longer add back to the cost
+    /// that left.
+    /// </para>
+    /// <para>
+    /// The zero-denominator guard is preserved from the expression this replaces, and kept explicit
+    /// because it is the only arithmetic in the transfer loop that has no precondition of its own:
+    /// the caller checks that the request was fully satisfiable and then divides the cost that moved
+    /// by the amount that moved. A zero denominator there throws <see cref="DivideByZeroException"/>,
+    /// which is neither of the two EF exceptions the loop catches, so it escapes a transfer that has
+    /// already taken stock out of the source warehouse. A line that moved nothing carries a cost of
+    /// zero, which is the truth about it.
+    /// </para>
+    /// </summary>
+    private static decimal DeriveTransferUnitCost(
+        decimal quantityCost, decimal transferredQuantity, decimal countCost, decimal transferredCount)
+    {
+        if (transferredQuantity > 0)
+            return decimal.Round(quantityCost / transferredQuantity, DecimalPrecision.CostScale);
+        if (transferredCount > 0)
+            return decimal.Round(countCost / transferredCount, DecimalPrecision.CostScale);
+        return 0m;
     }
 
     private static void ResetTransferKeys(StockTransfer transfer)

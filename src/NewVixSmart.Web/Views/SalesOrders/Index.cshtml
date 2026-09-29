@@ -61,21 +61,16 @@ else
             <tbody>
                 @foreach (var o in Model)
                 {
-                    var orderedQty = o.Items.Sum(i => i.Quantity);
-                    var orderedCount = o.Items.Sum(i => i.Count);
-                    var deliveredQty = o.Items.Sum(i => i.DeliveredQty);
-                    var deliveredCount = o.Items.Sum(i => i.DeliveredCount);
-                    var invoicedQty = o.Items.Sum(i => i.InvoicedQty);
-                    var invoicedCount = o.Items.Sum(i => i.InvoicedCount);
+                    var t = OrderProgress.Summarize(o);
                     <tr>
                         <th scope="row"><code>@o.OrderNumber</code></th>
                         <td><strong>@(o.Customer?.Name ?? "—")</strong></td>
                         <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
                         <td>@(o.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        <td class="fw-bold">@o.Items.Sum(i => i.Total).ToString("N2")</td>
-                        <td>@orderedQty.ToString("N2") / @orderedCount.ToString("N2")</td>
-                        <td>@deliveredQty.ToString("N2") / @deliveredCount.ToString("N2")</td>
-                        <td>@invoicedQty.ToString("N2") / @invoicedCount.ToString("N2")</td>
+                        <td class="fw-bold">@Money.Format(t.Total)</td>
+                        <td>@t.OrderedQuantity.ToString("N2") / @t.OrderedCount.ToString("N2")</td>
+                        <td>@t.DeliveredQuantity.ToString("N2") / @t.DeliveredCount.ToString("N2")</td>
+                        <td>@t.InvoicedQuantity.ToString("N2") / @t.InvoicedCount.ToString("N2")</td>
                         <td><span class="badge @(o.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@o.Status.GetDisplayName()</span></td>
                         <td class="text-center">
                             <a asp-action="Details" asp-route-id="@o.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye"></i></a>

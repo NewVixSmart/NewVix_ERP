@@ -8,7 +8,12 @@ public interface ISalesOrdersService
     Task<SalesOrder?> GetOrderAsync(int id);
     Task<(bool Success, string? Error)> CreateOrderAsync(SalesOrder order, List<SalesOrderItem> items, string? user);
     Task<(bool Success, string? Error)> UpdateOrderAsync(SalesOrder order, List<SalesOrderItem> items, string? user);
-    Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId);
+    /// <summary>
+    /// راية <c>beginOwnTransaction</c> تتبع اصطلاح <c>IInventoryService.CreateSaleAsync</c>:
+    /// القيمة الافتراضية تفتح العملية معاملتها الخاصة، و<c>false</c> تعني أن المستدعي يفتح
+    /// معاملة قائمة وتضم العملية إليها.
+    /// </summary>
+    Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId, bool beginOwnTransaction = true);
     Task<(bool Success, string? Error)> CancelOrderAsync(int orderId);
     Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int orderId, string? user);
     Task<(bool Success, string? Error, SaleInvoice? Invoice)> InvoiceOutstandingDeliveriesAsync(

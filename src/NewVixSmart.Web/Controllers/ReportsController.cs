@@ -10,28 +10,40 @@ using NewVixSmart.Web.ViewModels.Reports;
 
 namespace NewVixSmart.Web.Controllers;
 
+// Deliberately no class-level [RequirePerm]: stacking a second filter on top of a class-level
+// one makes every action require both keys, so AuditLedger/Aging users could not reach their
+// own screens and export keys were silently widened. Each action declares its own keys.
 [Authorize]
-[RequirePerm("Reports.View")]
 public class ReportsController : Controller
 {
     private readonly AppDbContext _db;
     private readonly ReportExportService _export;
     private readonly IFinancialReportService _financial;
     private readonly IReportService _report;
-    public ReportsController(AppDbContext db, ReportExportService export, IFinancialReportService financial, IReportService report)
+    private readonly IPermissionService _perms;
+
+    public ReportsController(
+        AppDbContext db,
+        ReportExportService export,
+        IFinancialReportService financial,
+        IReportService report,
+        IPermissionService perms)
     {
         _db = db;
         _export = export;
         _financial = financial;
         _report = report;
+        _perms = perms;
     }
 
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> Index()
     {
         ViewBag.PendingDeliveries = await _report.GetPendingDeliveriesAsync();
         return View();
     }
 
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> Sales(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -69,6 +81,7 @@ public class ReportsController : Controller
         return View(vm);
     }
 
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> Purchases(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -106,6 +119,7 @@ public class ReportsController : Controller
         return View(vm);
     }
 
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> Payments(DateTime? from, DateTime? to)
     {
         var vm = await _report.PaymentsReportAsync(from, to);
@@ -115,6 +129,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> TrialBalance(DateTime? asOf)
     {
         var now = DateTime.Today;
@@ -125,6 +140,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> IncomeStatement(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -136,6 +152,7 @@ public class ReportsController : Controller
     }
 
     [HttpGet]
+    [RequirePerm("Reports.View")]
     public async Task<IActionResult> BalanceSheet(DateTime? asOf)
     {
         var now = DateTime.Today;
@@ -147,6 +164,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Sales.View")]
     public async Task<IActionResult> ExportSalesCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -166,6 +184,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Purchases.View")]
     public async Task<IActionResult> ExportPurchasesCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -185,6 +204,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Payments.View")]
     public async Task<IActionResult> ExportPaymentsCsv(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -384,6 +404,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Budgets.View")]
     public async Task<IActionResult> BudgetVarianceXlsx(int year)
     {
         var budget = await _db.BudgetYears.AsNoTracking().FirstOrDefaultAsync(b => b.Year == year);
@@ -523,6 +544,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Items.View")]
     public async Task<IActionResult> ExportItemsXlsx()
     {
         var bytes = await _report.ExportItemsXlsxAsync();
@@ -531,6 +553,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Stock.View")]
     public async Task<IActionResult> ExportStockXlsx(bool lowOnly = false)
     {
         var bytes = await _report.ExportStockXlsxAsync(lowOnly);
@@ -540,6 +563,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Sales.View")]
     public async Task<IActionResult> ExportSalesXlsx(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -553,6 +577,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Purchases.View")]
     public async Task<IActionResult> ExportPurchasesXlsx(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -566,6 +591,7 @@ public class ReportsController : Controller
 
     [HttpGet]
     [RequirePerm("Reports.Export")]
+    [RequirePerm("Payments.View")]
     public async Task<IActionResult> ExportPaymentsXlsx(DateTime? from, DateTime? to)
     {
         var now = DateTime.Today;
@@ -581,20 +607,29 @@ public class ReportsController : Controller
     [RequirePerm("Reports.Export")]
     public async Task<IActionResult> PrintInvoice(int id, string type)
     {
-        if (type == "sale")
+        // The document type arrives from the query string, so the source module cannot come from a
+        // static attribute. It is resolved to exactly one key and anything unrecognised is denied -
+        // never treated as "allow" or as a weaker module.
+        var sourceKey = type switch
+        {
+            "sale" => "Sales.View",
+            "purchase" => "Purchases.View",
+            _ => null
+        };
+        if (sourceKey is null) return NotFound();
+        if (!await _perms.HasAsync(sourceKey)) return Forbid();
+
+        if (sourceKey == "Sales.View")
         {
             var sale = await _db.SaleInvoices.AsNoTracking().Include(s => s.Customer).Include(s => s.Items).ThenInclude(i => i.Item).FirstOrDefaultAsync(s => s.Id == id);
             if (sale == null) return NotFound();
             var saleBytes = PdfInvoiceService.RenderSalePdf(sale);
             return File(saleBytes, "application/pdf", $"sale-{sale.InvoiceNumber}.pdf");
         }
-        if (type == "purchase")
-        {
-            var purchase = await _db.PurchaseInvoices.AsNoTracking().Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).FirstOrDefaultAsync(p => p.Id == id);
-            if (purchase == null) return NotFound();
-            var purchaseBytes = PdfInvoiceService.RenderPurchasePdf(purchase);
-            return File(purchaseBytes, "application/pdf", $"purchase-{purchase.InvoiceNumber}.pdf");
-        }
-        return NotFound();
+
+        var purchase = await _db.PurchaseInvoices.AsNoTracking().Include(p => p.Supplier).Include(p => p.Items).ThenInclude(i => i.Item).FirstOrDefaultAsync(p => p.Id == id);
+        if (purchase == null) return NotFound();
+        var purchaseBytes = PdfInvoiceService.RenderPurchasePdf(purchase);
+        return File(purchaseBytes, "application/pdf", $"purchase-{purchase.InvoiceNumber}.pdf");
     }
 }

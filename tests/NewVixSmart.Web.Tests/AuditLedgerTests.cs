@@ -49,7 +49,19 @@ public sealed class AuditLedgerTests : IDisposable
     }
 
     private static ReportsController CreateController(AppDbContext db) =>
-        new(db, new ReportExportService(db), new FinancialReportService(db), new ReportService(db, new FinancialReportService(db)));
+        new(db, new ReportExportService(db), new FinancialReportService(db), new ReportService(db, new FinancialReportService(db)), new AllowAllPermissions());
+
+    /// <summary>
+    /// These tests call the action method directly, so the [RequirePerm] filters never run. The
+    /// controller still needs an IPermissionService for its runtime-checked actions.
+    /// </summary>
+    private sealed class AllowAllPermissions : IPermissionService
+    {
+        public bool IsAdmin => true;
+        public Task<bool> HasAsync(string key) => Task.FromResult(true);
+        public Task<bool> HasAnyAsync(params string[] keys) => Task.FromResult(true);
+        public Task<List<string>> GetKeysAsync(string userId) => Task.FromResult(new List<string>());
+    }
 
     private static async Task SeedEntriesAsync(AppDbContext db)
     {

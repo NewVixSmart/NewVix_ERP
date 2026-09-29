@@ -2,8 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Nullable / ImplicitUsings / TreatWarningsAsErrors come from the root Directory.Build.props. -->
     <IsAspireServiceDefaultsProject>true</IsAspireServiceDefaultsProject>
   </PropertyGroup>
 
@@ -12,7 +11,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
+    <!-- Used by Extensions.cs:AddStandardResilienceHandler().
+         This package has no 10.0.11 build (it ships on its own cadence:
+         10.0.0, 10.1.0 ... 10.10.0), so it cannot literally match the 10.0.11
+         servicing band used by the ASP.NET Core / EF Core packages in
+         src/NewVixSmart.Web. 10.10.0 is the latest release of the 10.x line.
+         Covered by the "microsoft-extensions" dependabot group. -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />

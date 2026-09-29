@@ -13,12 +13,12 @@
                 <label class="form-label" for="Code">رمز الحساب</label>
                 <input asp-for="Code" class="form-control" dir="ltr" required />
                 <div class="form-text">رمز رقمي فريد، مثال: 6000</div>
-                <span asp-validation-for="Code" class="text-danger"></span>
+                <span asp-validation-for="Code" class="text-danger" aria-invalid="true"></span>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="Name">اسم الحساب</label>
                 <input asp-for="Name" class="form-control" required />
-                <span asp-validation-for="Name" class="text-danger"></span>
+                <span asp-validation-for="Name" class="text-danger" aria-invalid="true"></span>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="Type">نوع الحساب</label>

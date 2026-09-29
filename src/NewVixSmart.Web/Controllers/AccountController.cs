@@ -36,7 +36,14 @@ public class AccountController : Controller
 
         var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, model.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
+        {
+            // LocalRedirectResult THROWS on a non-local URL, so a successful login with
+            // ?returnUrl=//evil.com or ?returnUrl=https://evil.com answered 500. This is not an
+            // open redirect - the throw prevented that - but it is a user-triggerable server
+            // error on the login form. Validate first, and fall back to the role's landing page.
+            if (!Url.IsLocalUrl(returnUrl)) returnUrl = null;
             return LocalRedirect(returnUrl ?? HomeLanding());
+        }
 
         ModelState.AddModelError(string.Empty, "اسم المستخدم أو كلمة المرور غير صحيحة");
         return View(model);
@@ -47,7 +54,17 @@ public class AccountController : Controller
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        // Signing out of the cookie is not enough: the API hands out a stateless JWT, so before
+        // this the only thing that ended a stolen bearer token was its expiry. Rotating the
+        // security stamp is the revocation channel the app already has - the JwtBearer
+        // OnTokenValidated event compares the token's stamp claim against the live one through
+        // TokenStampChecks and fails the token on mismatch, so every token already issued to this
+        // user dies the moment they log out. Re-authenticating issues a cookie carrying the new
+        // stamp, so signing back in is transparent.
         await _signInManager.SignOutAsync();
+        var user = await _userManager.GetUserAsync(User);
+        if (user is not null)
+            await _userManager.UpdateSecurityStampAsync(user);
         return RedirectToAction("Login");
     }
 

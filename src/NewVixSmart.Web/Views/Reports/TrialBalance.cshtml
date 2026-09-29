@@ -17,8 +17,8 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h3></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-primary">@Model.TotalCredit.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalDebit)</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalCredit)</h3></div></div>
     <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
@@ -30,6 +30,7 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0" data-table-plain>
+        <caption class="visually-hidden">ميزان المراجعة: أرصدة كل حساب مدين ودائن ورصيده</caption>
         <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">الرصيد</th></tr></thead>
         <tbody>
             @foreach (var r in Model.Rows)
@@ -37,17 +38,17 @@
                 <tr>
                     <td><code>@r.Code</code></td>
                     <td>@r.Name</td>
-                    <td>@(r.Debit > 0 ? r.Debit.ToString("N2") : "—")</td>
-                    <td>@(r.Credit > 0 ? r.Credit.ToString("N2") : "—")</td>
-                    <td class="fw-bold @(r.IsDebitBalance ? "text-primary" : r.IsCreditBalance ? "text-success" : "")">@(r.Balance == 0 ? "—" : r.Balance.ToString("N2"))</td>
+                    <td>@(r.Debit > 0 ? Money.Format(r.Debit) : "—")</td>
+                    <td>@(r.Credit > 0 ? Money.Format(r.Credit) : "—")</td>
+                    <td class="fw-bold @(r.IsDebitBalance ? "text-primary" : r.IsCreditBalance ? "text-success" : "")">@(r.Balance == 0 ? "—" : Money.Format(r.Balance))</td>
                 </tr>
             }
         </tbody>
         <tfoot>
             <tr class="table-light fw-bold">
                 <th scope="row" colspan="2">الإجمالي</th>
-                <td class="text-primary">@Model.TotalDebit.ToString("N2")</td>
-                <td class="text-success">@Model.TotalCredit.ToString("N2")</td>
+                <td class="text-primary">@Money.Format(Model.TotalDebit)</td>
+                <td class="text-success">@Money.Format(Model.TotalCredit)</td>
                 <td></td>
             </tr>
         </tfoot>

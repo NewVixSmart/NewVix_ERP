@@ -39,8 +39,21 @@ public class ItemsController : Controller
     public async Task<IActionResult> Create()
     {
         await PopulateDropdowns();
-        return View(new Item { IsActive = true });
+        return View(NewItem());
     }
+
+    /// <summary>
+    /// Reserved balances and the owning branch are server-owned. They are cleared on every new
+    /// item regardless of what the form posted, so a crafted request cannot open an item that
+    /// already has stock held against it or that belongs to another branch.
+    /// </summary>
+    private static Item NewItem() => new()
+    {
+        IsActive = true,
+        ReservedQuantity = 0,
+        ReservedCount = 0,
+        BranchId = null
+    };
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -63,6 +76,9 @@ public class ItemsController : Controller
                 item.CreatedAt = DateTime.UtcNow;
                 item.CurrentCount = 0;
                 item.CurrentQuantity = 0;
+                item.ReservedQuantity = 0;
+                item.ReservedCount = 0;
+                item.BranchId = null;
                 if (string.IsNullOrWhiteSpace(item.Barcode))
                     item.Barcode = string.IsNullOrWhiteSpace(item.Code) ? $"ITM{item.Id:D8}" : item.Code;
                 _db.Items.Add(item);
@@ -168,12 +184,8 @@ public class ItemsController : Controller
         var query = _db.Items.Include(i => i.Category).Include(i => i.CountUnit).Include(i => i.QuantityUnit).Include(i => i.ItemType);
 
         Item? item;
-        if (Guid.TryParse(id, out var publicId))
-            item = await query.FirstOrDefaultAsync(i => i.PublicId == publicId);
-        else if (int.TryParse(id, out var numericId))
-            item = await query.FirstOrDefaultAsync(i => i.Id == numericId);
-        else
-            return NotFound();
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        item = await query.FirstOrDefaultAsync(i => i.PublicId == publicId);
 
         if (item == null) return NotFound();
         return View(item);

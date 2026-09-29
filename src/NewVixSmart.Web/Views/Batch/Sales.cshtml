@@ -11,7 +11,7 @@
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
 }
 
 <form asp-action="Sales" id="batchSalesForm">
@@ -24,7 +24,7 @@
                     <select asp-for="CustomerId" asp-items="@Model.Customers" class="form-select">
                         <option value="">-- اختر العميل --</option>
                     </select>
-                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                    <span asp-validation-for="CustomerId" class="text-danger small" aria-invalid="true"></span>
                 </div>
                 <div class="col-md-3">
                     <label asp-for="InvoiceDate" class="form-label"></label>
@@ -75,6 +75,7 @@
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
+                        <caption class="visually-hidden">أصناف فاتورة @(i + 1): الصنف، العدد، الكمية، سعر الوحدة، خصم الصنف، الإجمالي</caption>
                         <thead>
                             <tr>
                                 <th scope="col" style="width:30%">الصنف</th>
@@ -100,9 +101,9 @@
                                             }
                                         </select>
                                     </td>
-                                    <td><input name="Invoices[@i].Items[@j].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" /></td>
-                                    <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
-                                    <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
+                                    <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                                     <td><input name="Invoices[@i].Items[@j].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="@(line?.Discount ?? 0)" aria-label="خصم الصنف" /></td>
                                     <td><span class="total fw-bold">0.00</span></td>
                                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
@@ -147,9 +148,9 @@ items.forEach(i => {
 function lineRow(invIdx, rowIdx) {
     return `<tr>
         <td><select name="Invoices[${invIdx}].Items[${rowIdx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
-        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
+        <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="0" aria-label="خصم الصنف" /></td>
         <td><span class="total fw-bold">0.00</span></td>
         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
@@ -168,6 +169,7 @@ function newInvoiceBlock(invIdx) {
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
+                <caption class="visually-hidden">أصناف فاتورة ${invIdx + 1}: الصنف، العدد، الكمية، سعر الوحدة، خصم الصنف، الإجمالي</caption>
                 <thead>
                     <tr>
                         <th scope="col" style="width:30%">الصنف</th>

@@ -2,9 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Nullable / ImplicitUsings / TreatWarningsAsErrors come from the root Directory.Build.props. -->
     <!-- Program.cs:60 and README both tell operators to supply Jwt:Key / Seed__* via user secrets.
          Without this id "dotnet user-secrets set" fails outright, leaving the environment
          variable as the only working path. Mirrors aspire/Vix.AppHost/Vix.AppHost.csproj. -->
@@ -14,7 +12,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

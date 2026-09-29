@@ -17,8 +17,8 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الأصول</div><h3 class="mb-0 text-primary">@Model.TotalAssets.ToString("N2")</h3></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الخصوم + حقوق الملكية</div><h3 class="mb-0 text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الأصول</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalAssets)</h3></div></div>
+    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الخصوم + حقوق الملكية</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalLiabilitiesEquity)</h3></div></div>
     <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
@@ -38,10 +38,10 @@
                     <tbody>
                         @foreach (var l in Model.Assets.Lines)
                         {
-                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@Money.Format(l.Amount)</td></tr>
                         }
                     </tbody>
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الأصول</th><td class="text-primary">@Model.Assets.Total.ToString("N2")</td></tr></tfoot>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الأصول</th><td class="text-primary">@Money.Format(Model.Assets.Total)</td></tr></tfoot>
                 </table>
             </div>
         </div>
@@ -55,10 +55,10 @@
                     <tbody>
                         @foreach (var l in Model.Liabilities.Lines)
                         {
-                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@Money.Format(l.Amount)</td></tr>
                         }
                     </tbody>
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الخصوم</th><td>@Model.Liabilities.Total.ToString("N2")</td></tr></tfoot>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي الخصوم</th><td>@Money.Format(Model.Liabilities.Total)</td></tr></tfoot>
                 </table>
             </div>
         </div>
@@ -70,18 +70,19 @@
                     <tbody>
                         @foreach (var l in Model.Equity.Lines)
                         {
-                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@l.Amount.ToString("N2")</td></tr>
+                            <tr><td><code>@l.Code</code></td><td>@l.Name</td><td>@Money.Format(l.Amount)</td></tr>
                         }
-                        <tr><td></td><td>صافي الدخل (الفترة)</td><td class="fw-bold @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Model.NetIncome.ToString("N2")</td></tr>
+                        <tr><td></td><td>صافي الدخل (الفترة)</td><td class="fw-bold @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetIncome)</td></tr>
                     </tbody>
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي حقوق الملكية</th><td class="text-success">@((Model.Equity.Total + Model.NetIncome).ToString("N2"))</td></tr></tfoot>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">إجمالي حقوق الملكية</th><td class="text-success">@Money.Format(Model.Equity.Total + Model.NetIncome)</td></tr></tfoot>
                 </table>
             </div>
         </div>
         <div class="table-container mt-3">
             <table class="table mb-0">
+                <caption class="visually-hidden">إجمالي الخصوم مضافاً إليه حقوق الملكية</caption>
                 <tbody>
-                    <tr class="table-light fw-bold"><td>إجمالي الخصوم + حقوق الملكية</td><td class="text-end text-primary">@Model.TotalLiabilitiesEquity.ToString("N2")</td></tr>
+                    <tr class="table-light fw-bold"><td>إجمالي الخصوم + حقوق الملكية</td><td class="text-end text-primary">@Money.Format(Model.TotalLiabilitiesEquity)</td></tr>
                 </tbody>
             </table>
         </div>

@@ -54,15 +54,15 @@ else
                         <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
                         <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
                         <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
-                        <td>@l.UnitPrice.ToString("N2")</td>
-                        <td>@l.PendingValue.ToString("N2")</td>
+                        <td>@Money.Format(l.UnitPrice)</td>
+                        <td>@Money.Format(l.PendingValue)</td>
                         <td>@(string.IsNullOrWhiteSpace(l.DeliveryNoteNumbers) ? "—" : l.DeliveryNoteNumbers)</td>
                     </tr>
                 }
             </tbody>
             <tfoot><tr class="fw-bold">
                 <th scope="row" colspan="10">الإجمالي (@Model.Lines.Count سطراً)</th>
-                <td>@Model.TotalValue.ToString("N2")</td>
+                <td>@Money.Format(Model.TotalValue)</td>
                 <td>—</td>
             </tr></tfoot>
         </table>

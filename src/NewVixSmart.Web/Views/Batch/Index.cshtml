@@ -34,6 +34,7 @@
                 @if (Model.RecentSales.Any())
                 {
                     <table class="table table-hover mb-0 align-middle">
+                        <caption class="visually-hidden">آخر فواتير البيع: الرقم، العميل، التاريخ، الصافي</caption>
                         <thead class="table-light">
                             <tr><th scope="col">الرقم</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col" class="text-start">الصافي</th></tr>
                         </thead>
@@ -44,7 +45,7 @@
                                     <td class="fw-bold">@s.InvoiceNumber</td>
                                     <td>@(s.Customer?.Name ?? "—")</td>
                                     <td class="small">@s.InvoiceDate.ToString("yyyy-MM-dd")</td>
-                                    <td class="text-start">@s.NetAmount.ToString("N2")</td>
+                                    <td class="text-start">@Money.Format(s.NetAmount)</td>
                                 </tr>
                             }
                         </tbody>
@@ -64,6 +65,7 @@
                 @if (Model.RecentAdjustments.Any())
                 {
                     <table class="table table-hover mb-0 align-middle">
+                        <caption class="visually-hidden">آخر حركات الجرد: المرجع، الصنف، التاريخ، عدد / كمية</caption>
                         <thead class="table-light">
                             <tr><th scope="col">المرجع</th><th scope="col">الصنف</th><th scope="col">التاريخ</th><th scope="col" class="text-start">عدد / كمية</th></tr>
                         </thead>

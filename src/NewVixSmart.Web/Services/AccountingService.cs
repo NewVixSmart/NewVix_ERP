@@ -177,23 +177,23 @@ public class AccountingService : IAccountingService
 
     private static decimal NonNegative(decimal amount) => amount < 0m ? 0m : amount;
 
-    public async Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null)
+    public async Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null)
     {
         decimal amount = (qty > 0 ? qty : count) * cost;
         if (amount <= 0) return;
-        await PostAsync(JournalSource.OpeningStock, itemId, DateTime.UtcNow, "جرد افتتاحي",
+        await PostAsync(JournalSource.OpeningStock, itemId, date ?? DateTime.UtcNow, "جرد افتتاحي",
             new[] { new JournalLine("1300", amount, 0), new JournalLine("3000", 0, amount) }, user, branchId);
     }
 
-    public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null)
+    public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null)
     {
         decimal amount = (qty > 0 ? qty : count) * cost;
         if (amount <= 0) return;
-        await PostAsync(JournalSource.OpeningStock, itemId, DateTime.UtcNow, "جرد تخفيض",
+        await PostAsync(JournalSource.OpeningStock, itemId, date ?? DateTime.UtcNow, "جرد تخفيض",
             new[] { new JournalLine("3000", amount, 0), new JournalLine("1300", 0, amount) }, user, branchId);
     }
 
-    public async Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null)
+    public async Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null, string? entryNumber = null)
     {
         var validLines = new List<(int AccountId, decimal Debit, decimal Credit, string? Desc)>();
         decimal totalDebit = 0, totalCredit = 0;
@@ -228,7 +228,11 @@ public class AccountingService : IAccountingService
         {
             var entry = new JournalEntry
             {
-                EntryNumber = await NextEntryNumberAsync(),
+                // A caller-supplied number is the document's identity, so the retry keeps it
+                // instead of minting a fresh one: only a generated number is re-derived here.
+                // A taken number therefore surfaces as the unique-index violation it is,
+                // rather than being silently replaced by a number the caller never asked for.
+                EntryNumber = string.IsNullOrWhiteSpace(entryNumber) ? await NextEntryNumberAsync() : entryNumber,
                 Date = date,
                 Description = description,
                 Source = source,

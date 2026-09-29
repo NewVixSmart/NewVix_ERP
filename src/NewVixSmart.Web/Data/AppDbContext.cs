@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NewVixSmart.Web.Models.Access;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
@@ -131,6 +132,7 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(p => p.ReturnNumber).IsUnique();
             e.HasIndex(p => p.PublicId).IsUnique();
             e.Property(p => p.PublicId).ValueGeneratedNever();
+            e.Property(p => p.RowVersion).IsRowVersion();
             e.HasOne(p => p.Supplier).WithMany(s => s.PurchaseReturns).HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.PurchaseInvoice).WithMany().HasForeignKey(p => p.PurchaseInvoiceId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Branch>().WithMany().HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -164,6 +166,7 @@ public class AppDbContext : IdentityDbContext
             e.HasIndex(s => s.ReturnNumber).IsUnique();
             e.HasIndex(s => s.PublicId).IsUnique();
             e.Property(s => s.PublicId).ValueGeneratedNever();
+            e.Property(s => s.RowVersion).IsRowVersion();
             e.HasOne(s => s.Customer).WithMany(c => c.SaleReturns).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.SaleInvoice).WithMany().HasForeignKey(s => s.SaleInvoiceId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Branch>().WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -402,5 +405,284 @@ public class AppDbContext : IdentityDbContext
         {
             e.Property(s => s.Key).HasMaxLength(100);
         });
+
+        ConfigureDecimalPrecision(builder);
     }
+
+    /// <summary>
+    /// Widen the quantity and unit-price columns that the model files still declare as
+    /// <c>decimal(18,2)</c>, and assert - rather than widen - the money columns.
+    ///
+    /// The model classes carry the historical <c>decimal(18,2)</c> in a <see cref="ColumnAttribute"/>,
+    /// which silently rounded a third decimal off every quantity and every unit price on write: a
+    /// quantity of 0.125 became 0.13, a price of 12.345 became 12.35, and the stock valuation and
+    /// the journal entry then disagreed with the document the operator typed. The store type is
+    /// therefore restated here, in the one place a migration can see it, and the two widths are kept
+    /// apart on purpose: <see cref="DecimalPrecision.QuantityScale"/> for measured amounts,
+    /// <see cref="DecimalPrecision.PriceScale"/> for prices, and
+    /// <see cref="DecimalPrecision.MoneyScale"/> - unchanged - for money, because widening a money
+    /// column would contradict <see cref="Services.Money.Format"/> and the 0.005 money materiality
+    /// constant the ledger is balanced against.
+    /// </summary>
+    private static void ConfigureDecimalPrecision(ModelBuilder builder)
+    {
+        builder.Entity<Item>(e =>
+        {
+            e.Property(i => i.PurchasePrice).HasPricePrecision();
+            e.Property(i => i.SalePrice).HasPricePrecision();
+
+            e.Property(i => i.MinCount).HasQuantityPrecision();
+            e.Property(i => i.MinQuantity).HasQuantityPrecision();
+            e.Property(i => i.CurrentCount).HasQuantityPrecision();
+            e.Property(i => i.CurrentQuantity).HasQuantityPrecision();
+            e.Property(i => i.ReservedCount).HasQuantityPrecision();
+            e.Property(i => i.ReservedQuantity).HasQuantityPrecision();
+        });
+
+        builder.Entity<PurchaseInvoiceItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+            e.Property(i => i.Discount).HasMoneyPrecision();
+        });
+
+        builder.Entity<PurchaseOrderItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+            e.Property(i => i.ReceivedQty).HasQuantityPrecision();
+            e.Property(i => i.ReceivedCount).HasQuantityPrecision();
+        });
+
+        builder.Entity<PurchaseReturnItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+        });
+
+        builder.Entity<SaleInvoiceItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+            e.Property(i => i.Discount).HasMoneyPrecision();
+        });
+
+        builder.Entity<SaleQuoteItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+        });
+
+        builder.Entity<SaleReturnItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+        });
+
+        builder.Entity<SalesOrderItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitPrice).HasPricePrecision();
+            e.Property(i => i.InvoicedQty).HasQuantityPrecision();
+            e.Property(i => i.InvoicedCount).HasQuantityPrecision();
+            e.Property(i => i.ReservedQty).HasQuantityPrecision();
+            e.Property(i => i.ReservedCount).HasQuantityPrecision();
+            e.Property(i => i.DeliveredQty).HasQuantityPrecision();
+            e.Property(i => i.DeliveredCount).HasQuantityPrecision();
+        });
+
+        builder.Entity<DeliveryOrderItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+        });
+
+        builder.Entity<DeliveryIssueItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+        });
+
+        builder.Entity<StockReservationLine>(e =>
+        {
+            e.Property(l => l.Quantity).HasQuantityPrecision();
+            e.Property(l => l.Count).HasQuantityPrecision();
+            e.Property(l => l.ConsumedQuantity).HasQuantityPrecision();
+            e.Property(l => l.ConsumedCount).HasQuantityPrecision();
+        });
+
+        builder.Entity<StockMovement>(e =>
+        {
+            e.Property(m => m.Quantity).HasQuantityPrecision();
+            e.Property(m => m.Count).HasQuantityPrecision();
+            e.Property(m => m.BalanceBefore).HasQuantityPrecision();
+            e.Property(m => m.BalanceAfter).HasQuantityPrecision();
+            e.Property(m => m.CountBefore).HasQuantityPrecision();
+            e.Property(m => m.CountAfter).HasQuantityPrecision();
+        });
+
+        builder.Entity<StockLayer>(e =>
+        {
+            e.Property(l => l.Qty).HasQuantityPrecision();
+            e.Property(l => l.Count).HasQuantityPrecision();
+            e.Property(l => l.RemainingQty).HasQuantityPrecision();
+            e.Property(l => l.RemainingCount).HasQuantityPrecision();
+            e.Property(l => l.UnitCost).HasCostPrecision();
+            e.Property(l => l.CountCost).HasCostPrecision();
+        });
+
+        builder.Entity<StockTransferItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasQuantityPrecision();
+            e.Property(i => i.Count).HasQuantityPrecision();
+            e.Property(i => i.UnitCost).HasCostPrecision();
+        });
+
+        builder.Entity<InventoryAdjustment>(e =>
+        {
+            e.Property(a => a.NewCount).HasQuantityPrecision();
+            e.Property(a => a.NewQuantity).HasQuantityPrecision();
+        });
+
+        builder.Entity<SupplierQuote>(e => e.Property(q => q.UnitPrice).HasPricePrecision());
+
+        ConfigureMoneyPrecision(builder);
+    }
+
+    /// <summary>
+    /// Restates <see cref="MoneyScale"/> on every money column. It is the width they already have, so
+    /// it emits no DDL, but stating it here makes the money contract machine-checkable: the
+    /// <c>Precision*Tests</c> suite asserts the scale of every money column, so a later blanket widen
+    /// that would break the piastre contract fails the build instead of quietly changing the ledger.
+    /// </summary>
+    private static void ConfigureMoneyPrecision(ModelBuilder builder)
+    {
+        builder.Entity<PurchaseInvoice>(e =>
+        {
+            e.Property(i => i.TotalAmount).HasMoneyPrecision();
+            e.Property(i => i.Discount).HasMoneyPrecision();
+            e.Property(i => i.Discount2).HasMoneyPrecision();
+            e.Property(i => i.Discount3).HasMoneyPrecision();
+            e.Property(i => i.Tax).HasMoneyPrecision();
+            e.Property(i => i.NetAmount).HasMoneyPrecision();
+            e.Property(i => i.PaidAmount).HasMoneyPrecision();
+        });
+
+        builder.Entity<SaleInvoice>(e =>
+        {
+            e.Property(i => i.TotalAmount).HasMoneyPrecision();
+            e.Property(i => i.Discount).HasMoneyPrecision();
+            e.Property(i => i.Discount2).HasMoneyPrecision();
+            e.Property(i => i.Discount3).HasMoneyPrecision();
+            e.Property(i => i.Tax).HasMoneyPrecision();
+            e.Property(i => i.NetAmount).HasMoneyPrecision();
+            e.Property(i => i.PaidAmount).HasMoneyPrecision();
+        });
+
+        builder.Entity<SaleQuote>(e =>
+        {
+            e.Property(q => q.TotalAmount).HasMoneyPrecision();
+            e.Property(q => q.Discount).HasMoneyPrecision();
+            e.Property(q => q.Tax).HasMoneyPrecision();
+            e.Property(q => q.NetAmount).HasMoneyPrecision();
+        });
+
+        builder.Entity<PurchaseReturn>(e => e.Property(r => r.TotalAmount).HasMoneyPrecision());
+        builder.Entity<SaleReturn>(e => e.Property(r => r.TotalAmount).HasMoneyPrecision());
+        builder.Entity<Supplier>(e => e.Property(s => s.OpeningBalance).HasMoneyPrecision());
+        builder.Entity<Customer>(e => e.Property(c => c.OpeningBalance).HasMoneyPrecision());
+        builder.Entity<Payment>(e => e.Property(p => p.Amount).HasMoneyPrecision());
+        builder.Entity<SalePaymentAllocation>(e => e.Property(a => a.AllocatedAmount).HasMoneyPrecision());
+        builder.Entity<PurchasePaymentAllocation>(e => e.Property(a => a.AllocatedAmount).HasMoneyPrecision());
+        builder.Entity<JournalEntryLine>(e =>
+        {
+            e.Property(l => l.Debit).HasMoneyPrecision();
+            e.Property(l => l.Credit).HasMoneyPrecision();
+        });
+        builder.Entity<BudgetLine>(e => e.Property(l => l.AnnualAmount).HasMoneyPrecision());
+    }
+}
+
+/// <summary>
+/// The one place that decides how many decimals each kind of decimal column stores.
+/// <para>
+/// Three widths, kept apart on purpose. Money stays at <see cref="MoneyScale"/> because the Egyptian
+/// piastre is the smallest practical amount and <see cref="Services.Money"/> formats to two decimals:
+/// a wider money column would let the ledger hold a figure no screen, report or printed document can
+/// show, and it would invalidate the 0.005 money materiality constant the payment allocator is
+/// balanced against. A quantity is a measured physical amount, not an amount of money, so it is not
+/// held to the piastre grid and is widened to <see cref="QuantityScale"/>. A unit price sits between
+/// the two and is widened to <see cref="PriceScale"/>.
+/// </para>
+/// <para>
+/// Both the widened columns matter for data fidelity. At the old <c>decimal(18,2)</c> a quantity of
+/// 0.125 was silently stored as 0.13 and a price of 12.345 as 12.35, so the stock valuation and the
+/// journal entry disagreed with the document the operator typed, and the difference was invisible.
+/// Four decimals on a quantity is the smallest width that both holds a weight measured to a tenth of
+/// a gram and keeps the money error a quantity truncation introduces under the 0.005 materiality
+/// constant: the rounding error is at most 0.00005 per unit, which stays below 0.005 for any unit
+/// price under 100 L.E, whereas a 3-decimal quantity would already exceed it above 10 L.E. Three
+/// decimals on a price is the smallest width that round-trips the price the system already computes.
+/// </para>
+/// </summary>
+internal static class DecimalPrecision
+{
+    /// <summary>Store precision shared by every money, price, quantity and cost column.</summary>
+    internal const int StorePrecision = 18;
+
+    /// <summary>Scale of a money amount. Unchanged, and asserted by the test suite.</summary>
+    internal const int MoneyScale = 2;
+
+    /// <summary>Scale of an operator-entered unit price or unit cost.</summary>
+    internal const int PriceScale = 3;
+
+    /// <summary>Scale of a quantity or a count.</summary>
+    internal const int QuantityScale = 4;
+
+    /// <summary>
+    /// Scale of a per-unit cost held in the stock valuation layer. This one is not new: the FIFO layer
+    /// has always stored a unit cost at six decimals, and it is why the quantity could not stay at two.
+    /// A three-decimal cost multiplied by a three-decimal quantity is a nine-decimal product, so
+    /// rounding either factor before the multiply is what made the valuation drift away from the
+    /// document. Restating the width here emits no DDL - the column is already
+    /// <c>decimal(18,6)</c> - but it puts the cost width on the same declared footing as the others so
+    /// the test suite can check all of them.
+    /// </summary>
+    internal const int CostScale = 6;
+
+    /// <summary>
+    /// Restates both the <c>Precision</c>/<c>Scale</c> annotations and the explicit
+    /// <c>ColumnType</c>, because the model classes carry a
+    /// <c>[Column(TypeName = "decimal(18,2)")]</c> annotation that only the explicit column type can
+    /// override - <c>HasPrecision</c> alone would lose to it.
+    /// </summary>
+    internal static PropertyBuilder HasStoreType(this PropertyBuilder property, int scale)
+    {
+        var columnType = $"decimal({StorePrecision},{scale})";
+        property.HasPrecision(StorePrecision, scale);
+        return property.HasColumnType(columnType);
+    }
+
+    /// <summary>Holds the column at the quantity width.</summary>
+    internal static PropertyBuilder HasQuantityPrecision(this PropertyBuilder property)
+        => HasStoreType(property, QuantityScale);
+
+    /// <summary>Holds the column at the unit price width.</summary>
+    internal static PropertyBuilder HasPricePrecision(this PropertyBuilder property)
+        => HasStoreType(property, PriceScale);
+
+    /// <summary>Holds the column at the money width.</summary>
+    internal static PropertyBuilder HasMoneyPrecision(this PropertyBuilder property)
+        => HasStoreType(property, MoneyScale);
+
+    /// <summary>Holds the column at the per-unit cost width.</summary>
+    internal static PropertyBuilder HasCostPrecision(this PropertyBuilder property)
+        => HasStoreType(property, CostScale);
 }

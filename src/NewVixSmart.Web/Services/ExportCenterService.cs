@@ -9,9 +9,63 @@ using NewVixSmart.Web.ViewModels.Export;
 
 namespace NewVixSmart.Web.Services;
 
+/// <summary>
+/// The two keys a caller must hold before the export centre will hand over one dataset:
+/// the owning module's <c>Export</c> right, and that module's read right so the data is
+/// already visible in the application. Both are checked per dataset by the controller.
+/// </summary>
+public sealed record ExportDatasetAccess(string ExportKey, string SourceViewKey);
+
+/// <summary>
+/// Maps every export-centre dataset to the module that owns it. Without this a single
+/// <c>ExportCenter.View</c> grant used to dump the whole database - journal, chart of
+/// accounts, invoices, payments and all - through one request.
+/// </summary>
+public static class ExportCenterDatasets
+{
+    public static readonly IReadOnlyDictionary<string, ExportDatasetAccess> Map =
+        new Dictionary<string, ExportDatasetAccess>(StringComparer.Ordinal)
+        {
+            ["suppliers"] = new("Suppliers.Export", "Suppliers.View"),
+            ["customers"] = new("Customers.Export", "Customers.View"),
+            ["items"] = new("Items.Export", "Items.View"),
+            ["item_categories"] = new("Items.Export", "Items.View"),
+            ["item_types"] = new("Items.Export", "Items.View"),
+            ["units"] = new("Items.Export", "Items.View"),
+            ["gl_accounts"] = new("ChartOfAccounts.Export", "ChartOfAccounts.View"),
+            ["branches"] = new("Settings.Export", "Settings.View"),
+            ["warehouses"] = new("Warehouses.Export", "Warehouses.View"),
+            ["payments"] = new("Payments.Export", "Payments.View"),
+            ["sale_invoices"] = new("Sales.Export", "Sales.View"),
+            ["purchase_invoices"] = new("Purchases.Export", "Purchases.View"),
+            ["sale_returns"] = new("SaleReturns.Export", "SaleReturns.View"),
+            ["purchase_returns"] = new("PurchaseReturns.Export", "PurchaseReturns.View"),
+            ["sale_quotes"] = new("SalesQuotes.Export", "SalesQuotes.View"),
+            ["stock_movements"] = new("Stock.Export", "Stock.View"),
+            ["stock_transfers"] = new("StockTransfers.Export", "StockTransfers.View"),
+            ["inventory_adjustments"] = new("InventoryAdjustments.Export", "InventoryAdjustments.View"),
+            ["journal_entries"] = new("AuditLedger.Export", "AuditLedger.View"),
+            ["fiscal_periods"] = new("FiscalClose.Export", "FiscalClose.Close"),
+            ["budgets"] = new("Budgets.Export", "Budgets.View"),
+            ["purchase_orders"] = new("PurchaseOrders.Export", "PurchaseOrders.View"),
+            ["sale_orders"] = new("SalesOrders.Export", "SalesOrders.View"),
+            ["delivery_orders"] = new("DeliveryOrders.Export", "DeliveryOrders.View"),
+            ["stock_reservations"] = new("StockReservations.Export", "StockReservations.View")
+        };
+
+    public static bool TryGet(string datasetKey, out ExportDatasetAccess access) =>
+        Map.TryGetValue(datasetKey, out access!);
+}
+
 public class ExportCenterService : IExportCenterService
 {
-    private const int MaxExportRows = 50_000;
+    /// <summary>
+    /// Hard cap on the rows any single export may materialise. Applied to the XLSX queries as
+    /// well as the CSV ones - capping only the CSV path let one request build the entire
+    /// journal in memory.
+    /// </summary>
+    public const int MaxExportRows = 50_000;
+
     private readonly AppDbContext _db;
     private readonly Dictionary<string, Func<Task<byte[]>>> _xlsx;
     private readonly Dictionary<string, Func<Task<byte[]>>> _csv;
@@ -128,6 +182,7 @@ public class ExportCenterService : IExportCenterService
         var suppliers = await _db.Suppliers
             .AsNoTracking()
             .OrderBy(s => s.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = suppliers.Select(s => new object?[]
@@ -146,6 +201,7 @@ public class ExportCenterService : IExportCenterService
         var customers = await _db.Customers
             .AsNoTracking()
             .OrderBy(c => c.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = customers.Select(c => new object?[]
@@ -168,6 +224,7 @@ public class ExportCenterService : IExportCenterService
             .Include(i => i.CountUnit)
             .Include(i => i.QuantityUnit)
             .OrderBy(i => i.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = items.Select(i => new object?[]
@@ -190,6 +247,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(a => a.ParentAccount)
             .OrderBy(a => a.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = accounts.Select(a => new object?[]
@@ -210,6 +268,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(c => c.Items)
             .OrderBy(c => c.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = categories.Select(c => new object?[]
@@ -228,6 +287,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(t => t.Items)
             .OrderBy(t => t.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = types.Select(t => new object?[]
@@ -246,6 +306,7 @@ public class ExportCenterService : IExportCenterService
             .AsNoTracking()
             .Include(u => u.ParentUnit)
             .OrderBy(u => u.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = units.Select(u => new object?[]
@@ -263,6 +324,7 @@ public class ExportCenterService : IExportCenterService
         var branches = await _db.Branches
             .AsNoTracking()
             .OrderBy(b => b.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = branches.Select(b => new object?[]
@@ -280,6 +342,7 @@ public class ExportCenterService : IExportCenterService
         var warehouses = await _db.Warehouses
             .AsNoTracking()
             .OrderBy(w => w.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = warehouses.Select(w => new object?[]
@@ -300,6 +363,7 @@ public class ExportCenterService : IExportCenterService
             .Include(p => p.Supplier)
             .OrderByDescending(p => p.PaymentDate)
             .ThenBy(p => p.ReceiptNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = payments.Select(p => new object?[]
@@ -328,6 +392,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(s => s.InvoiceDate)
             .ThenBy(s => s.InvoiceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -366,6 +431,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(p => p.InvoiceDate)
             .ThenBy(p => p.InvoiceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -405,6 +471,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(r => r.ReturnDate)
             .ThenBy(r => r.ReturnNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -440,6 +507,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(r => r.ReturnDate)
             .ThenBy(r => r.ReturnNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -474,6 +542,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderBy(q => q.QuoteDate)
             .ThenBy(q => q.QuoteNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var supplierQuotes = await _db.SupplierQuotes
@@ -482,6 +551,7 @@ public class ExportCenterService : IExportCenterService
             .Include(q => q.Item)
             .OrderBy(q => q.Supplier.Name)
             .ThenBy(q => q.Item.Name)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -525,6 +595,7 @@ public class ExportCenterService : IExportCenterService
             .Include(m => m.Item)
             .OrderByDescending(m => m.MovementDate)
             .ThenBy(m => m.Id)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = movements.Select(m => new object?[]
@@ -551,6 +622,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(t => t.TransferDate)
             .ThenBy(t => t.TransferNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -578,6 +650,7 @@ public class ExportCenterService : IExportCenterService
             .Include(a => a.Item)
             .OrderByDescending(a => a.AdjustmentDate)
             .ThenBy(a => a.ReferenceNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = adjustments.Select(a => new object?[]
@@ -598,6 +671,7 @@ public class ExportCenterService : IExportCenterService
             .Include(j => j.Lines)
             .ThenInclude(l => l.Account)
             .OrderBy(j => j.EntryNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -622,6 +696,7 @@ public class ExportCenterService : IExportCenterService
         var periods = await _db.FiscalPeriods
             .AsNoTracking()
             .OrderByDescending(p => p.Year)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var rows = periods.Select(p => new object?[]
@@ -640,6 +715,7 @@ public class ExportCenterService : IExportCenterService
         var years = await _db.BudgetYears
             .AsNoTracking()
             .OrderByDescending(b => b.Year)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         var lines = await _db.BudgetLines
@@ -648,6 +724,7 @@ public class ExportCenterService : IExportCenterService
             .Include(l => l.Account)
             .OrderBy(l => l.BudgetYear!.Year)
             .ThenBy(l => l.Account!.Code)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -682,6 +759,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(o => o.OrderDate)
             .ThenBy(o => o.OrderNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -718,6 +796,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(o => o.OrderDate)
             .ThenBy(o => o.OrderNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -762,6 +841,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.SaleInvoice)
             .OrderByDescending(d => d.DeliveryDate)
             .ThenBy(d => d.DeliveryNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();
@@ -824,6 +904,7 @@ public class ExportCenterService : IExportCenterService
             .ThenInclude(i => i.Item)
             .OrderByDescending(r => r.CreatedAt)
             .ThenBy(r => r.ReservationNumber)
+            .Take(MaxExportRows)
             .ToListAsync();
 
         using var wb = new XLWorkbook();

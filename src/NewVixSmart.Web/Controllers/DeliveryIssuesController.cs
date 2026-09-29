@@ -69,7 +69,7 @@ public class DeliveryIssuesController : Controller
                     .Concat(notes.Select(n => new
                     {
                         n.Id,
-                        Label = $"{n.DeliveryNumber} — {(n.SalesOrder?.OrderNumber ?? "بدون أمر بيع")} — متبقٍ {OpenQuantity(n):N2}"
+                        Label = $"{n.DeliveryNumber} — {(n.SalesOrder?.OrderNumber ?? "بدون أمر بيع")} — متبقٍ {DeliveryOpenLines.OpenQuantity(n):N2}"
                     })),
                 "Id", "Label", deliveryOrderId)
         };
@@ -115,8 +115,14 @@ public class DeliveryIssuesController : Controller
 
         foreach (var line in vm.Items)
         {
-            line.Quantity = decimal.Round(line.Quantity, 2);
-            line.Count = decimal.Round(line.Count, 2);
+            if (!TryQuantize(line.Quantity, out var quantity)
+                || !TryQuantize(line.Count, out var count))
+            {
+                TempData["Error"] = QuantityStepError;
+                return await Create(vm.Issue.DeliveryOrderId);
+            }
+            line.Quantity = quantity;
+            line.Count = count;
         }
 
         var (ok, error, issue) = await _inventory.CreateDeliveryIssueAsync(vm.Issue.DeliveryOrderId, vm.Items,
@@ -129,6 +135,59 @@ public class DeliveryIssuesController : Controller
 
         TempData["Success"] = $"تم إنشاء أمر التسليم {issue!.IssueNumber}";
         return RedirectToAction(nameof(Details), new { id = issue.PublicId });
+    }
+
+    /// <summary>
+    /// Operator-facing message for a posted quantity that is finer than the grid can store.
+    /// </summary>
+    private const string QuantityStepError =
+        "الكمية والعدد يجب أن تكونا بأربع خانات عشرية كحدٍّ أقصى — أصغر خطوة يمكن تسجيلها هي 0.0001";
+
+    /// <summary>
+    /// The window this input check allows around the grid: none, deliberately.
+    /// <para>
+    /// This is not <see cref="DeliveryOpenLines.QuantityTolerance"/>, and it must never be replaced by
+    /// it. That constant answers a different question — "is this physical line finished?" — and its
+    /// half-step window earns its keep there, absorbing arithmetic that has already passed through a
+    /// lossy step: a sum, a derived unit cost, an allocation residual. This check asks something else
+    /// entirely: "is what the operator typed a value this store can hold?"
+    /// </para>
+    /// <para>
+    /// Nothing legitimate arrives off-grid here. The posted figure comes from a field whose
+    /// <c>step</c> is 0.0001, so the browser has already constrained it to multiples of that step before
+    /// it is submitted, and <c>decimal(18,4)</c> holds one quantum exactly. A tolerance could therefore
+    /// only ever do one thing: rewrite a figure the operator did not type. It would also be
+    /// unreachable as a check — a decimal is never further than half a step from the nearest grid point,
+    /// so a half-step tolerance accepts every value there is, and the error message below could never be
+    /// shown.
+    /// </para>
+    /// </summary>
+    private const decimal InputGridTolerance = 0m;
+
+    /// <summary>
+    /// Confirms one posted quantity or count is already on the store's own grid, and hands it back
+    /// unchanged.
+    /// <para>
+    /// A quantity or count column is <c>decimal(18,4)</c>, so the smallest difference two stored
+    /// figures can show is 0.0001. <c>decimal</c> is base ten, so every multiple of that step — including
+    /// <c>0.0001</c> itself — is exactly representable, and comparing against the rounded value is an
+    /// exact test of divisibility rather than an approximation. This matters: a check written in
+    /// <c>double</c> would test divisibility by multiplying by 10000, and <c>(double)0.0003 * 10000</c>
+    /// is 2.9999999999999996, not 3. Five hundred and fifty-eight of the first four thousand four-decimal
+    /// values fail that way, so the arithmetic here has to stay in <see cref="decimal"/>.
+    /// </para>
+    /// <para>
+    /// A value that is not on the grid is refused rather than rounded, because the previous behaviour
+    /// here was <c>decimal.Round(x, 2)</c>: it did not merely lose digits, it changed the delivery. An
+    /// issue of 99.9957 against an ordered 100 became 100.00 and the order read as fully delivered, or
+    /// became 99.99 and left a hundredth owed that no one ever shipped. Rounding 99.99575 to 99.9958
+    /// would be the same fault one decimal place in: reporting a delivery the operator did not make.
+    /// </para>
+    /// </summary>
+    private static bool TryQuantize(decimal value, out decimal onGrid)
+    {
+        onGrid = decimal.Round(value, DecimalPrecision.QuantityScale, MidpointRounding.AwayFromZero);
+        return Math.Abs(value - onGrid) <= InputGridTolerance;
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -180,17 +239,10 @@ public class DeliveryIssuesController : Controller
             .Where(d => d.Status != DeliveryOrderStatus.Cancelled && d.SaleInvoiceId == null)
             .AsNoTracking()
             .ToListAsync();
-        return notes.Where(n => OpenQuantity(n) > 0.005m).ToList();
-    }
-
-    private static decimal OpenQuantity(DeliveryOrder note)
-    {
-        var issued = note.Issues
-            .Where(i => i.Status != DeliveryIssueStatus.Cancelled)
-            .SelectMany(i => i.Items)
-            .GroupBy(l => l.ItemId)
-            .ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
-
-        return note.Items.Sum(l => l.Quantity - (issued.TryGetValue(l.ItemId, out var q) ? q : 0m));
+        // The same predicate the delivery order details screen uses to decide whether the note is
+        // still open, so a note can never be offered here while that screen calls it complete. This
+        // method used to end with a private `OpenQuantity` that compared issued quantity only, which
+        // made a wholly unissued count-traded line look like zero outstanding.
+        return notes.Where(DeliveryOpenLines.HasOutstandingLines).ToList();
     }
 }

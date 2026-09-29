@@ -287,32 +287,64 @@ public async Task<(bool Success, string? Error)> CreateInvoiceFromOrderAsync(int
 
     public async Task<(bool Success, string? Error)> SaveSupplierQuoteAsync(SupplierQuote quote)
     {
-        var existing = await _db.SupplierQuotes
-            .FirstOrDefaultAsync(q => q.SupplierId == quote.SupplierId && q.ItemId == quote.ItemId);
-        if (existing != null)
+        for (int attempt = 1; attempt <= 3; attempt++)
         {
-            existing.UnitPrice = quote.UnitPrice;
-            existing.EffectiveDate = quote.EffectiveDate;
-            existing.Notes = quote.Notes;
+            var existing = await _db.SupplierQuotes
+                .FirstOrDefaultAsync(q => q.SupplierId == quote.SupplierId && q.ItemId == quote.ItemId);
+            if (existing != null)
+            {
+                existing.UnitPrice = quote.UnitPrice;
+                existing.EffectiveDate = quote.EffectiveDate;
+                existing.Notes = quote.Notes;
+            }
+            else
+            {
+                quote.EffectiveDate = quote.EffectiveDate == default ? DateTime.Today : quote.EffectiveDate;
+                quote.Id = 0;
+                _db.SupplierQuotes.Add(quote);
+            }
+            try
+            {
+                await _db.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateException)
+            {
+                _db.ChangeTracker.Clear();
+                if (!await _db.SupplierQuotes.AsNoTracking()
+                    .AnyAsync(q => q.SupplierId == quote.SupplierId && q.ItemId == quote.ItemId))
+                    return (false, "تعذر حفظ سعر المورد بسبب تعارض في البيانات، حاول مرة أخرى");
+            }
         }
-        else
-        {
-            quote.EffectiveDate = quote.EffectiveDate == default ? DateTime.Today : quote.EffectiveDate;
-            _db.SupplierQuotes.Add(quote);
-        }
-        await _db.SaveChangesAsync();
-        return (true, null);
+        return (false, "تعذر حفظ سعر المورد بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
-private async Task<string> NextOrderNumberAsync()
+    private async Task<string> NextOrderNumberAsync()
     {
-        var prefix = $"PRC-{DateTime.Now:yyyyMMdd}-";
-        var last = await _db.PurchaseOrders.AsNoTracking()
-            .Where(o => o.OrderNumber.StartsWith(prefix))
-            .OrderByDescending(o => o.OrderNumber)
+        var seriesPrefix = $"PRC-{DateTime.Now:yyyyMMdd}-";
+        int next = await MaxSeriesValueAsync(seriesPrefix) + 1;
+        string num = $"{seriesPrefix}{next:D3}";
+        while (await _db.PurchaseOrders.AsNoTracking().AnyAsync(o => o.OrderNumber == num))
+        {
+            next++;
+            num = $"{seriesPrefix}{next:D3}";
+        }
+        return num;
+    }
+
+    private async Task<int> MaxSeriesValueAsync(string seriesPrefix)
+    {
+        var values = await _db.PurchaseOrders.AsNoTracking()
+            .Where(o => o.OrderNumber.StartsWith(seriesPrefix))
             .Select(o => o.OrderNumber)
-            .FirstOrDefaultAsync();
-        int next = last != null && int.TryParse(last.AsSpan(prefix.Length), out var n) ? n + 1 : 1;
-        return $"{prefix}{next:D3}";
+            .ToListAsync();
+        int max = 0;
+        foreach (var value in values)
+        {
+            if (value.Length <= seriesPrefix.Length) continue;
+            if (int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed > max)
+                max = parsed;
+        }
+        return max;
     }
 }

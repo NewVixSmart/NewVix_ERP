@@ -80,18 +80,27 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
             var prices = new List<decimal>();
             foreach (var line in group.Where(l => l.SalesOrderItemId.HasValue))
             {
+                // At the column's own width, not at two decimals. SalesOrderItem.UnitPrice is
+                // decimal(18,3) and the price written to the invoice line is the one compared, so
+                // quantising first would let 12.345 and 12.346 - two genuinely different third
+                // decimals - both become 12.35 and agree, and the guard below would pass a delivery
+                // note billing a different price than the order.
                 if (orderLines.TryGetValue(line.SalesOrderItemId!.Value, out var orderLine))
-                    prices.Add(decimal.Round(orderLine.UnitPrice, 2));
+                    prices.Add(decimal.Round(orderLine.UnitPrice, DecimalPrecision.PriceScale));
             }
             prices = prices.Distinct().ToList();
             if (prices.Count > 1)
                 return (false, $"اختلف سعر الصنف «{item.Name}» بين أوامر التسليم — راجع الأسعار قبل الفوترة", null);
 
+            // The sum runs over decimal(18,4) issue rows, so it is already on the quantity grid and
+            // is rounded once here, at the end, to that same grid. Rounding it to two decimals first
+            // would have billed a quantity nobody delivered, and would then have compared against
+            // IsLineSettled as if it were true.
             invoiceItems.Add(new SaleInvoiceItem
             {
                 ItemId = group.Key,
-                Quantity = decimal.Round(group.Sum(l => l.Quantity), 2),
-                Count = decimal.Round(group.Sum(l => l.Count), 2),
+                Quantity = decimal.Round(group.Sum(l => l.Quantity), DecimalPrecision.QuantityScale),
+                Count = decimal.Round(group.Sum(l => l.Count), DecimalPrecision.QuantityScale),
                 UnitPrice = prices.Count > 0 ? prices[0] : item.SalePrice
             });
         }
@@ -170,7 +179,7 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
             return;
 
         var fullyInvoiced = order.Items.Count > 0 && order.Items.All(i =>
-            i.InvoicedQty >= i.Quantity - 0.005m && i.InvoicedCount >= i.Count - 0.005m);
+            DeliveryOpenLines.IsLineSettled(i.Quantity, i.Count, i.InvoicedQty, i.InvoicedCount));
         var anyInvoiced = order.Items.Any(i => i.InvoicedQty > 0 || i.InvoicedCount > 0);
 
         order.Status = fullyInvoiced

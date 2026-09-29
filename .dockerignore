@@ -1,21 +1,73 @@
+# ============================================
+# Build context for src/NewVixSmart.Web/Dockerfile
+#
+# The context is ALWAYS the repository root - never src/NewVixSmart.Web - in
+# all three callers: docker-compose.yml, .github/workflows/ci.yml and the manual
+# `docker build -f src/NewVixSmart.Web/Dockerfile .`. The Dockerfile copies
+# global.json, Directory.Build.props and aspire/Vix.ServiceDefaults from the
+# root, so a narrower context simply fails to build.
+#
+# Nothing listed under "KEEP" below may be removed: global.json pins the SDK,
+# Directory.Build.props carries TreatWarningsAsErrors / Nullable / ImplicitUsings
+# for the publish, and the aspire/ project reference is a real ProjectReference.
+# ============================================
+
+# build output
 **/bin
 **/obj
+**/TestResults
+test-out*.txt
+tests-result.txt
+*.log
+*.trx
+*.coverage
+
+# VCS / IDE / tooling
 .git
 .github
 .vs
 .idea
+.playwright-cli
+node_modules
+
+# Never ship real credentials
 .env
 .env.*
 !.env.example
+# appsettings.Development.json holds the development JWT signing key and the
+# three seed passwords (Admin@123 etc.). NewVixSmart.Web.csproj already sets
+# CopyToPublishDirectory="Never" for it, so it is not needed to build or to
+# run - but leaving it in the context put it in a builder layer and in the
+# local build cache, which is exactly where a leaked key should not be.
+**/appsettings.Development.json
+**/appsettings.*.local.json
+**/secrets.json
+**/*.pfx
+**/*.p12
+
+# Database dumps and live data files
+**/*.bak
+**/*.trn
+**/*.mdf
+**/*.ndf
+**/*.ldf
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+backups/
+artifacts/
+screenshots/
+
+# Not needed to build the web image
 docs
 plan
-scripts
 tests
 e2e
 design-system
+scripts
+accessibility.md
+ACCESSIBILITY.md
+*.md
+# aspire/Vix.AppHost is not published; Vix.ServiceDefaults below IS a
+# ProjectReference and must stay in the context.
 aspire/Vix.AppHost
-test-out*.txt
-tests-result.txt
-*.log
-node_modules
-.playwright-cli

@@ -90,12 +90,8 @@ await PopulateDropdowns(vm);
             .AsNoTracking();
 
         SaleQuote? quote;
-        if (Guid.TryParse(id, out var publicId))
-            quote = await query.FirstOrDefaultAsync(q => q.PublicId == publicId);
-        else if (int.TryParse(id, out var numericId))
-            quote = await query.FirstOrDefaultAsync(q => q.Id == numericId);
-        else
-            return NotFound();
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        quote = await query.FirstOrDefaultAsync(q => q.PublicId == publicId);
 
         if (quote == null) return NotFound();
         return View(quote);
@@ -173,10 +169,24 @@ int? branchId = HttpContext.Session.GetCurrentBranchId();
         if (ok && order != null)
         {
             TempData["Success"] = "تم تحويل عرض السعر إلى أمر بيع (لا تزال الفاتورة والمخزون معلّقين)";
-            return RedirectToAction(nameof(Details), new { controller = "SalesOrders", id = order.Id });
+            return RedirectToAction("Details", "SalesOrders", new { id = order.PublicId });
         }
         TempData["Error"] = error ?? "تعذر تحويل عرض السعر إلى أمر بيع";
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
+    }
+
+    /// <summary>
+    /// Details only resolves the public id now, so internal redirects translate the numeric id
+    /// they were handed instead of passing it straight through.
+    /// </summary>
+    private async Task<IActionResult> RedirectToDetailsAsync(int id)
+    {
+        var publicId = await _db.SaleQuotes.AsNoTracking()
+            .Where(q => q.Id == id)
+            .Select(q => (Guid?)q.PublicId)
+            .FirstOrDefaultAsync();
+        if (publicId == null) return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

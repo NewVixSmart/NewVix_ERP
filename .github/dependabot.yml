@@ -42,6 +42,17 @@ updates:
       time: "06:00"
       timezone: Africa/Khartoum
     open-pull-requests-limit: 3
+    groups:
+      # The MessagePack entry is a deliberate SECURITY PIN, not a used
+      # dependency: Aspire.Hosting.* -> StreamJsonRpc 2.22.23 depends on
+      # MessagePack with a bare ">= 2.5.192", which carries 11 advisories
+      # (incl. two HIGH). Nothing else in this project is a NuGet dependency
+      # that dependabot would touch, so without this group the pin was orphaned:
+      # the next Aspire bump could quietly reintroduce a vulnerable tree.
+      # See docs/audit-round18-findings.md (R18-8).
+      security-pins:
+        patterns:
+          - "MessagePack"
     commit-message:
       prefix: "build(deps)"
 
@@ -53,6 +64,19 @@ updates:
       time: "06:00"
       timezone: Africa/Khartoum
     open-pull-requests-limit: 3
+    groups:
+      # Microsoft.Extensions.Http.Resilience ships on its own cadence (10.0.0,
+      # 10.1.0 ... 10.10.0) and so does not track the 10.0.11 servicing band
+      # used elsewhere in the solution. It was therefore the only package in
+      # this project that dependabot would propose individually while the
+      # OpenTelemetry packages moved separately - three PRs a week for one
+      # small project. Grouped so the whole ServiceDefaults set moves together.
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
     commit-message:
       prefix: "build(deps)"
 

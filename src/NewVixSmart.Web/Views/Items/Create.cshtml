@@ -11,7 +11,7 @@
 <div class="card">
     <div class="card-body">
         <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
 
             <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle"></i> البيانات الأساسية</h6>
             <div class="row g-3">
@@ -22,7 +22,7 @@
                 <div class="col-md-4">
                     <label asp-for="Name" class="form-label"></label>
                     <input asp-for="Name" class="form-control" />
-                    <span asp-validation-for="Name" class="text-danger small"></span>
+                    <span asp-validation-for="Name" class="text-danger small" aria-invalid="true"></span>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="itemTypeSelect">نوع الصنف</label>
@@ -90,11 +90,11 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="PurchasePrice" class="form-label"></label>
-                    <input asp-for="PurchasePrice" class="form-control" type="number" step="0.01" min="0" value="0" disabled="@(!ViewBag.IsAdmin)" />
+                    <input asp-for="PurchasePrice" class="form-control" type="number" step="0.001" min="0" value="0" disabled="@(!ViewBag.IsAdmin)" />
                 </div>
                 <div class="col-md-6">
                     <label asp-for="SalePrice" class="form-label"></label>
-                    <input asp-for="SalePrice" class="form-control" type="number" step="0.01" min="0" value="0" disabled="@(!ViewBag.IsAdmin)" />
+                    <input asp-for="SalePrice" class="form-control" type="number" step="0.001" min="0" value="0" disabled="@(!ViewBag.IsAdmin)" />
                 </div>
             </div>
             @if (ViewBag.IsAdmin == false)
@@ -110,12 +110,12 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="MinCount" class="form-label"></label>
-                    <input asp-for="MinCount" class="form-control" type="number" step="0.01" value="0" />
+                    <input asp-for="MinCount" class="form-control" type="number" step="0.0001" value="0" />
                     <small class="text-muted">الي الحد الأدنى للعدد</small>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="MinQuantity" class="form-label"></label>
-                    <input asp-for="MinQuantity" class="form-control" type="number" step="0.01" value="0" />
+                    <input asp-for="MinQuantity" class="form-control" type="number" step="0.0001" value="0" />
                     <small class="text-muted">الحد الأدنى للكمية</small>
                 </div>
             </div>
@@ -141,11 +141,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true" aria-labelledby="categoriesModalTitle">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-tags text-primary"></i> إدارة التصنيفات الرئيسية</h5>
+                <h5 class="modal-title" id="categoriesModalTitle"><i class="bi bi-tags text-primary" aria-hidden="true"></i> إدارة التصنيفات الرئيسية</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <div class="modal-body">
@@ -159,6 +159,7 @@
                 </div>
                 <div class="table-container">
                     <table class="table table-sm mb-0">
+                        <caption class="visually-hidden">التصنيفات الرئيسية: الاسم، الحالة</caption>
                         <thead><tr><th scope="col">الاسم</th><th scope="col">الحالة</th><th scope="col" class="text-center" style="width:110px">إجراءات</th></tr></thead>
                         <tbody id="catTableBody"></tbody>
                     </table>
@@ -169,11 +170,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="itemTypesModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="itemTypesModal" tabindex="-1" aria-hidden="true" aria-labelledby="itemTypesModalTitle">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-grid text-primary"></i> إدارة أنواع الأصناف</h5>
+                <h5 class="modal-title" id="itemTypesModalTitle"><i class="bi bi-grid text-primary" aria-hidden="true"></i> إدارة أنواع الأصناف</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <div class="modal-body">
@@ -187,6 +188,7 @@
                 </div>
                 <div class="table-container">
                     <table class="table table-sm mb-0">
+                        <caption class="visually-hidden">أنواع الأصناف: الاسم، الحالة</caption>
                         <thead><tr><th scope="col">الاسم</th><th scope="col">الحالة</th><th scope="col" class="text-center" style="width:110px">إجراءات</th></tr></thead>
                         <tbody id="typeTableBody"></tbody>
                     </table>
@@ -244,8 +246,8 @@
                 '<td><select class="form-select form-select-sm cat-active" data-id="' + c.id + '" aria-label="حالة التصنيف">' +
                 '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
                 '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
-                '<td class="text-center"><button class="btn btn-sm btn-outline-primary cat-save" data-id="' + c.id + '" title="حفظ"><i class="bi bi-check-lg"></i></button>' +
-                '<button class="btn btn-sm btn-outline-danger cat-del" data-id="' + c.id + '" title="حذف"><i class="bi bi-trash"></i></button></td>';
+                '<td class="text-center"><button class="btn btn-sm btn-outline-primary cat-save" data-id="' + c.id + '" title="حفظ" aria-label="حفظ التصنيف ' + escapeHtml(c.name) + '"><i class="bi bi-check-lg" aria-hidden="true"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger cat-del" data-id="' + c.id + '" title="حذف" aria-label="حذف التصنيف ' + escapeHtml(c.name) + '"><i class="bi bi-trash" aria-hidden="true"></i></button></td>';
             tbody.appendChild(tr);
         });
     }
@@ -361,8 +363,8 @@
                 '<td><select class="form-select form-select-sm type-active" data-id="' + c.id + '" aria-label="حالة نوع الصنف">' +
                 '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
                 '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
-                '<td class="text-center"><button class="btn btn-sm btn-outline-primary type-save" data-id="' + c.id + '" title="حفظ"><i class="bi bi-check-lg"></i></button>' +
-                '<button class="btn btn-sm btn-outline-danger type-del" data-id="' + c.id + '" title="حذف"><i class="bi bi-trash"></i></button></td>';
+                '<td class="text-center"><button class="btn btn-sm btn-outline-primary type-save" data-id="' + c.id + '" title="حفظ" aria-label="حفظ نوع الصنف ' + escapeHtml(c.name) + '"><i class="bi bi-check-lg" aria-hidden="true"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger type-del" data-id="' + c.id + '" title="حذف" aria-label="حذف نوع الصنف ' + escapeHtml(c.name) + '"><i class="bi bi-trash" aria-hidden="true"></i></button></td>';
             tbody.appendChild(tr);
         });
     }

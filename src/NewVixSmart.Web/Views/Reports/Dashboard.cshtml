@@ -48,7 +48,7 @@
         <div class="stat-card text-center border-danger">
             <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-cash-coin text-danger"></i></div>
             <div class="text-muted small mt-2">إجمالي المتأخر</div>
-            <h3 class="mb-0 text-danger" data-count="@(Model.OverdueReceivableTotal + Model.OverduePayableTotal)" data-decimals="2" data-count-formatted="@((Model.OverdueReceivableTotal + Model.OverduePayableTotal).ToString("N2"))">@((Model.OverdueReceivableTotal + Model.OverduePayableTotal).ToString("N2"))</h3>
+            <h3 class="mb-0 text-danger" data-count="@(Model.OverdueReceivableTotal + Model.OverduePayableTotal)" data-decimals="2" data-count-formatted="@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)">@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)</h3>
         </div>
     </div>
 </div>
@@ -72,15 +72,15 @@
                             <td><code>@r.InvoiceNumber</code></td>
                             <td>@r.PartyName</td>
                             <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
-                            <td>@r.NetAmount.ToString("N2")</td>
-                            <td class="fw-bold">@r.Outstanding.ToString("N2")</td>
+                            <td>@Money.Format(r.NetAmount)</td>
+                            <td class="fw-bold">@Money.Format(r.Outstanding)</td>
                             <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
                         </tr>
                     }
                 </tbody>
                 @if (Model.OverdueReceivables.Any())
                 {
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Model.OverdueReceivableTotal.ToString("N2")</td><td></td></tr></tfoot>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Money.Format(Model.OverdueReceivableTotal)</td><td></td></tr></tfoot>
                 }
             </table>
         </div>
@@ -107,15 +107,15 @@
                             <td><code>@r.InvoiceNumber</code></td>
                             <td>@r.PartyName</td>
                             <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
-                            <td>@r.NetAmount.ToString("N2")</td>
-                            <td class="fw-bold">@r.Outstanding.ToString("N2")</td>
+                            <td>@Money.Format(r.NetAmount)</td>
+                            <td class="fw-bold">@Money.Format(r.Outstanding)</td>
                             <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
                         </tr>
                     }
                 </tbody>
                 @if (Model.OverduePayables.Any())
                 {
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Model.OverduePayableTotal.ToString("N2")</td><td></td></tr></tfoot>
+                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Money.Format(Model.OverduePayableTotal)</td><td></td></tr></tfoot>
                 }
             </table>
         </div>

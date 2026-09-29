@@ -41,6 +41,7 @@
 
 <div class="table-container mb-4">
     <table class="table mb-0">
+        <caption class="visually-hidden">بنود فاتورة البيع رقم @Model.InvoiceNumber: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي، الخصم</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th><th scope="col">الخصم</th></tr></thead>
         <tbody>
             @foreach (var item in Model.Items)
@@ -49,9 +50,9 @@
                     <td>@item.Item.Name</td>
                     <td>@item.Count</td>
                     <td>@item.Quantity</td>
-                    <td>@item.UnitPrice.ToString("N2")</td>
-                    <td class="fw-bold">@item.Total.ToString("N2")</td>
-                    <td>@item.Discount.ToString("N2")</td>
+                    <td>@Money.Format(item.UnitPrice)</td>
+                    <td class="fw-bold">@Money.Format(item.Total)</td>
+                    <td>@Money.Format(item.Discount)</td>
                 </tr>
             }
         </tbody>
@@ -59,8 +60,8 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Model.TotalAmount.ToString("N2")</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الخصم</div><h4 class="text-danger">@Model.Discount.ToString("N2")</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الضريبة</div><h4>@Model.Tax.ToString("N2")</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(Model.TotalAmount)</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الخصم</div><h4 class="text-danger">@Money.Format(Model.Discount)</h4></div></div></div>
+    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الضريبة</div><h4>@Money.Format(Model.Tax)</h4></div></div></div>
     <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الصافي</div><h4 class="text-success">@Money.Format(Model.NetAmount)</h4></div></div></div>
 </div>

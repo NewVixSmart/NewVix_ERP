@@ -87,12 +87,12 @@ public sealed class StockReservationsService : IStockReservationsService
             return (false, "يوجد حجز ساري لهذا الأمر بالفعل");
 
         var wanted = order.Items
-            .Where(i => i.Quantity - i.DeliveredQty > 0.005m || i.Count - i.DeliveredCount > 0.005m)
+            .Where(i => !DeliveryOpenLines.IsLineSettled(i.Quantity, i.Count, i.DeliveredQty, i.DeliveredCount))
             .Select(i => new
             {
                 Line = i,
-                Quantity = decimal.Round(i.Quantity - i.DeliveredQty, 2),
-                Count = decimal.Round(i.Count - i.DeliveredCount, 2)
+                Quantity = Math.Max(0m, i.Quantity - i.DeliveredQty),
+                Count = Math.Max(0m, i.Count - i.DeliveredCount)
             })
             .ToList();
         if (wanted.Count == 0) return (false, "لا توجد كميات متبقية للحجز في هذا الأمر");
@@ -316,14 +316,21 @@ public sealed class StockReservationsService : IStockReservationsService
 
         foreach (var line in lines)
         {
-            var needQty = decimal.Round(line.Quantity, 2);
-            var needCnt = decimal.Round(line.Count, 2);
+            // The need is the issued line's own figure, taken as it stands. Both it and the
+            // reservation lines it is matched against are decimal(18,4), so rounding it here used to
+            // discard a hundredth of the delivery before IsLineSettled was asked whether a
+            // reservation was already spent, and before the leftover was written to
+            // ConsumedQuantity - which handed the settled rule an answer computed from a number that
+            // no longer existed.
+            var needQty = line.Quantity;
+            var needCnt = line.Count;
             if (needQty <= 0 && needCnt <= 0) continue;
 
             var candidates = reservations
                 .Where(r => customerId == null || r.CustomerId == null || r.CustomerId == customerId)
                 .SelectMany(r => r.Items.Where(i => i.ItemId == line.ItemId).Select(i => new { Reservation = r, Line = i }))
-                .Where(x => x.Line.Quantity - x.Line.ConsumedQuantity > 0.005m || x.Line.Count - x.Line.ConsumedCount > 0.005m)
+                .Where(x => !DeliveryOpenLines.IsLineSettled(
+                    x.Line.Quantity, x.Line.Count, x.Line.ConsumedQuantity, x.Line.ConsumedCount))
                 .OrderByDescending(x => line.SalesOrderItemId.HasValue && x.Line.SalesOrderItemId == line.SalesOrderItemId)
                 .ThenBy(x => x.Reservation.CreatedAt).ThenBy(x => x.Reservation.Id).ThenBy(x => x.Line.Id)
                 .ToList();
@@ -345,7 +352,7 @@ public sealed class StockReservationsService : IStockReservationsService
         foreach (var reservation in reservations)
         {
             var fullyConsumed = reservation.Items.All(i =>
-                i.Quantity - i.ConsumedQuantity <= 0.005m && i.Count - i.ConsumedCount <= 0.005m);
+                DeliveryOpenLines.IsLineSettled(i.Quantity, i.Count, i.ConsumedQuantity, i.ConsumedCount));
             var anyConsumed = reservation.Items.Any(i => i.ConsumedQuantity > 0 || i.ConsumedCount > 0);
             reservation.Status = fullyConsumed
                 ? StockReservationStatus.Consumed
@@ -435,11 +442,14 @@ public sealed class StockReservationsService : IStockReservationsService
     private async Task<string> NextReservationNumberAsync()
     {
         var seriesPrefix = $"RSV-{DateTime.Now:yyyyMMdd}-";
-        var existing = await _db.StockReservations.Select(r => r.ReservationNumber).ToListAsync();
+        var values = await _db.StockReservations.AsNoTracking()
+            .Where(r => r.ReservationNumber.StartsWith(seriesPrefix))
+            .Select(r => r.ReservationNumber)
+            .ToListAsync();
         int next = 1;
-        foreach (var value in existing)
+        foreach (var value in values)
         {
-            if (value != null && value.Length > seriesPrefix.Length &&
+            if (value.Length > seriesPrefix.Length &&
                 int.TryParse(value.AsSpan(seriesPrefix.Length), out var parsed) && parsed >= next)
                 next = parsed + 1;
         }

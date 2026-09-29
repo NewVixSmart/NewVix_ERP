@@ -1,15 +1,46 @@
+# ============================================
+# Local / single-host production-shaped stack.
+#
+# The build context is ALWAYS the repo root, never src/NewVixSmart.Web:
+# src/NewVixSmart.Web/Dockerfile copies global.json and
+# aspire/Vix.ServiceDefaults from the root. Same for .github/workflows/ci.yml.
+# ============================================
+
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04
+    restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "${SQL_SA_PASSWORD:?SQL_SA_PASSWORD (SQL Server SA password) must be set in gitignored .env}"
+      # MSSQL_SA_PASSWORD is the name Microsoft's own image reads. The old
+      # SA_PASSWORD spelling is the deprecated alias; using it here made this
+      # file disagree with .github/workflows/ci.yml, which already used the
+      # modern name, i.e. two definitions of the same database.
+      #
+      # ROTATION: editing .env is NOT a rotation. master.mdf persists in the
+      # sqlserver-data volume, so the server keeps the password it was
+      # initialised with and only the app picks up the new one, producing
+      # "Login failed for user 'sa'". Rotate with ALTER LOGIN instead:
+      #   docker compose exec -T db /opt/mssql-tools/bin/sqlcmd \
+      #     -S localhost -U sa -P "$OLD_PASSWORD" -b \
+      #     -Q "ALTER LOGIN [sa] WITH PASSWORD = '<NEW_PASSWORD>'"
+      # then update .env, then: docker compose up -d
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?SQL_SA_PASSWORD (SQL Server SA password) must be set in gitignored .env}"
     ports:
-      - "1433:1433"
+      # Loopback only. The old "1433:1433" published SQL Server on every
+      # interface, so anyone on the LAN could reach the database with the very
+      # password the application authenticates with. The web service connects
+      # over the compose network as "Server=db,1433" and does not need this
+      # mapping at all - it exists only for host-side SSMS / sqlcmd. Delete the
+      # whole ports: block if you do not need those tools.
+      - "127.0.0.1:1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
+      # Backups land HERE, in a Docker volume on this host. Nothing copies them
+      # off-box automatically - see the backup section in README.md.
+      - sqlserver-backup:/var/opt/mssql/backup
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${SA_PASSWORD}" -Q "SELECT 1" || exit 1
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" || exit 1
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,6 +50,7 @@ services:
     build:
       context: .
       dockerfile: src/NewVixSmart.Web/Dockerfile
+    restart: unless-stopped
     ports:
       - "8080:80"
     depends_on:
@@ -39,5 +71,63 @@ services:
       retries: 3
       start_period: 30s
 
+  # ---------------------------------------------------------------
+  # Scheduled backups - opt-in, NOT started by a plain `up -d`.
+  #   docker compose --profile backup up -d db-backup
+  # This container is only the sqlcmd CLIENT; the BACKUP itself is executed by
+  # the db server, so the .bak files are created by the SQL Server process.
+  #
+  # One-time prerequisite (the volume mount point is created root-owned, and
+  # SQL Server runs as uid 10001):
+  #   docker compose exec -u root db mkdir -p /var/opt/mssql/backup
+  #   docker compose exec -u root db chown mssql:mssql /var/opt/mssql/backup
+  # scripts/backup-db-container.ps1 performs this automatically.
+  #
+  # For a one-shot backup without a long-running loop, use that script instead.
+  # ---------------------------------------------------------------
+  db-backup:
+    profiles: ["backup"]
+    image: mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04
+    restart: unless-stopped
+    # Root only so the loop can fix the ownership of the volume mount point,
+    # which Docker creates root-owned while SQL Server runs as uid 10001. This
+    # container is a client: it only runs sqlcmd and find, and the BACKUP itself
+    # is executed by the db server. It has no published ports and no data of its
+    # own, so the blast radius is a bash loop from a pinned Microsoft image.
+    user: "0:0"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?SQL_SA_PASSWORD (SQL Server SA password) must be set in gitignored .env}"
+      DB_NAME: NewVixSmartDb
+      BACKUP_DIR: /var/opt/mssql/backup
+      RETAIN_DAYS: "14"
+      BACKUP_INTERVAL_SECONDS: "86400"
+    volumes:
+      - sqlserver-backup:/var/opt/mssql/backup
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -u
+        mkdir -p "$BACKUP_DIR"
+        chown mssql:mssql "$BACKUP_DIR" 2>/dev/null || chown 10001:0 "$BACKUP_DIR"
+        chmod 750 "$BACKUP_DIR"
+        echo "[$(date -u +%FT%TZ)] db-backup: target=${BACKUP_DIR} retention=${RETAIN_DAYS}d interval=${BACKUP_INTERVAL_SECONDS}s"
+        while true; do
+          ts="$(date -u +%Y%m%d_%H%M%S)"
+          file="${BACKUP_DIR}/${DB_NAME}_${ts}.bak"
+          if /opt/mssql-tools/bin/sqlcmd -S db -U sa -P "$${MSSQL_SA_PASSWORD}" -b \
+               -Q "BACKUP DATABASE [${DB_NAME}] TO DISK = N'${file}' WITH INIT, FORMAT, COMPRESSION"; then
+            echo "[$(date -u +%FT%TZ)] db-backup: wrote ${file}"
+          else
+            echo "[$(date -u +%FT%TZ)] db-backup: ERROR - BACKUP DATABASE failed (see above)"
+          fi
+          find "$BACKUP_DIR" -maxdepth 1 -type f -name "${DB_NAME}_*.bak" -mtime "+${RETAIN_DAYS}" -print -delete || true
+          sleep "$BACKUP_INTERVAL_SECONDS"
+        done
+
 volumes:
   sqlserver-data:
+  sqlserver-backup:

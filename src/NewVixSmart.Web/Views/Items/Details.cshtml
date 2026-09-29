@@ -22,6 +22,7 @@
             <div class="card-header"><i class="bi bi-info-circle"></i> معلومات الصنف</div>
             <div class="card-body">
                 <table class="table table-borderless mb-0">
+                    <caption class="visually-hidden">معلومات الصنف: الكود، الاسم، نوع الصنف، قابل للبيع، التصنيف، وحدة العدد، وحدة الكمية، الحالة</caption>
                     <tr><th scope="row" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
                     <tr><th scope="row">الاسم</th><td>@Model.Name</td></tr>
                     <tr>
@@ -42,6 +43,7 @@
             <div class="card-header"><i class="bi bi-boxes"></i> المخزون</div>
             <div class="card-body">
                 <table class="table table-borderless mb-0">
+                    <caption class="visually-hidden">المخزون: الرصيد الحالي (عدد وكمية)، الحد الأدنى (عدد وكمية)، الحالة، تاريخ الإنشاء</caption>
                     <tr>
                         <th scope="row" style="width:40%">الرصيد الحالي (عدد)</th>
                         <td class="fw-bold">@Model.CurrentCount @(Model.CountUnit?.Name ?? "")</td>

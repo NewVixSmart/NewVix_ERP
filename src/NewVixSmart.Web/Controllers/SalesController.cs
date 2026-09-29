@@ -100,12 +100,8 @@ var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s
             .AsNoTracking();
 
         SaleInvoice? invoice;
-        if (Guid.TryParse(id, out var publicId))
-            invoice = await query.FirstOrDefaultAsync(s => s.PublicId == publicId);
-        else if (int.TryParse(id, out var numericId))
-            invoice = await query.FirstOrDefaultAsync(s => s.Id == numericId);
-        else
-            return NotFound();
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        invoice = await query.FirstOrDefaultAsync(s => s.PublicId == publicId);
 
         if (invoice == null) return NotFound();
         return View(invoice);

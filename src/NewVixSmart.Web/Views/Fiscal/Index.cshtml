@@ -26,6 +26,7 @@
     </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
+            <caption class="visually-hidden">السنين المالية وحالة كل سنة وعدد قيود الإقفال وصافي الدخل المجمّع</caption>
             <thead>
                 <tr>
                     <th scope="col">السنة</th>
@@ -57,9 +58,9 @@
                             @if (row.IsClosed)
                             {
                                 if (row.NetIncome >= 0)
-                                { <span class="text-success">@row.NetIncome.ToString("N2")</span> }
+                                { <span class="text-success">@Money.Format(row.NetIncome)</span> }
                                 else
-                                { <span class="text-danger">@row.NetIncome.ToString("N2")</span> }
+                                { <span class="text-danger">@Money.Format(row.NetIncome)</span> }
                             }
                             else
                             { <span class="text-muted">—</span> }

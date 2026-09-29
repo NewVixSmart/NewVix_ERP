@@ -38,6 +38,7 @@
         <div class="card-header"><i class="bi bi-list-ul"></i> الأصناف المرتجعة</div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0" id="itemsTable">
+                <caption class="visually-hidden">الأصناف المرتجعة للعميل المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
                 <thead>
                     <tr>
                         <th scope="col" style="width:25%">الصنف</th>
@@ -55,9 +56,9 @@
                             @foreach (var item in (List<NewVixSmart.Web.Models.Core.Item>)ViewBag.Items)
                             { <option value="@item.Id">@item.Name</option> }
                         </select></td>
-                        <td><input name="items[0].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-                        <td><input name="items[0].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-                        <td><input name="items[0].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+                        <td><input name="items[0].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
+                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
+                        <td><input name="items[0].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
                         <td><span class="total fw-bold">0.00</span></td>
                         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                     </tr>
@@ -91,9 +92,9 @@
         const options = firstRow?.querySelector('.item-select')?.innerHTML ?? '<option value="">—</option>';
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
-            <td><input name="items[${rowIndex}].Count" type="number" step="0.01" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-            <td><input name="items[${rowIndex}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-            <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+            <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
+            <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
+            <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
             <td><span class="total fw-bold">0.00</span></td>
             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;
         tbody.appendChild(tr);

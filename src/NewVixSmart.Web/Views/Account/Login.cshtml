@@ -129,14 +129,14 @@
                 }
 
                 <form class="lg-form" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
-                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                    <div asp-validation-summary="All" class="text-danger mb-3" role="alert" tabindex="-1"></div>
                     <div class="lg-field">
                         <label asp-for="Username" class="form-label"></label>
                         <div class="lg-control">
                             <span class="lg-control__icon" aria-hidden="true"><i class="bi bi-person"></i></span>
                             <input asp-for="Username" class="form-control lg-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
                         </div>
-                        <span asp-validation-for="Username" class="text-danger small"></span>
+                        <span asp-validation-for="Username" class="text-danger small" aria-invalid="true"></span>
                     </div>
                     <div class="lg-field">
                         <label asp-for="Password" class="form-label"></label>
@@ -147,7 +147,7 @@
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </button>
                         </div>
-                        <span asp-validation-for="Password" class="text-danger small"></span>
+                        <span asp-validation-for="Password" class="text-danger small" aria-invalid="true"></span>
                     </div>
                     <div class="lg-actions">
                         <div class="form-check">

@@ -25,13 +25,14 @@
 </div></div>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات (من عملاء)</div><h3 class="mb-0 text-success">@Model.TotalReceipts.ToString("N2")</h3><small class="text-muted">@Model.ReceiptCount عملية</small></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات (لموردين)</div><h3 class="mb-0 text-danger">@Model.TotalDisbursements.ToString("N2")</h3><small class="text-muted">@Model.DisbursementCount عملية</small></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">الصافي</div><h3 class="mb-0 @(Model.Balance >= 0 ? "text-success" : "text-danger")">@Model.Balance.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات (من عملاء)</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalReceipts)</h3><small class="text-muted">@Model.ReceiptCount عملية</small></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات (لموردين)</div><h3 class="mb-0 text-danger">@Money.Format(Model.TotalDisbursements)</h3><small class="text-muted">@Model.DisbursementCount عملية</small></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">الصافي</div><h3 class="mb-0 @(Model.Balance >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.Balance)</h3></div></div>
 </div>
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">حركات المقبوضات والمصروفات في الفترة: الإيصال والنوع والطرف والمبلغ والطريقة</caption>
         <thead><tr><th scope="col">الإيصال</th><th scope="col">النوع</th><th scope="col">العميل/المورد</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th><th scope="col">التاريخ</th></tr></thead>
         <tbody>
             @foreach (var p in Model.Payments)

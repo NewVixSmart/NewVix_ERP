@@ -80,8 +80,14 @@ public class StockReservationsController : Controller
 
         foreach (var line in vm.StandaloneItems)
         {
-            line.Quantity = decimal.Round(line.Quantity, 2);
-            line.Count = decimal.Round(line.Count, 2);
+            if (!TryQuantize(line.Quantity, out var quantity)
+                || !TryQuantize(line.Count, out var count))
+            {
+                TempData["Error"] = QuantityStepError;
+                return await Create();
+            }
+            line.Quantity = quantity;
+            line.Count = count;
             if (line.Quantity < 0 || line.Count < 0)
             {
                 TempData["Error"] = "الكميات لا يمكن أن تكون بالسالب";
@@ -117,6 +123,39 @@ public class StockReservationsController : Controller
 
         TempData["Success"] = $"تم إنشاء الحجز {created!.ReservationNumber}";
         return RedirectToAction(nameof(Details), new { id = created.PublicId });
+    }
+
+    /// <summary>
+    /// Operator-facing message for a posted quantity that is finer than the grid can store.
+    /// </summary>
+    private const string QuantityStepError =
+        "الكمية والعدد يجب أن تكونا بأربع خانات عشرية كحدٍّ أقصى — أصغر خطوة يمكن تسجيلها هي 0.0001";
+
+    /// <summary>
+    /// The window this input check allows around the grid: none, deliberately.
+    /// <para>
+    /// This is not <see cref="DeliveryOpenLines.QuantityTolerance"/>, and it must never be replaced by
+    /// it. That constant answers "is this physical line finished?" and its half-step window absorbs
+    /// arithmetic that has already passed through a lossy step. This check asks "is what the operator
+    /// typed a value this store can hold?", and nothing legitimate arrives off-grid here: the posted
+    /// figure comes from a field whose <c>step</c> is 0.0001, so the browser has already constrained it
+    /// to multiples of that step, and <c>decimal(18,4)</c> holds one quantum exactly. A tolerance could
+    /// only ever rewrite a figure the operator did not type — and as a check it would be unreachable, a
+    /// decimal being never further than half a step from the nearest grid point.
+    /// </para>
+    /// </summary>
+    private const decimal InputGridTolerance = 0m;
+
+    /// <summary>
+    /// Confirms one posted quantity or count is already on the store's own grid, and hands it back
+    /// unchanged. <c>StockReservationLine.Quantity</c>/<c>Count</c> are <c>decimal(18,4)</c>, so the grid
+    /// is 0.0001, and <c>decimal</c> being base ten makes every multiple of it exactly representable —
+    /// the comparison against the rounded value is an exact test of divisibility, not an approximation.
+    /// </summary>
+    private static bool TryQuantize(decimal value, out decimal onGrid)
+    {
+        onGrid = decimal.Round(value, DecimalPrecision.QuantityScale, MidpointRounding.AwayFromZero);
+        return Math.Abs(value - onGrid) <= InputGridTolerance;
     }
 
     [HttpPost, ValidateAntiForgeryToken]

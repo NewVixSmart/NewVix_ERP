@@ -11,7 +11,7 @@
 
 <form asp-action="SaveBranding" method="post" enctype="multipart/form-data" class="row g-4" data-loading-submit data-loading-text="جاري الحفظ...">
     @Html.AntiForgeryToken()
-    <div asp-validation-summary="All" class="text-danger"></div>
+    <div asp-validation-summary="All" class="text-danger" role="alert" tabindex="-1"></div>
 
     <div class="col-12 col-lg-6">
         <div class="card h-100">
@@ -22,7 +22,7 @@
                 <div class="mb-3">
                     <label asp-for="CompanyName" class="form-label"></label>
                     <input asp-for="CompanyName" class="form-control" />
-                    <span asp-validation-for="CompanyName" class="text-danger small"></span>
+                    <span asp-validation-for="CompanyName" class="text-danger small" aria-invalid="true"></span>
                 </div>
                 <div class="mb-3">
                     <label asp-for="Tagline" class="form-label"></label>
@@ -131,30 +131,30 @@
 
                 <div class="row g-3 mb-4">
                     <div class="col-6 col-md-3">
-                        <label asp-for="Primary" class="form-label">اللون الأساسي</label>
+                        <label class="form-label" for="PrimaryHex">اللون الأساسي</label>
                         <div class="input-group">
-                            <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" />
+                            <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" aria-hidden="true" tabindex="-1" />
                             <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#2e6fd8" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <label asp-for="Accent" class="form-label">لون التمييز</label>
+                        <label class="form-label" for="AccentHex">لون التمييز</label>
                         <div class="input-group">
-                            <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" />
+                            <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" aria-hidden="true" tabindex="-1" />
                             <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#5bc8e8" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <label asp-for="SidebarBg" class="form-label">لون الشريط الجانبي</label>
+                        <label class="form-label" for="SidebarBgHex">لون الشريط الجانبي</label>
                         <div class="input-group">
-                            <input asp-for="SidebarBg" type="color" class="form-control form-control-color" title="لون الشريط الجانبي" />
+                            <input asp-for="SidebarBg" type="color" class="form-control form-control-color" title="لون الشريط الجانبي" aria-hidden="true" tabindex="-1" />
                             <input id="SidebarBgHex" name="SidebarBg" type="text" class="form-control" placeholder="#0d1b35" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <label asp-for="PageBg" class="form-label">لون خلفية الصفحات</label>
+                        <label class="form-label" for="PageBgHex">لون خلفية الصفحات</label>
                         <div class="input-group">
-                            <input asp-for="PageBg" type="color" class="form-control form-control-color" title="لون خلفية الصفحات" />
+                            <input asp-for="PageBg" type="color" class="form-control form-control-color" title="لون خلفية الصفحات" aria-hidden="true" tabindex="-1" />
                             <input id="PageBgHex" name="PageBg" type="text" class="form-control" placeholder="#f8f8fa" />
                         </div>
                     </div>

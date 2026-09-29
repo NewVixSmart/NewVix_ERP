@@ -85,12 +85,8 @@ public class PurchasesController : Controller
             .AsNoTracking();
 
         PurchaseInvoice? invoice;
-        if (Guid.TryParse(id, out var publicId))
-            invoice = await query.FirstOrDefaultAsync(p => p.PublicId == publicId);
-        else if (int.TryParse(id, out var numericId))
-            invoice = await query.FirstOrDefaultAsync(p => p.Id == numericId);
-        else
-            return NotFound();
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        invoice = await query.FirstOrDefaultAsync(p => p.PublicId == publicId);
 
         if (invoice == null) return NotFound();
         return View(invoice);

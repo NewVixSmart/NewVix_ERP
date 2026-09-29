@@ -16,6 +16,20 @@ namespace NewVixSmart.Web.Api;
 [IgnoreAntiforgeryToken]
 public class TokensController : ControllerBase
 {
+    /// <summary>
+    /// A bearer token is a bearer credential with no revocation channel of its own, so the
+    /// damage window of a stolen copy is exactly its remaining lifetime. 15 minutes keeps that
+    /// window small enough that a leak is a nuisance rather than a quarter of a shift, and
+    /// <see cref="AccountController.Logout"/> rotates the security stamp, which invalidates every
+    /// outstanding token for the user through the TokenStampChecks comparison in the JwtBearer
+    /// OnTokenValidated event. Both properties are needed: a short TTL limits the theft that
+    /// happens while the user is still logged in, the stamp rotation limits what survives logout.
+    /// </summary>
+    private const int DefaultAccessTokenMinutes = 15;
+
+    /// <summary>Hard ceiling so a misconfigured Jwt__AccessTokenMinutes cannot silently reinstate a long-lived token.</summary>
+    private const int MaxAccessTokenMinutes = 60;
+
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IConfiguration _configuration;
 
@@ -63,11 +77,15 @@ public class TokensController : ControllerBase
             _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key not configured")));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var accessTokenMinutes = Math.Clamp(
+            _configuration.GetValue("Jwt:AccessTokenMinutes", DefaultAccessTokenMinutes),
+            1, MaxAccessTokenMinutes);
+
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddMinutes(accessTokenMinutes),
             signingCredentials: creds);
 
         return Ok(new TokenResponse

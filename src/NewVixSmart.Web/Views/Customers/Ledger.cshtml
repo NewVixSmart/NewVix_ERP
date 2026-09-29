@@ -16,11 +16,11 @@
 
 <div class="card mb-3"><div class="card-body py-2">
     <div class="row g-3 small">
-        <div class="col"><span class="text-muted">رصيد افتتاحي:</span> <strong>@Model.Customer?.OpeningBalance.ToString("N2")</strong></div>
-        <div class="col"><span class="text-muted">إجمالي الفواتير:</span> <strong>@Model.Invoices.Sum(i => i.NetAmount).ToString("N2")</strong></div>
-        <div class="col"><span class="text-muted">إجمالي المقبوضات:</span> <strong>@Model.Payments.Where(p => p.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt).Sum(p => p.Amount).ToString("N2")</strong></div>
-        <div class="col"><span class="text-muted">إجمالي المرتجعات:</span> <strong>@Model.Returns.Sum(r => r.TotalAmount).ToString("N2")</strong></div>
-        <div class="col"><span class="text-muted">قيمة غير مسلَّم (غير محسوبة في الرصيد):</span> <strong>@Model.PendingValueTotal.ToString("N2")</strong></div>
+        <div class="col"><span class="text-muted">رصيد افتتاحي:</span> <strong>@(Model.Customer != null ? Money.Format(Model.Customer.OpeningBalance) : "—")</strong></div>
+        <div class="col"><span class="text-muted">إجمالي الفواتير:</span> <strong>@Money.Format(Model.InvoicesTotal)</strong></div>
+        <div class="col"><span class="text-muted">إجمالي المقبوضات:</span> <strong>@Money.Format(Model.ReceiptsTotal)</strong></div>
+        <div class="col"><span class="text-muted">إجمالي المرتجعات:</span> <strong>@Money.Format(Model.ReturnsTotal)</strong></div>
+        <div class="col"><span class="text-muted">قيمة غير مسلَّم (غير محسوبة في الرصيد):</span> <strong>@Money.Format(Model.PendingValueTotal)</strong></div>
         <div class="col"><span class="text-muted">التواصل:</span> <strong>@(Model.Customer?.Phone ?? "—")</strong></div>
     </div>
 </div></div>
@@ -28,14 +28,14 @@
 <div class="row g-4">
     <div class="col-lg-6">
         <div class="card"><div class="card-header"><i class="bi bi-cart-check"></i> فواتير البيع</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
-            <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td>@i.NetAmount.ToString("N2")</td><td>@i.PaidAmount.ToString("N2")</td></tr> }</tbody></table>
+            <table class="table table-hover mb-0"><caption class="visually-hidden">فواتير البيع: رقم الفاتورة، التاريخ، المبلغ، المدفوع</caption><thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
+            <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td>@Money.Format(i.NetAmount)</td><td>@Money.Format(i.PaidAmount)</td></tr> }</tbody></table>
         </div></div>
     </div>
     <div class="col-lg-6">
         <div class="card"><div class="card-header"><i class="bi bi-wallet2"></i> المدفوعات (المقبوضات)</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
-            <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">@p.Amount.ToString("N2")</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody></table>
+            <table class="table table-hover mb-0"><caption class="visually-hidden">المدفوعات (المقبوضات): رقم الإيصال، التاريخ، المبلغ، طريقة الدفع</caption><thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
+            <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">@Money.Format(p.Amount)</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody></table>
         </div></div>
     </div>
 </div>
@@ -43,8 +43,8 @@
 <div class="card mt-4"><div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-arrow-counterclockwise"></i> مرتجعات البيع</span>
     </div><div class="card-body p-0">
-    <table class="table table-hover mb-0"><thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
-    <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">-@r.TotalAmount.ToString("N2")</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody></table>
+    <table class="table table-hover mb-0"><caption class="visually-hidden">مرتجعات البيع: رقم المرتجع، التاريخ، المبلغ</caption><thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
+    <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">-@Money.Format(r.TotalAmount)</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody></table>
 </div></div>
 
 <div class="card mt-4">
@@ -76,7 +76,7 @@
                             <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
                             <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
                             <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
-                            <td>@l.PendingValue.ToString("N2")</td>
+                            <td>@Money.Format(l.PendingValue)</td>
                         </tr>
                     }
                     @if (Model.PendingLines.Count > 10)
@@ -88,7 +88,7 @@
                 {
                     <tfoot><tr class="fw-bold">
                         <th scope="row" colspan="7">إجمالي قيمة غير المسلَّم (غير محسوبة في رصيد الذمم)</th>
-                        <td>@Model.PendingValueTotal.ToString("N2")</td>
+                        <td>@Money.Format(Model.PendingValueTotal)</td>
                     </tr></tfoot>
                 }
             </table>

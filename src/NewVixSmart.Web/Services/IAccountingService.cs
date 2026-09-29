@@ -17,8 +17,13 @@ public interface IAccountingService
     Task RecordPurchaseReturnAsync(DateTime entryDate, decimal amount, string? user, int? branchId = null);
     Task RecordSaleReturnWithCostAsync(DateTime entryDate, int sourceId, int customerId, decimal valueAmount, decimal costAmount, string? user, int? branchId = null, decimal taxAmount = 0m);
     Task RecordPurchaseReturnWithCostAsync(DateTime entryDate, int sourceId, int supplierId, decimal valueAmount, decimal costAmount, string? user, int? branchId = null);
-    Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null);
-    Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null);
-    Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null);
+    Task RecordOpeningStockAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null);
+    Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null);
+    /// <summary>
+    /// يرحّل قيدًا مزدوجًا متوازنًا. <paramref name="entryNumber"/> اختياري: عند تركه فارغًا
+    /// يولّد النظام رقم القيد من سلسلة دفتر الأستاذ، وعند تمريره يُحفظ الرقم كما هو لأن هوية
+    /// المستند من ملكية المستدعي (استيراد قيد مثلًا) ولا يجوز أن يغيّرها النظام.
+    /// </summary>
+    Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null, string? entryNumber = null);
     Task<JournalEntry?> GetEntryForSourceAsync(JournalSource source, int sourceId);
 }

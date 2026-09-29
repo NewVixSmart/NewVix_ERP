@@ -88,7 +88,25 @@ dotnet_diagnostic.CA1848.severity = suggestion    # LoggerMessage delegates
 dotnet_diagnostic.CA1305.severity = suggestion    # StringComparison / IFormatProvider must be explicit
 dotnet_diagnostic.CA1861.severity = suggestion    # no constant arrays as arguments
 dotnet_diagnostic.CA1852.severity = suggestion    # seal internal types
-dotnet_diagnostic.IDE0055.severity = none         # formatting is enforced by dotnet format in CI, not the build
+# NOT enforced anywhere today, on purpose. There is no `dotnet format --verify-no-changes`
+# step in .github/workflows/ci.yml and no EnforceCodeStyleInBuild, because neither
+# passes on the current tree (measured 2026-09-29 on a Release build):
+#   dotnet format NewVixSmart.slnx --verify-no-changes --no-restore  ->  exit 2,
+#   13922 findings across 236 .cs files:
+#     ENDOFLINE    12224 findings /  69 files  (working tree is CRLF on this
+#                                                  checkout; goes away once
+#                                                  .gitattributes is renormalised)
+#     IDE0011       1132 findings /  92 files  (add braces)
+#     WHITESPACE     268 findings /  23 files
+#     FINALNEWLINE   107 findings / 107 files
+#     CHARSET         81 findings /  81 files
+#     IDE1006         53 findings /  30 files  (naming)
+#     IDE0161         37 findings /  37 files  (file-scoped namespace)
+#     IMPORTS         18 findings /  18 files
+#     IDE0065          2 findings /   2 files
+# Turning this on is a whole-tree reformat, so it needs its own change. Until
+# then this rule is guidance for new code, not a gate.
+dotnet_diagnostic.IDE0055.severity = none
 
 # --- historical migrations are frozen: they describe schemas that no longer exist
 [{src,tests}/**/Migrations/*.cs]

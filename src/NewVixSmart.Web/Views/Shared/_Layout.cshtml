@@ -75,10 +75,13 @@
             </div>
             <div class="nav-empty" data-nav-empty hidden>لا توجد نتائج مطابقة</div>
             <div class="nav-section">الرئيسية</div>
-            <a class="nav-link nav-link-home @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "page" : null)" aria-label="لوحة التحكم" asp-controller="Home" asp-action="Index">
-                <i class="bi bi-house-door" aria-hidden="true"></i>
-                <span class="nav-link-text">لوحة التحكم</span>
-            </a>
+            @if (await Perm.HasAsync("Reports.Dashboard"))
+            {
+                <a class="nav-link nav-link-home @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "page" : null)" aria-label="لوحة التحكم" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-house-door" aria-hidden="true"></i>
+                    <span class="nav-link-text">لوحة التحكم</span>
+                </a>
+            }
 
             @if (await Perm.HasAnyAsync("Sales.View", "SalesQuotes.View", "SalesOrders.View", "DeliveryOrders.View", "SaleReturns.View", "Batch.SalesCreate", "Customers.View"))
             {
@@ -194,7 +197,7 @@
                 </div>
             }
 
-            @if (await Perm.HasAnyAsync("Items.View", "Stock.View", "StockReport.View", "InventoryAdjustments.View", "Warehouses.View", "StockTransfers.View", "StockReservations.View", "DeliveryIssues.View", "Batch.AdjustmentCreate"))
+            @if (await Perm.HasAnyAsync("Items.View", "Stock.View", "StockReport.View", "LowStock.View", "InventoryAdjustments.View", "Warehouses.View", "StockTransfers.View", "StockReservations.View", "DeliveryIssues.View", "Batch.AdjustmentCreate"))
             {
                 <div class="nav-group" data-group="stock">
                     <button type="button" class="nav-group-header" aria-expanded="true" aria-controls="nav-stock" aria-label="المخزون" title="المخزون">
@@ -275,7 +278,7 @@
                                     <span class="nav-link-text">تقرير المخزون</span>
                                 </a>
                             }
-                            @if (await Perm.HasAnyAsync("Stock.View", "LowStock.View"))
+                            @if (await Perm.HasAsync("LowStock.View"))
                             {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Stock" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStock" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Stock" && ViewContext.RouteData.Values["action"]?.ToString() == "LowStock" ? "page" : null)" aria-label="انخفاض المخزون" asp-controller="Stock" asp-action="LowStock">
                                     <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
@@ -287,7 +290,7 @@
                 </div>
             }
 
-            @if (await Perm.HasAsync("Reports.View"))
+            @if (await Perm.HasAnyAsync("Reports.View", "Reports.Dashboard", "AuditLedger.View", "Aging.View"))
             {
                 <div class="nav-group" data-group="reports">
                     <button type="button" class="nav-group-header" aria-expanded="true" aria-controls="nav-reports" aria-label="التقارير" title="التقارير">
@@ -304,26 +307,29 @@
                                     <span class="nav-link-text">لوحة التقارير</span>
                                 </a>
                             }
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "page" : null)" aria-label="قائمة التقارير" asp-controller="Reports" asp-action="Index">
-                                <i class="bi bi-list-ul" aria-hidden="true"></i>
-                                <span class="nav-link-text">قائمة التقارير</span>
-                            </a>
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Sales" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Sales" ? "page" : null)" aria-label="تقرير المبيعات" asp-controller="Reports" asp-action="Sales">
-                                <i class="bi bi-cart-check" aria-hidden="true"></i>
-                                <span class="nav-link-text">تقرير المبيعات</span>
-                            </a>
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Purchases" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Purchases" ? "page" : null)" aria-label="تقرير المشتريات" asp-controller="Reports" asp-action="Purchases">
-                                <i class="bi bi-cart-dash" aria-hidden="true"></i>
-                                <span class="nav-link-text">تقرير المشتريات</span>
-                            </a>
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Payments" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Payments" ? "page" : null)" aria-label="تقرير المدفوعات" asp-controller="Reports" asp-action="Payments">
-                                <i class="bi bi-wallet2" aria-hidden="true"></i>
-                                <span class="nav-link-text">تقرير المدفوعات</span>
-                            </a>
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "CashFlow" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "CashFlow" ? "page" : null)" aria-label="التدفق النقدي" asp-controller="Reports" asp-action="CashFlow">
-                                <i class="bi bi-cash-stack" aria-hidden="true"></i>
-                                <span class="nav-link-text">التدفق النقدي</span>
-                            </a>
+                            @if (await Perm.HasAsync("Reports.View"))
+                            {
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "page" : null)" aria-label="قائمة التقارير" asp-controller="Reports" asp-action="Index">
+                                    <i class="bi bi-list-ul" aria-hidden="true"></i>
+                                    <span class="nav-link-text">قائمة التقارير</span>
+                                </a>
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Sales" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Sales" ? "page" : null)" aria-label="تقرير المبيعات" asp-controller="Reports" asp-action="Sales">
+                                    <i class="bi bi-cart-check" aria-hidden="true"></i>
+                                    <span class="nav-link-text">تقرير المبيعات</span>
+                                </a>
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Purchases" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Purchases" ? "page" : null)" aria-label="تقرير المشتريات" asp-controller="Reports" asp-action="Purchases">
+                                    <i class="bi bi-cart-dash" aria-hidden="true"></i>
+                                    <span class="nav-link-text">تقرير المشتريات</span>
+                                </a>
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Payments" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Payments" ? "page" : null)" aria-label="تقرير المدفوعات" asp-controller="Reports" asp-action="Payments">
+                                    <i class="bi bi-wallet2" aria-hidden="true"></i>
+                                    <span class="nav-link-text">تقرير المدفوعات</span>
+                                </a>
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "CashFlow" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "CashFlow" ? "page" : null)" aria-label="التدفق النقدي" asp-controller="Reports" asp-action="CashFlow">
+                                    <i class="bi bi-cash-stack" aria-hidden="true"></i>
+                                    <span class="nav-link-text">التدفق النقدي</span>
+                                </a>
+                            }
                             @if (await Perm.HasAsync("AuditLedger.View"))
                             {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "AuditLedger" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "AuditLedger" ? "page" : null)" aria-label="سجل التدقيق" asp-controller="Reports" asp-action="AuditLedger">
@@ -331,12 +337,15 @@
                                     <span class="nav-link-text">سجل التدقيق</span>
                                 </a>
                             }
-                            @if (await Perm.HasAsync("Reports.View"))
+                            @if (await Perm.HasAsync("Aging.View"))
                             {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Aging" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Aging" ? "page" : null)" aria-label="أعمار الذمم" asp-controller="Reports" asp-action="Aging">
                                     <i class="bi bi-hourglass-split" aria-hidden="true"></i>
                                     <span class="nav-link-text">أعمار الذمم</span>
                                 </a>
+                            }
+                            @if (await Perm.HasAsync("Reports.View"))
+                            {
                                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "BudgetVariance" ? "active" : "")" aria-current="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "BudgetVariance" ? "page" : null)" aria-label="واريانس الميزانية" asp-controller="Reports" asp-action="BudgetVariance">
                                     <i class="bi bi-graph-up" aria-hidden="true"></i>
                                     <span class="nav-link-text">واريانس الميزانية</span>

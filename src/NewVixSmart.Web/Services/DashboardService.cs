@@ -140,43 +140,63 @@ public class DashboardService : IDashboardService
     {
         var today = DateTime.Today;
 
-        var sales = _db.SaleInvoices
+        var saleOpen = await OpenAmountRule.SaleOpenByInvoiceAsync(_db);
+        var saleDueDates = await _db.SaleInvoices
             .AsNoTracking()
-            .Select(s => new { s.NetAmount, s.PaidAmount, s.InvoiceDate, s.DueDate })
-            .Where(s => s.NetAmount - s.PaidAmount > 0.005m);
-        var purchases = _db.PurchaseInvoices
+            .Select(s => new { s.Id, s.DueDate, s.InvoiceDate })
+            .ToListAsync();
+        var sales = DueAlerts(
+            saleDueDates
+                .Where(s => saleOpen.GetValueOrDefault(s.Id) > OpenAmountRule.OpenTolerance)
+                .Select(s => (Due: (s.DueDate ?? s.InvoiceDate).Date, Open: saleOpen[s.Id])),
+            today);
+
+        var purchaseOpen = await OpenAmountRule.PurchaseOpenByInvoiceAsync(_db);
+        var purchaseDueDates = await _db.PurchaseInvoices
             .AsNoTracking()
-            .Select(p => new { p.NetAmount, p.PaidAmount, p.InvoiceDate, p.DueDate })
-            .Where(p => p.NetAmount - p.PaidAmount > 0.005m);
+            .Select(p => new { p.Id, p.DueDate, p.InvoiceDate })
+            .ToListAsync();
+        var purchases = DueAlerts(
+            purchaseDueDates
+                .Where(p => purchaseOpen.GetValueOrDefault(p.Id) > OpenAmountRule.OpenTolerance)
+                .Select(p => (Due: (p.DueDate ?? p.InvoiceDate).Date, Open: purchaseOpen[p.Id])),
+            today);
 
-        var overdueSales = await sales
-            .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today)
-            .GroupBy(s => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(s => (s.NetAmount - s.PaidAmount)) })
-            .FirstOrDefaultAsync();
-        var dueSoonSales = await sales
-            .Where(s => (s.DueDate ?? s.InvoiceDate).Date >= today && (s.DueDate ?? s.InvoiceDate).Date <= today.AddDays(7))
-            .GroupBy(s => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(s => (s.NetAmount - s.PaidAmount)) })
-            .FirstOrDefaultAsync();
-        var overduePurchases = await purchases
-            .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today)
-            .GroupBy(p => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(p => (p.NetAmount - p.PaidAmount)) })
-            .FirstOrDefaultAsync();
-        var dueSoonPurchases = await purchases
-            .Where(p => (p.DueDate ?? p.InvoiceDate).Date >= today && (p.DueDate ?? p.InvoiceDate).Date <= today.AddDays(7))
-            .GroupBy(p => 1)
-            .Select(g => new { Count = g.Count(), Total = g.Sum(p => (p.NetAmount - p.PaidAmount)) })
-            .FirstOrDefaultAsync();
-
-        vm.OverdueReceivableCount = overdueSales?.Count ?? 0;
-        vm.OverdueReceivableTotal = overdueSales?.Total ?? 0m;
-        vm.DueSoonReceivableCount = dueSoonSales?.Count ?? 0;
-        vm.DueSoonReceivableTotal = dueSoonSales?.Total ?? 0m;
-        vm.OverduePayableCount = overduePurchases?.Count ?? 0;
-        vm.OverduePayableTotal = overduePurchases?.Total ?? 0m;
-        vm.DueSoonPayableCount = dueSoonPurchases?.Count ?? 0;
-        vm.DueSoonPayableTotal = dueSoonPurchases?.Total ?? 0m;
+        vm.OverdueReceivableCount = sales.Overdue.Count;
+        vm.OverdueReceivableTotal = sales.Overdue.Total;
+        vm.DueSoonReceivableCount = sales.DueSoon.Count;
+        vm.DueSoonReceivableTotal = sales.DueSoon.Total;
+        vm.OverduePayableCount = purchases.Overdue.Count;
+        vm.OverduePayableTotal = purchases.Overdue.Total;
+        vm.DueSoonPayableCount = purchases.DueSoon.Count;
+        vm.DueSoonPayableTotal = purchases.DueSoon.Total;
     }
+
+    /// <summary>
+    /// The single bucketing all four due tiles are built from, so the receivable and the payable
+    /// side cannot drift apart. Every document reaches it priced through <see cref="OpenAmountRule"/>
+    /// — the same open amount the aging report and the payment allocation use — because
+    /// <c>NetAmount - PaidAmount</c> ignores a posted return and made this board disagree with
+    /// the ledger it was supposed to summarise.
+    /// </summary>
+    private static DueAlertTiles DueAlerts(IEnumerable<(DateTime Due, decimal Open)> rows, DateTime today)
+    {
+        int overdueCount = 0, dueSoonCount = 0;
+        decimal overdueTotal = 0m, dueSoonTotal = 0m;
+        var horizon = today.AddDays(7);
+
+        foreach (var (due, open) in rows)
+        {
+            if (due.Date < today) { overdueCount++; overdueTotal += open; }
+            else if (due.Date <= horizon) { dueSoonCount++; dueSoonTotal += open; }
+        }
+
+        return new DueAlertTiles(
+            new DueAlert(overdueCount, decimal.Round(overdueTotal, 2)),
+            new DueAlert(dueSoonCount, decimal.Round(dueSoonTotal, 2)));
+    }
+
+    private readonly record struct DueAlert(int Count, decimal Total);
+
+    private readonly record struct DueAlertTiles(DueAlert Overdue, DueAlert DueSoon);
 }

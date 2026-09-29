@@ -18,6 +18,7 @@
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
+                    <caption class="visually-hidden">وحدات القياس: الاسم، الاختصار، الوحدة الفرعية، الحالة</caption>
                     <thead><tr><th scope="col">الاسم</th><th scope="col">الاختصار</th><th scope="col">الوحدة الفرعية</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
                     <tbody>
                         @foreach (var u in Model.Units)
@@ -111,6 +112,7 @@
             </div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">
+                    <caption class="visually-hidden">الفروع: الرمز، الاسم، العنوان، الحالة</caption>
                     <thead><tr><th scope="col">الرمز</th><th scope="col">الاسم</th><th scope="col">العنوان</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
                     <tbody>
                         @foreach (var b in Model.Branches)
@@ -148,11 +150,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="addUnitModal" tabindex="-1">
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalTitle">
     <div class="modal-dialog">
         <form asp-action="AddUnit" method="post" class="modal-content">
             @Html.AntiForgeryToken()
-            <div class="modal-header"><h5 class="modal-title">وحدة قياس جديدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
+            <div class="modal-header"><h5 class="modal-title" id="addUnitModalTitle">وحدة قياس جديدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="addUnitName">اسم الوحدة</label><input name="Name" id="addUnitName" class="form-control" required maxlength="50" /></div>
                 <div class="mb-3"><label class="form-label" for="addUnitShort">الاختصار</label><input name="ShortName" id="addUnitShort" class="form-control" maxlength="20" placeholder="مثل: كجم" /></div>
@@ -165,12 +167,12 @@
     </div>
 </div>
 
-<div class="modal fade" id="editUnitModal" tabindex="-1">
+<div class="modal fade" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitModalTitle">
     <div class="modal-dialog">
         <form asp-action="UpdateUnit" method="post" class="modal-content">
             @Html.AntiForgeryToken()
             <input type="hidden" name="Id" id="editUnitId" />
-            <div class="modal-header"><h5 class="modal-title">تعديل الوحدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
+            <div class="modal-header"><h5 class="modal-title" id="editUnitModalTitle">تعديل الوحدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="editUnitName">اسم الوحدة</label><input name="Name" id="editUnitName" class="form-control" required maxlength="50" /></div>
                 <div class="mb-3"><label class="form-label" for="editUnitShort">الاختصار</label><input name="ShortName" id="editUnitShort" class="form-control" maxlength="20" /></div>
@@ -183,7 +185,7 @@
                         <label class="form-label" for="editUnitParent">الوحدة الأم</label>
                         <select name="ParentUnitId" id="editUnitParent" class="form-select">
                             <option value="">— بدون —</option>
-                            @foreach (var u in Model.Units.Where(x => x.SubUnits > 0 || x.ParentUnitId == null))
+                            @foreach (var u in Model.SelectableUnits)
                             {
                                 <option value="@u.Id" data-parent-of="@u.ParentUnitId">@u.Name</option>
                             }
@@ -203,11 +205,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="addBranchModal" tabindex="-1">
+<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalTitle">
     <div class="modal-dialog">
         <form asp-action="AddBranch" method="post" class="modal-content">
             @Html.AntiForgeryToken()
-            <div class="modal-header"><h5 class="modal-title">فرع جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
+            <div class="modal-header"><h5 class="modal-title" id="addBranchModalTitle">فرع جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="addBranchCode">رمز الفرع</label><input name="Code" id="addBranchCode" class="form-control" required maxlength="50" placeholder="مثل: BR-003" /></div>
                 <div class="mb-3"><label class="form-label" for="addBranchName">اسم الفرع</label><input name="Name" id="addBranchName" class="form-control" required maxlength="200" /></div>
@@ -221,12 +223,12 @@
     </div>
 </div>
 
-<div class="modal fade" id="editBranchModal" tabindex="-1">
+<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalTitle">
     <div class="modal-dialog">
         <form asp-action="UpdateBranch" method="post" class="modal-content">
             @Html.AntiForgeryToken()
             <input type="hidden" name="Id" id="editBranchId" />
-            <div class="modal-header"><h5 class="modal-title">تعديل الفرع</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
+            <div class="modal-header"><h5 class="modal-title" id="editBranchModalTitle">تعديل الفرع</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="editBranchCode">رمز الفرع</label><input name="Code" id="editBranchCode" class="form-control" required maxlength="50" /></div>
                 <div class="mb-3"><label class="form-label" for="editBranchName">اسم الفرع</label><input name="Name" id="editBranchName" class="form-control" required maxlength="200" /></div>

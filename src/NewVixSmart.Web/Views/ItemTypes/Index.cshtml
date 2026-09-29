@@ -15,6 +15,7 @@
     </div>
 }
 <table class="table table-hover mb-0" id="itemTypesTable" data-load="true">
+    <caption class="visually-hidden">أنواع الأصناف: الاسم، الحالة</caption>
     <thead><tr><th scope="col">الاسم</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
     <tbody>
         @foreach (var t in Model)
@@ -25,11 +26,11 @@
                 <td class="text-center">
                     @if (await Perm.HasAsync("Items.Edit"))
                     {
-                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-id="@t.Id" title="تعديل"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-id="@t.Id" title="تعديل" aria-label="تعديل @t.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                     }
                     @if (await Perm.HasAsync("Items.Delete"))
                     {
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-del" data-id="@t.Id" title="حذف"><i class="bi bi-trash"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-del" data-id="@t.Id" title="حذف" aria-label="حذف @t.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                     }
                 </td>
             </tr>

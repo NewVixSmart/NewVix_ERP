@@ -104,8 +104,8 @@
                                     <input type="hidden" name="items[@idx].ItemId" value="@line.ItemId" />
                                     <strong>@(line.Item?.Name != null ? line.Item.Name : (Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}"))</strong>
                                 </td>
-                                <td><input name="items[@idx].Count" type="number" step="0.01" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" /></td>
-                                <td><input name="items[@idx].Quantity" type="number" step="0.01" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" /></td>
+                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" /></td>
+                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" /></td>
                                 <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                             </tr>
                         }
@@ -208,8 +208,8 @@ if (picker && addBtn) {
         const idx = body.querySelectorAll('tr').length;
         const tr = document.createElement('tr');
         tr.innerHTML = '<td><input type="hidden" name="items[' + idx + '].ItemId" /><strong></strong></td>' +
-            '<td><input name="items[' + idx + '].Count" type="number" step="0.01" value="0" class="form-control form-control-sm" aria-label="العدد المسلّم" /></td>' +
-            '<td><input name="items[' + idx + '].Quantity" type="number" step="0.01" value="0" class="form-control form-control-sm" aria-label="الكمية المسلّمة" /></td>' +
+            '<td><input name="items[' + idx + '].Count" type="number" step="0.0001" value="0" class="form-control form-control-sm" aria-label="العدد المسلّم" /></td>' +
+            '<td><input name="items[' + idx + '].Quantity" type="number" step="0.0001" value="0" class="form-control form-control-sm" aria-label="الكمية المسلّمة" /></td>' +
             '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>';
         tr.querySelector('input[name$=".ItemId"]').value = picker.value;
         tr.querySelector('strong').textContent = opt.textContent.trim();

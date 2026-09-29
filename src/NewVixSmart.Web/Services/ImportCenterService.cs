@@ -727,33 +727,60 @@ public class ImportCenterService : IImportCenterService
                 0, 0, 0, skipped);
         }
 
-        foreach (var doc in docs)
+        var duplicates = 0;
+        var duplicateRows = 0;
+        var sourceId = def.Key == "journalEntries" ? await NextImportSourceIdAsync() : 0;
+        await using var tx = SupportsBatchTransaction(def.Key)
+            ? await _db.Database.BeginTransactionAsync()
+            : null;
+
+        for (int index = 0; index < docs.Count; index++)
         {
-            var (ok, error) = await ApplyDocumentAsync(def, doc, cache);
-            if (ok) created++;
-            else
+            var doc = docs[index];
+            var identity = DocumentIdentity(def, doc);
+
+            if (identity is not null && await DocumentNumberExistsAsync(def.Key, identity))
             {
-                failed += doc.Count;
-                if (docFailures.Count < 5 && error is not null) docFailures.Add(error);
+                duplicates++;
+                duplicateRows += doc.Count;
+                continue;
+            }
+
+            var (ok, error) = await ApplyDocumentAsync(def, doc, cache, sourceId + index);
+            if (ok) { created++; continue; }
+
+            failed += doc.Count;
+            if (docFailures.Count < 5 && error is not null) docFailures.Add(error);
+            if (tx is not null)
+            {
+                await tx.RollbackAsync();
+                var detail = docFailures.Count == 0 ? "" : "؛ أمثلة: " + string.Join(" — ", docFailures.Take(3));
+                return new ImportResult(false,
+                    "لم يُستورد أي مستند بسبب خطأ أثناء حفظ أحد المستندات وأُلغي الاستيراد بالكامل، صحّح البيانات وأعد الاعتماد" + detail,
+                    0, 0, 0, failed);
             }
         }
 
+        if (tx is not null) await tx.CommitAsync();
+
+        var duplicateNote = duplicates == 0 ? "" :
+            $"، وتُخطى {duplicates} {(groupCol is null ? "مستندًا" : "سطرًا")} لأن أرقامه مستوردة مسبقًا";
         var suffix = failed == 0 ? "" :
             $" (وتُركت {failed} {(groupCol is null ? "مستندًا" : "سطرًا")} بأخطاء"
             + (docFailures.Count == 0 ? "" : "؛ أمثلة: " + string.Join(" — ", docFailures))
             + ")";
-        return new ImportResult(true, $"تم استيراد {created} مستند" + suffix, created, 0, 0, failed);
+        return new ImportResult(true, $"تم استيراد {created} مستند" + duplicateNote + suffix, created, 0, duplicateRows, failed);
     }
 
     private async Task<(bool Ok, string? Error)> ApplyDocumentAsync(
-        ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
+        ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache, int sourceId)
     {
         try
         {
             return def.Key switch
             {
                 "payments" => await ApplyPaymentAsync(def, rows, cache),
-                "journalEntries" => await ApplyJournalAsync(def, rows, cache),
+                "journalEntries" => await ApplyJournalAsync(def, rows, cache, sourceId),
                 "saleInvoices" => await ApplySaleInvoiceAsync(def, rows, cache),
                 "purchaseInvoices" => await ApplyPurchaseInvoiceAsync(def, rows, cache),
                 "saleReturns" => await ApplySaleReturnAsync(def, rows, cache),
@@ -780,6 +807,53 @@ public class ImportCenterService : IImportCenterService
         => def.GroupColumn is null
             ? rows[0].Fields ?? new Dictionary<string, string>()
             : MergeHeaderCells(def, rows.Select(d => (IReadOnlyDictionary<string, string>)(d.Fields ?? new Dictionary<string, string>())));
+
+    private static string? DocumentIdentity(ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows)
+    {
+        if (def.GroupColumn is null) return null;
+        var raw = DocumentHeader(def, rows).GetValueOrDefault(def.GroupColumn, "").Trim();
+        return raw.Length == 0 ? null : raw;
+    }
+
+    // The document number from the file is the document's identity: a number that already
+    // exists in the target table means the same document was imported before, so the row is
+    // skipped instead of creating a second invoice, return, transfer or journal entry.
+    private async Task<bool> DocumentNumberExistsAsync(string entityKey, string number) => entityKey switch
+    {
+        "journalEntries" => await _db.JournalEntries.AnyAsync(e => e.EntryNumber == number),
+        "saleInvoices" => await _db.SaleInvoices.AnyAsync(i => i.InvoiceNumber == number),
+        "purchaseInvoices" => await _db.PurchaseInvoices.AnyAsync(i => i.InvoiceNumber == number),
+        "saleReturns" => await _db.SaleReturns.AnyAsync(r => r.ReturnNumber == number),
+        "purchaseReturns" => await _db.PurchaseReturns.AnyAsync(r => r.ReturnNumber == number),
+        "stockTransfers" => await _db.StockTransfers.AnyAsync(t => t.TransferNumber == number),
+        _ => false
+    };
+
+    private async Task StampDocumentNumberAsync(string? number, string current, Action<string> setNumber)
+    {
+        if (number is null || string.Equals(current, number, StringComparison.Ordinal)) return;
+        setNumber(number);
+        await _db.SaveChangesAsync();
+    }
+
+    // Only these three paths can join a batch transaction: the payment, return, adjustment and
+    // transfer services open their own transaction, and EF refuses a second one on the same
+    // connection, so those batches stay atomic per document until they gain the same flag
+    // InventoryService.CreateSaleAsync has.
+    private static bool SupportsBatchTransaction(string entityKey) => entityKey switch
+    {
+        "journalEntries" or "saleInvoices" or "purchaseInvoices" => true,
+        _ => false
+    };
+
+    private async Task<int> NextImportSourceIdAsync()
+    {
+        var max = await _db.JournalEntries
+            .Where(e => e.Source == JournalSource.Import)
+            .Select(e => (int?)e.SourceId)
+            .MaxAsync();
+        return (max ?? 0) + 1;
+    }
 
     private async Task<(bool Ok, string? Error)> ApplyPaymentAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
@@ -808,9 +882,13 @@ public class ImportCenterService : IImportCenterService
     }
 
     private async Task<(bool Ok, string? Error)> ApplyJournalAsync(
-        ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
+        ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache, int sourceId)
     {
         var header = DocumentHeader(def, rows);
+        var entryNumber = header.GetValueOrDefault("EntryNumber", "").Trim();
+        if (entryNumber.Length == 0)
+            return (false, "رقم القيد مطلوب لتحديد هوية المستند");
+
         var lines = new List<JournalLine>();
         foreach (var row in rows)
         {
@@ -821,8 +899,8 @@ public class ImportCenterService : IImportCenterService
                 OptNull(cells, "EntryDescription")));
         }
         if (lines.Count == 0) return (false, "القيد لا يحتوي على أسطر صالحة");
-        await _accounting.PostAsync(JournalSource.Import, 0, CellDate(header, "EntryDate", DateTime.Today),
-            OptNull(header, "Description") ?? "قيد مستورد", lines.ToArray(), null);
+        await _accounting.PostAsync(JournalSource.Import, sourceId, CellDate(header, "EntryDate", DateTime.Today),
+            OptNull(header, "Description") ?? "قيد مستورد", lines.ToArray(), null, entryNumber: entryNumber);
         return (true, null);
     }
 
@@ -862,7 +940,10 @@ public class ImportCenterService : IImportCenterService
             });
         }
         if (items.Count == 0) return (false, "الفاتورة لا تحتوي على أصناف صالحة");
-        return await _inventory.CreateSaleAsync(invoice, items, null, null);
+        var (ok, error) = await _inventory.CreateSaleAsync(invoice, items, null, null, beginOwnTransaction: false);
+        if (!ok) return (false, error);
+        await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
+        return (true, null);
     }
 
     private async Task<(bool Ok, string? Error)> ApplyPurchaseInvoiceAsync(
@@ -901,7 +982,10 @@ public class ImportCenterService : IImportCenterService
             });
         }
         if (items.Count == 0) return (false, "الفاتورة لا تحتوي على أصناف صالحة");
-        return await _inventory.CreatePurchaseAsync(invoice, items, null, null);
+        var (purchaseOk, purchaseError) = await _inventory.CreatePurchaseAsync(invoice, items, null, null, beginOwnTransaction: false);
+        if (!purchaseOk) return (false, purchaseError);
+        await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
+        return (true, null);
     }
 
     private async Task<(bool Ok, string? Error)> ApplySaleReturnAsync(
@@ -937,7 +1021,10 @@ public class ImportCenterService : IImportCenterService
             });
         }
         if (items.Count == 0) return (false, "المرتجع لا يحتوي على أصناف صالحة");
-        return await _inventory.CreateSaleReturnAsync(saleReturn, items, null);
+        var (saleReturnOk, saleReturnError) = await _inventory.CreateSaleReturnAsync(saleReturn, items, null);
+        if (!saleReturnOk) return (false, saleReturnError);
+        await StampDocumentNumberAsync(DocumentIdentity(def, rows), saleReturn.ReturnNumber, number => saleReturn.ReturnNumber = number);
+        return (true, null);
     }
 
     private async Task<(bool Ok, string? Error)> ApplyPurchaseReturnAsync(
@@ -973,7 +1060,10 @@ public class ImportCenterService : IImportCenterService
             });
         }
         if (items.Count == 0) return (false, "المرتجع لا يحتوي على أصناف صالحة");
-        return await _inventory.CreatePurchaseReturnAsync(purchaseReturn, items, null);
+        var (purchaseReturnOk, purchaseReturnError) = await _inventory.CreatePurchaseReturnAsync(purchaseReturn, items, null);
+        if (!purchaseReturnOk) return (false, purchaseReturnError);
+        await StampDocumentNumberAsync(DocumentIdentity(def, rows), purchaseReturn.ReturnNumber, number => purchaseReturn.ReturnNumber = number);
+        return (true, null);
     }
 
     private async Task<(bool Ok, string? Error)> ApplyAdjustmentAsync(
@@ -1031,7 +1121,10 @@ public class ImportCenterService : IImportCenterService
             });
         }
         if (items.Count == 0) return (false, "التحويل لا يحتوي على أصناف صالحة");
-        return await _inventory.CreateTransferAsync(transfer, items, null);
+        var (transferOk, transferError) = await _inventory.CreateTransferAsync(transfer, items, null);
+        if (!transferOk) return (false, transferError);
+        await StampDocumentNumberAsync(DocumentIdentity(def, rows), transfer.TransferNumber, number => transfer.TransferNumber = number);
+        return (true, null);
     }
 
     private static Item? ResolveItem(IReadOnlyDictionary<string, string> cells, ReferenceCache cache)
@@ -1992,7 +2085,7 @@ public class ImportCenterService : IImportCenterService
             $"إرشادات استيراد {def.NameAr}",
             "",
             IsDocumentEntity(def.Key)
-                ? def.MatchNote + " — تُنشأ المستندات من جديد عند كل استيراد ولا تُحدَّث."
+                ? def.MatchNote + " — يُنشأ كل مستند برقمه الوارد في الملف، ولا يُستورد مستند مرة أخرى إذا كان رقمه موجودًا مسبقًا."
                 : def.MatchNote + " — تُنشأ السجلات غير الموجودة ويُحدَّث الموجود منها.",
             "",
             "الأعمدة المطلوبة: " + string.Join("، ", def.Columns.Where(c => c.IsRequired).Select(c => c.HeaderAr)) + "."

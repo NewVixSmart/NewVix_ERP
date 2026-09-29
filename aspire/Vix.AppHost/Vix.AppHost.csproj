@@ -3,14 +3,25 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>vix-aspire-apphost</UserSecretsId>
+    <!-- Nullable / ImplicitUsings / TreatWarningsAsErrors come from the root Directory.Build.props. -->
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.0.0" />
     <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.0.0" />
+    <!-- SECURITY PIN, not a used dependency: no source file in this project
+         references MessagePack. Aspire.Hosting.* 13.0.0 -> StreamJsonRpc 2.22.23
+         depends on MessagePack with a bare minimum of ">= 2.5.192", which carries
+         11 advisories (incl. HIGH GHSA-hv8m-jj95-wg3x / GHSA-vh6j-jc39-fggf).
+         Aspire.Hosting.SqlServer is a *direct* reference, so overriding the
+         transitive version here is clean. Because TreatWarningsAsErrors is repo-wide
+         (Directory.Build.props), NuGet audit warnings on the transitive 2.5.192
+         are hard build errors, so deleting this line breaks the build outright.
+         First patched v2 line: docs/audit-round18-findings.md (R18-8); the DCP /
+         dashboard MessagePack log channel was runtime-verified on 2.5.301 in
+         docs/audit-round19-findings.md. Covered by the "messagepack" dependabot
+         group in .github/dependabot.yml. -->
     <PackageReference Include="MessagePack" Version="2.5.301" />
   </ItemGroup>
 

@@ -22,7 +22,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">ذمم عملاء — إجمالي</div>
-                    <h3 class="mb-0 mt-1">@Model.ArTotal.ToString("N2")</h3>
+                    <h3 class="mb-0 mt-1">@Money.Format(Model.ArTotal)</h3>
                 </div>
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-people"></i></div>
             </div>
@@ -33,7 +33,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">ذمم عملاء — متأخر</div>
-                    <h3 class="mb-0 mt-1">@Model.ArOverdue.ToString("N2")</h3>
+                    <h3 class="mb-0 mt-1">@Money.Format(Model.ArOverdue)</h3>
                 </div>
                 <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon"></i></div>
             </div>
@@ -44,7 +44,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">ذمم موردين — إجمالي</div>
-                    <h3 class="mb-0 mt-1">@Model.ApTotal.ToString("N2")</h3>
+                    <h3 class="mb-0 mt-1">@Money.Format(Model.ApTotal)</h3>
                 </div>
                 <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-truck"></i></div>
             </div>
@@ -55,7 +55,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">ذمم موردين — متأخر</div>
-                    <h3 class="mb-0 mt-1">@Model.ApOverdue.ToString("N2")</h3>
+                    <h3 class="mb-0 mt-1">@Money.Format(Model.ApOverdue)</h3>
                 </div>
                 <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon"></i></div>
             </div>
@@ -90,24 +90,24 @@
                 {
                     <tr>
                         <td><strong>@row.PartyName</strong></td>
-                        <td class="text-end">@row.Current.ToString("N2")</td>
-                        <td class="text-end">@row.Days1To30.ToString("N2")</td>
-                        <td class="text-end">@row.Days31To60.ToString("N2")</td>
-                        <td class="text-end">@row.Days61To90.ToString("N2")</td>
-                        <td class="text-end">@row.Days90Plus.ToString("N2")</td>
-                        <td class="text-end fw-bold">@row.Total.ToString("N2")</td>
+                        <td class="text-end">@Money.Format(row.Current)</td>
+                        <td class="text-end">@Money.Format(row.Days1To30)</td>
+                        <td class="text-end">@Money.Format(row.Days31To60)</td>
+                        <td class="text-end">@Money.Format(row.Days61To90)</td>
+                        <td class="text-end">@Money.Format(row.Days90Plus)</td>
+                        <td class="text-end fw-bold">@Money.Format(row.Total)</td>
                     </tr>
                 }
             </tbody>
             <tfoot class="fw-bold table-light">
                 <tr>
                     <td>الإجمالي</td>
-                    <td class="text-end">@Model.ArCurrent.ToString("N2")</td>
-                    <td class="text-end">@Model.ArDays1To30.ToString("N2")</td>
-                    <td class="text-end">@Model.ArDays31To60.ToString("N2")</td>
-                    <td class="text-end">@Model.ArDays61To90.ToString("N2")</td>
-                    <td class="text-end">@Model.ArDays90Plus.ToString("N2")</td>
-                    <td class="text-end">@Model.ArTotal.ToString("N2")</td>
+                    <td class="text-end">@Money.Format(Model.ArCurrent)</td>
+                    <td class="text-end">@Money.Format(Model.ArDays1To30)</td>
+                    <td class="text-end">@Money.Format(Model.ArDays31To60)</td>
+                    <td class="text-end">@Money.Format(Model.ArDays61To90)</td>
+                    <td class="text-end">@Money.Format(Model.ArDays90Plus)</td>
+                    <td class="text-end">@Money.Format(Model.ArTotal)</td>
                 </tr>
             </tfoot>
         </table>
@@ -141,24 +141,24 @@
                 {
                     <tr>
                         <td><strong>@row.PartyName</strong></td>
-                        <td class="text-end">@row.Current.ToString("N2")</td>
-                        <td class="text-end">@row.Days1To30.ToString("N2")</td>
-                        <td class="text-end">@row.Days31To60.ToString("N2")</td>
-                        <td class="text-end">@row.Days61To90.ToString("N2")</td>
-                        <td class="text-end">@row.Days90Plus.ToString("N2")</td>
-                        <td class="text-end fw-bold">@row.Total.ToString("N2")</td>
+                        <td class="text-end">@Money.Format(row.Current)</td>
+                        <td class="text-end">@Money.Format(row.Days1To30)</td>
+                        <td class="text-end">@Money.Format(row.Days31To60)</td>
+                        <td class="text-end">@Money.Format(row.Days61To90)</td>
+                        <td class="text-end">@Money.Format(row.Days90Plus)</td>
+                        <td class="text-end fw-bold">@Money.Format(row.Total)</td>
                     </tr>
                 }
             </tbody>
             <tfoot class="fw-bold table-light">
                 <tr>
                     <td>الإجمالي</td>
-                    <td class="text-end">@Model.ApCurrent.ToString("N2")</td>
-                    <td class="text-end">@Model.ApDays1To30.ToString("N2")</td>
-                    <td class="text-end">@Model.ApDays31To60.ToString("N2")</td>
-                    <td class="text-end">@Model.ApDays61To90.ToString("N2")</td>
-                    <td class="text-end">@Model.ApDays90Plus.ToString("N2")</td>
-                    <td class="text-end">@Model.ApTotal.ToString("N2")</td>
+                    <td class="text-end">@Money.Format(Model.ApCurrent)</td>
+                    <td class="text-end">@Money.Format(Model.ApDays1To30)</td>
+                    <td class="text-end">@Money.Format(Model.ApDays31To60)</td>
+                    <td class="text-end">@Money.Format(Model.ApDays61To90)</td>
+                    <td class="text-end">@Money.Format(Model.ApDays90Plus)</td>
+                    <td class="text-end">@Money.Format(Model.ApTotal)</td>
                 </tr>
             </tfoot>
         </table>

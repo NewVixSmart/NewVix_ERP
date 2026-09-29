@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Repo-wide build policy for every project in NewVixSmart.slnx.
+    AGENTS.md requires `dotnet build NewVixSmart.slnx -c Release` to report
+    0 Warning(s) and 0 Error(s). That gate is only meaningful if the policy is
+    identical in every project, so it is declared once here instead of being
+    duplicated (and drifting) per .csproj.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Language settings shared by all four projects. They were identical in every
+    .csproj; keeping them here means a new project inherits the same contract.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

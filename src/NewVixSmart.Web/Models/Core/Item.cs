@@ -85,11 +85,13 @@ public class Item
     [Column(TypeName = "decimal(18,2)")]
     [Display(Name = "الكمية المحجوزة")]
     [Range(0, 999999999, ErrorMessage = "الكمية المحجوزة لا يمكن أن تكون سالبة")]
+    [BindNever]
     public decimal ReservedQuantity { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
     [Display(Name = "العدد المحجوز")]
     [Range(0, 999999999, ErrorMessage = "العدد المحجوز لا يمكن أن يكون سالباً")]
+    [BindNever]
     public decimal ReservedCount { get; set; }
 
     [NotMapped]
@@ -105,6 +107,7 @@ public class Item
     public string? Notes { get; set; }
 
     [Display(Name = "الفرع")]
+    [BindNever]
     public int? BranchId { get; set; }
 
     [Display(Name = "نشط")]

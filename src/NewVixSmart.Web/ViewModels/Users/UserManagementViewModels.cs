@@ -9,6 +9,38 @@ public class UserListItemViewModel
     public List<string> Roles { get; set; } = new();
     public int PermissionCount { get; set; }
     public bool IsDeactivated { get; set; }
+
+    public bool IsAdmin => Roles.Contains(UserRoleLabels.Admin);
+
+    /// <summary>
+    /// The roles worth listing as a badge. "مدير النظام" already has a badge of its own in the user
+    /// name cell, so the Admin role is not repeated here; the view used to filter it out inline.
+    /// </summary>
+    public List<string> DisplayRoles => Roles.Where(r => r != UserRoleLabels.Admin).ToList();
+}
+
+/// <summary>
+/// The role keys the seed and the permission catalogue agree on, next to their Arabic labels. The
+/// user list used to map a role key to its Arabic word with a nested ternary inside the markup, which
+/// meant every key that was not "Accountant" - including one nobody had added yet - was silently
+/// labelled "أمين مخزن". A role outside the catalogue now renders as an unnamed role instead of as
+/// somebody else's job title; its key is still visible on the permissions screen.
+/// </summary>
+public static class UserRoleLabels
+{
+    public const string Admin = "Admin";
+    public const string Accountant = "Accountant";
+    public const string Warehouse = "Warehouse";
+
+    public const string UnknownRole = "دور غير محدد";
+
+    public static string DisplayName(string role) => role switch
+    {
+        Admin => "مدير النظام",
+        Accountant => "محاسب",
+        Warehouse => "أمين مخزن",
+        _ => UnknownRole
+    };
 }
 
 public class UserPermissionViewModel

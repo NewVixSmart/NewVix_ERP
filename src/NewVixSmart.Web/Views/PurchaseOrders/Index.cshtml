@@ -29,17 +29,19 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">قائمة أوامر الشراء: رقم الأمر، المورد، التاريخ، المتوقع، الحالة، المستلم</caption>
         <thead><tr><th scope="col">رقم الأمر</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">المتوقع</th><th scope="col">الحالة</th><th scope="col">المستلم</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
         <tbody>
             @foreach (var order in Model)
             {
+                var t = OrderProgress.Summarize(order);
                 <tr>
                     <td><code>@order.OrderNumber</code></td>
                     <td>@(order.Supplier?.Name ?? "—")</td>
                     <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
                     <td>@(order.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                     <td><span class="badge @(order.Status switch { PurchaseOrderStatus.Approved => "bg-success", PurchaseOrderStatus.Received => "bg-info", PurchaseOrderStatus.PartiallyReceived => "bg-warning", PurchaseOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@order.Status.GetDisplayName()</span></td>
-                    <td>@(order.Items.Sum(i => i.ReceivedQty).ToString("N0") + " / " + order.Items.Sum(i => i.Quantity).ToString("N0"))</td>
+                    <td>@t.ReceivedQuantity.ToString("N0") / @t.OrderedQuantity.ToString("N0")</td>
                     <td class="text-center">
                         <a asp-action="Details" asp-route-id="@order.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر الشراء @order.OrderNumber"><i class="bi bi-eye"></i></a>
                     </td>

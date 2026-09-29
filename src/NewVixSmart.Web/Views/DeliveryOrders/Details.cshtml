@@ -54,6 +54,7 @@
 
 <div class="table-container mb-4">
     <table class="table mb-0">
+        <caption class="visually-hidden">أصناف أذن التسليم: الصنف، العدد المسلّم، الكمية المسلّمة</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المسلّم</th><th scope="col">الكمية المسلّمة</th></tr></thead>
         <tbody>
             @if (!Model.Items.Any())
@@ -72,10 +73,7 @@
     </table>
 </div>
 @{
-    var openIssues = Model.Issues.Where(i => i.Status != DeliveryIssueStatus.Cancelled).SelectMany(i => i.Items).ToList();
-    var outstanding = Model.Items.Any(l => l.Quantity - openIssues.Where(x => x.ItemId == l.ItemId).Sum(x => x.Quantity) > 0.005m
-                                          || l.Count - openIssues.Where(x => x.ItemId == l.ItemId).Sum(x => x.Count) > 0.005m);
-    var canCreateIssue = outstanding && Model.SaleInvoiceId == null && Model.Status != DeliveryOrderStatus.Cancelled;
+    var canCreateIssue = DeliveryOpenLines.CanIssueMoreLines(Model);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-2">

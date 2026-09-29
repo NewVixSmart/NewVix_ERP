@@ -53,8 +53,8 @@
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">عدد القيود</div><h3 class="mb-0">@Model.TotalEntries</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Model.TotalDebit.ToString("N2")</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-success">@Model.TotalCredit.ToString("N2")</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalDebit)</h3></div></div>
+    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalCredit)</h3></div></div>
     <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center">
         <div class="text-muted small">حالة توازن الفترة</div>
         @if (Model.IsBalanced)
@@ -66,6 +66,7 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">قيود دفتر الأستاذ العام في الفترة: رقم القيد وتاريخه ومصدره وإجمالياته</caption>
         <thead><tr>
             <th scope="col">رقم القيد</th><th scope="col">التاريخ</th><th scope="col">البيان</th><th scope="col">المصدر</th><th scope="col">المرجع</th><th scope="col">الفرع</th><th scope="col">أنشئ بواسطة</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">التوازن</th><th scope="col" class="visually-hidden">التفاصيل</th>
         </tr></thead>
@@ -81,9 +82,9 @@
                     <td>@(e.SourceId > 0 ? e.SourceId.ToString() : "—")</td>
                     <td>@(e.BranchId?.ToString() ?? "—")</td>
                     <td>@(e.CreatedBy ?? "—")</td>
-                    <td class="text-primary">@e.TotalDebit.ToString("N2")</td>
-                    <td class="text-success">@e.TotalCredit.ToString("N2")</td>
-                    <td class="@(e.IsBalanced ? "text-success" : "text-danger")">@e.Balance.ToString("N2")</td>
+                    <td class="text-primary">@Money.Format(e.TotalDebit)</td>
+                    <td class="text-success">@Money.Format(e.TotalCredit)</td>
+                    <td class="@(e.IsBalanced ? "text-success" : "text-danger")">@Money.Format(e.Balance)</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#@detailsId" aria-expanded="false" aria-controls="@detailsId" aria-label="عرض تفاصيل القيد @e.EntryNumber">
                             <i class="bi bi-eye" aria-hidden="true"></i>
@@ -93,6 +94,7 @@
                 <tr class="collapse" id="@detailsId">@* aria via heading row above *@
                     <td colspan="11" class="p-0">
                         <table class="table table-sm table-striped mb-0">
+                            <caption class="visually-hidden">تفاصيل قيد @e.EntryNumber: حساب مدين وآخر دائن وبيان كل سطر</caption>
                             <thead><tr class="table-light">
                                 <th scope="col">رمز الحساب</th><th scope="col">اسم الحساب</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">البيان</th>
                             </tr></thead>
@@ -102,8 +104,8 @@
                                     <tr>
                                         <td><code>@l.AccountCode</code></td>
                                         <td>@l.AccountName</td>
-                                        <td>@(l.Debit > 0 ? l.Debit.ToString("N2") : "—")</td>
-                                        <td>@(l.Credit > 0 ? l.Credit.ToString("N2") : "—")</td>
+                                        <td>@(l.Debit > 0 ? Money.Format(l.Debit) : "—")</td>
+                                        <td>@(l.Credit > 0 ? Money.Format(l.Credit) : "—")</td>
                                         <td>@(l.Description ?? "—")</td>
                                     </tr>
                                 }

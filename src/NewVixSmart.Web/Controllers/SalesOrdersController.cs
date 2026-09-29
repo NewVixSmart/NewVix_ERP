@@ -104,7 +104,7 @@ public class SalesOrdersController : Controller
         if (order.Status != SalesOrderStatus.Draft)
         {
             TempData["Error"] = "لا يمكن تعديل أمر بيع غير مسودة";
-            return RedirectToAction(nameof(Details), new { id });
+            return RedirectToAction(nameof(Details), new { id = order.PublicId });
         }
 
         var vm = new SalesOrderViewModel
@@ -130,7 +130,7 @@ public class SalesOrdersController : Controller
             if (ok)
             {
                 TempData["Success"] = "تم تحديث أمر البيع بنجاح";
-                return RedirectToAction(nameof(Details), new { id = vm.Order.Id });
+                return RedirectToAction(nameof(Details), new { id = vm.Order.PublicId });
             }
             ModelState.AddModelError("", error ?? "تعذر تحديث أمر البيع");
         }
@@ -142,24 +142,13 @@ public class SalesOrdersController : Controller
     [RequirePerm("SalesOrders.View")]
     public async Task<IActionResult> Details(string id)
     {
-        int orderId;
-        if (Guid.TryParse(id, out var publicId))
-        {
-            var target = await _db.SalesOrders.AsNoTracking()
-                .Where(o => o.PublicId == publicId)
-                .Select(o => (int?)o.Id)
-                .FirstOrDefaultAsync();
-            if (target == null) return NotFound();
-            orderId = target.Value;
-        }
-        else if (int.TryParse(id, out var numericId))
-        {
-            orderId = numericId;
-        }
-        else
-        {
-            return NotFound();
-        }
+        if (!Guid.TryParse(id, out var publicId)) return NotFound();
+        var targetOrderId = await _db.SalesOrders.AsNoTracking()
+            .Where(o => o.PublicId == publicId)
+            .Select(o => (int?)o.Id)
+            .FirstOrDefaultAsync();
+        if (targetOrderId == null) return NotFound();
+        var orderId = targetOrderId.Value;
 
         var order = await _orders.GetOrderAsync(orderId);
         if (order == null) return NotFound();
@@ -187,7 +176,7 @@ public class SalesOrdersController : Controller
         var (ok, error) = await _orders.ApproveOrderAsync(id);
         if (ok) TempData["Success"] = "تم اعتماد أمر البيع";
         else TempData["Error"] = error;
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -197,7 +186,7 @@ public class SalesOrdersController : Controller
         var (ok, error) = await _orders.CancelOrderAsync(id);
         if (ok) TempData["Success"] = "تم إلغاء أمر البيع";
         else TempData["Error"] = error;
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -211,7 +200,21 @@ public class SalesOrdersController : Controller
             return RedirectToAction("Index", "Sales");
         }
         TempData["Error"] = error ?? "تعذر إنشاء الفاتورة";
-        return RedirectToAction(nameof(Details), new { id });
+        return await RedirectToDetailsAsync(id);
+    }
+
+    /// <summary>
+    /// Details only resolves the public id now, so internal redirects translate the numeric id
+    /// they were handed instead of passing it straight through.
+    /// </summary>
+    private async Task<IActionResult> RedirectToDetailsAsync(int id)
+    {
+        var publicId = await _db.SalesOrders.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => (Guid?)o.PublicId)
+            .FirstOrDefaultAsync();
+        if (publicId == null) return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Details), new { id = publicId.Value });
     }
 
     private async Task Populate(SalesOrderViewModel vm)

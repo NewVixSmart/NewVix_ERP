@@ -27,23 +27,23 @@
                 <tr>
                     <td>
                         <strong>@u.UserName</strong>
-                        @if (u.Roles.Contains("Admin"))
+                        @if (u.IsAdmin)
                         {
                             <span class="badge bg-dark ms-2">مدير النظام</span>
                         }
                     </td>
                     <td>
-                        @foreach (var r in u.Roles.Where(x => x != "Admin"))
+                        @foreach (var r in u.DisplayRoles)
                         {
-                            <span class="badge bg-secondary me-1">@(r == "Accountant" ? "محاسب" : "أمين مخزن")</span>
+                            <span class="badge bg-secondary me-1">@NewVixSmart.Web.ViewModels.Users.UserRoleLabels.DisplayName(r)</span>
                         }
-                        @if (u.Roles.Count == 0)
+                        @if (u.DisplayRoles.Count == 0)
                         {
                             <span class="text-muted">بدون دور</span>
                         }
                     </td>
                     <td>
-                        @if (u.Roles.Contains("Admin"))
+                        @if (u.IsAdmin)
                         {
                             <span class="badge bg-success">كامل (تلقائي)</span>
                         }
@@ -64,7 +64,7 @@
                     </td>
                     <td class="text-center">
                         <div class="d-inline-flex gap-1 flex-wrap justify-content-center">
-                            @if (!u.Roles.Contains("Admin"))
+                            @if (!u.IsAdmin)
                             {
                                 <a asp-action="Permissions" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" aria-label="إدارة صلاحيات @u.UserName">
                                     <i class="bi bi-toggles" aria-hidden="true"></i> صلاحيات

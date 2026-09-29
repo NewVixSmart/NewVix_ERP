@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using QuestPDF.Fluent;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
@@ -20,11 +21,14 @@ public sealed class SalesQuotesService : ISalesQuotesService
     private const int MaxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly ISalesOrdersService _orders;
+    private readonly IStockReservationsService _reservations;
 
-    public SalesQuotesService(AppDbContext db, ISalesOrdersService orders)
+    public SalesQuotesService(AppDbContext db, ISalesOrdersService orders,
+        IStockReservationsService? reservations = null)
     {
         _db = db;
         _orders = orders;
+        _reservations = reservations ?? new StockReservationsService(db);
     }
 
     public async Task<(bool Success, string? Error, SaleQuote? Quote)> CreateAsync(SaleQuote quote, List<SaleQuoteItem> items, string? user, int? branchId = null)
@@ -101,43 +105,54 @@ public sealed class SalesQuotesService : ISalesQuotesService
             UnitPrice = l.UnitPrice
         }).ToList();
 
-        var (ok, error) = await _orders.CreateOrderAsync(order, itemList, user);
-        if (!ok)
-        {
-            await RollbackConversionAsync(quoteId);
-            return (false, error, null);
-        }
-
-        var (approved, approveError) = await _orders.ApproveOrderAsync(order.Id);
-        if (!approved)
-        {
-            await DeleteCreatedOrderAsync(order.Id);
-            await RollbackConversionAsync(quoteId);
-            return (false, approveError, null);
-        }
-
         var convertedAt = DateTime.UtcNow;
-        try
+        var committed = false;
+        await using (var tx = await _db.Database.BeginTransactionAsync())
         {
-            var updated = await _db.SaleQuotes
-                .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Converting)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(q => q.Status, SaleQuoteStatus.Converted)
-                    .SetProperty(q => q.SalesOrderId, order.Id)
-                    .SetProperty(q => q.ConvertedBy, user)
-                    .SetProperty(q => q.ConvertedAt, convertedAt));
-            if (updated == 0)
+            try
             {
-                await DeleteCreatedOrderAsync(order.Id);
-                await RollbackConversionAsync(quoteId);
-                return (false, "تعذر تحديث حالة عرض السعر أثناء التحويل، حاول مرة أخرى", null);
+                var (created, createError) = await _orders.CreateOrderAsync(order, itemList, user);
+                if (!created)
+                {
+                    await tx.RollbackAsync();
+                    await ReleaseClaimAsync(quoteId);
+                    return (false, createError, null);
+                }
+
+                var finalized = await _db.SaleQuotes
+                    .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Converting)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(q => q.Status, SaleQuoteStatus.Converted)
+                        .SetProperty(q => q.SalesOrderId, order.Id)
+                        .SetProperty(q => q.ConvertedBy, user)
+                        .SetProperty(q => q.ConvertedAt, convertedAt));
+                if (finalized == 0)
+                {
+                    await tx.RollbackAsync();
+                    await DeleteCreatedOrderAsync(order.Id);
+                    await ReleaseClaimAsync(quoteId);
+                    return (false, "تعذر تحديث حالة عرض السعر أثناء التحويل، حاول مرة أخرى", null);
+                }
+
+                var (approved, approveError) =
+                    await _orders.ApproveOrderAsync(order.Id, beginOwnTransaction: false);
+                if (!approved)
+                {
+                    await tx.RollbackAsync();
+                    await ReleaseClaimAsync(quoteId);
+                    return (false, approveError, null);
+                }
+
+                await tx.CommitAsync();
+                committed = true;
             }
-        }
-        catch
-        {
-            await DeleteCreatedOrderAsync(order.Id);
-            await RollbackConversionAsync(quoteId);
-            throw;
+            catch
+            {
+                if (!committed) await TryRollbackAsync(tx);
+                await DeleteCreatedOrderAsync(order.Id);
+                await ReleaseClaimAsync(quoteId);
+                throw;
+            }
         }
 
         PatchTrackedQuote(quoteId, q =>
@@ -151,7 +166,13 @@ public sealed class SalesQuotesService : ISalesQuotesService
         return (true, null, order);
     }
 
-    private async Task RollbackConversionAsync(int quoteId)
+    private static async Task TryRollbackAsync(IDbContextTransaction tx)
+    {
+        try { await tx.RollbackAsync(); }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task ReleaseClaimAsync(int quoteId)
     {
         await _db.SaleQuotes
             .Where(q => q.Id == quoteId && q.Status == SaleQuoteStatus.Converting)

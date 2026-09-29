@@ -40,6 +40,7 @@
 
 <div class="table-container">
     <table class="table table-hover mb-0">
+        <caption class="visually-hidden">مخطط الحسابات: الرمز، الاسم، النوع، الطبيعة، الرصيد (مدين/دائن)، الحالة</caption>
         <thead>
             <tr>
                 <th scope="col">الرمز</th>
@@ -63,7 +64,7 @@
                     <td><strong>@a.Name</strong></td>
                     <td>@a.Type.ToString()</td>
                     <td>@(a.NormalBalance == NewVixSmart.Web.Models.Accounting.NormalBalance.Debit ? "مدين" : "دائن")</td>
-                    <td class="text-start">@bal.Debit.ToString("N2") / @bal.Credit.ToString("N2")</td>
+                    <td class="text-start">@Money.Format(bal.Debit) / @Money.Format(bal.Credit)</td>
                     <td>
                         @if (a.IsActive)
                         { <span class="badge-stock-ok px-2 py-1 rounded">نشط</span> }
