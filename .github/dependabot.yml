@@ -20,6 +20,17 @@ updates:
       aspire:
         patterns:
           - "Aspire.*"
+      # The three third-party libraries were the only direct references in this
+      # project that no group matched, so each one raised its own PR every week
+      # in the most security-sensitive project in the solution. Grouped so the
+      # set moves together and stays reviewable as one change.
+      third-party:
+        patterns:
+          - "ClosedXML"
+          - "ClosedXML.*"
+          - "QuestPDF"
+          - "Swashbuckle.AspNetCore"
+          - "Swashbuckle.AspNetCore.*"
     commit-message:
       prefix: "build(deps)"
 
@@ -31,6 +42,28 @@ updates:
       time: "06:00"
       timezone: Africa/Khartoum
     open-pull-requests-limit: 3
+    groups:
+      # This entry previously declared no groups at all, so all seven direct
+      # references (xunit, the runner, the test SDK, both EF Core providers,
+      # Identity.EntityFrameworkCore and Microsoft.Data.SqlClient) queued as
+      # individual PRs. The xunit runner and Microsoft.NET.Test.Sdk in
+      # particular must move together: a runner newer than the test SDK, or an
+      # SDK bump without its matching runner, breaks discovery. Mirrors the
+      # grouping already used for the web project.
+      aspnet-core:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+      ef-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore.*"
+      sql-client:
+        patterns:
+          - "Microsoft.Data.*"
+      test-tooling:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit"
+          - "xunit.*"
     commit-message:
       prefix: "build(deps)"
 
@@ -46,13 +79,21 @@ updates:
       # The MessagePack entry is a deliberate SECURITY PIN, not a used
       # dependency: Aspire.Hosting.* -> StreamJsonRpc 2.22.23 depends on
       # MessagePack with a bare ">= 2.5.192", which carries 11 advisories
-      # (incl. two HIGH). Nothing else in this project is a NuGet dependency
-      # that dependabot would touch, so without this group the pin was orphaned:
-      # the next Aspire bump could quietly reintroduce a vulnerable tree.
+      # (incl. two HIGH). Without this group the pin was orphaned: the next
+      # Aspire bump could quietly reintroduce a vulnerable tree.
       # See docs/audit-round18-findings.md (R18-8).
       security-pins:
         patterns:
           - "MessagePack"
+      # Aspire.Hosting.AppHost and Aspire.Hosting.SqlServer are the other two
+      # direct references here and were previously matched by no group, so they
+      # queued individually - and an AppHost/SqlServer version skew is a real
+      # risk, since the two must agree on the same Aspire.AppHost.Sdk. (An
+      # earlier comment claimed nothing else in this project was a NuGet
+      # dependency dependabot would touch; that was wrong.)
+      aspire:
+        patterns:
+          - "Aspire.*"
     commit-message:
       prefix: "build(deps)"
 

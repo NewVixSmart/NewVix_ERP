@@ -90,8 +90,16 @@ public sealed class ConcurrencyTests : IDisposable
         Assert.Contains("مطابقة", error2);
     }
 
+    /// <summary>
+    /// كان هذا الاختبار يسمّي نفسه <c>StaleContext_WritesSuccessful_OnSqlite</c> ويثبت أن
+    /// الكتابة القديمة تُحفظ. هذا ليس وصفًا لسلوك SQLite فحسب، بل محمّل كأنه مقبول - والحقيقة
+    /// أن لـ<code>[Timestamp]</code> عقدًا واحدًا: كتابة قديمة <b>تُرفض</b>. SQLite لا يولّد
+    /// <c>rowversion</c> ولا يفحصه، فالعقد غير قابل للإثبات على هذا المزوّد. الاختبار الجديد
+    /// يثبت الحدّ بدل أن يثبِّت العيب، ويثبت أيضًا أن هناك اختبارًا آخر يغطّي العقد فعلًا
+    /// <see cref="TheRealStaleWriteAssertion_IsNotRemoved"/> في {@link MigrationChainSqlServerTests}.
+    /// </summary>
     [Fact]
-    public async Task StaleContext_WritesSuccessful_OnSqlite()
+    public async Task StaleWrite_IsNotRejected_OnSqlite_SoThisProviderCannotProveTheConcurrencyContract()
     {
         using var seed = CreateContext();
         var unit = new Unit { Name = "قطعة تعارض" };
@@ -113,15 +121,37 @@ public sealed class ConcurrencyTests : IDisposable
         var tracked1 = await db1.Items.SingleAsync(i => i.Id == item.Id);
         var tracked2 = await db2.Items.SingleAsync(i => i.Id == item.Id);
 
+        // الفجوة بأعينها: لا رمز نسخ على السطر، فليس هناك ما يُقارَن به.
+        Assert.Null(tracked1.RowVersion);
+        Assert.Null(tracked2.RowVersion);
+
         tracked1.CurrentQuantity += 10m;
         await db1.SaveChangesAsync();
 
         tracked2.CurrentQuantity += 20m;
         await db2.SaveChangesAsync();
 
+        // النتيجة: الكتابة القديمة طمست الكتابة الأحدث بلا أي ملاحظة. هذا سلوك SQLite
+        // الموثَّق هنا عمدًا - لو اختفى هذا السطر فقد عاد الاختبار إلى الادّعاء بأن الضياع
+        // مقبول، وهذا عكس المقصود.
         using var verify = CreateContext();
         var final = await verify.Items.SingleAsync(i => i.Id == item.Id);
         Assert.Equal(120m, final.CurrentQuantity);
+    }
+
+    /// <summary>
+    /// يمنع أن يتحوّل «العقد غير قابل للإثبات هنا» إلى ثقب صامت: إن حُذف اختبار المحرّك
+    /// الحقيقي أو تحوّل إلى <c>void</c> لا <c>Task</c>، يفشل هذا الاختبار.
+    /// </summary>
+    [Fact]
+    public void TheRealStaleWriteAssertion_IsNotRemoved()
+    {
+        var method = typeof(MigrationChainSqlServerTests)
+            .GetMethod(nameof(MigrationChainSqlServerTests.RowVersion_IsGeneratedByTheEngine_AndAStaleWriteIsRejected));
+
+        Assert.NotNull(method);
+        Assert.Equal(typeof(Task), method!.ReturnType);
+        Assert.Contains(method.GetCustomAttributes(inherit: true), a => a is SqlServerFactAttribute);
     }
 
     [Fact]

@@ -13,15 +13,37 @@
     <!-- SECURITY PIN, not a used dependency: no source file in this project
          references MessagePack. Aspire.Hosting.* 13.0.0 -> StreamJsonRpc 2.22.23
          depends on MessagePack with a bare minimum of ">= 2.5.192", which carries
-         11 advisories (incl. HIGH GHSA-hv8m-jj95-wg3x / GHSA-vh6j-jc39-fggf).
-         Aspire.Hosting.SqlServer is a *direct* reference, so overriding the
-         transitive version here is clean. Because TreatWarningsAsErrors is repo-wide
-         (Directory.Build.props), NuGet audit warnings on the transitive 2.5.192
-         are hard build errors, so deleting this line breaks the build outright.
+         11 advisories (9 moderate + 2 HIGH: GHSA-hv8m-jj95-wg3x /
+         GHSA-vh6j-jc39-fggf). Aspire.Hosting.SqlServer is a *direct* reference, so
+         overriding the transitive version here is clean. Because TreatWarningsAsErrors
+         is repo-wide (Directory.Build.props), NuGet audit warnings on the transitive
+         2.5.192 are hard build errors, so deleting this line breaks the build outright.
+         DO NOT "clean up" this line as unused: it is load-bearing.
+
+         Why 2.5.301 exactly: every advisory that reaches the 2.x line has
+         "< 2.5.301" as its vulnerable ceiling, so 2.5.301 is the FIRST patched 2.x
+         version, not an arbitrary choice. Newer clean 2.x builds exist (2.5.302 /
+         2.5.303 / 2.5.305) but add no security value over 2.5.301, and MessagePack
+         3.x (>= 3.1.7) is a major-version jump under StreamJsonRpc's feet. The pin
+         sits at the security-optimal minimum; the "security-pins" dependabot group
+         will propose any future bump.
+
+         Reachability: MessagePack is absent from src/NewVixSmart.Web's graph and
+         from the published web output, and .dockerignore excludes this project, so
+         it is a local-dev-harness dependency only and never ships. Both HIGHs are
+         also in paths this harness does not exercise (LZ4 decompression, and
+         unbounded reader recursion on attacker-shaped input), so the practical risk
+         is low - but the NU1902/NU1903 build gate makes the pin mandatory anyway.
+
+         Upgrade path: Aspire.Hosting 13.6.0 now declares MessagePack 2.5.302 as a
+         DIRECT dependency (upstream fixed the transitive floor). Bumping Aspire
+         would therefore lift the floor to a clean version on its own, but 13.0.0 ->
+         13.6.0 is six minor versions of the orchestration SDK and a far larger blast
+         radius than this finding warrants, so it is deliberately not done here.
          First patched v2 line: docs/audit-round18-findings.md (R18-8); the DCP /
          dashboard MessagePack log channel was runtime-verified on 2.5.301 in
-         docs/audit-round19-findings.md. Covered by the "messagepack" dependabot
-         group in .github/dependabot.yml. -->
+         docs/audit-round19-findings.md. Covered by the "security-pins" dependabot
+         group in .github/dependabot.yml. Guarded by DependencyMessagePackPinTests. -->
     <PackageReference Include="MessagePack" Version="2.5.301" />
   </ItemGroup>
 

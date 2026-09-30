@@ -72,6 +72,92 @@ jobs:
           path: '**/TestResults/*.trx'
           retention-days: 14
 
+  # The one gate the rest of the suite structurally cannot provide.
+  #
+  # Every other test builds its schema with EnsureCreated() on in-memory SQLite, so the
+  # 38-migration chain has never been executed anywhere in CI - only the model was
+  # compared with its snapshot, and a migration that SQL Server rejects would ship green.
+  # This job runs a real SQL Server engine, points NVS_TEST_SQLSERVER at it, and runs
+  # the whole suite so nothing is skipped: the SQLite tests keep their in-memory
+  # databases, and MigrationChainSqlServerTests gets the engine it asks for.
+  #
+  # `build-and-test` is left untouched on purpose; the only difference there is that the
+  # SQL Server tests report themselves skipped with the reason in the trx, which is why
+  # this job exists to make them count for real.
+  migration-chain-sqlserver:
+    name: Migration chain (real SQL Server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-CU26-ubuntu-22.04
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Vix-CI-Migration-Passw0rd-2026!"
+        ports:
+          - "1433:1433"
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Vix-CI-Migration-Passw0rd-2026!' -Q 'SELECT 1' -b"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 40
+          --health-start-period 60s
+    env:
+      # The tests build a throwaway database per run and drop it afterwards; they never
+      # touch NewVixSmartDb. The password is the CI service's own, scoped to this job.
+      NVS_TEST_SQLSERVER: "Server=localhost,1433;Database=master;User Id=sa;Password=Vix-CI-Migration-Passw0rd-2026!;TrustServerCertificate=True;Encrypt=False"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore NewVixSmart.slnx
+
+      - name: Build
+        run: dotnet build NewVixSmart.slnx -c Release --no-restore
+
+      - name: Test against the SQL Server engine
+        run: dotnet test NewVixSmart.slnx -c Release --no-build --results-directory TestResults --logger "trx;LogFileName=test-results.trx"
+
+      # A green run that quietly skipped the very tests this job exists for is not a pass.
+      # The trx is read rather than trusted, and the class is counted instead of the whole
+      # suite so a 795/801 green run that skipped these six still fails here. The count is
+      # also asserted against the source, so adding a seventh SQL Server test without
+      # raising this number is a red build rather than a quietly unverified guarantee.
+      - name: Fail if the SQL Server tests did not really run
+        run: |
+          set -o pipefail
+          trx=$(ls TestResults/*.trx)
+          declared=$(grep -c '\[SqlServerFact\]' tests/NewVixSmart.Web.Tests/MigrationChainSqlServerTests.cs || true)
+          passed=$(grep 'MigrationChainSqlServerTests' "$trx" | grep -c 'outcome="Passed"' || true)
+          skipped=$(grep 'MigrationChainSqlServerTests' "$trx" | grep -c 'outcome="NotExecuted"' || true)
+          echo "MigrationChainSqlServerTests -> declared: $declared, passed: $passed, not executed: $skipped"
+          if [ "${declared:-0}" -lt 1 ] || [ "${passed:-0}" -ne "${declared:-0}" ] || [ "${skipped:-0}" -ne 0 ]; then
+            echo "::error::The migration-chain tests did not all run against SQL Server (expected $declared passed and 0 skipped, got $passed passed and $skipped skipped)."
+            exit 1
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: test-results-sqlserver
+          path: '**/TestResults/*.trx'
+          retention-days: 14
+
   package-vulnerability:
     runs-on: ubuntu-latest
     timeout-minutes: 20
