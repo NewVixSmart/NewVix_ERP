@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.0.0" />
-    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.0.0" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.0" />
     <!-- SECURITY PIN, not a used dependency: no source file in this project
          references MessagePack. Aspire.Hosting.* 13.0.0 -> StreamJsonRpc 2.22.23
          depends on MessagePack with a bare minimum of ">= 2.5.192", which carries
@@ -44,7 +44,7 @@
          dashboard MessagePack log channel was runtime-verified on 2.5.301 in
          docs/audit-round19-findings.md. Covered by the "security-pins" dependabot
          group in .github/dependabot.yml. Guarded by DependencyMessagePackPinTests. -->
-    <PackageReference Include="MessagePack" Version="2.5.301" />
+    <PackageReference Include="MessagePack" Version="2.5.302" />
   </ItemGroup>
 
   <ItemGroup>
