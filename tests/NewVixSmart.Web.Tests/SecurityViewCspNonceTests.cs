@@ -14,7 +14,7 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SecurityViewCspNonceTests
 {
-    private const string NonceExpression = "@Context.GetCspNonce()";
+    private const string _nonceExpression = "@Context.GetCspNonce()";
 
     [Fact]
     public void EveryInlineScriptInEveryViewCarriesTheCspNonce()
@@ -37,7 +37,7 @@ public sealed class SecurityViewCspNonceTests
                 }
 
                 inlineScripts++;
-                if (!tag.Contains(NonceExpression, StringComparison.Ordinal))
+                if (!tag.Contains(_nonceExpression, StringComparison.Ordinal))
                 {
                     offenders.Add($"{Relative(view)}: {tag.Trim()}");
                 }

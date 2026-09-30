@@ -132,7 +132,7 @@ public class ExportCenterService : IExportCenterService
         };
     }
 
-    private static readonly ExportOption[] Catalog =
+    private static readonly ExportOption[] _catalog =
     {
         new("suppliers", "المورّدون", "بيانات الموردين الأساسية", "bi-truck", true),
         new("customers", "العملاء", "بيانات العملاء الأساسية", "bi-people", true),
@@ -161,7 +161,7 @@ public class ExportCenterService : IExportCenterService
         new("stock_reservations", "حجوزات المخزون", "حجوزات المخزون وأصنافها والكميات المستهلكة", "bi-bookmark-check", true)
     };
 
-    public IReadOnlyList<ExportOption> GetCatalog() => Catalog;
+    public IReadOnlyList<ExportOption> GetCatalog() => _catalog;
 
     public async Task<byte[]> ExportXlsxAsync(string key)
     {

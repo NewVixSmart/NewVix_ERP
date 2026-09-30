@@ -9,7 +9,7 @@ namespace NewVixSmart.Web.Controllers;
 [Authorize(Roles = "Admin")]
 public class BackupController : Controller
 {
-    private const string ConfirmationWord = "حذف نهائي";
+    private const string _confirmationWord = "حذف نهائي";
     private readonly IBackupService _backup;
     private readonly IBrandingService _branding;
     private readonly IPrintSettingsService _printSettings;
@@ -90,7 +90,7 @@ public class BackupController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reset(string confirmText)
     {
-        if (!string.Equals(confirmText, ConfirmationWord, StringComparison.Ordinal))
+        if (!string.Equals(confirmText, _confirmationWord, StringComparison.Ordinal))
         {
             TempData["Error"] = "كلمة التأكيد غير صحيحة. لم يتم تنفيذ إعادة الضبط.";
             return RedirectToAction(nameof(Index));

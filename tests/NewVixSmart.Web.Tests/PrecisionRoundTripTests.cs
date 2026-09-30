@@ -30,19 +30,19 @@ namespace NewVixSmart.Web.Tests;
 public sealed class PrecisionRoundTripTests : IDisposable
 {
     /// <summary>A fourth-decimal quantity: the exact case the old two-decimal mapping destroyed.</summary>
-    private const decimal QuantityValue = 0.1234m;
+    private const decimal _quantityValue = 0.1234m;
 
     /// <summary>A fourth-decimal quantity that is not a round figure, for the same reason.</summary>
-    private const decimal SecondQuantityValue = 12.3456m;
+    private const decimal _secondQuantityValue = 12.3456m;
 
     /// <summary>A third-decimal unit price.</summary>
-    private const decimal UnitPriceValue = 12.345m;
+    private const decimal _unitPriceValue = 12.345m;
 
     /// <summary>A money amount on the piastre, the unit the ledger actually uses.</summary>
-    private const decimal MoneyValue = 1234.56m;
+    private const decimal _moneyValue = 1234.56m;
 
     /// <summary>The pre-existing six-decimal unit cost, kept as a control on the untouched width.</summary>
-    private const decimal UnitCostValue = 9.876543m;
+    private const decimal _unitCostValue = 9.876543m;
 
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _options;
@@ -75,13 +75,13 @@ public sealed class PrecisionRoundTripTests : IDisposable
             Name = "Round Trip Item",
             Category = new ItemCategory { Name = "Round Trip Category" },
             ItemType = new ItemType { Name = "Round Trip Type" },
-            CurrentQuantity = QuantityValue,
-            MinQuantity = SecondQuantityValue,
+            CurrentQuantity = _quantityValue,
+            MinQuantity = _secondQuantityValue,
             ReservedQuantity = 0.0001m,
-            CurrentCount = QuantityValue,
-            MinCount = SecondQuantityValue,
+            CurrentCount = _quantityValue,
+            MinCount = _secondQuantityValue,
             ReservedCount = 0.0001m,
-            PurchasePrice = UnitPriceValue,
+            PurchasePrice = _unitPriceValue,
             SalePrice = 0.005m
         };
         db.Warehouses.Add(warehouse);
@@ -92,13 +92,13 @@ public sealed class PrecisionRoundTripTests : IDisposable
         {
             ItemId = item.Id,
             WarehouseId = warehouse.Id,
-            Qty = QuantityValue,
-            Count = QuantityValue,
-            UnitCost = UnitCostValue,
-            CountCost = UnitCostValue,
+            Qty = _quantityValue,
+            Count = _quantityValue,
+            UnitCost = _unitCostValue,
+            CountCost = _unitCostValue,
             DateReceived = new DateTime(2026, 1, 1),
-            RemainingQty = QuantityValue,
-            RemainingCount = QuantityValue
+            RemainingQty = _quantityValue,
+            RemainingCount = _quantityValue
         });
         await db.SaveChangesAsync();
         return item.Id;
@@ -116,16 +116,16 @@ public sealed class PrecisionRoundTripTests : IDisposable
         using var db = CreateContext();
         var item = await db.Items.AsNoTracking().SingleAsync(i => i.Id == itemId);
 
-        Assert.Equal(QuantityValue, item.CurrentQuantity);
-        Assert.Equal(SecondQuantityValue, item.MinQuantity);
+        Assert.Equal(_quantityValue, item.CurrentQuantity);
+        Assert.Equal(_secondQuantityValue, item.MinQuantity);
         Assert.Equal(0.0001m, item.ReservedQuantity);
-        Assert.Equal(QuantityValue, item.CurrentCount);
-        Assert.Equal(SecondQuantityValue, item.MinCount);
+        Assert.Equal(_quantityValue, item.CurrentCount);
+        Assert.Equal(_secondQuantityValue, item.MinCount);
         Assert.Equal(0.0001m, item.ReservedCount);
 
         // Equality alone would accept 0.1230 in place of 0.1234, so the scale is asserted too.
-        Assert.Equal(Exact(QuantityValue), Exact(item.CurrentQuantity));
-        Assert.Equal(Exact(SecondQuantityValue), Exact(item.MinQuantity));
+        Assert.Equal(Exact(_quantityValue), Exact(item.CurrentQuantity));
+        Assert.Equal(Exact(_secondQuantityValue), Exact(item.MinQuantity));
     }
 
     /// <summary>
@@ -140,9 +140,9 @@ public sealed class PrecisionRoundTripTests : IDisposable
         using var db = CreateContext();
         var item = await db.Items.AsNoTracking().SingleAsync(i => i.Id == itemId);
 
-        Assert.Equal(UnitPriceValue, item.PurchasePrice);
+        Assert.Equal(_unitPriceValue, item.PurchasePrice);
         Assert.Equal(0.005m, item.SalePrice);
-        Assert.Equal(Exact(UnitPriceValue), Exact(item.PurchasePrice));
+        Assert.Equal(Exact(_unitPriceValue), Exact(item.PurchasePrice));
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public sealed class PrecisionRoundTripTests : IDisposable
             ReceiptNumber = "RT-RECEIPT-1",
             Type = PaymentType.Receipt,
             Method = PaymentMethod.Cash,
-            Amount = MoneyValue,
+            Amount = _moneyValue,
             PaymentDate = new DateTime(2026, 1, 1)
         });
         await db.SaveChangesAsync();
@@ -167,8 +167,8 @@ public sealed class PrecisionRoundTripTests : IDisposable
         using var verify = CreateContext();
         var payment = await verify.Payments.AsNoTracking().SingleAsync(p => p.ReceiptNumber == "RT-RECEIPT-1");
 
-        Assert.Equal(MoneyValue, payment.Amount);
-        Assert.Equal(Exact(MoneyValue), Exact(payment.Amount));
+        Assert.Equal(_moneyValue, payment.Amount);
+        Assert.Equal(Exact(_moneyValue), Exact(payment.Amount));
     }
 
     /// <summary>
@@ -185,9 +185,9 @@ public sealed class PrecisionRoundTripTests : IDisposable
         using var db = CreateContext();
         var layer = await db.StockLayers.AsNoTracking().SingleAsync(l => l.ItemId == itemId);
 
-        Assert.Equal(UnitCostValue, layer.UnitCost);
-        Assert.Equal(UnitCostValue, layer.CountCost);
-        Assert.Equal(Exact(UnitCostValue), Exact(layer.UnitCost));
+        Assert.Equal(_unitCostValue, layer.UnitCost);
+        Assert.Equal(_unitCostValue, layer.CountCost);
+        Assert.Equal(Exact(_unitCostValue), Exact(layer.UnitCost));
     }
 
     /// <summary>

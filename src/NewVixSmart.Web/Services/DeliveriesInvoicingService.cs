@@ -6,7 +6,7 @@ namespace NewVixSmart.Web.Services;
 
 public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
     private readonly IAccountingService? _accounting;
@@ -153,7 +153,7 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
 
         invoice.PostingMode = SalesPostingMode.AtInvoice;
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try

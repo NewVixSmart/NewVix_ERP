@@ -23,7 +23,7 @@ public sealed class ConcurrencyTokenModelTests
     /// مقصودة <b>محدّدة</b>: إضافة جدول أو حذفه منها تفشل الاختبارات، فيُعاد النظر في قراره
     /// صراحةً بدل أن يمرّ صامتًا.
     /// </summary>
-    private static readonly string[] ExpectedRowVersionTables =
+    private static readonly string[] _expectedRowVersionTables =
     [
         "DeliveryIssues",
         "DeliveryOrders",
@@ -95,7 +95,7 @@ public sealed class ConcurrencyTokenModelTests
     {
         using var db = CreateContext();
         var actual = RowVersionTables(db).OrderBy(t => t, StringComparer.Ordinal).ToList();
-        var expected = ExpectedRowVersionTables.OrderBy(t => t, StringComparer.Ordinal).ToList();
+        var expected = _expectedRowVersionTables.OrderBy(t => t, StringComparer.Ordinal).ToList();
 
         var missing = expected.Except(actual, StringComparer.Ordinal).ToList();
         var extra = actual.Except(expected, StringComparer.Ordinal).ToList();
@@ -139,7 +139,7 @@ public sealed class ConcurrencyTokenModelTests
             }
         }
 
-        Assert.Equal(ExpectedRowVersionTables.Length, examined);
+        Assert.Equal(_expectedRowVersionTables.Length, examined);
     }
 
     /// <summary>

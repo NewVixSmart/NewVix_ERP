@@ -13,14 +13,14 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class A11yGateManifestTests
 {
-    private const string GatePath = "e2e/a11y-gate.cjs";
+    private const string _gatePath = "e2e/a11y-gate.cjs";
 
     /// <summary>
     /// Actions that must stay out of the manifest: they return a file, a redirect to the
     /// dashboard, or require interactive state that axe cannot judge. Keep this list short
     /// and justified - every entry is an acknowledged coverage gap.
     /// </summary>
-    private static readonly HashSet<string> Excluded = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _excluded = new(StringComparer.OrdinalIgnoreCase)
     {
         "Account.Login", "Account.Logout", "Account.AccessDenied",
         "Home.Error",
@@ -43,7 +43,7 @@ public sealed class A11yGateManifestTests
         || action is "Download" or "Template" or "Preview" or "PrintPreview";
 
     /// <summary>Route aliases: the gate uses the shorter path the site actually serves.</summary>
-    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> _aliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["/Home"] = "/"
     };
@@ -61,7 +61,7 @@ public sealed class A11yGateManifestTests
     /// <summary>
     /// Controllers here declare <c>IActionResult</c> almost everywhere rather than
     /// <c>ViewResult</c>, so a bare IActionResult has to count as view-rendering.
-    /// File/redirect results are handled by <see cref="Excluded"/>.
+    /// File/redirect results are handled by <see cref="_excluded"/>.
     /// </summary>
     private static bool ReturnsView(Type returnType)
     {
@@ -124,7 +124,7 @@ public sealed class A11yGateManifestTests
     private static IEnumerable<string> ManifestRoutes()
     {
         var root = FindRepoRoot();
-        var full = Path.Combine(root, GatePath.Replace('/', Path.DirectorySeparatorChar));
+        var full = Path.Combine(root, _gatePath.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(full), $"a11y gate not found at {full}");
 
         var text = File.ReadAllText(full);
@@ -174,13 +174,13 @@ public sealed class A11yGateManifestTests
                          .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                          .Where(m => IsGetAction(m) && ReturnsView(m.ReturnType)))
             {
-                if (Excluded.Contains($"{name}.{action.Name}") || IsFileReturning(action.Name))
+                if (_excluded.Contains($"{name}.{action.Name}") || IsFileReturning(action.Name))
                 {
                     continue;
                 }
 
                 var route = action.Name == "Index" ? $"/{name}" : $"/{name}/{action.Name}";
-                if (Aliases.TryGetValue(route, out var alias))
+                if (_aliases.TryGetValue(route, out var alias))
                 {
                     route = alias;
                 }
@@ -191,7 +191,7 @@ public sealed class A11yGateManifestTests
         }
 
         Assert.True(missing.Count == 0,
-            "GET actions that render a view but are absent from " + GatePath +
+            "GET actions that render a view but are absent from " + _gatePath +
             " (they are never axe-scanned):" + Environment.NewLine +
             string.Join(Environment.NewLine, missing.Select(m => "  " + m)));
     }
@@ -209,7 +209,7 @@ public sealed class A11yGateManifestTests
         {
             var name = controller.Name[..^"Controller".Length];
             var index = $"/{name}";
-            live.Add(Aliases.TryGetValue(index, out var alias) ? alias : index);
+            live.Add(_aliases.TryGetValue(index, out var alias) ? alias : index);
             foreach (var action in controller
                          .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                          .Where(m => !m.IsSpecialName))

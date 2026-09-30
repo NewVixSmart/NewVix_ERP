@@ -27,23 +27,23 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class PrecisionColumnMetadataTests
 {
-    private const string MoneyType = "decimal(18,2)";
-    private const string PriceType = "decimal(18,3)";
-    private const string QuantityType = "decimal(18,4)";
-    private const string CostType = "decimal(18,6)";
+    private const string _moneyType = "decimal(18,2)";
+    private const string _priceType = "decimal(18,3)";
+    private const string _quantityType = "decimal(18,4)";
+    private const string _costType = "decimal(18,6)";
 
     /// <summary>
     /// A connection string that is never opened. The model is a pure function of the provider and the
     /// <c>DbContext</c> configuration, so the store type is fully determined without a server.
     /// </summary>
-    private const string UnreachableServer =
+    private const string _unreachableServer =
         "Server=precision-metadata-probe;Database=PrecisionMetadataProbe;Integrated Security=True;TrustServerCertificate=True";
 
     private static IModel SqlServerModel
     {
         get
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(UnreachableServer).Options;
+            var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(_unreachableServer).Options;
             using var context = new AppDbContext(options);
             return context.Model;
         }
@@ -75,124 +75,124 @@ public sealed class PrecisionColumnMetadataTests
 
     private static Dictionary<string, string> MoneyColumns() => new(StringComparer.Ordinal)
     {
-        ["Payment.Amount"] = MoneyType,
-        ["JournalEntryLine.Debit"] = MoneyType,
-        ["JournalEntryLine.Credit"] = MoneyType,
-        ["BudgetLine.AnnualAmount"] = MoneyType,
-        ["Supplier.OpeningBalance"] = MoneyType,
-        ["Customer.OpeningBalance"] = MoneyType,
-        ["SalePaymentAllocation.AllocatedAmount"] = MoneyType,
-        ["PurchasePaymentAllocation.AllocatedAmount"] = MoneyType,
-        ["PurchaseReturn.TotalAmount"] = MoneyType,
-        ["SaleReturn.TotalAmount"] = MoneyType,
+        ["Payment.Amount"] = _moneyType,
+        ["JournalEntryLine.Debit"] = _moneyType,
+        ["JournalEntryLine.Credit"] = _moneyType,
+        ["BudgetLine.AnnualAmount"] = _moneyType,
+        ["Supplier.OpeningBalance"] = _moneyType,
+        ["Customer.OpeningBalance"] = _moneyType,
+        ["SalePaymentAllocation.AllocatedAmount"] = _moneyType,
+        ["PurchasePaymentAllocation.AllocatedAmount"] = _moneyType,
+        ["PurchaseReturn.TotalAmount"] = _moneyType,
+        ["SaleReturn.TotalAmount"] = _moneyType,
 
-        ["PurchaseInvoice.TotalAmount"] = MoneyType,
-        ["PurchaseInvoice.Discount"] = MoneyType,
-        ["PurchaseInvoice.Discount2"] = MoneyType,
-        ["PurchaseInvoice.Discount3"] = MoneyType,
-        ["PurchaseInvoice.Tax"] = MoneyType,
-        ["PurchaseInvoice.NetAmount"] = MoneyType,
-        ["PurchaseInvoice.PaidAmount"] = MoneyType,
+        ["PurchaseInvoice.TotalAmount"] = _moneyType,
+        ["PurchaseInvoice.Discount"] = _moneyType,
+        ["PurchaseInvoice.Discount2"] = _moneyType,
+        ["PurchaseInvoice.Discount3"] = _moneyType,
+        ["PurchaseInvoice.Tax"] = _moneyType,
+        ["PurchaseInvoice.NetAmount"] = _moneyType,
+        ["PurchaseInvoice.PaidAmount"] = _moneyType,
 
-        ["SaleInvoice.TotalAmount"] = MoneyType,
-        ["SaleInvoice.Discount"] = MoneyType,
-        ["SaleInvoice.Discount2"] = MoneyType,
-        ["SaleInvoice.Discount3"] = MoneyType,
-        ["SaleInvoice.Tax"] = MoneyType,
-        ["SaleInvoice.NetAmount"] = MoneyType,
-        ["SaleInvoice.PaidAmount"] = MoneyType,
+        ["SaleInvoice.TotalAmount"] = _moneyType,
+        ["SaleInvoice.Discount"] = _moneyType,
+        ["SaleInvoice.Discount2"] = _moneyType,
+        ["SaleInvoice.Discount3"] = _moneyType,
+        ["SaleInvoice.Tax"] = _moneyType,
+        ["SaleInvoice.NetAmount"] = _moneyType,
+        ["SaleInvoice.PaidAmount"] = _moneyType,
 
-        ["SaleQuote.TotalAmount"] = MoneyType,
-        ["SaleQuote.Discount"] = MoneyType,
-        ["SaleQuote.Tax"] = MoneyType,
-        ["SaleQuote.NetAmount"] = MoneyType,
+        ["SaleQuote.TotalAmount"] = _moneyType,
+        ["SaleQuote.Discount"] = _moneyType,
+        ["SaleQuote.Tax"] = _moneyType,
+        ["SaleQuote.NetAmount"] = _moneyType,
 
-        ["PurchaseInvoiceItem.Discount"] = MoneyType,
-        ["SaleInvoiceItem.Discount"] = MoneyType,
+        ["PurchaseInvoiceItem.Discount"] = _moneyType,
+        ["SaleInvoiceItem.Discount"] = _moneyType,
     };
 
     private static Dictionary<string, string> UnitPriceColumns() => new(StringComparer.Ordinal)
     {
-        ["Item.PurchasePrice"] = PriceType,
-        ["Item.SalePrice"] = PriceType,
-        ["SupplierQuote.UnitPrice"] = PriceType,
-        ["PurchaseInvoiceItem.UnitPrice"] = PriceType,
-        ["PurchaseOrderItem.UnitPrice"] = PriceType,
-        ["PurchaseReturnItem.UnitPrice"] = PriceType,
-        ["SaleInvoiceItem.UnitPrice"] = PriceType,
-        ["SaleQuoteItem.UnitPrice"] = PriceType,
-        ["SaleReturnItem.UnitPrice"] = PriceType,
-        ["SalesOrderItem.UnitPrice"] = PriceType,
+        ["Item.PurchasePrice"] = _priceType,
+        ["Item.SalePrice"] = _priceType,
+        ["SupplierQuote.UnitPrice"] = _priceType,
+        ["PurchaseInvoiceItem.UnitPrice"] = _priceType,
+        ["PurchaseOrderItem.UnitPrice"] = _priceType,
+        ["PurchaseReturnItem.UnitPrice"] = _priceType,
+        ["SaleInvoiceItem.UnitPrice"] = _priceType,
+        ["SaleQuoteItem.UnitPrice"] = _priceType,
+        ["SaleReturnItem.UnitPrice"] = _priceType,
+        ["SalesOrderItem.UnitPrice"] = _priceType,
     };
 
     private static Dictionary<string, string> UnitCostColumns() => new(StringComparer.Ordinal)
     {
-        ["StockLayer.UnitCost"] = CostType,
-        ["StockLayer.CountCost"] = CostType,
-        ["StockTransferItem.UnitCost"] = CostType,
+        ["StockLayer.UnitCost"] = _costType,
+        ["StockLayer.CountCost"] = _costType,
+        ["StockTransferItem.UnitCost"] = _costType,
     };
 
     private static Dictionary<string, string> QuantityColumns() => new(StringComparer.Ordinal)
     {
-        ["Item.MinCount"] = QuantityType,
-        ["Item.MinQuantity"] = QuantityType,
-        ["Item.CurrentCount"] = QuantityType,
-        ["Item.CurrentQuantity"] = QuantityType,
-        ["Item.ReservedCount"] = QuantityType,
-        ["Item.ReservedQuantity"] = QuantityType,
+        ["Item.MinCount"] = _quantityType,
+        ["Item.MinQuantity"] = _quantityType,
+        ["Item.CurrentCount"] = _quantityType,
+        ["Item.CurrentQuantity"] = _quantityType,
+        ["Item.ReservedCount"] = _quantityType,
+        ["Item.ReservedQuantity"] = _quantityType,
 
-        ["PurchaseInvoiceItem.Quantity"] = QuantityType,
-        ["PurchaseInvoiceItem.Count"] = QuantityType,
-        ["PurchaseOrderItem.Quantity"] = QuantityType,
-        ["PurchaseOrderItem.Count"] = QuantityType,
-        ["PurchaseOrderItem.ReceivedQty"] = QuantityType,
-        ["PurchaseOrderItem.ReceivedCount"] = QuantityType,
-        ["PurchaseReturnItem.Quantity"] = QuantityType,
-        ["PurchaseReturnItem.Count"] = QuantityType,
+        ["PurchaseInvoiceItem.Quantity"] = _quantityType,
+        ["PurchaseInvoiceItem.Count"] = _quantityType,
+        ["PurchaseOrderItem.Quantity"] = _quantityType,
+        ["PurchaseOrderItem.Count"] = _quantityType,
+        ["PurchaseOrderItem.ReceivedQty"] = _quantityType,
+        ["PurchaseOrderItem.ReceivedCount"] = _quantityType,
+        ["PurchaseReturnItem.Quantity"] = _quantityType,
+        ["PurchaseReturnItem.Count"] = _quantityType,
 
-        ["SaleInvoiceItem.Quantity"] = QuantityType,
-        ["SaleInvoiceItem.Count"] = QuantityType,
-        ["SaleQuoteItem.Quantity"] = QuantityType,
-        ["SaleQuoteItem.Count"] = QuantityType,
-        ["SaleReturnItem.Quantity"] = QuantityType,
-        ["SaleReturnItem.Count"] = QuantityType,
+        ["SaleInvoiceItem.Quantity"] = _quantityType,
+        ["SaleInvoiceItem.Count"] = _quantityType,
+        ["SaleQuoteItem.Quantity"] = _quantityType,
+        ["SaleQuoteItem.Count"] = _quantityType,
+        ["SaleReturnItem.Quantity"] = _quantityType,
+        ["SaleReturnItem.Count"] = _quantityType,
 
-        ["SalesOrderItem.Quantity"] = QuantityType,
-        ["SalesOrderItem.Count"] = QuantityType,
-        ["SalesOrderItem.InvoicedQty"] = QuantityType,
-        ["SalesOrderItem.InvoicedCount"] = QuantityType,
-        ["SalesOrderItem.ReservedQty"] = QuantityType,
-        ["SalesOrderItem.ReservedCount"] = QuantityType,
-        ["SalesOrderItem.DeliveredQty"] = QuantityType,
-        ["SalesOrderItem.DeliveredCount"] = QuantityType,
+        ["SalesOrderItem.Quantity"] = _quantityType,
+        ["SalesOrderItem.Count"] = _quantityType,
+        ["SalesOrderItem.InvoicedQty"] = _quantityType,
+        ["SalesOrderItem.InvoicedCount"] = _quantityType,
+        ["SalesOrderItem.ReservedQty"] = _quantityType,
+        ["SalesOrderItem.ReservedCount"] = _quantityType,
+        ["SalesOrderItem.DeliveredQty"] = _quantityType,
+        ["SalesOrderItem.DeliveredCount"] = _quantityType,
 
-        ["DeliveryOrderItem.Quantity"] = QuantityType,
-        ["DeliveryOrderItem.Count"] = QuantityType,
-        ["DeliveryIssueItem.Quantity"] = QuantityType,
-        ["DeliveryIssueItem.Count"] = QuantityType,
+        ["DeliveryOrderItem.Quantity"] = _quantityType,
+        ["DeliveryOrderItem.Count"] = _quantityType,
+        ["DeliveryIssueItem.Quantity"] = _quantityType,
+        ["DeliveryIssueItem.Count"] = _quantityType,
 
-        ["StockReservationLine.Quantity"] = QuantityType,
-        ["StockReservationLine.Count"] = QuantityType,
-        ["StockReservationLine.ConsumedQuantity"] = QuantityType,
-        ["StockReservationLine.ConsumedCount"] = QuantityType,
+        ["StockReservationLine.Quantity"] = _quantityType,
+        ["StockReservationLine.Count"] = _quantityType,
+        ["StockReservationLine.ConsumedQuantity"] = _quantityType,
+        ["StockReservationLine.ConsumedCount"] = _quantityType,
 
-        ["StockMovement.Quantity"] = QuantityType,
-        ["StockMovement.Count"] = QuantityType,
-        ["StockMovement.BalanceBefore"] = QuantityType,
-        ["StockMovement.BalanceAfter"] = QuantityType,
-        ["StockMovement.CountBefore"] = QuantityType,
-        ["StockMovement.CountAfter"] = QuantityType,
+        ["StockMovement.Quantity"] = _quantityType,
+        ["StockMovement.Count"] = _quantityType,
+        ["StockMovement.BalanceBefore"] = _quantityType,
+        ["StockMovement.BalanceAfter"] = _quantityType,
+        ["StockMovement.CountBefore"] = _quantityType,
+        ["StockMovement.CountAfter"] = _quantityType,
 
-        ["StockLayer.Qty"] = QuantityType,
-        ["StockLayer.Count"] = QuantityType,
-        ["StockLayer.RemainingQty"] = QuantityType,
-        ["StockLayer.RemainingCount"] = QuantityType,
+        ["StockLayer.Qty"] = _quantityType,
+        ["StockLayer.Count"] = _quantityType,
+        ["StockLayer.RemainingQty"] = _quantityType,
+        ["StockLayer.RemainingCount"] = _quantityType,
 
-        ["StockTransferItem.Quantity"] = QuantityType,
-        ["StockTransferItem.Count"] = QuantityType,
+        ["StockTransferItem.Quantity"] = _quantityType,
+        ["StockTransferItem.Count"] = _quantityType,
 
-        ["InventoryAdjustment.NewCount"] = QuantityType,
-        ["InventoryAdjustment.NewQuantity"] = QuantityType,
+        ["InventoryAdjustment.NewCount"] = _quantityType,
+        ["InventoryAdjustment.NewQuantity"] = _quantityType,
     };
 
     /// <summary>

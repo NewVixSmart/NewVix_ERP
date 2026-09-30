@@ -129,7 +129,7 @@
 
 ---
 
-## تسلسل التنفيذ بأمر الأولوية (для Agents والجلسات)
+## تسلسل التنفيذ بأمر الأولوية (للـAgents والجلسات)
 
 | المرحلة | المهام | البوابة (قبل التالي) |
 |---|---|---|
@@ -198,16 +198,16 @@
 
 #### ملخص M13 — المراجعة النهائية
 
-**الأ области (A) — مراجعة كود P3:**
+**النطاق (A) — مراجعة كود P3:**
 
 | المنطقة | الحكم | التفاصيل |
 |---|---|---|
-| **M9 FX** | ✅ PASS | `RecordFxSettlementAsync` (AccountingService.cs:39-58) تُصدر قيدًا متوازنًا؛ حساب 4400 (خسائر) يُستخدم عند `fxLoss > 0.01m`، 8400 (أرباح) عند `fxGain > 0.01m` — اختيار صحيح بالعلامة؛ `PaymentService.ApplyInvoiceAllocationAsync` (سطر 130-256) يُo限制 بـ `outstanding×r1/r0` لا يسمح بالدفع الزائد؛ مُعاملة واحدة (BeginTransactionAsync)؛ لا تكرار FX — `RecordFxSettlementAsync` تُستدعى مرة واحدة داخل المعاملة (سطر 83-84)، والـ `HasDuplicatePaymentAsync` (سطر 49) تمنع الدفعات المكررة خلال دقيقتين |
+| **M9 FX** | ✅ PASS | `RecordFxSettlementAsync` (AccountingService.cs:39-58) تُصدر قيدًا متوازنًا؛ حساب 4400 (خسائر) يُستخدم عند `fxLoss > 0.01m`، 8400 (أرباح) عند `fxGain > 0.01m` — اختيار صحيح بالعلامة؛ `PaymentService.ApplyInvoiceAllocationAsync` (سطر 130-256) محدود بـ `outstanding×r1/r0` لا يسمح بالدفع الزائد؛ مُعاملة واحدة (BeginTransactionAsync)؛ لا تكرار FX — `RecordFxSettlementAsync` تُستدعى مرة واحدة داخل المعاملة (سطر 83-84)، والـ `HasDuplicatePaymentAsync` (سطر 49) تمنع الدفعات المكررة خلال دقيقتين |
 | **M10 Audit** | ✅ PASS | `ReportsController.AuditLedger` (سطر 232-321) يُصفّي by/from/to/accountId/source — نفس التصفية في `ExportAuditLedgerXlsxAsync` (ReportService.cs:412-469)؛ API `JournalEntriesController.GetJournalEntries` (سطر 22-95) يستخدم `ApiAuthorize("AuditLedger.View")` + نفس التصفية |
 | **M11 Batch** | ✅ PASS | `BatchService.RunSalesBatchAsync` (سطر 19-63) — كل مستند عبر `_inventory.CreateSaleAsync` في معاملة منفصلة (.atomic)؛ best-effort ناجح (اختبار `OneInvoiceFailsOnStock_OthersStillSucceed`)؛ لا تكرار GL — كل `CreateSaleAsync` يولّد EntryNumber فريدًا |
 | **M12 Fiscal** | ✅ PASS | `FiscalService.CloseYearAsync` (سطر 35-99) يحصّل P&L إلى 3001؛ حارس PostAsync (AccountingService.cs:105-106) هو السلطة الوحيدة؛ القاعدة «أحدث سنة فقط» (سطر 44-46) مُ.getMethod؛ `ReopenYearAsync` (سطر 101-153) يحذف القيود بالكامل ويعيد `IsClosed=false` — اختبار `ReopenYear_RemovesCloseEntries_AndRestoresPlBalances` يثبت التوازن |
 | **أذونات** | ✅ PASS | `PermissionCatalog` يُسجّل `Batch: [SalesCreate, AdjustmentCreate]` (سطر 41)، `FiscalClose: [Close, Reopen]` (سطر 42)، `AuditLedger: [View, Export]` (سطر 39)؛ `PermissionDefaults` تُعطي Accountant: Batch.الاثنين + FiscalClose.Close + AuditLedger.الاثنين (سطر 24-25، 22)؛ كل controller يستخدم `RequirePerm` |
-| **أسرار** | ✅ PASS | `appsettings.json` Jwt:Key = `REPLACE_WITH_LONG_SECRET_IN_PRODUCTION` (سطر 13) — placeholder واضح؛ `appsettings.Development.json` Jwt:Key = `DevOnly-SuperSecretKey-DoNotUseInProduction-12345678` (سطر 9) —明确 للتطوير فقط؛ لا أسرار حقيقية مكتوبة |
+| **أسرار** | ✅ PASS | `appsettings.json` Jwt:Key = `REPLACE_WITH_LONG_SECRET_IN_PRODUCTION` (سطر 13) — placeholder واضح؛ `appsettings.Development.json` Jwt:Key = `DevOnly-SuperSecretKey-DoNotUseInProduction-12345678` (سطر 9) —مخصص للتطوير فقط؛ لا أسرار حقيقية مكتوبة |
 | **TODOات عربية** | ✅ PASS | لا توجد TODOs معلّقة في كود P3 |
 
 **ال Bereich B — التدقيق على النظام الحي:**
@@ -366,7 +366,7 @@
 | الملفات المتغيّرة | `wwwroot/css/site.css` فقط (إصلاحات تباين) |
 | Backlog Moderate/Minor | لا شيء مُكتشف — المورد الأساسي نظيف (معتمد من مسح axe + لوحة المفاتيح) |
 
-**البوابة الدائمة (standing gate):** `%TEMP%\opencode\pw\p4cA11ySmoke.cjs` — فشل عند أي انتهاك Critical/Serious أو خطأ console أو صفحة بلا 200. `ACCESSIBILITY.md` أُنشئ في جذر المستودع: هدف WCAG 2.2 AA، أمر البوابة، قاعدة «لا انحدار إتاحة».
+**البوابة الدائمة (standing gate):** `e2e/a11y-gate.cjs` — من داخل `e2e/`: `npm ci && npm run a11y`، وتفشل عند أي انتهاك Critical/Serious أو خطأ console أو صفحة بلا 200. (النسخة الأولى من هذه البوابة كانت سكربتًا مؤقتًا في `%TEMP%` باسم `p4cA11ySmoke.cjs` **لم يبقَ موجودًا**؛ السكربت الحالي مُودَع في المستودع ويعمل في وظيفة `docker-image` من `ci.yml`، فهو ليس مقصورًا على جهاز.) `ACCESSIBILITY.md` أُنشئ في جذر المستودع: هدف WCAG 2.2 AA، أمر البوابة، قاعدة «لا انحدار إتاحة».
 
 **الحالة النهائية: P4c مكتمل — WCAG 2.2 AA متوافق في المسح الآلي + لوحة المفاتيح، صفر انتهاكات على 41 صفحة، بلا تغيير في المنطق، 117/117 اختبار أخضر.**
 

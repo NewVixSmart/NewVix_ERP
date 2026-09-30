@@ -56,7 +56,7 @@
 
 ## ملف اختبار معطوب
 
-`SecurityAccessTokenLifetimeTests.ConfiguredLifetime_IsHonoured` كان يفشل تحت الحمل في 4 جولات مستقلة. لم يكن среدًا غير مستقرًا: كان **يقيس زمن استجابة الاختبار نفسه**، والحد الأعلى `5` بالضبط لا يحتمل أي بطء. الاختبار الآن يقرأ مطالبة `exp` نفسها — قاطع، مستقل عن الحمل، ويفرّق بين 5 دقائق و60.
+`SecurityAccessTokenLifetimeTests.ConfiguredLifetime_IsHonoured` كان يفشل تحت الحمل في 4 جولات مستقلة. لم يكن عطلًا غير مستقرًا: كان **يقيس زمن استجابة الاختبار نفسه**، والحد الأعلى `5` بالضبط لا يحتمل أي بطء. الاختبار الآن يقرأ مطالبة `exp` نفسها — قاطع، مستقل عن الحمل، ويفرّق بين 5 دقائق و60.
 
 ## ما تأجّل عن قصد
 
@@ -64,9 +64,37 @@
   1. **`IDE1006` (73 findings) is unfixable by the tool.** Roslyn's `NamingStyleCodeFixProvider` reports "doesn't support Fix All in Solution" on every invocation. At `warning` severity the gate could never pass — the enforcing tool cannot clear its own finding — so the two naming rules are `suggestion`. They still guide new code; the 73 private fields were deliberately left alone.
   2. **`CHARSET` (81 findings) stripped UTF-8 BOMs**, because `.editorconfig` says `charset = utf-8`. This is the one place where "never change encoding" and "pass the gate" pointed opposite ways: leaving the BOMs meant 81 permanent failures. The tree is now uniformly BOM-less, which is also what `git add --renormalize .` produces. The user's instruction was to restore the BOMs, so this is a decision to confirm, not a settled fact.
   3. **`IDE0011` added 1,201 brace pairs**, and two tests assert on the literal source text rather than behaviour: `SecurityLogoutAndRedirectTests.Login_GuardsAgainstOffSiteReturnUrlBeforeLocalRedirect` and `SecurityResponseHeadersTests.Program_ErrorHandlerGuardsClearAndReassertsTheHeaders`. Both now fail. The code is correct; the assertions are brace-shaped. Per the rule "do not adjust a failing test", they were left red for the owner to widen.
-  - **Known coverage gap, proved by experiment:** the gate does **not** see `.cshtml`. A deliberate trailing-whitespace violation in `_Layout.cshtml` exited `0`, while the same violation in a `.cs` file exited `2` and named the file. Razor views are outside the gate's scope, and all 122 of them were left byte-identical, so the `nonce`/`scope`/`<caption>` work is untouched by any of this.
+  - **The `.cshtml` gap is still a `dotnet format` gap, and is no longer an unenforced one.** `dotnet format` still does not see `.cshtml` — proved by experiment, a deliberate trailing-whitespace violation in `_Layout.cshtml` still exits `0` while the same violation in a `.cs` file exits `2`. A second, read-only gate now covers what the formatter cannot: `scripts/check-text-hygiene.ps1` walks all `160` in-scope files (`122` views + `38` documents), runs in the `build-and-test` job **before** the build and the tests, and is mirrored rule-for-rule by `RazorHygieneTests`, so deleting the CI step or weakening a rule fails the suite rather than passing quietly. It reports and never rewrites. It found `110` mechanical violations — `20` UTF-8 BOMs, `9` CRLF endings, `81` final-newline defects — which were then fixed byte-precisely, so no Arabic content and none of the `nonce`/`scope`/`<caption>` accessibility work was exposed to a formatter. Judgement calls stay warnings instead of failures. They were adjudicated on 2026-09-30: 12 of the 16 were genuine corruption and are fixed (a Chinese `哪怕` spliced into `AGENTS.md:34`, a Russian `сред` in line 59 above, Russian `для`/`Области` and Chinese `限制`/`明确` in `docs/BUILD-PLAN-README.md`, and one tab-used-as-a-column-separator in `docs/audit-round7-findings.md:102`, now a real Markdown table). The remaining **4 warnings, all in one line** — `Deep-Audit-Report.md:287` — are **kept on purpose**: that line quotes the verbatim damaged header `«الت经验lightly»` as the evidence for its own finding, and deleting evidence to quiet a linter would destroy the finding. `scripts/check-text-hygiene.ps1` has no per-line allowlist for it yet, so the warning stands as a documented, accepted false positive rather than a silent one.
 - **`MessagePack` في AppHost**: الفرضية الأولى (حزمة غير مستخدمة) خاطئة. `Aspire.Hosting.* 13.0.0` يجرّ `MessagePack >= 2.5.192` عبر `StreamJsonRpc`، وهي تحمل 11 ثغرة منها اثنتان عالية. التثبيت الصريح لـ`2.5.301` مُبقًى ومحمى الآن بمجموعة dependabot.
 - **عزل الفروع والمخازن**: خارج النطاق بقرار المستخدم.
+
+### تعديل لاحق على ما سبق (2026-09-30)
+
+ما سبق سجلٌّ لما قيل وقت المراجعة. البنود الثلاثة التالية صحّحت بعد ذلك، وكل تصحيح
+مقروء حتى لا يُفهم أن ما كُتب أعلاه هو الحكم النهائي:
+
+1. **`IDE1006`: العدد `73` خطأ، والقاعدة ليست `suggestion`.** العدد المعتمَد **110 مخالفة
+   في 44 ملفًا**، وقد رُفعت القاعدة من `suggestion` إلى **`warning`** — فصارت `IDE1006`
+   **داخل** البوابة: حقل خاص بلا `_` أو نوع غير PascalCase يُحمرّر CI. أما `44` فهو عدد
+   ملفات غير مشتقّ من الشجرة (الشجرة الآن صفر)، و`110` مؤكَّد مستقلًّا في `.editorconfig` سطر 56.
+   سبب رفع القاعدة أن `suggestion` كانت تظنّ أن الأداة هي من يفتّش: البوابة تحتاج أن
+   **تُبلّغ** صفرًا فقط، لا أن تُصلح. الحكم إذًا: «الأداة لا تصلح» لم يكن مانعًا من `warning`.
+2. **اختبارا `IDE0011` لم يبقيا أحمر.** `SecurityLogoutAndRedirectTests.Login_GuardsAgainstOffSiteReturnUrlBeforeLocalRedirect`
+   و`SecurityResponseHeadersTests.Program_ErrorHandlerGuardsClearAndReassertsTheHeaders`
+   كانا «متبقيَّين أحمر-for-owner» لأنهما تؤكّدان على نص المصدر الحرفي. **وُسّعا**،
+   والحزمة اليوم خضراء بالكامل (`dotnet test NewVixSmart.slnx -c Release`)، فلم تعد هناك
+   حالة معلّقة.
+3. **الـBOM لم تُستعَد، والقرار حُسم.** «إعادة الـBOM إلى ما كانت عليه» (البند 2 أعلاه)
+   لم تُنفَّذ: الشجرة الآن **UTF-8 بلا BOM** بشكل موحّد، وهذا ما يطلبه `charset = utf-8`
+   وما ينتجه `git add --renormalize .`، والبوابة خضراء. لم تعد هناك «قرارؤ يطلب تأكيده».
+4. **`MessagePack`: لماذا `2.5.301` بالضبط، ولماذا لا يغادر AppHost.** كل إشعارٍ يبلغ خط
+   `2.x` سقفَه المعيب `< 2.5.301`، فـ`2.5.301` **أول إصدار مُرقَّع في السلسلة 2.x** لا اختيارًا
+   اعتباطيًا؛ وإصدارات `2.5.302/303/305` الأنظف تضيف صفرًا أمنيًا، وقفزة `3.x` قفزة رئيسية
+   تحت أقدام `StreamJsonRpc`. **الوصول:** `MessagePack` غائب عن رسم بياني
+   `src/NewVixSmart.Web` وعن ناتج النشر، و`.dockerignore` يستثني المشروع، فهو تبعية
+   محليّة لمركّب التطوير (AppHost harness) فقط ولا تُشحن أبدًا. ولا تُحذف السطر: `TreatWarningsAsErrors`
+   يحوّل تحذيرات NU1902/NU1903 على `2.5.192` المنقولة إلى أخطاء بناء، فحذفها يكسر البناء.
+   محميّة بمجموعة dependabot `security-pins` ومغطّاة بـ`DependencyMessagePackPinTests`.
 
 ## مبدأ واحد
 

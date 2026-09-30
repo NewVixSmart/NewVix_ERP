@@ -10,17 +10,17 @@ namespace NewVixSmart.Web.Controllers;
 [RequirePerm("ImportCenter.View")]
 public class ImportCenterController : Controller
 {
-    private const string XlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private const string _xlsxContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     /// <summary>
     /// Ceiling for a single upload, mirrored from the ImportCenterService side check. The service
     /// still owns the authoritative validation and must keep it - this layer exists only so an
     /// oversized body is refused BEFORE anything allocates for it.
     /// </summary>
-    private const long MaxUploadBytes = 25L * 1024 * 1024;
+    private const long _maxUploadBytes = 25L * 1024 * 1024;
 
-    /// <summary>Envelope allowance over <see cref="MaxUploadBytes"/> for the multipart boundaries and the antiforgery field.</summary>
-    private const long MaxUploadRequestBytes = MaxUploadBytes + 1024L * 1024;
+    /// <summary>Envelope allowance over <see cref="_maxUploadBytes"/> for the multipart boundaries and the antiforgery field.</summary>
+    private const long _maxUploadRequestBytes = _maxUploadBytes + 1024L * 1024;
 
     private readonly IImportCenterService _import;
 
@@ -47,15 +47,15 @@ public class ImportCenterController : Controller
         }
 
         var bytes = await _import.DownloadTemplateAsync(key);
-        return File(bytes, XlsxContentType, $"newvixsmart_template_{entity.FilePrefix}.xlsx");
+        return File(bytes, _xlsxContentType, $"newvixsmart_template_{entity.FilePrefix}.xlsx");
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     // Refused at the server, before the body is read into memory or spooled to disk, so a
     // multi-megabyte upload can no longer be used to force heap growth per concurrent request.
-    [RequestSizeLimit(MaxUploadRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
+    [RequestSizeLimit(_maxUploadRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = _maxUploadRequestBytes)]
     public async Task<IActionResult> Preview(string key, IFormFile file)
     {
         var entity = _import.FindEntity(key);
@@ -73,7 +73,7 @@ public class ImportCenterController : Controller
         // check only happens once the whole file is already a byte[] in memory. file.Length is the
         // declared length of an already-buffered IFormFile, so this is free and it is what keeps
         // the CopyToAsync + ToArray() below (~2x the file size of heap) from ever running.
-        if (file.Length > MaxUploadBytes)
+        if (file.Length > _maxUploadBytes)
         {
             TempData["Error"] = "حجم الملف أكبر من الحد المسموح به (25 ميجابايت)";
             return RedirectToAction(nameof(Index));

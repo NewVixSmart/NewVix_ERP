@@ -59,7 +59,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     internal const decimal UnitPriceValue = 12.345m;
 
     /// <summary>The layer cost used where a test needs stock to move.</summary>
-    private const decimal LayerCost = 60m;
+    private const decimal _layerCost = 60m;
 
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _options;
@@ -264,7 +264,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, customerId) = await SeedItemAsync(db);
-        await SeedLayerAsync(db, itemId, OrderedQuantity, LayerCost);
+        await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
         var inventory = new InventoryService(db);
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, OrderedQuantity);
@@ -324,7 +324,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, customerId) = await SeedItemAsync(db);
-        await SeedLayerAsync(db, itemId, OrderedQuantity, LayerCost);
+        await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
         var inventory = new InventoryService(db);
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, OrderedQuantity);
@@ -585,7 +585,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db);
-        await SeedLayerAsync(db, itemId, OrderedQuantity, LayerCost);
+        await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
         var reservations = new StockReservationsService(db);
@@ -636,7 +636,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db, quantity: 500m);
-        await SeedLayerAsync(db, itemId, 500m, LayerCost);
+        await SeedLayerAsync(db, itemId, 500m, _layerCost);
 
         var reservations = new StockReservationsService(db);
         var accounting = new AccountingService(db);
@@ -689,7 +689,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db);
-        await SeedLayerAsync(db, itemId, OrderedQuantity, LayerCost);
+        await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
         var reservations = new StockReservationsService(db);
@@ -711,7 +711,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         // Non-vacuity: the raw product really does carry more than two decimals, so the figures below
         // are the result of rounding and not of an operand that happened to be whole.
         Assert.Equal(1234.4469165m, DeliveredQuantity * UnitPriceValue);
-        Assert.Equal(5999.742m, DeliveredQuantity * LayerCost);
+        Assert.Equal(5999.742m, DeliveredQuantity * _layerCost);
 
         var entries = await db.JournalEntries.Include(e => e.Lines).ToListAsync();
         var revenue = entries.Single(e => e.Source == JournalSource.SaleInvoice);
@@ -849,14 +849,14 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
 /// </summary>
 public sealed class PrecisionPathScaleFitsFixtureTests
 {
-    private const string UnreachableServer =
+    private const string _unreachableServer =
         "Server=precision-path-probe;Database=PrecisionPathProbe;Integrated Security=True;TrustServerCertificate=True";
 
     private static IModel SqlServerModel
     {
         get
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(UnreachableServer).Options;
+            var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(_unreachableServer).Options;
             using var context = new AppDbContext(options);
             return context.Model;
         }

@@ -8,7 +8,7 @@ namespace NewVixSmart.Web.Tests;
 
 public sealed class AuthorizationSweepTests
 {
-    private static readonly HashSet<(string Controller, string Action)> AnonymousAllowed =
+    private static readonly HashSet<(string Controller, string Action)> _anonymousAllowed =
     [
         (nameof(NewVixSmart.Web.Controllers.AccountController), nameof(NewVixSmart.Web.Controllers.AccountController.Login)),
         (nameof(NewVixSmart.Web.Controllers.AccountController), nameof(NewVixSmart.Web.Controllers.AccountController.AccessDenied)),
@@ -71,7 +71,7 @@ public sealed class AuthorizationSweepTests
 
                 if (anonymous)
                 {
-                    if (!AnonymousAllowed.Contains((controller.Name, action.Name)))
+                    if (!_anonymousAllowed.Contains((controller.Name, action.Name)))
                     {
                         offenders.Add($"UNEXPECTED ANONYMOUS: {controller.Name}.{action.Name}");
                     }
@@ -79,7 +79,7 @@ public sealed class AuthorizationSweepTests
                     continue;
                 }
 
-                if (!classAuthorize && !methodAuthorize && !AnonymousAllowed.Contains((controller.Name, action.Name)))
+                if (!classAuthorize && !methodAuthorize && !_anonymousAllowed.Contains((controller.Name, action.Name)))
                 {
                     offenders.Add($"UNAUTHORIZED ACTION: {controller.Name}.{action.Name}");
                 }

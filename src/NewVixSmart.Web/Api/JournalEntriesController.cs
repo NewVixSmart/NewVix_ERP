@@ -15,7 +15,7 @@ namespace NewVixSmart.Web.Api;
 [IgnoreAntiforgeryToken]
 public class JournalEntriesController : ControllerBase
 {
-    private const int PageSize = 50;
+    private const int _pageSize = 50;
     private readonly AppDbContext _db;
 
     public JournalEntriesController(AppDbContext db) => _db = db;
@@ -53,7 +53,7 @@ public class JournalEntriesController : ControllerBase
             .Where(l => filteredEntryIds.Contains(l.JournalEntryId))
             .SumAsync(l => (decimal?)l.Credit) ?? 0;
 
-        var entriesRaw = await query.OrderBy(j => j.EntryNumber).Skip((page - 1) * PageSize).Take(PageSize).ToListAsync();
+        var entriesRaw = await query.OrderBy(j => j.EntryNumber).Skip((page - 1) * _pageSize).Take(_pageSize).ToListAsync();
         var entryIds = entriesRaw.Select(e => e.Id).ToArray();
         var lines = await _db.JournalEntryLines
             .AsNoTracking()
@@ -94,8 +94,8 @@ public class JournalEntriesController : ControllerBase
             totalDebit,
             totalCredit,
             page,
-            pageSize = PageSize,
-            totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize)),
+            pageSize = _pageSize,
+            totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)_pageSize)),
             items = data
         });
     }

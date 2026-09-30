@@ -31,8 +31,8 @@ public interface IPrintSettingsService
 
 public class PrintSettingsService : IPrintSettingsService
 {
-    private const string CacheKey = "print.settings.v1";
-    private const string StudioCacheKey = "print.studio.v1";
+    private const string _cacheKey = "print.settings.v1";
+    private const string _studioCacheKey = "print.studio.v1";
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
 
@@ -44,7 +44,7 @@ public class PrintSettingsService : IPrintSettingsService
 
     public async Task<PrintSettingsViewModel> LoadAsync()
     {
-        if (_cache.TryGetValue(CacheKey, out PrintSettingsViewModel? cached) && cached != null)
+        if (_cache.TryGetValue(_cacheKey, out PrintSettingsViewModel? cached) && cached != null)
         {
             return cached;
         }
@@ -59,7 +59,7 @@ public class PrintSettingsService : IPrintSettingsService
             FinancialReports = BuildGroup(rows, PrintGroup.FinancialReports)
         };
 
-        _cache.Set(CacheKey, vm, new MemoryCacheEntryOptions
+        _cache.Set(_cacheKey, vm, new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60)
         });
@@ -68,8 +68,8 @@ public class PrintSettingsService : IPrintSettingsService
 
     public void Invalidate()
     {
-        _cache.Remove(CacheKey);
-        _cache.Remove(StudioCacheKey);
+        _cache.Remove(_cacheKey);
+        _cache.Remove(_studioCacheKey);
     }
 
     public bool ShowLogo(PrintGroup group) => Get(group)?.ShowLogo ?? LegacyDefaultsFor(group).ShowLogo;
@@ -215,7 +215,7 @@ public class PrintSettingsService : IPrintSettingsService
 
     private async Task<Dictionary<PrintGroup, PrintLayoutOptions>> LoadStudioAsync()
     {
-        if (_cache.TryGetValue(StudioCacheKey, out Dictionary<PrintGroup, PrintLayoutOptions>? cached) && cached != null)
+        if (_cache.TryGetValue(_studioCacheKey, out Dictionary<PrintGroup, PrintLayoutOptions>? cached) && cached != null)
         {
             return cached;
         }
@@ -230,7 +230,7 @@ public class PrintSettingsService : IPrintSettingsService
             dict[g] = BuildLayout(rows, g);
         }
 
-        _cache.Set(StudioCacheKey, dict, new MemoryCacheEntryOptions
+        _cache.Set(_studioCacheKey, dict, new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60)
         });
@@ -282,7 +282,7 @@ public class PrintSettingsService : IPrintSettingsService
     }
 
     private PrintGroupSettings? Get(PrintGroup group) =>
-        _cache.TryGetValue(CacheKey, out PrintSettingsViewModel? vm) && vm != null ? vm.GetGroup(group) : null;
+        _cache.TryGetValue(_cacheKey, out PrintSettingsViewModel? vm) && vm != null ? vm.GetGroup(group) : null;
 
     private static PrintGroupSettings BuildGroup(List<SystemSetting> rows, PrintGroup group)
     {

@@ -10,7 +10,7 @@ namespace NewVixSmart.Web.Services;
 
 public class DashboardService : IDashboardService
 {
-    private static readonly Expression<Func<Item, bool>> LowStockPredicate =
+    private static readonly Expression<Func<Item, bool>> _lowStockPredicate =
         i => i.IsActive
             && ((i.CountUnitId.HasValue && i.MinCount > 0 && i.CurrentCount < i.MinCount)
              || (i.QuantityUnitId.HasValue && i.MinQuantity > 0 && i.CurrentQuantity < i.MinQuantity));
@@ -22,7 +22,7 @@ public class DashboardService : IDashboardService
     {
         var items = await _db.Items
             .AsNoTracking()
-            .Where(LowStockPredicate)
+            .Where(_lowStockPredicate)
             .Include(i => i.Category)
             .OrderBy(i => i.Name)
             .ToListAsync();

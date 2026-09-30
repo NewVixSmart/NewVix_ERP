@@ -5,20 +5,20 @@ namespace NewVixSmart.Web.Extensions;
 
 public static class CurrentBranchExtensions
 {
-    private const string Key = "CurrentBranchId";
+    private const string _key = "CurrentBranchId";
 
     public static int? GetCurrentBranchId(this ISession session) =>
-        int.TryParse(session.GetString(Key), out var id) ? id : null;
+        int.TryParse(session.GetString(_key), out var id) ? id : null;
 
     public static void SetCurrentBranchId(this ISession session, int? branchId)
     {
         if (branchId.HasValue && branchId > 0)
         {
-            session.SetString(Key, branchId.Value.ToString());
+            session.SetString(_key, branchId.Value.ToString());
         }
         else
         {
-            session.Remove(Key);
+            session.Remove(_key);
         }
     }
 

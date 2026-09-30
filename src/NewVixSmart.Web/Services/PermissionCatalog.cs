@@ -19,7 +19,7 @@ public static class PermissionCatalog
     public const string Post = "Post";
     public const string Export = "Export";
 
-    private static readonly Dictionary<string, string[]> ActionsByModule = new()
+    private static readonly Dictionary<string, string[]> _actionsByModule = new()
     {
         ["Items"] = [View, Create, Edit, Delete, Export],
         ["Purchases"] = [View, Create, Export],
@@ -92,7 +92,7 @@ public static class PermissionCatalog
     public static string Key(string module, string action) => $"{module}.{action}";
 
     public static string[] ActionsFor(string module) =>
-        ActionsByModule.TryGetValue(module, out var acts) ? acts : [];
+        _actionsByModule.TryGetValue(module, out var acts) ? acts : [];
 
     public static string ModuleDisplayName(string permissionKey)
     {

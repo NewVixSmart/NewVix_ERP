@@ -22,10 +22,10 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class PermissionDoubleFidelityTests : IDisposable
 {
-    private const string UserId = "u-1";
-    private const string Granted = "Sales.View";
-    private const string AlsoGranted = "Sales.Edit";
-    private const string NotGranted = "PurchaseOrders.Create";
+    private const string _userId = "u-1";
+    private const string _granted = "Sales.View";
+    private const string _alsoGranted = "Sales.Edit";
+    private const string _notGranted = "PurchaseOrders.Create";
 
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _options;
@@ -39,8 +39,8 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         using var db = new AppDbContext(_options);
         db.Database.EnsureCreated();
         db.UserPermissions.AddRange(
-            new UserPermission { UserId = UserId, PermissionKey = AlsoGranted },
-            new UserPermission { UserId = UserId, PermissionKey = Granted });
+            new UserPermission { UserId = _userId, PermissionKey = _alsoGranted },
+            new UserPermission { UserId = _userId, PermissionKey = _granted });
         db.SaveChanges();
     }
 
@@ -68,7 +68,7 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
     public async Task AuthzTestPermissionService_DecidesExactlyLikeTheRealService(bool authenticated, bool admin)
     {
         var real = RealService(authenticated, admin);
-        var standIn = new AuthzTestPermissionService(Granted, AlsoGranted)
+        var standIn = new AuthzTestPermissionService(_granted, _alsoGranted)
         {
             IsAuthenticated = authenticated,
             IsAdmin = admin,
@@ -82,7 +82,7 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
     public async Task TestPermissionService_DecidesExactlyLikeTheRealService_ForSignedInCallers(bool admin)
     {
         var real = RealService(authenticated: true, admin: admin);
-        var standIn = admin ? TestPermissionService.Admin : new TestPermissionService(Granted, AlsoGranted);
+        var standIn = admin ? TestPermissionService.Admin : new TestPermissionService(_granted, _alsoGranted);
 
         await AssertSameDecisionsAsync(real, standIn, authenticated: true, admin);
     }
@@ -99,9 +99,9 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         var real = RealService(authenticated: true, admin: false);
         var standIn = new TestPermissionService();
 
-        Assert.True(await real.HasAsync(Granted));
-        Assert.False(await standIn.HasAsync(Granted));
-        Assert.False(await standIn.HasAnyAsync(Granted, NotGranted));
+        Assert.True(await real.HasAsync(_granted));
+        Assert.False(await standIn.HasAsync(_granted));
+        Assert.False(await standIn.HasAnyAsync(_granted, _notGranted));
     }
 
     /// <summary>
@@ -115,14 +115,14 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
     public async Task TestPermissionService_CannotExpressAnAnonymousCaller_SoItCannotProveOne()
     {
         var real = RealService(authenticated: false, admin: false);
-        var standIn = new TestPermissionService(Granted);
+        var standIn = new TestPermissionService(_granted);
         var realAdmin = RealService(authenticated: false, admin: true);
 
-        Assert.False(await real.HasAsync(Granted));
-        Assert.True(await standIn.HasAsync(Granted));
+        Assert.False(await real.HasAsync(_granted));
+        Assert.True(await standIn.HasAsync(_granted));
 
-        Assert.False(await realAdmin.HasAsync(Granted));
-        Assert.True(await TestPermissionService.Admin.HasAsync(Granted));
+        Assert.False(await realAdmin.HasAsync(_granted));
+        Assert.True(await TestPermissionService.Admin.HasAsync(_granted));
     }
 
     /// <summary>
@@ -144,8 +144,8 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         using var db = new AppDbContext(_options);
         var real = new PermissionService(db, http);
 
-        Assert.False(await real.HasAsync(Granted));
-        Assert.False(await real.HasAnyAsync(Granted, AlsoGranted));
+        Assert.False(await real.HasAsync(_granted));
+        Assert.False(await real.HasAnyAsync(_granted, _alsoGranted));
     }
 
     /// <summary>
@@ -177,9 +177,9 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         Assert.False(forged.HttpContext.User.Identity?.IsAuthenticated);
         Assert.True(real.IsAdmin);
 
-        Assert.False(await real.HasAsync(Granted));
-        Assert.False(await real.HasAnyAsync(Granted, AlsoGranted));
-        Assert.False(await standIn.HasAsync(Granted));
+        Assert.False(await real.HasAsync(_granted));
+        Assert.False(await real.HasAnyAsync(_granted, _alsoGranted));
+        Assert.False(await standIn.HasAsync(_granted));
     }
 
     [Fact]
@@ -187,13 +187,13 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
     {
         using var db = new AppDbContext(_options);
         var real = new PermissionService(db, Http());
-        var authzDouble = new AuthzTestPermissionService(Granted, AlsoGranted);
-        var plainDouble = new TestPermissionService(Granted, AlsoGranted);
+        var authzDouble = new AuthzTestPermissionService(_granted, _alsoGranted);
+        var plainDouble = new TestPermissionService(_granted, _alsoGranted);
 
-        var expected = new List<string> { AlsoGranted, Granted };
-        Assert.Equal(expected, await real.GetKeysAsync(UserId));
-        Assert.Equal(expected, await authzDouble.GetKeysAsync(UserId));
-        Assert.Equal(expected, await plainDouble.GetKeysAsync(UserId));
+        var expected = new List<string> { _alsoGranted, _granted };
+        Assert.Equal(expected, await real.GetKeysAsync(_userId));
+        Assert.Equal(expected, await authzDouble.GetKeysAsync(_userId));
+        Assert.Equal(expected, await plainDouble.GetKeysAsync(_userId));
     }
 
     private static async Task AssertSameDecisionsAsync(
@@ -202,15 +202,15 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         bool authenticated,
         bool admin)
     {
-        foreach (var key in new[] { Granted, AlsoGranted, NotGranted, "Reports.Export" })
+        foreach (var key in new[] { _granted, _alsoGranted, _notGranted, "Reports.Export" })
         {
             Assert.True(
                 await real.HasAsync(key) == await standIn.HasAsync(key),
                 $"HasAsync({key}) يفترق عند (authenticated: {authenticated}, admin: {admin}).");
         }
 
-        Assert.Equal(await real.HasAnyAsync(Granted, NotGranted), await standIn.HasAnyAsync(Granted, NotGranted));
-        Assert.Equal(await real.HasAnyAsync(NotGranted, "Reports.Export"), await standIn.HasAnyAsync(NotGranted, "Reports.Export"));
+        Assert.Equal(await real.HasAnyAsync(_granted, _notGranted), await standIn.HasAnyAsync(_granted, _notGranted));
+        Assert.Equal(await real.HasAnyAsync(_notGranted, "Reports.Export"), await standIn.HasAnyAsync(_notGranted, "Reports.Export"));
         Assert.Equal(await real.HasAnyAsync(), await standIn.HasAnyAsync());
 
         Assert.Equal(real.IsAdmin, standIn.IsAdmin);
@@ -219,8 +219,8 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         // moves the authentication check below the admin check is caught here.
         if (!authenticated)
         {
-            Assert.False(await standIn.HasAsync(Granted));
-            Assert.False(await standIn.HasAnyAsync(Granted));
+            Assert.False(await standIn.HasAsync(_granted));
+            Assert.False(await standIn.HasAnyAsync(_granted));
         }
     }
 
@@ -236,7 +236,7 @@ public sealed class PermissionDoubleFidelityTests : IDisposable
         var claims = new List<Claim> { new(ClaimTypes.Name, "tester") };
         if (withId)
         {
-            claims.Add(new Claim(ClaimTypes.NameIdentifier, UserId));
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, _userId));
         }
 
         if (admin)

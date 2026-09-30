@@ -49,18 +49,18 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SecurityAccessTokenLifetimeTests : IDisposable
 {
-    private const int DefaultMinutes = 15;
-    private const int MinMinutes = 1;
-    private const int MaxMinutes = 60;
+    private const int _defaultMinutes = 15;
+    private const int _minMinutes = 1;
+    private const int _maxMinutes = 60;
 
     /// <summary>
     /// A JWT NumericDate is whole seconds, so exp is minted-lifetime rounded DOWN and can sit up to
     /// one second short. This is the largest gap the encoding itself can open, so it is the entire
     /// tolerance the lower bound needs.
     /// </summary>
-    private static readonly TimeSpan NumericDateEncodingSlack = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan _numericDateEncodingSlack = TimeSpan.FromSeconds(1);
 
-    private const string JwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
+    private const string _jwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
 
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<AppDbContext> _options;
@@ -81,7 +81,7 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     {
         var token = await IssueAsync(configuredMinutes: null);
 
-        AssertLifetime(token, DefaultMinutes);
+        AssertLifetime(token, _defaultMinutes);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
 
         // A day-long token is exactly the window this change exists to close, so the ceiling has to
         // hold no matter what the configuration asks for.
-        AssertLifetime(token, MaxMinutes);
+        AssertLifetime(token, _maxMinutes);
     }
 
     /// <summary>
@@ -149,10 +149,10 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     {
         var source = File.ReadAllText(TestPaths.WebProjectFile("Api", "TokensController.cs"));
 
-        Assert.Contains($"MaxAccessTokenMinutes = {MaxMinutes}", source, StringComparison.Ordinal);
-        Assert.Contains($"DefaultAccessTokenMinutes = {DefaultMinutes}", source, StringComparison.Ordinal);
+        Assert.Contains($"_maxAccessTokenMinutes = {_maxMinutes}", source, StringComparison.Ordinal);
+        Assert.Contains($"_defaultAccessTokenMinutes = {_defaultMinutes}", source, StringComparison.Ordinal);
         // The clamp is what makes the ceiling real; without it the constant would be decorative.
-        Assert.Contains("1, MaxAccessTokenMinutes", source, StringComparison.Ordinal);
+        Assert.Contains("1, _maxAccessTokenMinutes", source, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
         // Too SHORT. The mint is never earlier than the sample taken before the controller ran, and
         // NumericDate encoding loses at most a second, so a claim shorter than this means the
         // effective lifetime was below the requested one - a 0-minute token cannot pass this.
-        var earliestPossibleExpiry = issued.SampledBefore + expected - NumericDateEncodingSlack;
+        var earliestPossibleExpiry = issued.SampledBefore + expected - _numericDateEncodingSlack;
         Assert.True(
             expiresAt >= earliestPossibleExpiry,
             $"العمر الفعّال قصير: انتهى التوكن في {expiresAt:O} أي بعد {issued.SampledBefore:O} بـ " +
@@ -190,7 +190,7 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
 
         var settings = new Dictionary<string, string?>
         {
-            ["Jwt:Key"] = JwtKey,
+            ["Jwt:Key"] = _jwtKey,
             ["Jwt:Issuer"] = "NewVixSmart",
             ["Jwt:Audience"] = "NewVixSmart"
         };

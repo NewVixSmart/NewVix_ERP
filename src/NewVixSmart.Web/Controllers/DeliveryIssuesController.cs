@@ -134,7 +134,7 @@ public class DeliveryIssuesController : Controller
             if (!TryQuantize(line.Quantity, out var quantity)
                 || !TryQuantize(line.Count, out var count))
             {
-                TempData["Error"] = QuantityStepError;
+                TempData["Error"] = _quantityStepError;
                 return await Create(vm.Issue.DeliveryOrderId);
             }
             line.Quantity = quantity;
@@ -156,7 +156,7 @@ public class DeliveryIssuesController : Controller
     /// <summary>
     /// Operator-facing message for a posted quantity that is finer than the grid can store.
     /// </summary>
-    private const string QuantityStepError =
+    private const string _quantityStepError =
         "الكمية والعدد يجب أن تكونا بأربع خانات عشرية كحدٍّ أقصى — أصغر خطوة يمكن تسجيلها هي 0.0001";
 
     /// <summary>
@@ -178,7 +178,7 @@ public class DeliveryIssuesController : Controller
     /// shown.
     /// </para>
     /// </summary>
-    private const decimal InputGridTolerance = 0m;
+    private const decimal _inputGridTolerance = 0m;
 
     /// <summary>
     /// Confirms one posted quantity or count is already on the store's own grid, and hands it back
@@ -203,7 +203,7 @@ public class DeliveryIssuesController : Controller
     private static bool TryQuantize(decimal value, out decimal onGrid)
     {
         onGrid = decimal.Round(value, DecimalPrecision.QuantityScale, MidpointRounding.AwayFromZero);
-        return Math.Abs(value - onGrid) <= InputGridTolerance;
+        return Math.Abs(value - onGrid) <= _inputGridTolerance;
     }
 
     [HttpPost, ValidateAntiForgeryToken]

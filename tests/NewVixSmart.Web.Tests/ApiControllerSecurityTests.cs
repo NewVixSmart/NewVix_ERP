@@ -8,7 +8,7 @@ namespace NewVixSmart.Web.Tests;
 
 public sealed class ApiControllerSecurityTests
 {
-    private static readonly Type[] ApiControllers =
+    private static readonly Type[] _apiControllers =
     [
         typeof(ItemsController),
         typeof(CustomersController),
@@ -23,7 +23,7 @@ public sealed class ApiControllerSecurityTests
     [Fact]
     public void AllApiControllers_IgnoreAntiforgeryToken()
     {
-        foreach (var type in ApiControllers)
+        foreach (var type in _apiControllers)
         {
             Assert.NotNull(Attribute.GetCustomAttribute(type, typeof(IgnoreAntiforgeryTokenAttribute)));
         }
@@ -32,7 +32,7 @@ public sealed class ApiControllerSecurityTests
     [Fact]
     public void ApiControllers_UseJwtBearer_ExceptAnonymousTokenEndpoint()
     {
-        foreach (var type in ApiControllers)
+        foreach (var type in _apiControllers)
         {
             var auth = Attribute.GetCustomAttribute(type, typeof(AuthorizeAttribute)) as AuthorizeAttribute;
             if (type == typeof(TokensController))
@@ -48,7 +48,7 @@ public sealed class ApiControllerSecurityTests
     [Fact]
     public void ApiControllers_AreApiControllers()
     {
-        foreach (var type in ApiControllers)
+        foreach (var type in _apiControllers)
         {
             Assert.NotNull(Attribute.GetCustomAttribute(type, typeof(ApiControllerAttribute)));
         }

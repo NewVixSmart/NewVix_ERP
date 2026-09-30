@@ -25,10 +25,10 @@ public class TokensController : ControllerBase
     /// OnTokenValidated event. Both properties are needed: a short TTL limits the theft that
     /// happens while the user is still logged in, the stamp rotation limits what survives logout.
     /// </summary>
-    private const int DefaultAccessTokenMinutes = 15;
+    private const int _defaultAccessTokenMinutes = 15;
 
     /// <summary>Hard ceiling so a misconfigured Jwt__AccessTokenMinutes cannot silently reinstate a long-lived token.</summary>
-    private const int MaxAccessTokenMinutes = 60;
+    private const int _maxAccessTokenMinutes = 60;
 
     private readonly UserManager<IdentityUser> _userManager;
     private readonly IConfiguration _configuration;
@@ -86,8 +86,8 @@ public class TokensController : ControllerBase
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var accessTokenMinutes = Math.Clamp(
-            _configuration.GetValue("Jwt:AccessTokenMinutes", DefaultAccessTokenMinutes),
-            1, MaxAccessTokenMinutes);
+            _configuration.GetValue("Jwt:AccessTokenMinutes", _defaultAccessTokenMinutes),
+            1, _maxAccessTokenMinutes);
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],

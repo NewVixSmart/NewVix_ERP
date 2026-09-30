@@ -21,15 +21,15 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class AuthzMenuLinkTests
 {
-    private static readonly Regex AnchorPattern = new(
+    private static readonly Regex _anchorPattern = new(
         "<a\\b[^>]*asp-controller=\"(?<controller>[A-Za-z0-9_]+)\"[^>]*asp-action=\"(?<action>[A-Za-z0-9_]+)\"",
         RegexOptions.Compiled);
 
-    private static readonly Regex GatePattern = new(
+    private static readonly Regex _gatePattern = new(
         "@if\\s*\\(\\s*await\\s+Perm\\.(?<call>HasAsync|HasAnyAsync)\\s*\\((?<args>[^)]*)\\)",
         RegexOptions.Compiled);
 
-    private const string AdminMarker = "<admin>";
+    private const string _adminMarker = "<admin>";
 
     /// <summary>
     /// A Razor <c>@if</c> block: the brace depth it was opened at, whether that block has been seen
@@ -57,7 +57,7 @@ public sealed class AuthzMenuLinkTests
         /// <summary>True when the link's own gate admits nobody but an administrator.</summary>
         public bool UnderAdminGate =>
             Gates.Count > 0
-            && Gates[0].Split('|', StringSplitOptions.RemoveEmptyEntries).All(k => k == AdminMarker);
+            && Gates[0].Split('|', StringSplitOptions.RemoveEmptyEntries).All(k => k == _adminMarker);
     }
 
     private static IReadOnlySet<string> Grants(params string[] keys) =>
@@ -96,7 +96,7 @@ public sealed class AuthzMenuLinkTests
         {
             var line = rawLine.TrimEnd('\r');
 
-            var gate = GatePattern.Match(line);
+            var gate = _gatePattern.Match(line);
             var admin = line.Contains("User.IsInRole(\"Admin\")", StringComparison.Ordinal);
             if (gate.Success || admin)
             {
@@ -110,13 +110,13 @@ public sealed class AuthzMenuLinkTests
                 // same gate rather than becoming a second gate that also has to pass.
                 if (admin)
                 {
-                    keys.Add(AdminMarker);
+                    keys.Add(_adminMarker);
                 }
 
                 gates.Push(new Gate(depth, keys.Count == 0 ? "<<unparsed>>" : string.Join('|', keys)));
             }
 
-            var anchor = AnchorPattern.Match(line);
+            var anchor = _anchorPattern.Match(line);
             if (anchor.Success)
             {
                 // Stack enumerates top-down, so this is innermost gate first.

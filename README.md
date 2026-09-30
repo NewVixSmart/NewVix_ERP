@@ -4,7 +4,7 @@
 
 > **العملة**: النظام **بالجنيه المصري فقط** (EGP). لا توجد عملات متعددة ولا أسعار صرف ولا فروق عملة؛ كل المبالغ بالجنيه المصري والعرض عبر `Services/Money.cs` والرمز `L.E`. القرار المعماري الكامل في [`docs/DECISION-EGP-ONLY.md`](docs/DECISION-EGP-ONLY.md).
 
-> **الحالة**: المراحل المخططة P0–P4 مكتملة ومُتحقَّقة، واكتملت P5 (أمن → توثيق → القائمة العمرية وتنبيهات الاستحقاق → التدفق النقدي وكشوف الحساب)، و**M12 (حجز المخزون ← أذن التسليم ← الفوترة بعد التسليم)**. **616 اختبارًا** أخضر، بوابة إتاحة WCAG 2.2 AA مفعّلة، وتقارير تدقيق الأمان والمحاسبة مغلقة (0 حرج، 11 منخفضًا/متوسطًا قيد التلميع).
+> **الحالة**: المراحل المخططة P0–P4 مكتملة ومُتحقَّقة، واكتملت P5 (أمن → توثيق → القائمة العمرية وتنبيهات الاستحقاق → التدفق النقدي وكشوف الحساب)، و**M12 (حجز المخزون ← أذن التسليم ← الفوترة بعد التسليم)**. حزمة الاختبارات كاملة خضراء (`dotnet test NewVixSmart.slnx -c Release`)، بوابة إتاحة WCAG 2.2 AA مفعّلة، وتقارير تدقيق الأمان والمحاسبة مغلقة (0 حرج، 11 منخفضًا/متوسطًا قيد التلميع).
 
 ---
 
@@ -34,7 +34,7 @@ NewVixSmart.slnx
 - **إدارة**: مستخدمون + أدوار + نظام أذونات دقيق (`PermissionCatalog`), تعدد مستودعات، إعدادات، عمليات جماعية (Batch) بأفضل جهد، إقفال سنة مالية بقفل.
 - **تقارير**: PDF (فاتورة/ملصق بباركود Code128)، XLSX (قوائم + تدقيق + ميزانيات + قائمة واريانس).
 - **API**: `POST /api/auth/token` (JWT) + نقاط أصناف/مخزون/فواتير/مدفوعات/قيود مع مفاتيح أذونات `ApiAuthorize`.
-- **إتاحة**: WCAG 2.2 AA (مسح axe صفر انتهاكات على 46 مسارًا)، RTL كامل، لوحة مفاتيح، `lang="ar" dir="rtl"`.
+- **إتاحة**: WCAG 2.2 AA (مسح axe صفر انتهاكات على 99 مسارًا في الوضع الفاتح + 13 في الداكن)، RTL كامل، لوحة مفاتيح، `lang="ar" dir="rtl"`.
 
 ## تدفق البيع: حجز ← تسليم ← فاتورة (M12)
 
@@ -69,11 +69,15 @@ NewVixSmart.slnx
 # البناء والاختبار (أوامر C# تُنفذ من حلّ المشروع)
 dotnet restore NewVixSmart.slnx
 dotnet build NewVixSmart.slnx -c Release        # 0W/0E (تحذيرات كأخطاء)
-dotnet test  NewVixSmart.slnx -c Release        # 616 اختبارًا (SQLite، لا DB خارجي)
+dotnet test  NewVixSmart.slnx -c Release        # الحزمة كاملة (SQLite، لا DB خارجي)
 
 # تشغيل التطبيق (وضع التطوير — يستخدم launchSettings على :5165)
 dotnet run --project src/NewVixSmart.Web
 ```
+
+> **لماذا لا رقم للاختبارات هنا؟** رقمٌ مكتوب في README يتقادم مع أول اختبار يُضاف. العدد
+> الحقيقي هو ما يطبعه `dotnet test` نفسه — وهو الأمر أعلاه. `DocClaimTests` يمنع عودة الرقم
+> المكتوب، ويمنع تسمية بوابة بأمر غير `-c Release`.
 
 افتح `http://localhost:5165`. قاعدة البيانات التلقائية: `(localdb)\mssqllocaldb`/`NewVixSmartDb` — تُهيّأ وتـseeded عن الإقلاع (لا خطوات يدوية).
 
@@ -117,13 +121,14 @@ ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/NewVixSmart.Web --no-
 
 ## CI / بوابة الجودة
 
-`.github/workflows/ci.yml` يشغّل عند كل push/PR بستة وظائف، وكلها مقيّدة بـ `timeout-minutes` ومثبّتة على SHA كامل للإجراءات:
+`.github/workflows/ci.yml` يشغّل عند كل push/PR بسبع وظائف، وكلها مقيّدة بـ `timeout-minutes` ومثبّتة على SHA كامل للإجراءات:
 
 | الوظيفة | ماذا تفعل | الصلاحيات |
 |---|---|---|
-| `build-and-test` | restore → build Release (0W/0E) → `dotnet test` → `dotnet ef migrations has-pending-model-changes` → رفع TRX | `contents: read` فقط |
+| `build-and-test` | بوابة النص (`check-text-hygiene.ps1`) → restore → `dotnet format --verify-no-changes` → build Release (0W/0E) → `dotnet ef migrations has-pending-model-changes` → `dotnet test` → رفع TRX | `contents: read` فقط |
+| `migration-chain-sqlserver` | خدمة SQL Server 2022 حقيقية، تُشغَّل عليها الحزمة كاملة، ثم يُقرأ ملف TRX للتأكد أن اختبارات `MigrationChainSqlServerTests` الستة نُفِّذت فعلًا (لا الاكتفاء بخروج صفر) → رفع TRX | `contents: read` فقط |
 | `package-vulnerability` | `dotnet list ... package --vulnerable --include-transitive` (يفشل عند أي CVE) | `contents: read` فقط |
-| `docker-image` | بناء صورة الويب + `docker inspect` (ExposedPorts + Healthcheck) + بوابة إتاحة Playwright على 38 صفحة | `contents: read` فقط |
+| `docker-image` | بناء صورة الويب + `docker inspect` (ExposedPorts + Healthcheck) + `/healthz` + بوابة إتاحة Playwright على 99 مسارًا فاتحًا و13 داكنًا | `contents: read` فقط |
 | `codeql` | CodeQL v3 على C#، يرفع SARIF إلى Security | `contents: read` + `security-events: write` |
 | `secret-scan` | gitleaks على كامل التاريخ، يعلّق على الـPR ويفتح تذكرة على الـpush | `contents: read` + `pull-requests: write` + `issues: write` |
 | `dependency-review` | `fail-on-severity: moderate` + ملخص في تعليق الـPR عند الفشل | `contents: read` + `pull-requests: write` |
@@ -131,10 +136,23 @@ ASPNETCORE_ENVIRONMENT=Production dotnet run --project src/NewVixSmart.Web --no-
 - `concurrency` على مستوى الملف: `cancel-in-progress: true` بمفتاح `workflow-PRnumber` — الدفع الجديد لنفس الـPR يوقف تشغيله السابق بدل انتظاره.
 - `dotnet tool restore` يثبّت `dotnet-ef 10.0.11` من `.config/dotnet-tools.json` بدل `dotnet tool install --global` غير المقيّد.
 - بوابة الإتاحة تستخدم `npm ci` (لا `npm install`) لأن `e2e/package-lock.json` مُودَع و`e2e/package.json` يستخدم نطاقات `^`.
-- **PR من fork:** رمز `GITHUB_TOKEN` للقراءة فقط، فلا يمكن منح `security-events`/`pull-requests`/`issues` write. لذلك `codeql` و`secret-scan` يُتخطّيان صراحةً عند `head.repo.full_name != github.repository` بدل الفشل بـ`Resource not accessible by integration`. `dependency-review` يستمر (فرق التبعيات يعمل) لكن يتعذّر التعليق. الوظائف الأربع الأخرى تغطّي الـfork كاملًا.
-- **لا توجد بوابة `dotnet format`**: `dotnet format --verify-no-changes` يرصد حاليًا 13,922 مخالفة في 236 ملف `.cs` (12,224 `ENDOFLINE` منها). البوابة ستُضاف بعد جولة `dotnet format` مستقلة تدمج مع أي عمل جارٍ على الملفات نفسها؛ حتى ذلك الحين الاعتماد على 0W/0E من `TreatWarningsAsErrors`.
+- **PR من fork:** رمز `GITHUB_TOKEN` للقراءة فقط، فلا يمكن منح `security-events`/`pull-requests`/`issues` write. لذلك `codeql` و`secret-scan` يُتخطّيان صراحةً عند `head.repo.full_name != github.repository` بدل الفشل بـ`Resource not accessible by integration`. `dependency-review` يستمر (فرق التبعيات يعمل) لكن يتعذّر التعليق. الوظائف الأربع الباقية — `build-and-test` و`migration-chain-sqlserver` و`package-vulnerability` و`docker-image` — تغطّي الـfork كاملًا.
 
-**الإتاحة (بوابة محلية يستحسن تشغيلها بعد تغيير الواجهة):** من داخل `e2e/`: `npm ci && npm run a11y` → تتوقع `GATE: PASS` (38 صفحة: 200 + صفر أخطاء console + صفر انتهاكات Critical/Serious). نفس ما تنفّذه وظيفة `docker-image` في CI بالضبط. التفاصيل: `ACCESSIBILITY.md`.
+### البوابات الثلاث، وما لا تغطّيه كل واحدة
+ثلاث بوابات مستقلّة، لكلٍّ منها نطاق لا تراه البقية:
+
+| # | البوابة | ما تفرضه | **ما لا تغطّيه** |
+|---|---|---|---|
+| 1 | `dotnet format NewVixSmart.slnx --verify-no-changes --no-restore` | تنسيق ملفات `.cs`: `ENDOFLINE`، `IDE0011`، `WHITESPACE`، `FINALNEWLINE`، `CHARSET`، `IDE0161`، `IMPORTS`، `IDE0065`، وقواعد التسمية `IDE1006` (حقول خاصة `_camelCase` وأنواع PascalCase عند `warning`). الشجرة عند **0 مخالفة**. | **لا تفحص `.cshtml` ولا `.md` إطلاقًا** — proved by experiment: مخالفة مسافة زائدة في `_Layout.cshtml` تخرج `0`، ونفس المخالفة في ملف `.cs` تخرج `2`. و`IDE0055` (المُنسّق الكامل) `none`، فهي تفحص التخطيط لا رأي المُنسّق الكامل. |
+| 2 | `pwsh -NoProfile -File scripts/check-text-hygiene.ps1` | 160 ملفًا في النطاق (**122** عرض Razor + **38** مستندًا): UTF-8 صارم بلا BOM، لا U+FFFD، لا CR، سطر نهائي واحد، لا مسافة/.tab لاحقة (عدا سطرين للمفاصل الصلبة في Markdown)، بلا tab في المسافة البادئة. **قراءة فقط**: تسمّي ولا تُصلح. | **تحذير لا منع** على `R8` (محارف من نص غريب داخل سطر عربي) و`R10` (tab كفاصل أعمدة) — تحكم بشري مطلوب، وهي لا تُحمرّر البناء. مستثناة: `wwwroot/lib` (مُستورد من)، `test-results/` و`TestResults/` و`artifacts/` و`screenshots/` (مخرجات)، و`Migrations/*.Designer.cs` (يعيد `dotnet ef migrations add` كتابته من جديد في كل مرة، فلا جدوى من تطبيعه). |
+| 3 | وظيفة `migration-chain-sqlserver` | تُنفّذ سلسلة الـ38 هجرة على محرك **SQL Server حقيقي** (حاوية خدمة `mssql/server:2022`) ثم تُقرأ الـTRX للتأكد أن اختبارات `MigrationChainSqlServerTests` الستة `[SqlServerFact]` نُفِّذت كلها ولم تُتخطَّى. | **لا تُغني عن** فحص `has-pending-model-changes` (مقارنة النموذج بلقطة الهجرات) — تلك وظيفة `build-and-test`. ولا تعمل إلا على `ubuntu-latest`: محليًا تُتخطّى اختباراتها بـ`NVS_TEST_SQLSERVER` فارغًا، فوجودها في CI وحده هو ما يجعلها تُنفَّذ فعلًا. |
+
+> **لا تقرأ هذا كأن البوابات تغطّي المستودع كله.** ملف `.cshtml` أو `.md` جديد لا يراه
+> `dotnet format` إطلاقًا، فالترتيب السيئ للـusing في `.cs` لا يمرّ على البوابة رقم 2 أصلًا.
+> اقرأ كل صف من العمود الأخير كحدّ لبوابته لا كوصف لها: اجتياز البوابات الثلاثة معنى أنه
+> التالي مشمول، وليس أن كل شيء مشمول.
+
+**الإتاحة (بوابة محلية يستحسن تشغيلها بعد تغيير الواجهة):** من داخل `e2e/`: `npm ci && npm run a11y` → تتوقع `GATE: PASS (99 light routes + 13 dark, ...)` (200 + صفر أخطاء console + صفر انتهاكات Critical/Serious). نفس ما تنفّذه وظيفة `docker-image` في CI بالضبط. التفاصيل: `ACCESSIBILITY.md`.
 
 ## التوثيق
 

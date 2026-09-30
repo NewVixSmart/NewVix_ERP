@@ -17,8 +17,8 @@ namespace NewVixSmart.Web.Services;
 
 public class ImportCenterService : IImportCenterService
 {
-    private const int MaxRows = 5000;
-    private const long MaxFileBytes = 25 * 1024 * 1024;
+    private const int _maxRows = 5000;
+    private const long _maxFileBytes = 25 * 1024 * 1024;
 
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
@@ -35,7 +35,7 @@ public class ImportCenterService : IImportCenterService
         _cache = cache;
     }
 
-    private static readonly ImportEntityDefinition[] Entities =
+    private static readonly ImportEntityDefinition[] _entities =
     [
         new("suppliers", "الموردون", "بيانات الموردين الأساسية", "bi-truck", "suppliers",
             "يُحدَّث المورد إن وُجد بالكود، وإلا فبالاسم", "Code", "Name", "Code",
@@ -258,10 +258,10 @@ public class ImportCenterService : IImportCenterService
             IgnoredHeaders: ["الإجمالي"]),
     ];
 
-    public IReadOnlyList<ImportEntityDefinition> GetEntities() => Entities;
+    public IReadOnlyList<ImportEntityDefinition> GetEntities() => _entities;
 
     public ImportEntityDefinition? FindEntity(string key) =>
-        Entities.FirstOrDefault(e => e.Key == key);
+        _entities.FirstOrDefault(e => e.Key == key);
 
     private static ImportColumnDefinition Col(
         string key, string header, ImportValueType type,
@@ -321,7 +321,7 @@ public class ImportCenterService : IImportCenterService
             return FatalVm("الملف فارغ أو تعذرت قراءته");
         }
 
-        if (data.Length > MaxFileBytes)
+        if (data.Length > _maxFileBytes)
         {
             return FatalVm("حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)");
         }
@@ -386,9 +386,9 @@ public class ImportCenterService : IImportCenterService
             return FatalVm("الملف يحتوي على ترويسة فقط ولا توجد صفوف بيانات");
         }
 
-        if (dataRows.Count > MaxRows)
+        if (dataRows.Count > _maxRows)
         {
-            return FatalVm($"عدد الصفوف ({dataRows.Count}) يتجاوز الحد الأقصى ({MaxRows})");
+            return FatalVm($"عدد الصفوف ({dataRows.Count}) يتجاوز الحد الأقصى ({_maxRows})");
         }
 
         var db = await BuildReferenceCacheAsync();
@@ -508,9 +508,9 @@ public class ImportCenterService : IImportCenterService
             return new ImportResult(false, "رابط المعاينة غير صالح أو منتهي الصلاحية؛ أعد رفع الملف واعاينه مجددًا", 0, 0, 0, 0);
         }
 
-        if (envelope.Rows.Count > MaxRows)
+        if (envelope.Rows.Count > _maxRows)
         {
-            return new ImportResult(false, $"لا يمكن استيراد أكثر من {MaxRows} صف في المرة الواحدة", 0, 0, 0, 0);
+            return new ImportResult(false, $"لا يمكن استيراد أكثر من {_maxRows} صف في المرة الواحدة", 0, 0, 0, 0);
         }
 
         var cache = await BuildReferenceCacheAsync();

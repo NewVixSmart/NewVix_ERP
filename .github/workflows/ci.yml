@@ -26,6 +26,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
+      # THE text-hygiene gate for .cshtml and .md - the file types `dotnet format` never sees.
+      # It sits here, before Setup .NET, on purpose: it needs nothing but pwsh, which
+      # ubuntu-latest already has, so a BOM or a CRLF line ending fails the run in seconds
+      # instead of after a restore and a Release build. The `run` value is a plain literal with
+      # no GitHub expression, matching the format gate below, so nothing can rewrite the
+      # command at run time. It is read-only: it names violating files, it never fixes them.
+      #
+      # Locally, to reproduce:
+      #   pwsh -NoProfile -File scripts/check-text-hygiene.ps1
+      # To see what is scanned, what is not, and why:
+      #   pwsh -NoProfile -File scripts/check-text-hygiene.ps1 -ListExclusions
+      - name: Verify Razor and Markdown text hygiene
+        run: pwsh -NoProfile -File scripts/check-text-hygiene.ps1
+
       - name: Setup .NET
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:

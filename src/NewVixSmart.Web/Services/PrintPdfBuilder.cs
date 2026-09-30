@@ -993,7 +993,7 @@ public static class PrintPdfBuilder
 
         int hundreds = n / 100;
         int rest = n % 100;
-        return rest == 0 ? ArabicHundreds[hundreds] : ArabicHundreds[hundreds] + " و" + UnderHundred(rest);
+        return rest == 0 ? _arabicHundreds[hundreds] : _arabicHundreds[hundreds] + " و" + UnderHundred(rest);
     }
 
     private static string UnderHundred(int n)
@@ -1005,23 +1005,23 @@ public static class PrintPdfBuilder
 
         if (n < 20)
         {
-            return ArabicOnes[n];
+            return _arabicOnes[n];
         }
 
         int ones = n % 10;
         int tens = n / 10;
-        return ones == 0 ? ArabicTens[tens] : ArabicOnes[ones] + " و" + ArabicTens[tens];
+        return ones == 0 ? _arabicTens[tens] : _arabicOnes[ones] + " و" + _arabicTens[tens];
     }
 
-    private static readonly string[] ArabicOnes =
+    private static readonly string[] _arabicOnes =
     [
         "", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة",
         "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"
     ];
 
-    private static readonly string[] ArabicTens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+    private static readonly string[] _arabicTens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
 
-    private static readonly string[] ArabicHundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+    private static readonly string[] _arabicHundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
 }
 
 public sealed record PdfColumn(string Header, bool Right, float Weight);

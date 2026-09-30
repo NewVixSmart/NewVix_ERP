@@ -16,8 +16,8 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class TransactionApprovalConcurrencyTests : IDisposable
 {
-    private const int Attempts = 100;
-    private const int MaxParallel = 4;
+    private const int _attempts = 100;
+    private const int _maxParallel = 4;
 
     private readonly string _databasePath;
     private readonly string _connectionString;
@@ -96,8 +96,8 @@ public sealed class TransactionApprovalConcurrencyTests : IDisposable
             (itemId, _, orderId) = await SeedAsync(seed);
         }
 
-        using var gate = new SemaphoreSlim(MaxParallel, MaxParallel);
-        var approvals = await Task.WhenAll(Enumerable.Range(0, Attempts).Select(async _ =>
+        using var gate = new SemaphoreSlim(_maxParallel, _maxParallel);
+        var approvals = await Task.WhenAll(Enumerable.Range(0, _attempts).Select(async _ =>
         {
             await gate.WaitAsync();
             try

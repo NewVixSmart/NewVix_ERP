@@ -2,16 +2,16 @@ namespace NewVixSmart.Web.Services;
 
 public static class Code128Helper
 {
-    private static readonly int[] QuietZone = [0, 0, 0, 0, 0, 0, 0, 0];
+    private static readonly int[] _quietZone = [0, 0, 0, 0, 0, 0, 0, 0];
 
-    private static readonly int[][] StartCodes =
+    private static readonly int[][] _startCodes =
     [
         [2, 1, 2, 2, 2, 2],
         [2, 2, 2, 1, 2, 2],
         [2, 2, 2, 2, 2, 1]
     ];
 
-    private static readonly int[][] CodeB = [
+    private static readonly int[][] _codeB = [
         [2, 1, 2, 2, 2, 2], [2, 2, 2, 1, 2, 2], [2, 2, 2, 2, 2, 1], [1, 2, 1, 2, 2, 3],
         [1, 2, 1, 3, 2, 2], [1, 3, 1, 2, 2, 2], [1, 2, 2, 2, 1, 3], [1, 2, 2, 3, 1, 2],
         [1, 3, 2, 2, 1, 2], [2, 2, 1, 2, 1, 3], [2, 2, 1, 3, 1, 2], [2, 3, 1, 2, 1, 2],
@@ -73,32 +73,32 @@ public static class Code128Helper
     {
         if (string.IsNullOrEmpty(text))
         {
-            return QuietZone.Concat(StartCodes[1]).Concat(QuietZone).ToArray();
+            return _quietZone.Concat(_startCodes[1]).Concat(_quietZone).ToArray();
         }
 
         var result = new List<int>();
-        result.AddRange(QuietZone);
+        result.AddRange(_quietZone);
 
-        result.AddRange(StartCodes[1]);
+        result.AddRange(_startCodes[1]);
 
         int checksum = 104;
         for (int i = 0; i < text.Length; i++)
         {
             int code = text[i] - 32;
-            if (code < 0 || code >= CodeB.Length)
+            if (code < 0 || code >= _codeB.Length)
             {
                 code = 0;
             }
 
-            result.AddRange(CodeB[code]);
+            result.AddRange(_codeB[code]);
             checksum += code * (i + 1);
         }
 
         checksum %= 103;
-        result.AddRange(CodeB[checksum]);
+        result.AddRange(_codeB[checksum]);
 
         result.AddRange([2, 3, 3, 1, 1, 1, 2]);
-        result.AddRange(QuietZone);
+        result.AddRange(_quietZone);
 
         return result.ToArray();
     }

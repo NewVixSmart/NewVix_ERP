@@ -37,12 +37,12 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SecurityResponseHeadersTests
 {
-    private const string ArabicErrorMessage = "حدث خطأ غير متوقع. حاول مرة أخرى.";
+    private const string _arabicErrorMessage = "حدث خطأ غير متوقع. حاول مرة أخرى.";
 
     /// <summary>Mirrors Program.cs: outside Development the handler swallows and re-asserts instead of rethrowing.</summary>
     private static bool IsDevelopment => false;
 
-    private static readonly string[] RequiredHeaders =
+    private static readonly string[] _requiredHeaders =
     [
         "Content-Security-Policy",
         "X-Content-Type-Options",
@@ -64,7 +64,7 @@ public sealed class SecurityResponseHeadersTests
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
-            kestrel.Listen(IPAddress.Loopback, 0, listen => listen.UseHttps(SelfSignedCertificate.Value));
+            kestrel.Listen(IPAddress.Loopback, 0, listen => listen.UseHttps(_selfSignedCertificate.Value));
             kestrel.Listen(IPAddress.Loopback, 0);
         });
         // Deterministic regardless of an ASPNETCORE_ENVIRONMENT on the build agent.
@@ -119,7 +119,7 @@ public sealed class SecurityResponseHeadersTests
                 ApplyHstsHeader(context, hstsOptions);
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 context.Response.ContentType = "application/json; charset=utf-8";
-                await context.Response.WriteAsJsonAsync(new { message = ArabicErrorMessage, detail = string.Empty });
+                await context.Response.WriteAsJsonAsync(new { message = _arabicErrorMessage, detail = string.Empty });
             }
         });
 
@@ -145,7 +145,7 @@ public sealed class SecurityResponseHeadersTests
             addresses.First(a => a.StartsWith("http://", StringComparison.Ordinal)));
     }
 
-    private static readonly Lazy<X509Certificate2> SelfSignedCertificate = new(CreateSelfSignedCertificate, isThreadSafe: true);
+    private static readonly Lazy<X509Certificate2> _selfSignedCertificate = new(CreateSelfSignedCertificate, isThreadSafe: true);
 
     private static X509Certificate2 CreateSelfSignedCertificate()
     {
@@ -198,7 +198,7 @@ public sealed class SecurityResponseHeadersTests
 
     private static void AssertSecurityHeaders(HttpResponseMessage response)
     {
-        foreach (var name in RequiredHeaders)
+        foreach (var name in _requiredHeaders)
         {
             Assert.True(TryGetHeader(response, name, out _),
                 $"Response is missing the {name} header. Present: {string.Join(", ", AllHeaderNames(response))}");
@@ -325,7 +325,7 @@ public sealed class SecurityResponseHeadersTests
         AssertSecurityHeaders(response);
 
         using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(ArabicErrorMessage, document.RootElement.GetProperty("message").GetString());
+        Assert.Equal(_arabicErrorMessage, document.RootElement.GetProperty("message").GetString());
         // The API contract promises an empty detail string; the exception text must never leak there.
         Assert.Equal(string.Empty, document.RootElement.GetProperty("detail").GetString());
     }
@@ -405,7 +405,7 @@ public sealed class SecurityResponseHeadersTests
         Assert.Contains("if (context.Response.HasStarted)", program, StringComparison.Ordinal);
         Assert.Contains("context.Response.Headers[\"Strict-Transport-Security\"] = value;", program, StringComparison.Ordinal);
         // The Arabic body, the empty-detail contract and the development rethrow must all survive.
-        Assert.Contains(ArabicErrorMessage, program, StringComparison.Ordinal);
+        Assert.Contains(_arabicErrorMessage, program, StringComparison.Ordinal);
         Assert.Contains("detail = string.Empty", program, StringComparison.Ordinal);
         // Brace-agnostic: the rethrow must stay inside the IsDevelopment branch, whether or not
         // the formatter has wrapped its body in braces.

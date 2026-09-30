@@ -5,20 +5,20 @@ namespace NewVixSmart.Web.Extensions;
 
 public static class CspNonce
 {
-    private const string ItemKey = "CspNonce";
+    private const string _itemKey = "CspNonce";
 
     public static void SetCspNonce(this HttpContext context)
     {
-        if (context.Items.ContainsKey(ItemKey))
+        if (context.Items.ContainsKey(_itemKey))
         {
             return;
         }
 
-        context.Items[ItemKey] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+        context.Items[_itemKey] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
     }
 
     public static string GetCspNonce(this HttpContext context)
     {
-        return context.Items.TryGetValue(ItemKey, out var nonce) ? nonce?.ToString() ?? "" : "";
+        return context.Items.TryGetValue(_itemKey, out var nonce) ? nonce?.ToString() ?? "" : "";
     }
 }

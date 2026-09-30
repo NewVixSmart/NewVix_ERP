@@ -1,4 +1,4 @@
-﻿---
+---
 goal: M12 - Stock reservation + delivery-issue + invoice-after-delivery sales flow
 version: 1.0
 date_created: 2026-09-26

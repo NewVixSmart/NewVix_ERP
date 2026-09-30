@@ -11,7 +11,7 @@ namespace NewVixSmart.Web.Services;
 
 public sealed class InventoryService : IInventoryService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly ILogger<InventoryService>? _logger;
     private readonly IAccountingService? _accounting;
@@ -66,7 +66,7 @@ public sealed class InventoryService : IInventoryService
             return await CreateSaleCoreAsync(invoice, valid, user, branchId);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -152,7 +152,7 @@ public sealed class InventoryService : IInventoryService
             return (false, "يجب ربط أذن التسليم بفاتورة بيع");
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -301,7 +301,7 @@ public sealed class InventoryService : IInventoryService
             }
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -425,7 +425,7 @@ public sealed class InventoryService : IInventoryService
             }
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -462,7 +462,7 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error)> IssueDeliveryAsync(int issueId, string? user, int? branchId = null)
     {
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -801,7 +801,7 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error)> DeliverDeliveryOrderAsync(int deliveryId, string? user, int? branchId = null)
     {
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -927,7 +927,7 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error)> CancelDeliveryOrderAsync(int deliveryId, string? user)
     {
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -1007,7 +1007,7 @@ public sealed class InventoryService : IInventoryService
             return await CreatePurchaseCoreAsync(invoice, valid, user, branchId);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -1162,7 +1162,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(CreateSaleReturnDraftAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             // A null transaction means the caller's transaction owns this unit of work: EF
             // refuses a second transaction on the same connection, so the method enlists in
@@ -1227,7 +1227,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(PostSaleReturnAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
@@ -1400,7 +1400,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(CreatePurchaseReturnDraftAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
@@ -1462,7 +1462,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(PostPurchaseReturnAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
@@ -1610,7 +1610,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(CreateAdjustmentAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
@@ -1740,7 +1740,7 @@ public sealed class InventoryService : IInventoryService
 
     public async Task<(bool Success, string? Error)> DeleteAdjustmentAsync(int adjustmentId, string? user)
     {
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -2538,7 +2538,7 @@ public sealed class InventoryService : IInventoryService
             RequireAmbientTransaction(nameof(CreateTransferAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try

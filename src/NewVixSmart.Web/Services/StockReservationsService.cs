@@ -7,7 +7,7 @@ namespace NewVixSmart.Web.Services;
 
 public sealed class StockReservationsService : IStockReservationsService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
 
     public StockReservationsService(AppDbContext db) => _db = db;
@@ -70,7 +70,7 @@ public sealed class StockReservationsService : IStockReservationsService
             return await ReserveOrderCoreAsync(salesOrderId, user);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -215,7 +215,7 @@ public sealed class StockReservationsService : IStockReservationsService
             return await CreateStandaloneCoreAsync(reservation, valid, user);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -282,7 +282,7 @@ public sealed class StockReservationsService : IStockReservationsService
             return await ReleaseCoreAsync(reservationId, user);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -372,7 +372,7 @@ public sealed class StockReservationsService : IStockReservationsService
             return await ConsumeForIssuesCoreAsync(lines, customerId);
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try

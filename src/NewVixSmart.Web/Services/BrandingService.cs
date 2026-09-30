@@ -43,8 +43,8 @@ public interface IBrandingService
 
 public class BrandingService : IBrandingService
 {
-    private const string CacheKey = "branding.v1";
-    private static readonly Dictionary<string, PalettePreset> PresetMap = new()
+    private const string _cacheKey = "branding.v1";
+    private static readonly Dictionary<string, PalettePreset> _presetMap = new()
     {
         ["modern"] = new("modern", "سافاير عالمي — Global", "#2e6fd8", "#5bc8e8", "#ffffff", "#f6f7fb"),
         ["evergreen"] = new("evergreen", "زمردي ذهبي", "#115e59", "#2dd4bf", "#0f2b26", "#f4f7f6"),
@@ -65,11 +65,11 @@ public class BrandingService : IBrandingService
         _cache = cache;
     }
 
-    public PalettePreset[] Presets => PresetMap.Values.ToArray();
+    public PalettePreset[] Presets => _presetMap.Values.ToArray();
 
     public async Task<BrandingData> LoadAsync()
     {
-        if (_cache.TryGetValue(CacheKey, out BrandingData? cached) && cached != null)
+        if (_cache.TryGetValue(_cacheKey, out BrandingData? cached) && cached != null)
         {
             return cached;
         }
@@ -79,7 +79,7 @@ public class BrandingService : IBrandingService
         var theme = BuildTheme(settings);
 
         var data = new BrandingData { Profile = profile, Theme = theme };
-        _cache.Set(CacheKey, data, new MemoryCacheEntryOptions
+        _cache.Set(_cacheKey, data, new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60)
         });
@@ -90,7 +90,7 @@ public class BrandingService : IBrandingService
 
     public async Task<BrandingTheme> GetThemeAsync() => (await LoadAsync()).Theme;
 
-    public void Invalidate() => _cache.Remove(CacheKey);
+    public void Invalidate() => _cache.Remove(_cacheKey);
 
     private static BrandingTheme BuildTheme(List<SystemSetting> settings)
     {
@@ -98,7 +98,7 @@ public class BrandingService : IBrandingService
             settings.FirstOrDefault(s => s.Key == key)?.Value;
 
         var presetId = Get("Theme.Preset");
-        if (presetId != null && PresetMap.TryGetValue(presetId, out var preset))
+        if (presetId != null && _presetMap.TryGetValue(presetId, out var preset))
         {
             return FromPreset(preset);
         }

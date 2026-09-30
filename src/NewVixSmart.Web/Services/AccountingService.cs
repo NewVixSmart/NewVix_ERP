@@ -6,7 +6,7 @@ namespace NewVixSmart.Web.Services;
 
 public class AccountingService : IAccountingService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
 
     public AccountingService(AppDbContext db)
@@ -321,7 +321,7 @@ public class AccountingService : IAccountingService
             throw new InvalidOperationException($"السنة المالية {date.Year} مغلقة — لا يمكن إدراج قيود فيها");
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             var entry = new JournalEntry
             {

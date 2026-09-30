@@ -15,9 +15,9 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class ProductionConfigGateTests
 {
-    private static readonly string[] ShippedSeedDefaults = ["Admin@123", "Acc@12345", "War@12345"];
+    private static readonly string[] _shippedSeedDefaults = ["Admin@123", "Acc@12345", "War@12345"];
 
-    private static readonly JsonDocumentOptions JsonOptions = new()
+    private static readonly JsonDocumentOptions _jsonOptions = new()
     {
         // appsettings*.json are JSONC: the Web config provider and this test both skip comments.
         CommentHandling = JsonCommentHandling.Skip,
@@ -44,7 +44,7 @@ public sealed class ProductionConfigGateTests
 
     private static JsonElement ReadSection(string fileName, string sectionName)
     {
-        using var document = JsonDocument.Parse(ReadSettings(fileName), JsonOptions);
+        using var document = JsonDocument.Parse(ReadSettings(fileName), _jsonOptions);
         Assert.True(document.RootElement.TryGetProperty(sectionName, out var section),
             $"{fileName} must contain a \"{sectionName}\" section.");
         return section.Clone();
@@ -55,13 +55,13 @@ public sealed class ProductionConfigGateTests
     {
         var raw = ReadSettings("appsettings.json");
 
-        foreach (var shipped in ShippedSeedDefaults)
+        foreach (var shipped in _shippedSeedDefaults)
         {
             Assert.False(raw.Contains(shipped, StringComparison.Ordinal),
                 $"appsettings.json must not contain the shipped seed password \"{shipped}\".");
         }
 
-        using var document = JsonDocument.Parse(raw, JsonOptions);
+        using var document = JsonDocument.Parse(raw, _jsonOptions);
         Assert.False(document.RootElement.TryGetProperty("Seed", out _),
             "appsettings.json must not ship a Seed section at all; the defaults belong to appsettings.Development.json.");
     }

@@ -14,10 +14,10 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SourceTextGuaranteeInventoryTests
 {
-    private const string CSharp = "C#";
-    private const string Config = "config";
-    private const string Razor = "Razor";
-    private const string Tooling = "tooling";
+    private const string _cSharp = "C#";
+    private const string _config = "config";
+    private const string _razor = "Razor";
+    private const string _tooling = "tooling";
 
     /// <summary>
     /// What every test class in this project reads as text, and what it reads. Two facts fall out
@@ -30,25 +30,34 @@ public sealed class SourceTextGuaranteeInventoryTests
     ///   remainder after the behavioural work, not an oversight.
     ///
     ///   2 further classes read Razor markup (a view cannot be executed without a browser; the
-    ///   browser-level proof is the Playwright + axe run in the docker-image CI job), and 1 reads
-    ///   the a11y gate's own JavaScript manifest, which it cross-checks against live controller
-    ///   reflection and is therefore not a production guarantee at all. A further class reads
-    ///   the dependency graph, the same way.
+    ///   browser-level proof is the Playwright + axe run in the docker-image CI job), and 4 read
+    ///   tooling rather than production code: the a11y gate's own JavaScript manifest, which it
+    ///   cross-checks against live controller reflection; the dependency graph; and
+    ///   RazorHygieneTests, which reads the text-hygiene script and the CI workflow that invokes
+    ///   it, and whose behavioural half - actually running that gate over throwaway fixtures -
+    ///   is the point of the class. A workflow file cannot be executed locally, so asserting on
+    ///   its text is the strongest statement available about it, exactly as for dependabot.yml.
+    ///   The fourth is DocClaimTests, which reads README.md, AGENTS.md and the CI workflow to
+    ///   keep the documented commands and job names resolvable. Its guarantees are textual on
+    ///   purpose: it asserts that a command or a job named in a document still exists, never
+    ///   what the command would print, so it cannot disagree with the suite about a count.
     /// </summary>
-    private static readonly Dictionary<string, string> TextReaders = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> _textReaders = new(StringComparer.Ordinal)
     {
-        ["A11yGateManifestTests"] = Tooling,                 // e2e/a11y-gate.cjs, cross-checked by reflection
-        ["AuthzExportCenterDatasetTests"] = CSharp,         // Services/ExportCenterService.cs (row cap)
-        ["AuthzMenuLinkTests"] = Razor,                     // Views/Shared/_Layout.cshtml
-        ["AuthzPublicIdAndItemBindingTests"] = CSharp,      // ten Controllers/*.cs
-        ["DependencyPinTests"] = Tooling,                   // *.csproj + .github/dependabot.yml
-        ["ProductionConfigGateTests"] = Config,             // appsettings*.json
-        ["SecurityAccessTokenLifetimeTests"] = CSharp,      // Api/TokensController.cs
-        ["SecurityImportUploadLimitTests"] = CSharp,        // ImportCenterController.cs + Service.cs
-        ["SecurityLogoutAndRedirectTests"] = CSharp,        // Controllers/AccountController.cs
-        ["SecurityResponseHeadersTests"] = CSharp,          // Program.cs
-        ["SecurityViewCspNonceTests"] = CSharp,             // Program.cs, plus Razor views
-        ["ViewLogicSweepTests"] = CSharp,                   // controllers and views
+        ["A11yGateManifestTests"] = _tooling,                 // e2e/a11y-gate.cjs, cross-checked by reflection
+        ["AuthzExportCenterDatasetTests"] = _cSharp,         // Services/ExportCenterService.cs (row cap)
+        ["AuthzMenuLinkTests"] = _razor,                     // Views/Shared/_Layout.cshtml
+        ["AuthzPublicIdAndItemBindingTests"] = _cSharp,      // ten Controllers/*.cs
+        ["DependencyPinTests"] = _tooling,                   // *.csproj + .github/dependabot.yml
+        ["DocClaimTests"] = _tooling,                        // README.md + AGENTS.md + .github/workflows/ci.yml
+        ["ProductionConfigGateTests"] = _config,             // appsettings*.json
+        ["RazorHygieneTests"] = _tooling,                    // scripts/check-text-hygiene.ps1 + .github/workflows/ci.yml
+        ["SecurityAccessTokenLifetimeTests"] = _cSharp,      // Api/TokensController.cs
+        ["SecurityImportUploadLimitTests"] = _cSharp,        // ImportCenterController.cs + Service.cs
+        ["SecurityLogoutAndRedirectTests"] = _cSharp,        // Controllers/AccountController.cs
+        ["SecurityResponseHeadersTests"] = _cSharp,          // Program.cs
+        ["SecurityViewCspNonceTests"] = _cSharp,             // Program.cs, plus _razor views
+        ["ViewLogicSweepTests"] = _cSharp,                   // controllers and views
     };
 
     [Fact]
@@ -57,7 +66,7 @@ public sealed class SourceTextGuaranteeInventoryTests
         var found = FindTextReadingClasses();
 
         Assert.Equal(
-            TextReaders.Keys.OrderBy(name => name, StringComparer.Ordinal).ToList(),
+            _textReaders.Keys.OrderBy(name => name, StringComparer.Ordinal).ToList(),
             found.Select(entry => entry.ClassName).OrderBy(name => name, StringComparer.Ordinal).ToList());
     }
 
@@ -68,22 +77,22 @@ public sealed class SourceTextGuaranteeInventoryTests
         // guarantee is a visible act: either the behaviour became testable - in which case the
         // class should stop reading source and this number drops on purpose - or the guarantee
         // was dropped, which should not pass unnoticed.
-        var production = TextReaders
-            .Where(entry => entry.Value is CSharp or Config)
+        var production = _textReaders
+            .Where(entry => entry.Value is _cSharp or _config)
             .Select(entry => entry.Key)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
         Assert.Equal(9, production.Count);
-        Assert.Equal(9, FindTextReadingClasses().Count(entry => entry.Kind is CSharp or Config));
+        Assert.Equal(9, FindTextReadingClasses().Count(entry => entry.Kind is _cSharp or _config));
     }
 
     [Fact]
     public void TheInventoryIsNotEmpty_SoTheChecksAboveCannotPassVacuously()
     {
-        Assert.NotEmpty(TextReaders);
-        Assert.All(TextReaders, entry => Assert.EndsWith("Tests", entry.Key, StringComparison.Ordinal));
-        Assert.All(TextReaders.Values, kind => Assert.Contains(kind, new[] { CSharp, Config, Razor, Tooling }));
+        Assert.NotEmpty(_textReaders);
+        Assert.All(_textReaders, entry => Assert.EndsWith("Tests", entry.Key, StringComparison.Ordinal));
+        Assert.All(_textReaders.Values, kind => Assert.Contains(kind, new[] { _cSharp, _config, _razor, _tooling }));
     }
 
     private static List<(string ClassName, string Kind)> FindTextReadingClasses()
@@ -108,7 +117,7 @@ public sealed class SourceTextGuaranteeInventoryTests
                 .Where(name => !string.Equals(name, nameof(SourceTextGuaranteeInventoryTests), StringComparison.Ordinal))
                 .Select(name => (ClassName: name, Source: File.ReadAllText(Path.Combine(TestProjectDirectory(), name + ".cs"))))
                 .Where(entry => markers.Any(marker => entry.Source.Contains(marker, StringComparison.Ordinal)))
-                .Select(entry => (entry.ClassName, TextReaders.TryGetValue(entry.ClassName, out var kind) ? kind : "UNDECLARED"))
+                .Select(entry => (entry.ClassName, _textReaders.TryGetValue(entry.ClassName, out var kind) ? kind : "UNDECLARED"))
                 .ToList(),
         ];
     }

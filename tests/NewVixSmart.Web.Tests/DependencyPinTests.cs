@@ -37,14 +37,14 @@ namespace NewVixSmart.Web.Tests;
 public sealed class DependencyPinTests
 {
     /// <summary>The AppHost project that owns the security pin, relative to the repo root.</summary>
-    private const string AppHostProject = "aspire/Vix.AppHost/Vix.AppHost.csproj";
+    private const string _appHostProject = "aspire/Vix.AppHost/Vix.AppHost.csproj";
 
     /// <summary>
     /// The first patched MessagePack 2.x version. Every advisory that reaches the 2.x line has
     /// "&lt; 2.5.301" as its vulnerable ceiling, so this is a floor, not a preference: any pin below
     /// it reintroduces at least one advisory, and any pin above it adds no security value.
     /// </summary>
-    private const string MessagePackPatchedFloor = "2.5.301";
+    private const string _messagePackPatchedFloor = "2.5.301";
 
     /// <summary>
     /// Every project in the solution, paired with the dependabot directory that must cover it.
@@ -52,7 +52,7 @@ public sealed class DependencyPinTests
     /// forgets to register with dependabot is caught by the coverage test, not discovered months
     /// later when it has a CVE.
     /// </summary>
-    private static readonly (string Project, string DependabotDirectory)[] Projects =
+    private static readonly (string Project, string DependabotDirectory)[] _projects =
     [
         ("src/NewVixSmart.Web/NewVixSmart.Web.csproj", "/src/NewVixSmart.Web"),
         ("tests/NewVixSmart.Web.Tests/NewVixSmart.Web.Tests.csproj", "/tests/NewVixSmart.Web.Tests"),
@@ -204,7 +204,7 @@ public sealed class DependencyPinTests
     [Fact]
     public void AppHost_PinsMessagePack_Explicitly()
     {
-        var id = DirectPackageReferences(AppHostProject);
+        var id = DirectPackageReferences(_appHostProject);
         Assert.Contains("MessagePack", id);
     }
 
@@ -215,7 +215,7 @@ public sealed class DependencyPinTests
     [Fact]
     public void AppHost_PinsMessagePack_AtOrAboveFirstPatchedVersion()
     {
-        var path = Path.Combine(FindRepoRoot(), AppHostProject.Replace('/', Path.DirectorySeparatorChar));
+        var path = Path.Combine(FindRepoRoot(), _appHostProject.Replace('/', Path.DirectorySeparatorChar));
         var version = XDocument.Load(path)
             .Descendants()
             .Where(e => e.Name.LocalName == "PackageReference")
@@ -225,9 +225,9 @@ public sealed class DependencyPinTests
 
         Assert.False(string.IsNullOrWhiteSpace(version), "AppHost must pin MessagePack to an explicit version.");
         Assert.True(
-            Version.TryParse(version, out var parsed) && parsed >= Version.Parse(MessagePackPatchedFloor),
+            Version.TryParse(version, out var parsed) && parsed >= Version.Parse(_messagePackPatchedFloor),
             $"AppHost pins MessagePack {version}, which is below the first patched 2.x version "
-            + $"({MessagePackPatchedFloor}). See docs/audit-round18-findings.md (R18-8).");
+            + $"({_messagePackPatchedFloor}). See docs/audit-round18-findings.md (R18-8).");
     }
 
     /// <summary>
@@ -242,7 +242,7 @@ public sealed class DependencyPinTests
         var patterns = NuGetGroupPatterns();
         var uncovered = new List<string>();
 
-        foreach (var (project, directory) in Projects)
+        foreach (var (project, directory) in _projects)
         {
             if (!patterns.TryGetValue(directory, out var groups) || groups.Count == 0)
             {

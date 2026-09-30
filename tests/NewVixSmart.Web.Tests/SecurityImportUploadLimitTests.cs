@@ -19,7 +19,7 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SecurityImportUploadLimitTests
 {
-    private const long MaxUploadBytes = 25L * 1024 * 1024;
+    private const long _maxUploadBytes = 25L * 1024 * 1024;
 
     [Fact]
     public void Preview_RefusesAnOversizedBodyBeforeItIsRead()
@@ -28,7 +28,7 @@ public sealed class SecurityImportUploadLimitTests
 
         // The envelope room over the file ceiling is for the multipart boundaries and the antiforgery
         // field, so a legitimate 25 MB file is not rejected by the transport-level gate.
-        var expected = MaxUploadBytes + 1024 * 1024;
+        var expected = _maxUploadBytes + 1024 * 1024;
 
         // RequestSizeLimitAttribute keeps its value in the constructor, so the metadata is read back
         // rather than a property.
@@ -45,10 +45,10 @@ public sealed class SecurityImportUploadLimitTests
     public void Preview_LimitIsNotWiderThanTheDocumentedCeiling()
     {
         var source = File.ReadAllText(TestPaths.WebProjectFile("Controllers", "ImportCenterController.cs"));
-        Assert.Contains("MaxUploadBytes = 25L * 1024 * 1024", source, StringComparison.Ordinal);
+        Assert.Contains("_maxUploadBytes = 25L * 1024 * 1024", source, StringComparison.Ordinal);
         // The service keeps its own identical ceiling: the controller gate is an optimisation, not
         // a replacement, and a second caller must not be able to slip past it.
-        Assert.Contains("MaxFileBytes = 25 * 1024 * 1024",
+        Assert.Contains("_maxFileBytes = 25 * 1024 * 1024",
             File.ReadAllText(TestPaths.WebProjectFile("Services", "ImportCenterService.cs")),
             StringComparison.Ordinal);
     }
@@ -60,7 +60,7 @@ public sealed class SecurityImportUploadLimitTests
         var controller = new ImportCenterController(import) { TempData = new FakeTempData() };
         // A FormFile that reports a length over the ceiling. The declared length is all the gate
         // needs, so this stands in for a real oversized upload without allocating one.
-        var file = new FormFile(new MemoryStream(), 0, MaxUploadBytes + 1, "file", "big.xlsx")
+        var file = new FormFile(new MemoryStream(), 0, _maxUploadBytes + 1, "file", "big.xlsx")
         {
             Headers = new HeaderDictionary()
         };
@@ -112,14 +112,14 @@ public sealed class SecurityImportUploadLimitTests
     {
         public int ParseCallCount { get; private set; }
 
-        public IReadOnlyList<ImportEntityDefinition> GetEntities() => [Entity];
+        public IReadOnlyList<ImportEntityDefinition> GetEntities() => [_entity];
 
         // The controller answers NotFound for an unknown key before it ever looks at the file, so the
         // fake has to know the key the tests use.
         public ImportEntityDefinition? FindEntity(string key) =>
-            key == Entity.Key ? Entity : null;
+            key == _entity.Key ? _entity : null;
 
-        private static readonly ImportEntityDefinition Entity = new(
+        private static readonly ImportEntityDefinition _entity = new(
             "customers", "العملاء", "وصف", "bi-people", "customers", "الكود", "Code", null, "Code", []);
 
         public Task<byte[]> DownloadTemplateAsync(string entityKey) => Task.FromResult(Array.Empty<byte>());

@@ -18,7 +18,7 @@ public interface ISalesQuotesService
 
 public sealed class SalesQuotesService : ISalesQuotesService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly ISalesOrdersService _orders;
     private readonly IStockReservationsService _reservations;
@@ -56,7 +56,7 @@ public sealed class SalesQuotesService : ISalesQuotesService
         }
 
         var autoNumber = string.IsNullOrWhiteSpace(quote.QuoteNumber);
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             try
             {

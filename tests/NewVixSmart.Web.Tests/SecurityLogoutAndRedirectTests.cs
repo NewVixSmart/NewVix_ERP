@@ -38,9 +38,9 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
 {
-    private const string JwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
-    private const string Username = "logoutuser";
-    private const string Password = "Log@123456";
+    private const string _jwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
+    private const string _username = "logoutuser";
+    private const string _password = "Log@123456";
 
     private SqliteConnection _connection = null!;
     private ServiceProvider _provider = null!;
@@ -75,10 +75,10 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-            var created = await userManager.CreateAsync(new IdentityUser { UserName = Username }, Password);
+            var created = await userManager.CreateAsync(new IdentityUser { UserName = _username }, _password);
             Assert.True(created.Succeeded, string.Join("; ", created.Errors.Select(e => e.Description)));
             _userId = Assert.IsAssignableFrom<IdentityUser>(
-                await userManager.FindByNameAsync(Username)).Id;
+                await userManager.FindByNameAsync(_username)).Id;
         }
     }
 
@@ -93,7 +93,7 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
     {
         using var scope = _provider.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-        var user = Assert.IsAssignableFrom<IdentityUser>(await userManager.FindByNameAsync(Username));
+        var user = Assert.IsAssignableFrom<IdentityUser>(await userManager.FindByNameAsync(_username));
 
         var token = await IssueTokenAsync(userManager);
         var tokenStamp = ReadStamp(token);
@@ -137,7 +137,7 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
         var controller = BuildAccountController(scope, authenticated: false);
 
         var result = await controller.Login(
-            new LoginViewModel { Username = Username, Password = Password },
+            new LoginViewModel { Username = _username, Password = _password },
             returnUrl);
 
         // A non-local returnUrl is dropped and the role's landing page is used, so the browser only
@@ -154,7 +154,7 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
         var controller = BuildAccountController(scope, authenticated: false);
 
         var result = await controller.Login(
-            new LoginViewModel { Username = Username, Password = Password },
+            new LoginViewModel { Username = _username, Password = _password },
             "/StockReservations/Create");
 
         Assert.Equal("/StockReservations/Create", Assert.IsType<LocalRedirectResult>(result).Url);
@@ -183,13 +183,13 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Jwt:Key"] = JwtKey,
+            ["Jwt:Key"] = _jwtKey,
             ["Jwt:Issuer"] = "NewVixSmart",
             ["Jwt:Audience"] = "NewVixSmart"
         }).Build();
 
         var result = await new TokensController(userManager, configuration)
-            .CreateToken(new TokenRequest(Username, Password));
+            .CreateToken(new TokenRequest(_username, _password));
         var ok = Assert.IsAssignableFrom<OkObjectResult>(result);
         return Assert.IsAssignableFrom<TokenResponse>(ok.Value).Token;
     }
@@ -221,7 +221,7 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
         if (authenticated)
         {
             var identity = new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, _userId), new Claim(ClaimTypes.Name, Username) },
+                new[] { new Claim(ClaimTypes.NameIdentifier, _userId), new Claim(ClaimTypes.Name, _username) },
                 CookieAuthenticationDefaults.AuthenticationScheme);
             principal = new ClaimsPrincipal(identity);
         }

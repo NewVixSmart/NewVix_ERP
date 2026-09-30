@@ -20,7 +20,7 @@ namespace NewVixSmart.Web.Tests;
 /// </summary>
 public sealed class RequirePermFilterTests
 {
-    private const string Key = "Sales.Create";
+    private const string _key = "Sales.Create";
 
     private static AuthorizationFilterContext ContextFor(IAsyncAuthorizationFilter filter, bool authenticated)
     {
@@ -36,7 +36,7 @@ public sealed class RequirePermFilterTests
 
     private static async Task<RedirectToActionResult?> RunAsync(
         IPermissionService permissions,
-        string key = Key,
+        string key = _key,
         bool authenticated = true)
     {
         var filter = new RequirePermFilter(permissions, key);
@@ -48,7 +48,7 @@ public sealed class RequirePermFilterTests
     [Fact]
     public async Task GrantedPermission_LetsTheRequestThrough()
     {
-        var redirect = await RunAsync(new AuthzTestPermissionService(Key));
+        var redirect = await RunAsync(new AuthzTestPermissionService(_key));
 
         Assert.Null(redirect);
     }
@@ -73,7 +73,7 @@ public sealed class RequirePermFilterTests
     {
         // البديل يمنح المفتاح من أجله، فلو استُدعي قبل فحص المصادقة لَما وُجد المفتاح
         // ومنحَ الطلب. فالنتيجة تثبت أن فحص المصادقة يسبق فحص الأذون.
-        var redirect = await RunAsync(new AuthzTestPermissionService(Key), authenticated: false);
+        var redirect = await RunAsync(new AuthzTestPermissionService(_key), authenticated: false);
 
         Assert.NotNull(redirect);
         Assert.Equal("Login", redirect!.ActionName);
@@ -102,7 +102,7 @@ public sealed class RequirePermFilterTests
     [Fact]
     public async Task AnEmptyKey_IsRefused_NotSilentlyAllowed()
     {
-        var redirect = await RunAsync(new AuthzTestPermissionService(Key), key: string.Empty);
+        var redirect = await RunAsync(new AuthzTestPermissionService(_key), key: string.Empty);
 
         Assert.NotNull(redirect);
         Assert.Equal("AccessDenied", redirect!.ActionName);

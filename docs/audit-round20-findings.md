@@ -144,4 +144,3 @@ the container, so the H-7 gate work is now enforced on every push rather than on
 `RequiredLength` and the standalone-return quantity ceiling were both considered and deliberately left
 alone: the first is an accepted trade-off with the seed path already stronger than the floor, and the
 second would cap a supported credit-note workflow and change revenue recognition.
-

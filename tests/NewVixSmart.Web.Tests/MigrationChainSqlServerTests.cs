@@ -375,19 +375,19 @@ internal static class SqlServerTestTarget
     /// <summary>متغيّر البيئة الذي يستخدمه CI (و Developers محليًّا).</summary>
     public const string ConnectionStringVariable = "NVS_TEST_SQLSERVER";
 
-    private const string LocalDbInstance = @"(localdb)\mssqllocaldb";
+    private const string _localDbInstance = @"(localdb)\mssqllocaldb";
 
-    private static readonly Lazy<string?> Cached = new(Probe, isThreadSafe: true);
+    private static readonly Lazy<string?> _cached = new(Probe, isThreadSafe: true);
 
     public const string SkipReason =
         "لا يوجد محرّك SQL Server متاح. اضبط NVS_TEST_SQLSERVER على سلسلة اتصال (نحو: " +
         "Server=localhost,1433;User Id=sa;Password=***;TrustServerCertificate=True) " +
         "أو ثبّت LocalDB على ويندوز. الفحص النصّي للسلسلة في MigrationScriptTests يعمل في كل الحالات.";
 
-    public static string? Resolve() => Cached.Value;
+    public static string? Resolve() => _cached.Value;
 
     public static string ResolveRequired() =>
-        Cached.Value ?? throw new InvalidOperationException(SkipReason);
+        _cached.Value ?? throw new InvalidOperationException(SkipReason);
 
     /// <summary>ينسخ سلسلة الاتصال ويستبدل قاعدة البيانات، فلا تلمس السلسلة الأصلية.</summary>
     public static string WithDatabase(string connectionString, string databaseName)
@@ -409,9 +409,9 @@ internal static class SqlServerTestTarget
             return fromEnvironment;
         }
 
-        if (OperatingSystem.IsWindows() && CanConnect(LocalDbInstance))
+        if (OperatingSystem.IsWindows() && CanConnect(_localDbInstance))
         {
-            return $"Server={LocalDbInstance};Integrated Security=True";
+            return $"Server={_localDbInstance};Integrated Security=True";
         }
 
         return null;

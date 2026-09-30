@@ -21,15 +21,15 @@ public sealed class MigrationScriptTests
     /// <summary>
     /// آخر migration أضافت رمز نسخ لمرتجعَي البيع والشراء. يجب أن يبقى أثرها ظاهرًا في السلسلة.
     /// </summary>
-    private const string AddReturnRowVersion = "20260928081433_AddReturnRowVersion";
+    private const string _addReturnRowVersion = "20260928081433_AddReturnRowVersion";
 
     /// <summary>
     /// آخر migration: توسيع دقّة الكمية والسعر. 60 جملة <c>ALTER COLUMN</c> على 16 جدولًا.
     /// </summary>
-    private const string WidenPrecision = "20260929141121_WidenQuantityAndUnitPricePrecision";
+    private const string _widenPrecision = "20260929141121_WidenQuantityAndUnitPricePrecision";
 
-    private const int WidenAlterColumnStatements = 60;
-    private const int WidenAlterColumnTables = 16;
+    private const int _widenAlterColumnStatements = 60;
+    private const int _widenAlterColumnTables = 16;
 
     /// <summary>
     /// سياق بلا اتصال: توليد السCRIPT لا يحتاج خادمًا، لكنه يحتاج مزوّد SQL Server نفسه، وإلا
@@ -98,10 +98,10 @@ public sealed class MigrationScriptTests
     {
         var chain = MigrationChain();
 
-        Assert.Contains(AddReturnRowVersion, chain);
-        Assert.Contains(WidenPrecision, chain);
+        Assert.Contains(_addReturnRowVersion, chain);
+        Assert.Contains(_widenPrecision, chain);
         Assert.True(
-            chain.ToList().IndexOf(AddReturnRowVersion) < chain.ToList().IndexOf(WidenPrecision),
+            chain.ToList().IndexOf(_addReturnRowVersion) < chain.ToList().IndexOf(_widenPrecision),
             "AddReturnRowVersion must be applied before WidenQuantityAndUnitPricePrecision.");
     }
 
@@ -179,19 +179,19 @@ public sealed class MigrationScriptTests
     public void WidenPrecisionMigration_WidensScaleOnSixtyColumnsAcrossSixteenTables()
     {
         var chain = MigrationChain();
-        var index = chain.ToList().IndexOf(WidenPrecision);
+        var index = chain.ToList().IndexOf(_widenPrecision);
         Assert.True(index > 0, "The widening migration must not be the first one in the chain.");
         var beforeMigration = chain[index - 1];
 
         // Scope: only this migration, so the count is the migration's and not the chain's. If a
         // future migration also alters a column, this stays true and stays meaningful.
-        var wideningScript = GenerateScript(beforeMigration, WidenPrecision, MigrationsSqlGenerationOptions.Default);
+        var wideningScript = GenerateScript(beforeMigration, _widenPrecision, MigrationsSqlGenerationOptions.Default);
         var widening = ColumnStatements.From(wideningScript)
             .Where(s => s.Kind == ColumnStatementKind.AlterColumn)
             .ToList();
 
-        Assert.Equal(WidenAlterColumnStatements, widening.Count);
-        Assert.Equal(WidenAlterColumnTables, widening.Select(s => s.Table).Distinct().Count());
+        Assert.Equal(_widenAlterColumnStatements, widening.Count);
+        Assert.Equal(_widenAlterColumnTables, widening.Select(s => s.Table).Distinct().Count());
 
         var scales = widening
             .Select(s => ColumnType.Parse(s.Type))
@@ -207,7 +207,7 @@ public sealed class MigrationScriptTests
             .Where(s => s.Kind is ColumnStatementKind.Created or ColumnStatementKind.Added or ColumnStatementKind.AlterColumn)
             .ToDictionary(s => (s.Table, s.Column), s => s.Type);
         var compared = widening.Where(s => before.ContainsKey((s.Table, s.Column))).ToList();
-        Assert.Equal(WidenAlterColumnStatements, compared.Count);
+        Assert.Equal(_widenAlterColumnStatements, compared.Count);
         Assert.All(compared, s => Assert.Equal(
             ColumnTypeFamily.Decimal,
             ColumnType.Parse(before[(s.Table, s.Column)]).Family));
@@ -378,43 +378,43 @@ internal sealed record ColumnStatement(
 internal static class ColumnStatements
 {
     /// <summary>Tables are written with or without the default schema, so the schema is optional.</summary>
-    private const string TableRef = @"\[(?:[^\]]+\]\.\[)?(?<table>[^\]]+)\]";
+    private const string _tableRef = @"\[(?:[^\]]+\]\.\[)?(?<table>[^\]]+)\]";
 
     /// <summary>A type is a name plus an optional parenthesised argument list, e.g. <c>decimal(18,4)</c>.</summary>
-    private const string TypeRef = @"(?<type>[A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?)";
+    private const string _typeRef = @"(?<type>[A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?)";
 
     /// <summary>
     /// The body ends at the statement terminator, or at <c>END;</c> when the create is wrapped in
     /// an idempotency guard.
     /// </summary>
-    private const string BlockEnd = @"(?:\r?\n\);|\r?\nEND;)";
+    private const string _blockEnd = @"(?:\r?\n\);|\r?\nEND;)";
 
-    private static readonly Regex CreateTable = new(
-        @"CREATE TABLE " + TableRef + @" \((?<body>.*?)" + BlockEnd,
+    private static readonly Regex _createTable = new(
+        @"CREATE TABLE " + _tableRef + @" \((?<body>.*?)" + _blockEnd,
         RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
-    private static readonly Regex ColumnLine = new(
-        @"^\s*\[(?<column>[^\]]+)\]\s+" + TypeRef,
+    private static readonly Regex _columnLine = new(
+        @"^\s*\[(?<column>[^\]]+)\]\s+" + _typeRef,
         RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-    private static readonly Regex AlterColumn = new(
-        @"ALTER TABLE " + TableRef + @" ALTER COLUMN \[(?<column>[^\]]+)\] " + TypeRef,
+    private static readonly Regex _alterColumn = new(
+        @"ALTER TABLE " + _tableRef + @" ALTER COLUMN \[(?<column>[^\]]+)\] " + _typeRef,
         RegexOptions.IgnoreCase);
 
-    private static readonly Regex AddColumn = new(
-        @"ALTER TABLE " + TableRef + @" ADD \[(?<column>[^\]]+)\] " + TypeRef,
+    private static readonly Regex _addColumn = new(
+        @"ALTER TABLE " + _tableRef + @" ADD \[(?<column>[^\]]+)\] " + _typeRef,
         RegexOptions.IgnoreCase);
 
-    private static readonly Regex DropColumn = new(
-        @"ALTER TABLE " + TableRef + @" DROP COLUMN \[(?<column>[^\]]+)\]",
+    private static readonly Regex _dropColumn = new(
+        @"ALTER TABLE " + _tableRef + @" DROP COLUMN \[(?<column>[^\]]+)\]",
         RegexOptions.IgnoreCase);
 
-    private static readonly Regex DropTable = new(
-        @"DROP TABLE " + TableRef,
+    private static readonly Regex _dropTable = new(
+        @"DROP TABLE " + _tableRef,
         RegexOptions.IgnoreCase);
 
-    private static readonly Regex RenameColumn = new(
-        @"EXEC sp_rename N'" + TableRef + @"\.\[(?<from>[^\]]+)\]', N'(?<to>[^\]]+)', 'COLUMN'",
+    private static readonly Regex _renameColumn = new(
+        @"EXEC sp_rename N'" + _tableRef + @"\.\[(?<from>[^\]]+)\]', N'(?<to>[^\]]+)', 'COLUMN'",
         RegexOptions.IgnoreCase);
 
     public static IEnumerable<ColumnStatement> From(string script)
@@ -424,10 +424,10 @@ internal static class ColumnStatements
         // A CREATE TABLE body has to be consumed whole: its column lines would otherwise be picked
         // up again as if they were something else, so the span is recorded and skipped later.
         var createSpans = new List<(int Start, int End)>();
-        foreach (Match match in CreateTable.Matches(script))
+        foreach (Match match in _createTable.Matches(script))
         {
             var table = match.Groups["table"].Value;
-            foreach (Match line in ColumnLine.Matches(match.Groups["body"].Value))
+            foreach (Match line in _columnLine.Matches(match.Groups["body"].Value))
             {
                 found.Add((line.Index,
                     new ColumnStatement(ColumnStatementKind.Created, table, line.Groups["column"].Value, line.Groups["type"].Value)));
@@ -438,19 +438,19 @@ internal static class ColumnStatements
 
         bool InsideCreateTable(int index) => createSpans.Any(s => index >= s.Start && index < s.End);
 
-        foreach (Match match in AlterColumn.Matches(script))
+        foreach (Match match in _alterColumn.Matches(script))
         {
             found.Add((match.Index,
                 new ColumnStatement(ColumnStatementKind.AlterColumn, match.Groups["table"].Value, match.Groups["column"].Value, match.Groups["type"].Value)));
         }
 
-        foreach (Match match in RenameColumn.Matches(script))
+        foreach (Match match in _renameColumn.Matches(script))
         {
             found.Add((match.Index,
                 new ColumnStatement(ColumnStatementKind.Renamed, match.Groups["table"].Value, match.Groups["to"].Value, "", match.Groups["from"].Value)));
         }
 
-        foreach (Match match in AddColumn.Matches(script))
+        foreach (Match match in _addColumn.Matches(script))
         {
             if (InsideCreateTable(match.Index))
             {
@@ -461,13 +461,13 @@ internal static class ColumnStatements
                 new ColumnStatement(ColumnStatementKind.Added, match.Groups["table"].Value, match.Groups["column"].Value, match.Groups["type"].Value)));
         }
 
-        foreach (Match match in DropColumn.Matches(script))
+        foreach (Match match in _dropColumn.Matches(script))
         {
             found.Add((match.Index,
                 new ColumnStatement(ColumnStatementKind.Dropped, match.Groups["table"].Value, match.Groups["column"].Value, "")));
         }
 
-        foreach (Match match in DropTable.Matches(script))
+        foreach (Match match in _dropTable.Matches(script))
         {
             found.Add((match.Index,
                 new ColumnStatement(ColumnStatementKind.TableDropped, match.Groups["table"].Value, "", "")));
@@ -493,7 +493,7 @@ internal enum ColumnTypeFamily
 /// </summary>
 internal readonly record struct ColumnType(ColumnTypeFamily Family, string Name, int Precision, int Scale, int Length, int IntegerRank)
 {
-    private static readonly Dictionary<string, int> IntegerRanks = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, int> _integerRanks = new(StringComparer.OrdinalIgnoreCase)
     {
         ["tinyint"] = 1,
         ["smallint"] = 2,
@@ -501,12 +501,12 @@ internal readonly record struct ColumnType(ColumnTypeFamily Family, string Name,
         ["bigint"] = 4
     };
 
-    private static readonly HashSet<string> CharTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _charTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "char", "nchar", "varchar", "nvarchar", "sysname"
     };
 
-    private static readonly HashSet<string> BinaryTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _binaryTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "binary", "varbinary"
     };
@@ -524,7 +524,7 @@ internal readonly record struct ColumnType(ColumnTypeFamily Family, string Name,
             .Select(a => int.TryParse(a, out var n) ? n : -1)
             .ToList();
 
-        if (IntegerRanks.TryGetValue(name, out var rank))
+        if (_integerRanks.TryGetValue(name, out var rank))
         {
             return new ColumnType(ColumnTypeFamily.Integer, name, 0, 0, 0, rank);
         }
@@ -538,13 +538,13 @@ internal readonly record struct ColumnType(ColumnTypeFamily Family, string Name,
                 0);
         }
 
-        if (CharTypes.Contains(name))
+        if (_charTypes.Contains(name))
         {
             var max = numbers.Count > 0 && numbers[0] == -1;
             return new ColumnType(ColumnTypeFamily.CharLength, name, 0, 0, max ? int.MaxValue : numbers.FirstOrDefault(), 0);
         }
 
-        if (BinaryTypes.Contains(name))
+        if (_binaryTypes.Contains(name))
         {
             var max = numbers.Count > 0 && numbers[0] == -1;
             return new ColumnType(ColumnTypeFamily.BinaryLength, name, 0, 0, max ? int.MaxValue : numbers.FirstOrDefault(), 0);

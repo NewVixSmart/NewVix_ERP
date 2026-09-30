@@ -9,7 +9,7 @@ namespace NewVixSmart.Web.Services;
 
 public sealed class SalesOrdersService : ISalesOrdersService
 {
-    private const int MaxAttempts = 3;
+    private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
     private readonly IStockReservationsService _reservations;
@@ -77,7 +77,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
         order.CreatedAt = DateTime.UtcNow;
         order.Items = valid;
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             order.OrderNumber = await NextOrderNumberAsync();
 
@@ -189,7 +189,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
             RequireAmbientTransaction(nameof(ApproveOrderAsync));
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = beginOwnTransaction ? await _db.Database.BeginTransactionAsync() : null;
             try
@@ -243,7 +243,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
 
     public async Task<(bool Success, string? Error)> CancelOrderAsync(int orderId)
     {
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -296,7 +296,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
             return (false, "يوجد أذن تسليم لهذا الأمر — أنشئ الفاتورة من أوامر التسليم المرحّلة");
         }
 
-        for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
         {
             await using var tx = await _db.Database.BeginTransactionAsync();
             try

@@ -47,17 +47,19 @@ dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 
 # --- naming: private fields are _camelCase
-# Severity is `suggestion`, not `warning`, and that is load-bearing rather than
-# cosmetic. Roslyn's NamingStyleCodeFixProvider cannot "Fix All in Solution":
-# `dotnet format` reports IDE1006 but refuses to fix it ("Unable to fix IDE1006.
-# Code fix NamingStyleCodeFixProvider doesn't support Fix All in Solution"), on
-# every invocation and for every file. A `warning`-severity naming rule would
-# therefore be a finding the enforcing tool can never clear, and the CI format
-# gate below would be red forever. These rules stay active as IDE guidance for
-# new code; the 73 existing violations are left alone deliberately.
+# `warning`, and the format gate below enforces it. These rules used to sit at
+# `suggestion` because Roslyn's NamingStyleCodeFixProvider cannot "Fix All in
+# Solution" (`dotnet format` reports IDE1006 but refuses to fix it: "Unable to
+# fix IDE1006. Code fix NamingStyleCodeFixProvider doesn't support Fix All in
+# Solution"), so a `warning` rule was treated as a finding the enforcing tool
+# could never clear. That was a tool limitation, not a backlog: the gate only
+# has to *report* zero findings, it never has to fix them. The 110 violations
+# were renamed by hand and the tree now sits at 0, so IDE1006 is inside the
+# gate. A new field missing the `_` prefix, or a non-PascalCase type, is red in
+# CI -- fix the name, never drop the rule to make the gate green.
 dotnet_naming_rule.private_fields_underscore.symbols = private_fields
 dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case
-dotnet_naming_rule.private_fields_underscore.severity = suggestion
+dotnet_naming_rule.private_fields_underscore.severity = warning
 dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel_case.required_prefix = _
@@ -65,7 +67,7 @@ dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 
 dotnet_naming_rule.types_pascal.symbols = types
 dotnet_naming_rule.types_pascal.style = pascal_case
-dotnet_naming_rule.types_pascal.severity = suggestion
+dotnet_naming_rule.types_pascal.severity = warning
 dotnet_naming_symbols.types.applicable_kinds = class,struct,interface,enum,delegate
 dotnet_naming_symbols.types.applicable_accessibilities = *
 dotnet_naming_style.pascal_case.capitalization = pascal_case
@@ -121,11 +123,15 @@ dotnet_diagnostic.CA1852.severity = suggestion    # seal internal types
 # Deliberately outside the gate:
 #   - IDE0055 (the C# formatter) stays `none` for .cs and .cshtml below, so the
 #     gate checks layout, not the full formatter opinion.
-#   - .cshtml is not in the gate's scope at all. Razor views are never reported
-#     (0 findings across all 122 of them) and were left byte-identical, so the
-#     `nonce` / `scope` / `<caption>` accessibility work is not exposed to it.
-#   - IDE1006 is `suggestion`; see the naming rules above for why it cannot be a
-#     gate and why that is a tool limitation rather than a backlog.
+#   - .cshtml is not in the `dotnet format` gate's scope. Razor views are never
+#     reported by it (0 findings across all 122 of them) and were left
+#     byte-identical, so the `nonce` / `scope` / `<caption>` accessibility work is
+#     not exposed to it. This says nothing about encoding: `charset = utf-8` /
+#     `end_of_line = lf` / `insert_final_newline` above still apply to .cshtml,
+#     and a separate read-only gate enforces them - see the text hygiene section.
+#   - IDE1006 IS inside the gate now: both naming rules above are `warning`, so
+#     a new private field without the `_` prefix or a non-PascalCase type is red
+#     in CI. Rename the symbol; do not demote the rule to `suggestion`.
 dotnet_diagnostic.IDE0055.severity = none
 
 # --- historical migrations are frozen: they describe schemas that no longer exist
@@ -137,3 +143,37 @@ dotnet_diagnostic.CA1305.severity = none
 [*.cshtml]
 indent_size = 4
 dotnet_diagnostic.IDE0055.severity = none
+
+# ------------------------------------------------- text hygiene (.cshtml, .md)
+# `dotnet format` above does not see .cshtml or .md, so the `charset` /
+# `end_of_line` / `insert_final_newline` / `trim_trailing_whitespace` contract
+# above had no mechanical enforcer on those two file kinds. It does now:
+#
+#   scripts/check-text-hygiene.ps1        run it directly, or rely on CI
+#   .github/workflows/ci.yml             `build-and-test`, before the build and
+#                                        test steps, so drift fails before the
+#                                        compiler and the suite spend their time
+#   tests/NewVixSmart.Web.Tests/         RazorHygieneTests mirrors every rule,
+#     RazorHygieneTests.cs               so a weakened rule or a deleted CI step
+#                                        fails the test suite instead of passing
+#                                        quietly
+#
+# The gate is read-only: it reports, it never rewrites. Fixing a finding is the
+# editor saving the file per the contract above.
+#
+#   BLOCKING  R1 invalid UTF-8     R2 U+FFFD        R3 UTF-8 BOM
+#             R4 CR / CRLF         R5 final newline (exactly one LF, no
+#                                    trailing blank lines)
+#             R6 trailing whitespace              R7/R9 tab indentation
+#   WARNING   R8 CJK/Hangul/Cyrillic/Greek/Hebrew inside an Arabic-dominant
+#               line, outside code fences            (judgement call, not a failure)
+#             R10 tab used as a column separator     (judgement call, not a failure)
+#
+# Excluded on purpose, listed by `-ListExclusions`: EF-generated
+# Migrations/*.Designer.cs, the vendored wwwroot/lib tree, bin/obj, and the
+# local output folders (TestResults, artifacts, screenshots, test-results).
+#
+# `[*.md] trim_trailing_whitespace = false` above is the one rule this gate does
+# not take at face value: Markdown hard line breaks are exactly two trailing
+# spaces, so R6 exempts that shape and still blocks every other trailing space.
+# A whitespace-only line is not a hard break and is still reported.
