@@ -17,9 +17,8 @@ namespace NewVixSmart.Web.Tests;
 /// فلا تُنفَّذ سلسلة الترحيلات ولا مرّة واحدة - وهذا الملف هو ما يمنع أن يبقى ذلك مجهولاً.
 ///
 /// المحرك يُحدَّد بترتيب: <c>NVS_TEST_SQLSERVER</c> أوّلًا (وهو ما يستخدمه CI)، ثم LocalDB على
-/// ويندوز. إن لم يتوفّر أيٌّ منهما تُتخطّى الاختبارات <b>بسبب معلن</b> لا صامت: الفحص النصّي
-/// في <see cref="MigrationScriptTests"/> يظلّ يعمل في كل الحالات، ووظيفة <c>migration-chain-sqlserver</c>
-/// في <c>ci.yml</c> تُجبر هذا الملف على العمل في كل تشغيل.
+/// ويندوز. وإن لم يتوفّر أيٌّ منهما تُتخطّى الاختبارات <b>بسبب معلن</b> لا صامت؛ انظر
+/// <see cref="SqlServerTestTarget.SkipReason"/> لسبب القبول أو الرفض بالاسم.
 /// </summary>
 public sealed class MigrationChainSqlServerTests : IClassFixture<MigrationChainFixture>
 {
@@ -375,19 +374,60 @@ internal static class SqlServerTestTarget
     /// <summary>متغيّر البيئة الذي يستخدمه CI (و Developers محليًّا).</summary>
     public const string ConnectionStringVariable = "NVS_TEST_SQLSERVER";
 
+    /// <summary>
+    /// متغيّر البيئة الذي يفعّل القياسات الثقيلة (مليونَا صف). منفصل عن
+    /// <see cref="ConnectionStringVariable"/> عمدًا: «أي محرّك» قرار، و«اسمح بقياسٍ مُكلف» قرار
+    /// ثانٍ، ودمجهما يعني أن من يريد قياسًا على قرصٍ أبطأ لا يستطيع تفعيله أصلًا.
+    /// </summary>
+    public const string HeavyMeasurementVariable = "NVS_TEST_SQLSERVER_MEASURE";
+
     private const string _localDbInstance = @"(localdb)\mssqllocaldb";
+    private const string _localDbConnectionString = $"Server={_localDbInstance};Integrated Security=True";
 
-    private static readonly Lazy<string?> _cached = new(Probe, isThreadSafe: true);
+    private static readonly Lazy<Probe> _probe = new(Run, isThreadSafe: true);
+    private static readonly Lazy<string?> _engine = new(DescribeEngineCore, isThreadSafe: true);
 
-    public const string SkipReason =
+    private const string _baseSkipReason =
         "لا يوجد محرّك SQL Server متاح. اضبط NVS_TEST_SQLSERVER على سلسلة اتصال (نحو: " +
         "Server=localhost,1433;User Id=sa;Password=***;TrustServerCertificate=True) " +
         "أو ثبّت LocalDB على ويندوز. الفحص النصّي للسلسلة في MigrationScriptTests يعمل في كل الحالات.";
 
-    public static string? Resolve() => _cached.Value;
+    /// <summary>
+    /// سبب التخطي كما يُعرض في نتائج الاختبار. نصٌّ ثابتٌ زائدُ ما تعلّمه <see cref="Run"/> عن
+    /// المتغيّرات المرفوضة، حتى يعرف المطوّر أن <c>NVS_TEST_SQLSERVER</c> «مضبوطٌ لكنّه لا
+    /// يعمل» وأن سبب رفضه مذكور، لا أن يظنّ أن المتغيّر غير مضبوط أصلًا.
+    /// </summary>
+    public static string SkipReason =>
+        _probe.Value.Rejections.Count == 0
+            ? _baseSkipReason
+            : _baseSkipReason + Environment.NewLine
+              + string.Join(Environment.NewLine, _probe.Value.Rejections);
+
+    /// <summary>
+    /// سبب تخطي القياسات الثقيلة. معلَنٌ كغيره، والسبب مُسمّى: هو قياسُ جدول بثلاثة ملايين صف
+    /// على قرص CI مشترك، ولست مُتطلَّبًا في مجموعة صحّة.
+    /// </summary>
+    public const string HeavyMeasurementSkipReason =
+        "القياس الثقيل (مليونَا صف) مُعطَّلٌ افتراضيًّا: هو أبطأ اختبار في المجموعة، ورقمه يعتمد على " +
+        "قرص الجهاز لا على سلوك المحرّك. لتفعيله اضبط " + HeavyMeasurementVariable + "=1. ما يبقى في " +
+        "المجموعة دائمًا هو الفحص البنيوي للـguard - ستّون تنفيذًا واحدًا لكل عمود، لا تنفيذًا لكل صف - " +
+        "وهو لا يقيس وقتًا ولا يحتاج جدولًا كبيرًا.";
+
+    public static string? Resolve() => _probe.Value.ConnectionString;
 
     public static string ResolveRequired() =>
-        _cached.Value ?? throw new InvalidOperationException(SkipReason);
+        Resolve() ?? throw new InvalidOperationException(SkipReason);
+
+    /// <summary>هل طُلبت القياسات الثقيلة صراحةً؟</summary>
+    public static bool HeavyMeasurementsEnabled =>
+        IsTruthy(Environment.GetEnvironmentVariable(HeavyMeasurementVariable));
+
+    /// <summary>
+    /// اسم المحرّك وإصداره ونوعه، ليُذكر في رسائل الفشل. الغرض أن رسالة
+    /// «قاعدة البيانات للقراءة فقط» تصير مقروءة: المطوّر يعرف أي محرّك يجلس أمامه بدل أن يخمّن.
+    /// </summary>
+    public static string DescribeEngine() =>
+        _engine.Value ?? "محرّك غير معروف (لم يُفتح اتصال به)";
 
     /// <summary>ينسخ سلسلة الاتصال ويستبدل قاعدة البيانات، فلا تلمس السلسلة الأصلية.</summary>
     public static string WithDatabase(string connectionString, string databaseName)
@@ -401,45 +441,113 @@ internal static class SqlServerTestTarget
         return builder.ConnectionString;
     }
 
-    private static string? Probe()
+    private static Probe Run()
     {
+        var rejections = new List<string>();
+
         var fromEnvironment = Environment.GetEnvironmentVariable(ConnectionStringVariable);
         if (!string.IsNullOrWhiteSpace(fromEnvironment))
         {
-            return fromEnvironment;
+            // المتغيّر يُفحص ولا يُقرأ كما هو. قراءته كما هو كان يحوّل خطأً مطبعيًا في اسم
+            // Instance إلى 19 استثناءً خامًا داخل تهيئة الـfixtures، بدل تخطٍّ معلن يحيل إلى هذا
+            // النص. الاتصال يُثبت هنا مرّة واحدة، فيُقرَّر التخطي قبل أن تُنشأ أي قاعدة بيانات.
+            if (CanConnect(fromEnvironment, out var fromEnvironmentError))
+            {
+                return new Probe(fromEnvironment, rejections);
+            }
+
+            rejections.Add(
+                $"{ConnectionStringVariable} مضبوط لكنه غير قابل للاتصال، فتم تجاوزه: {fromEnvironmentError}");
         }
 
-        if (OperatingSystem.IsWindows() && CanConnect(_localDbInstance))
+        if (OperatingSystem.IsWindows())
         {
-            return $"Server={_localDbInstance};Integrated Security=True";
+            if (CanConnect(_localDbConnectionString, out var localDbError))
+            {
+                return new Probe(_localDbConnectionString, rejections);
+            }
+
+            rejections.Add($"LocalDB ({_localDbInstance}) غير قابل للاتصال: {localDbError}");
         }
 
-        return null;
+        return new Probe(null, rejections);
     }
 
-    private static bool CanConnect(string server)
+    private static string? DescribeEngineCore()
     {
+        var connectionString = Resolve();
+        if (connectionString is null)
+        {
+            return null;
+        }
+
         try
         {
-            using var connection = new SqlConnection($"Server={server};Database=master;Integrated Security=True;Connect Timeout=5;TrustServerCertificate=True");
+            using var connection = new SqlConnection(WithDatabase(connectionString, "master"));
             connection.Open();
-            return true;
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT CONVERT(nvarchar(128), @@SERVERNAME),
+                       CONVERT(nvarchar(128), SERVERPROPERTY('Edition')),
+                       CONVERT(nvarchar(32), SERVERPROPERTY('ProductVersion'));
+                """;
+            using var reader = command.ExecuteReader();
+            if (!reader.Read())
+            {
+                return null;
+            }
+
+            return $"«{reader.GetString(0)}» - {reader.GetString(1)} {reader.GetString(2)}";
         }
         catch (SqlException)
         {
+            // الوصف زينة: لا يُسقط اختبارًا، ومن يطبع رسالة الفشل الحقيقية هو من يعرف المحرّك.
+            return null;
+        }
+    }
+
+    private static bool CanConnect(string connectionString, out string error)
+    {
+        try
+        {
+            using var connection = new SqlConnection(WithDatabase(connectionString, "master"));
+            connection.Open();
+            error = string.Empty;
+            return true;
+        }
+        catch (SqlException exception)
+        {
+            // الرسالة الأولى تكفي: أخطاء الاتصال تُعيد_message طويلًا لا يقول شيئًا زيادةً.
+            error = FirstLine(exception.Message);
             return false;
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException exception)
         {
+            error = FirstLine(exception.Message);
             return false;
         }
     }
+
+    private static string FirstLine(string message)
+    {
+        var line = message.Split('\n', StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+        return line.Length <= 300 ? line : line[..300];
+    }
+
+    private static bool IsTruthy(string? value) =>
+        value is not null
+        && (value.Equals("1", StringComparison.Ordinal)
+            || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("yes", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>نتيجة الفحص: محرّكٌ مُختار، أو لا شيء مع قائمة أسباب الرفض.</summary>
+    private sealed record Probe(string? ConnectionString, List<string> Rejections);
 }
 
 /// <summary>
-/// <c>[Fact]</c> يشترط وجود محرّك حقيقي. التخطي هنا معلن في <see cref="SqlServerTestTarget.SkipReason"/>
-/// وليس صامتًا: الفحص النصّي يبقى في كل تشغيل، ووظيفة <c>migration-chain-sqlserver</c> في
-/// <c>ci.yml</c> تمنح هذا المتغيّر قيمةً على كل commit.
+/// <c>[Fact]</c> يشترط وجود محرّك حقيقي قابلًا للاتصال. التخطي هنا معلن في
+/// <see cref="SqlServerTestTarget.SkipReason"/> وليس صامتًا: الفحص النصّي يبقى في كل تشغيل،
+/// ووظيفة <c>migration-chain-sqlserver</c> في <c>ci.yml</c> تمنح هذا المتغيّر قيمةً على كل commit.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class SqlServerFactAttribute : FactAttribute

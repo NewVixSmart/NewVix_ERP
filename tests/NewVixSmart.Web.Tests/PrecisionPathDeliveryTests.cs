@@ -28,7 +28,7 @@ namespace NewVixSmart.Web.Tests;
 /// <para>
 /// This is the complement of <see cref="PrecisionColumnMetadataTests"/> and
 /// <see cref="PrecisionRoundTripTests"/>. Neither of those can fail if the application rounds a value
-/// on its way in: the column is declared <c>decimal(18,4)</c> and still receives 99.99, and a bare
+/// on its way in: the column is declared <c>decimal(20,4)</c> and still receives 99.99, and a bare
 /// round-trip never asks the controller or the services what they did to the figure first. Only a test
 /// that drives the real controller and the real services, and then reads back what the business logic
 /// itself computed, can catch a throttle on the path.

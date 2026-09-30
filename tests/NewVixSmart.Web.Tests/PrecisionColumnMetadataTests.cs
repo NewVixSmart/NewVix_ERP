@@ -24,12 +24,19 @@ namespace NewVixSmart.Web.Tests;
 /// code configures from would agree with any width, including the old two-decimal one, and would
 /// therefore be vacuous.
 /// </para>
+/// <para>
+/// A quantity and a price are at 20, not at 18, and the digits are written out because the
+/// regression this file exists to catch is not a wrong scale but a range that shrank. Holding
+/// the precision at 18 while raising the scale cut the integer digits from 16 to 14.
+/// <see cref="Quantity_and_unit_price_columns_keep_their_original_sixteen_integer_digits"/>
+/// states that budget as a number in its own right.
+/// </para>
 /// </summary>
 public sealed class PrecisionColumnMetadataTests
 {
     private const string _moneyType = "decimal(18,2)";
-    private const string _priceType = "decimal(18,3)";
-    private const string _quantityType = "decimal(18,4)";
+    private const string _priceType = "decimal(20,3)";
+    private const string _quantityType = "decimal(20,4)";
     private const string _costType = "decimal(18,6)";
 
     /// <summary>
@@ -311,9 +318,68 @@ public sealed class PrecisionColumnMetadataTests
     }
 
     /// <summary>
+    /// The regression, stated in the unit that actually broke. A <c>decimal(18,2)</c> column holds
+    /// sixteen integer digits; raising the scale to 4 while holding the precision at 18 drops that to
+    /// fourteen, so a quantity that the old schema stored fine raised "Arithmetic overflow error
+    /// converting numeric to data type numeric" on write. The widening was supposed to add decimals,
+    /// and it did - by quietly dividing the range by a hundred. This asserts the digit budget
+    /// directly, so a future change that trades integral digits for scale fails here rather than in
+    /// production.
+    /// <para>
+    /// The budget is "at least the sixteen the piastre-grid schema had", not "exactly sixteen": at
+    /// <c>decimal(20,3)</c> a price has 20 - 3 = 17 integral digits, so a price is strictly better
+    /// off than before while a quantity at <c>decimal(20,4)</c> has 20 - 4 = 16 and is exactly level.
+    /// Both are stated, so the two scales cannot drift into each other unnoticed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Quantity_and_unit_price_columns_keep_their_original_sixteen_integer_digits()
+    {
+        var model = SqlServerModel;
+
+        foreach (var name in QuantityColumns().Keys)
+        {
+            var (precision, scale) = ParseColumnType(QuantityColumns()[name]);
+            Assert.Equal(20 - 4, precision - scale);
+            Assert.Equal(_quantityType, ColumnTypeOf(model, name));
+        }
+
+        foreach (var name in UnitPriceColumns().Keys)
+        {
+            var (precision, scale) = ParseColumnType(UnitPriceColumns()[name]);
+            Assert.Equal(20 - 3, precision - scale);
+            Assert.Equal(_priceType, ColumnTypeOf(model, name));
+        }
+
+        // The floor, stated over both groups: no widened column may hold fewer integer digits than
+        // the decimal(18,2) schema it replaced. This is the assertion the original migration failed.
+        foreach (var group in new[] { QuantityColumns(), UnitPriceColumns() })
+        {
+            foreach (var (name, type) in group)
+            {
+                var (precision, scale) = ParseColumnType(type);
+                Assert.True(precision - scale >= 16,
+                    $"{name} is decimal({precision},{scale}), so it holds only {precision - scale} integer "
+                    + "digits where decimal(18,2) held 16. Widening the scale must not come out of the range.");
+            }
+        }
+
+        // The control: money keeps exactly the 16 integral digits it always had, at 18. If the
+        // quantity and price columns had kept precision 18, they would have matched this pair, and
+        // nothing above would have noticed the difference in digits.
+        foreach (var name in MoneyColumns().Keys)
+        {
+            var (precision, scale) = ParseColumnType(MoneyColumns()[name]);
+            Assert.Equal(16, precision - scale);
+        }
+    }
+
+    /// <summary>
     /// The ledger half of the policy: money stays on the piastre. Widening it would contradict
     /// <c>Money.Format</c>, which renders two decimals, and the 0.005 money materiality constant the
     /// payment allocator is balanced against - so a widening here is a regression, not an improvement.
+    /// The precision is pinned as well as the scale: this migration widened the quantity and price
+    /// columns, and money must be the control that proves it.
     /// </summary>
     [Fact]
     public void Money_columns_are_never_widened_beyond_two_decimals()
@@ -325,6 +391,7 @@ public sealed class PrecisionColumnMetadataTests
             Assert.True(ScaleOf(model, name) == 2,
                 $"{name} no longer stores exactly two decimals; the piastre is the smallest money unit "
                 + "the system shows or reconciles.");
+            Assert.Equal(_moneyType, ColumnTypeOf(model, name));
         }
     }
 
@@ -347,12 +414,24 @@ public sealed class PrecisionColumnMetadataTests
 
     private static int ScaleOf(IModel model, string qualifiedName)
     {
+        var (entity, property) = Locate(model, qualifiedName);
+        return Assert.IsType<int>(property.GetScale());
+    }
+
+    private static string ColumnTypeOf(IModel model, string qualifiedName)
+    {
+        var (_, property) = Locate(model, qualifiedName);
+        return Assert.IsType<string>(property.GetColumnType());
+    }
+
+    private static (IEntityType Entity, IProperty Property) Locate(IModel model, string qualifiedName)
+    {
         var dot = qualifiedName.IndexOf('.');
         var entityName = qualifiedName[..dot];
         var propertyName = qualifiedName[(dot + 1)..];
 
         var entity = Assert.Single(model.GetEntityTypes(), t => t.ClrType.Name == entityName);
-        return Assert.IsType<int>(entity.FindProperty(propertyName)!.GetScale());
+        return (entity, entity.FindProperty(propertyName)!);
     }
 
     private static (int Precision, int Scale) ParseColumnType(string columnType)

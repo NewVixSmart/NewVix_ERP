@@ -751,12 +751,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("CurrentCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("CurrentQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -768,12 +768,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("MinCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("MinQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -788,19 +788,19 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("PurchasePrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.Property<int?>("QuantityUnitId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("ReservedCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ReservedQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -808,8 +808,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<decimal>("SalePrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1060,8 +1060,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("Discount")
                         .HasPrecision(18, 2)
@@ -1074,12 +1074,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1155,8 +1155,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
@@ -1165,16 +1165,16 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ReceivedCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ReceivedQty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1182,8 +1182,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1276,8 +1276,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
@@ -1286,12 +1286,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1380,8 +1380,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1540,8 +1540,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("DeliveryIssueId")
                         .HasColumnType("int");
@@ -1553,8 +1553,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int?>("SalesOrderItemId")
                         .HasColumnType("int");
@@ -1666,8 +1666,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("DeliveryOrderId")
                         .HasColumnType("int");
@@ -1676,8 +1676,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.HasKey("Id");
 
@@ -1802,8 +1802,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("Discount")
                         .HasPrecision(18, 2)
@@ -1813,15 +1813,15 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("SaleInvoiceId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -1934,22 +1934,22 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("SaleQuoteId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -2042,22 +2042,22 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("SaleReturnId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -2138,39 +2138,39 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("DeliveredCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("DeliveredQty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("InvoicedCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("InvoicedQty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ReservedCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ReservedQty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -2181,8 +2181,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("decimal(18,3)");
+                        .HasPrecision(20, 3)
+                        .HasColumnType("decimal(20,3)");
 
                     b.HasKey("Id");
 
@@ -2214,12 +2214,12 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("NewCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("NewQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(500)
@@ -2249,8 +2249,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("CountCost")
                         .HasPrecision(18, 6)
@@ -2266,16 +2266,16 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Qty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("RemainingCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("RemainingQty")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -2307,24 +2307,24 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("BalanceAfter")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("BalanceBefore")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("CountAfter")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("CountBefore")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -2346,8 +2346,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -2433,23 +2433,23 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("ConsumedCount")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("ConsumedQuantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int?>("SalesOrderItemId")
                         .HasColumnType("int");
@@ -2521,8 +2521,8 @@ namespace NewVixSmart.Web.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Count")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<DateTime>("DateReceived")
                         .HasColumnType("datetime2");
@@ -2531,8 +2531,8 @@ namespace NewVixSmart.Web.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("decimal(18,4)");
+                        .HasPrecision(20, 4)
+                        .HasColumnType("decimal(20,4)");
 
                     b.Property<int>("StockTransferId")
                         .HasColumnType("int");

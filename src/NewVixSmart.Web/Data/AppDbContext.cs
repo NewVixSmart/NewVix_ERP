@@ -611,18 +611,28 @@ public class AppDbContext : IdentityDbContext
 }
 
 /// <summary>
-/// The one place that decides how many decimals each kind of decimal column stores.
+/// The one place that decides how many decimals, and how many integer digits, each kind of decimal
+/// column stores.
 /// <para>
-/// Three widths, kept apart on purpose. Money stays at <see cref="MoneyScale"/> because the Egyptian
+/// Four scales, kept apart on purpose. Money stays at <see cref="MoneyScale"/> because the Egyptian
 /// piastre is the smallest practical amount and <see cref="Services.Money"/> formats to two decimals:
 /// a wider money column would let the ledger hold a figure no screen, report or printed document can
 /// show, and it would invalidate the 0.005 money materiality constant the payment allocator is
 /// balanced against. A quantity is a measured physical amount, not an amount of money, so it is not
 /// held to the piastre grid and is widened to <see cref="QuantityScale"/>. A unit price sits between
-/// the two and is widened to <see cref="PriceScale"/>.
+/// the two and is widened to <see cref="PriceScale"/>. The per-unit cost keeps the six decimals the
+/// FIFO layer has always had.
 /// </para>
 /// <para>
-/// Both the widened columns matter for data fidelity. At the old <c>decimal(18,2)</c> a quantity of
+/// Scale and precision are separate decisions, and only the scale is the obvious one. Holding the
+/// precision at 18 while raising the scale does not widen a column, it narrows it: a
+/// <c>decimal(18,4)</c> holds 14 integer digits where a <c>decimal(18,2)</c> held 16, so the
+/// quantity and price columns lost a hundredfold of their range on the way to gaining decimals. The
+/// two widths that were widened therefore sit at <see cref="MeasurePrecision"/> and money and cost
+/// stay at <see cref="StorePrecision"/>. See <see cref="MeasurePrecision"/> for the arithmetic.
+/// </para>
+/// <para>
+/// The widened columns matter for data fidelity. At the old <c>decimal(18,2)</c> a quantity of
 /// 0.125 was silently stored as 0.13 and a price of 12.345 as 12.35, so the stock valuation and the
 /// journal entry disagreed with the document the operator typed, and the difference was invisible.
 /// Four decimals on a quantity is the smallest width that both holds a weight measured to a tenth of
@@ -634,8 +644,30 @@ public class AppDbContext : IdentityDbContext
 /// </summary>
 internal static class DecimalPrecision
 {
-    /// <summary>Store precision shared by every money, price, quantity and cost column.</summary>
+    /// <summary>
+    /// Store precision of the columns that were already at <c>decimal(18,x)</c> and stay there:
+    /// money and the per-unit cost. It is deliberately not the same constant as
+    /// <see cref="MeasurePrecision"/>, because a quantity and an amount of money have different
+    /// answers to "how much range may this column trade away for extra decimals?".
+    /// </summary>
     internal const int StorePrecision = 18;
+
+    /// <summary>
+    /// Store precision of a quantity or a unit price - the two widths that were widened, and the
+    /// only reason this constant is not <see cref="StorePrecision"/>.
+    /// <para>
+    /// 20, not 18, and the number that decides it is not the precision but the integral digits.
+    /// SQL Server gives a <c>decimal(p,s)</c> exactly <c>p - s</c> integer digits, so raising the
+    /// scale while holding the precision at 18 does not widen anything: <c>decimal(18,2)</c> to
+    /// <c>decimal(18,4)</c> cuts the integer digits from 16 to 14, and a row that used to fit then
+    /// fails with <c>Arithmetic overflow error converting numeric to data type numeric</c>. That is a
+    /// narrowing, and the migration that shipped it was named for the opposite. <c>20 - 4 = 16</c>
+    /// puts a quantity exactly back on the sixteen integer digits it always had, and
+    /// <c>20 - 3 = 17</c> leaves a price one digit better off than before - so both carry the extra
+    /// decimals the widening was asked for without spending any range on them.
+    /// </para>
+    /// </summary>
+    internal const int MeasurePrecision = 20;
 
     /// <summary>Scale of a money amount. Unchanged, and asserted by the test suite.</summary>
     internal const int MoneyScale = 2;
@@ -670,13 +702,26 @@ internal static class DecimalPrecision
         return property.HasColumnType(columnType);
     }
 
+    /// <summary>
+    /// The same pair of annotations at the widened precision. Kept apart from
+    /// <see cref="HasStoreType"/> rather than folded into it so that money and cost columns cannot
+    /// drift onto the quantity width by accident: which precision a column gets is the whole point
+    /// of the split, and a single shared constant is what made the original widening a narrowing.
+    /// </summary>
+    internal static PropertyBuilder HasMeasureType(this PropertyBuilder property, int scale)
+    {
+        var columnType = $"decimal({MeasurePrecision},{scale})";
+        property.HasPrecision(MeasurePrecision, scale);
+        return property.HasColumnType(columnType);
+    }
+
     /// <summary>Holds the column at the quantity width.</summary>
     internal static PropertyBuilder HasQuantityPrecision(this PropertyBuilder property)
-        => HasStoreType(property, QuantityScale);
+        => HasMeasureType(property, QuantityScale);
 
     /// <summary>Holds the column at the unit price width.</summary>
     internal static PropertyBuilder HasPricePrecision(this PropertyBuilder property)
-        => HasStoreType(property, PriceScale);
+        => HasMeasureType(property, PriceScale);
 
     /// <summary>Holds the column at the money width.</summary>
     internal static PropertyBuilder HasMoneyPrecision(this PropertyBuilder property)

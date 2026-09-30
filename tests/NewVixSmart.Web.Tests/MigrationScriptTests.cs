@@ -198,8 +198,22 @@ public sealed class MigrationScriptTests
             .Where(t => t.Family == ColumnTypeFamily.Decimal)
             .ToList();
         Assert.NotEmpty(scales);
-        Assert.All(scales, t => Assert.Equal(18, t.Precision));
+
+        // 20, not 18: the widening must not buy its decimals with integral digits. At 18 the
+        // quantity columns carried 14 integer digits where decimal(18,2) had carried 16, so a
+        // value that used to fit raised "arithmetic overflow" on write instead of storing.
+        Assert.All(scales, t => Assert.Equal(20, t.Precision));
         Assert.All(scales, t => Assert.Contains(t.Scale, new[] { 3, 4 }));
+
+        // 20 - scale, never less than the 16 integer digits decimal(18,2) carried: at 18 the
+        // quantity columns dropped to 14 and a value that used to fit raised "arithmetic overflow"
+        // on write instead of storing. A price lands on 17, a quantity exactly on 16.
+        Assert.All(scales, t => Assert.True(
+            t.Precision - t.Scale >= 16,
+            $"decimal({t.Precision},{t.Scale}) holds {t.Precision - t.Scale} integer digits; "
+            + "decimal(18,2) held 16, so this narrowing loses range to buy decimals."));
+        Assert.All(scales.Where(t => t.Scale == 3), t => Assert.Equal(17, t.Precision - t.Scale));
+        Assert.All(scales.Where(t => t.Scale == 4), t => Assert.Equal(16, t.Precision - t.Scale));
 
         // "Widening" is only proven if the old type is visible in the chain *before* this
         // migration; the whole-chain text is not evidence of that.
@@ -286,8 +300,10 @@ public sealed class MigrationScriptTests
 
     [Theory]
     [InlineData("decimal(18,2)", "decimal(18,2)", false, "نفس النوع ليس تضييقًا")]
-    [InlineData("decimal(18,2)", "decimal(18,3)", false, "زيادة الخانات العشرية توسيع")]
-    [InlineData("decimal(18,2)", "decimal(18,4)", false, "زيادة الخانات العشرية توسيع")]
+    [InlineData("decimal(18,2)", "decimal(18,3)", true, "زيادة الخانات العشرية مع بقاء الدقة يقصّ الأرقام الصحيحة")]
+    [InlineData("decimal(18,2)", "decimal(18,4)", true, "خطأ الترحيلة الأصلي: خانتان عشريتان مقابل 14 رقمًا صحيحًا بدل 16")]
+    [InlineData("decimal(18,2)", "decimal(20,4)", false, "توسيع حقيقي: 16 رقمًا صحيحًا وخانتان عشريتان إضافيتان")]
+    [InlineData("decimal(18,2)", "decimal(20,3)", false, "توسيع حقيقي: 16 رقمًا صحيحًا وثلاث خانات عشرية")]
     [InlineData("decimal(18,4)", "decimal(18,2)", true, "إنقاص الخانات العشرية يقصّ صامتًا")]
     [InlineData("decimal(20,4)", "decimal(18,4)", true, "إنقاص الدقة يقصّ صامتًا")]
     [InlineData("nvarchar(200)", "nvarchar(200)", false, "نفس الطول")]
@@ -566,11 +582,16 @@ internal readonly record struct ColumnType(ColumnTypeFamily Family, string Name,
         return from.Family switch
         {
             ColumnTypeFamily.Integer => to.IntegerRank < from.IntegerRank,
-            // A decimal loses data silently when either the total number of digits or the number
-            // of digits after the point drops. Raising the scale while holding the precision
-            // (18,2) -> (18,3) trades integral digits, but SQL Server raises "arithmetic
-            // overflow" on such a row rather than truncating it, so it is not a silent loss.
-            ColumnTypeFamily.Decimal => to.Precision < from.Precision || to.Scale < from.Scale,
+            // A decimal loses data when the total number of digits or the number of digits after
+            // the point drops. The third term is the one that was missing: raising the scale while
+            // holding the precision - (18,2) -> (18,4) - holds the total digits steady and so
+            // reads as a widening here, yet a decimal(18,4) carries 14 integer digits where a
+            // decimal(18,2) carried 16, so the column loses a hundredfold of its range to buy two
+            // decimals. That is a narrowing, and the migration that shipped it was named for the
+            // opposite.
+            ColumnTypeFamily.Decimal => to.Precision < from.Precision
+                || to.Scale < from.Scale
+                || (to.Precision - to.Scale) < (from.Precision - from.Scale),
             ColumnTypeFamily.CharLength => to.Length < from.Length,
             ColumnTypeFamily.BinaryLength => to.Length < from.Length,
             _ => false

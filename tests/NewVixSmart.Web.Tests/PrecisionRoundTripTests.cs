@@ -217,11 +217,11 @@ public sealed class PrecisionRoundTripTests : IDisposable
     /// <para>
     /// This test is also where the limit of a SQLite round-trip becomes visible, and it is the reason
     /// the width is not asserted here by writing a boundary value. SQLite gives a column declared as
-    /// <c>decimal(18,4)</c> NUMERIC affinity, so it coerces the stored value to SQLite INTEGER or REAL.
+    /// <c>decimal(20,4)</c> NUMERIC affinity, so it coerces the stored value to SQLite INTEGER or REAL.
     /// A REAL is a double and carries only about fifteen to sixteen significant digits, so a quantity
-    /// at the very edge of <c>decimal(18,4)</c> - fourteen integer digits and four decimals - loses its
+    /// at the very edge of <c>decimal(20,4)</c> - sixteen integer digits and four decimals - loses its
     /// decimals on this provider even though the mapping is correct. That is a property of the test
-    /// database, not of the schema; the eighteen-digit width itself is asserted from the SQL Server
+    /// database, not of the schema; the twenty-digit width itself is asserted from the SQL Server
     /// store type in <see cref="PrecisionColumnMetadataTests"/>.
     /// </para>
     /// </summary>
@@ -233,9 +233,9 @@ public sealed class PrecisionRoundTripTests : IDisposable
         command.CommandText = "SELECT sql FROM sqlite_master WHERE name = 'Items'";
         var ddl = (string?)command.ExecuteScalar() ?? string.Empty;
 
-        Assert.Contains("\"CurrentQuantity\" decimal(18,4) NOT NULL", ddl, StringComparison.Ordinal);
-        Assert.Contains("\"MinQuantity\" decimal(18,4) NOT NULL", ddl, StringComparison.Ordinal);
-        Assert.Contains("\"PurchasePrice\" decimal(18,3) NOT NULL", ddl, StringComparison.Ordinal);
-        Assert.Contains("\"SalePrice\" decimal(18,3) NOT NULL", ddl, StringComparison.Ordinal);
+        Assert.Contains("\"CurrentQuantity\" decimal(20,4) NOT NULL", ddl, StringComparison.Ordinal);
+        Assert.Contains("\"MinQuantity\" decimal(20,4) NOT NULL", ddl, StringComparison.Ordinal);
+        Assert.Contains("\"PurchasePrice\" decimal(20,3) NOT NULL", ddl, StringComparison.Ordinal);
+        Assert.Contains("\"SalePrice\" decimal(20,3) NOT NULL", ddl, StringComparison.Ordinal);
     }
 }
