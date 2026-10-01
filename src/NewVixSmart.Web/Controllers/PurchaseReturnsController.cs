@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
 
@@ -57,9 +58,9 @@ public class PurchaseReturnsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("PurchaseReturns.Create")]
-    public async Task<IActionResult> Create(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> items)
+    public async Task<IActionResult> Create(PurchaseReturnFormModel purchaseReturn, List<PurchaseReturnLineFormModel> items)
     {
-        items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<PurchaseReturnItem>();
+        items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<PurchaseReturnLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
         if (items.Count == 0)
         {
@@ -80,7 +81,7 @@ public class PurchaseReturnsController : Controller
             }
             else
             {
-                var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturnId != purchaseReturn.Id && r.PurchaseReturn.Status == ReturnStatus.Posted).ToListAsync();
+                var alreadyReturned = await _db.PurchaseReturnItems.Where(r => r.PurchaseReturn.PurchaseInvoiceId == invoice.Id && r.PurchaseReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
@@ -108,7 +109,7 @@ public class PurchaseReturnsController : Controller
             }
             else
             {
-                var (ok, error, returnId) = await _inventory.CreatePurchaseReturnDraftAsync(purchaseReturn, items, User.Identity?.Name);
+                var (ok, error, returnId) = await _inventory.CreatePurchaseReturnDraftAsync(purchaseReturn.ToEntity(), items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
                 if (ok)
                 {
                     if (submit == "post")
@@ -134,7 +135,6 @@ public class PurchaseReturnsController : Controller
         var taken = await _db.PurchaseReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
         purchaseReturn.ReturnNumber = $"{prefix}{next:D3}";
-        ModelState.Remove("ReturnNumber");
         return View(purchaseReturn);
     }
 

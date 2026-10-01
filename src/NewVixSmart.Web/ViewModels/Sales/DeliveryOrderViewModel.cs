@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using NewVixSmart.Web.Models.Core;
-using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Models.Forms;
 
 namespace NewVixSmart.Web.ViewModels.Sales;
 
 public class DeliveryOrderViewModel
 {
-    public DeliveryOrder Delivery { get; set; } = new();
-    public List<DeliveryOrderItem> Items { get; set; } = new();
+    public DeliveryOrderFormModel Delivery { get; set; } = new();
+    public List<DeliveryOrderLineFormModel> Items { get; set; } = new();
     public IEnumerable<SelectListItem>? Invoices { get; set; }
     public IEnumerable<SelectListItem>? SalesOrders { get; set; }
     public IEnumerable<SelectListItem>? Customers { get; set; }

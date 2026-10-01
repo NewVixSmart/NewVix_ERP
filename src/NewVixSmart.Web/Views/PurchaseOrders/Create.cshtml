@@ -1,6 +1,19 @@
 @model NewVixSmart.Web.ViewModels.Purchases.PurchaseOrderViewModel
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = (Model.Order.Id > 0 ? "تعديل أمر شراء" : "أمر شراء جديد"); }
+@{
+    ViewData["LineItemColumns"] = 6;
+    ViewData["ErrorKeysWithVisibleField"] = new[] { "Order.SupplierId" };
+    Func<int, string, IHtmlContent> fieldError = (index, field) =>
+    {
+        var key = "items[" + index + "]." + field;
+        var failed = ViewData.ModelState.Any(entry =>
+            entry.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && entry.Value!.Errors.Count > 0);
+        return failed
+            ? Html.Raw(" aria-invalid=\"true\" aria-describedby=\"line-error-" + index + "\"")
+            : Html.Raw(string.Empty);
+    };
+}
 
 <div class="page-header">
     <h2><i class="bi bi-clipboard-check text-primary"></i> @ViewData["Title"]</h2>
@@ -8,11 +21,15 @@
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
-<form asp-action="@(Model.Order.Id > 0 ? "Edit" : "Create")" id="orderForm">
-    <input type="hidden" asp-for="Order.Id" />
+<form asp-action="@(Model.Order.Id > 0 ? "Edit" : "Create")" asp-route-id="@(Model.Order.Id > 0 ? Model.Order.Id : (int?)null)" id="orderForm">
+    @if (Model.Order.Id > 0)
+    {
+        <input type="hidden" asp-for="Order.Id" />
+    }
 
     <div class="card mb-3">
         <div class="card-body">
@@ -49,6 +66,10 @@
 
     <div class="card mb-3">
         <div class="card-header"><i class="bi bi-list-ul"></i> أصناف أمر الشراء</div>
+        @if (!ViewData.ModelState.IsValid && !Model.Items.Any())
+        {
+            <div class="card-body pb-0">@await Html.PartialAsync("_NoLineItemsNotice")</div>
+        }
         <div class="card-body p-0">
             <table class="table table-hover mb-0" id="itemsTable">
                 <caption class="visually-hidden">أصناف أمر الشراء المُدخلة: الصنف، العدد المطلوب، الكمية المطلوبة، سعر الوحدة، الإجمالي</caption>
@@ -72,18 +93,19 @@
                                 {
                                     <input type="hidden" name="items[@idx].Id" value="@line.Id" />
                                 }
-                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
                                     <option value="">اختر صنف</option>
                                     @foreach (var item in Model.ItemsData)
                                     { <option value="@item.Id" data-price="@item.PurchasePrice" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
                                 </select>
                             </td>
-                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 1)" aria-label="العدد المطلوب" /></td>
-                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية المطلوبة" /></td>
-                            <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
+                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 1)" aria-label="العدد المطلوب" @(fieldError(idx, "Count")) /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية المطلوبة" @(fieldError(idx, "Quantity")) /></td>
+                            <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
                             <td><span class="total fw-bold">0.00</span></td>
                             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                         </tr>
+                        @await Html.PartialAsync("_LineItemErrors", idx)
                     }
                 </tbody>
             </table>
@@ -155,7 +177,7 @@ function bindEvents() {
 
 function calculateTotals() {
     let total = 0;
-    document.querySelectorAll('#itemsBody tr').forEach(tr => {
+    document.querySelectorAll('#itemsBody tr:not(.line-item-error)').forEach(tr => {
         const qty = parseFloat(tr.querySelector('.qty')?.value) || 0;
         const count = parseFloat(tr.querySelector('.count')?.value) || 0;
         const price = parseFloat(tr.querySelector('.price')?.value) || 0;

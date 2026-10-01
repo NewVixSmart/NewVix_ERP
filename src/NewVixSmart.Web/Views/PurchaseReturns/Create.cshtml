@@ -1,10 +1,24 @@
-@model NewVixSmart.Web.Models.Purchases.PurchaseReturn
+@model NewVixSmart.Web.Models.Forms.PurchaseReturnFormModel
 @{ ViewData["Title"] = "مرتجع شراء جديد"; }
+@{
+    ViewData["LineItemColumns"] = 6;
+    ViewData["ErrorKeysWithVisibleField"] = new[] { "SupplierId" };
+    Func<int, string, IHtmlContent> fieldError = (index, field) =>
+    {
+        var key = "items[" + index + "]." + field;
+        var failed = ViewData.ModelState.Any(entry =>
+            entry.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && entry.Value!.Errors.Count > 0);
+        return failed
+            ? Html.Raw(" aria-invalid=\"true\" aria-describedby=\"line-error-" + index + "\"")
+            : Html.Raw(string.Empty);
+    };
+}
 
 <div class="page-header"><h2><i class="bi bi-arrow-return-right text-primary"></i> مرتجع شراء جديد</h2></div>
 
 <form asp-action="Create" id="returnForm">
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
+    @await Html.PartialAsync("_UnhandledFieldErrors")
 
     <div class="card mb-3">
         <div class="card-body">
@@ -51,17 +65,18 @@
                 </thead>
                 <tbody id="itemsBody">
                     <tr>
-                        <td><select name="items[0].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                        <td><select name="items[0].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(0, "ItemId"))>
                             <option value="">اختر صنف</option>
                             @foreach (var item in (List<NewVixSmart.Web.Models.Core.Item>)ViewBag.Items)
                             { <option value="@item.Id">@item.Name</option> }
                         </select></td>
-                        <td><input name="items[0].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-                        <td><input name="items[0].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
+                        <td><input name="items[0].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" @(fieldError(0, "Count")) /></td>
+                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" @(fieldError(0, "Quantity")) /></td>
+                        <td><input name="items[0].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" @(fieldError(0, "UnitPrice")) /></td>
                         <td><span class="total fw-bold">0.00</span></td>
                         <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                     </tr>
+                    @await Html.PartialAsync("_LineItemErrors", 0)
                 </tbody>
             </table>
         </div>
@@ -109,7 +124,7 @@
 
     function calculateTotals() {
         let total = 0;
-        document.querySelectorAll('#itemsBody tr').forEach(tr => {
+        document.querySelectorAll('#itemsBody tr:not(.line-item-error)').forEach(tr => {
             const qty = parseFloat(tr.querySelector('.qty')?.value) || 0;
             const count = parseFloat(tr.querySelector('.count')?.value) || 0;
             const price = parseFloat(tr.querySelector('.price')?.value) || 0;

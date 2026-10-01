@@ -10,6 +10,7 @@ using NewVixSmart.Web.Controllers;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
@@ -125,12 +126,12 @@ public sealed class Round20FinancialSecurityTests : IDisposable
         ctx.Request.Form = new FormCollection(new Dictionary<string, StringValues> { ["submitAction"] = "post" });
         WireController(controller, ctx);
 
-        var result = await controller.Create(new SaleReturn
+        var result = await controller.Create(new SaleReturnFormModel
         {
             SaleInvoiceId = invoice.Id,
             CustomerId = custId,
             ReturnDate = DateTime.Today
-        }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
+        }, new List<SaleReturnLineFormModel> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<ViewResult>(result);
         Assert.Contains(controller.ModelState.Values.SelectMany(v => v.Errors), e => e.ErrorMessage.Contains("صلاحية"));
@@ -155,12 +156,12 @@ public sealed class Round20FinancialSecurityTests : IDisposable
         ctx.Request.Form = new FormCollection(new Dictionary<string, StringValues> { ["submitAction"] = "post" });
         WireController(controller, ctx);
 
-        var result = await controller.Create(new SaleReturn
+        var result = await controller.Create(new SaleReturnFormModel
         {
             SaleInvoiceId = invoice.Id,
             CustomerId = custId,
             ReturnDate = DateTime.Today
-        }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
+        }, new List<SaleReturnLineFormModel> { new() { ItemId = itemId, Quantity = 4, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<RedirectToActionResult>(result);
         var returnEntity = await db.SaleReturns.SingleAsync();

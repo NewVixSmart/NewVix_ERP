@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Sales;
@@ -35,7 +36,7 @@ public class SalesQuotesController : Controller
     {
         var vm = await PopulateDropdowns(new SaleQuoteViewModel
         {
-            Quote = new SaleQuote
+            Quote = new SaleQuoteFormModel
             {
                 QuoteNumber = await NextNumberPreviewAsync(),
                 QuoteDate = DateTime.Today,
@@ -49,8 +50,8 @@ public class SalesQuotesController : Controller
     [RequirePerm("SalesQuotes.Create")]
     public async Task<IActionResult> Create(SaleQuoteViewModel vm)
     {
-        vm.Quote ??= new SaleQuote();
-        var items = (vm.Items ?? new List<SaleQuoteItem>())
+        vm.Quote ??= new SaleQuoteFormModel();
+        var items = (vm.Items ?? new List<SaleQuoteLineFormModel>())
             .Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList();
         ModelState.IgnoreEmptyLineItemRows();
 
@@ -62,7 +63,7 @@ public class SalesQuotesController : Controller
         if (ModelState.IsValid)
         {
             int? branchId = HttpContext.Session.GetCurrentBranchId();
-            var (ok, error, quote) = await _quotes.CreateAsync(vm.Quote, items, User.Identity?.Name, branchId);
+            var (ok, error, quote) = await _quotes.CreateAsync(vm.Quote.ToEntity(), items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name, branchId);
             if (ok && quote != null)
             {
                 TempData["Success"] = "تم حفظ عرض السعر بنجاح";
@@ -73,7 +74,6 @@ public class SalesQuotesController : Controller
 
         await PopulateDropdowns(vm);
         vm.Quote.QuoteNumber = await NextNumberPreviewAsync();
-        ModelState.Remove("Quote.QuoteNumber");
         return View(vm);
     }
 

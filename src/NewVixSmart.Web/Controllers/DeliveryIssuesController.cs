@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Sales;
@@ -100,7 +101,7 @@ public class DeliveryIssuesController : Controller
                 vm.NoteLines = note.Items.ToList();
                 vm.Items = note.Items
                     .Where(i => i.Quantity > 0 || i.Count > 0)
-                    .Select(i => new DeliveryIssueItem
+                    .Select(i => new DeliveryIssueLineFormModel
                     {
                         ItemId = i.ItemId,
                         DeliveryOrderItemId = i.Id,
@@ -118,6 +119,18 @@ public class DeliveryIssuesController : Controller
     public async Task<IActionResult> Create(DeliveryIssueViewModel vm)
     {
         vm.Items = vm.Items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        ModelState.IgnoreEmptyLineItemRows();
+
+        // The page validates its own rules with TempData messages, so only a malformed
+        // payload is an error here. Swallowing an invalid ModelState would drop the
+        // delivery order the operator picked and silently restart the form.
+        if (!ModelState.IsValid)
+        {
+            vm.Items = new List<DeliveryIssueLineFormModel>();
+            TempData["Error"] = "بيانات الأمر غير صحيحة، راجع السطور المدخلة";
+            return await Create(vm.Issue.DeliveryOrderId);
+        }
+
         if (vm.Issue.DeliveryOrderId <= 0)
         {
             TempData["Error"] = "اختر أذن التسليم";
@@ -141,7 +154,8 @@ public class DeliveryIssuesController : Controller
             line.Count = count;
         }
 
-        var (ok, error, issue) = await _inventory.CreateDeliveryIssueAsync(vm.Issue.DeliveryOrderId, vm.Items,
+        var (ok, error, issue) = await _inventory.CreateDeliveryIssueAsync(vm.Issue.DeliveryOrderId,
+            vm.Items.Select(i => i.ToEntity()).ToList(),
             User.Identity?.Name, vm.Issue.IssueDate, vm.Issue.Notes, vm.Issue.Carrier, vm.Issue.TrackingNumber);
         if (!ok)
         {

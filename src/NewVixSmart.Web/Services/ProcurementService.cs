@@ -132,12 +132,27 @@ public sealed class ProcurementService : IProcurementService
         existing.ExpectedDate = order.ExpectedDate;
         existing.Notes = order.Notes;
 
-        var oldItemIds = existing.Items.Select(i => i.Id).ToHashSet();
+        // A posted line id is only a reference to a line of THIS order. Anything else is
+        // dropped to 0 and treated as a new line: trusting it would let a client delete a real
+        // line here (its id is absent from newItemIds) while inserting a foreign row under a
+        // key it chose.
+        var owned = existing.Items.Select(i => i.Id).ToHashSet();
+        foreach (var item in items)
+        {
+            if (item.Id > 0 && !owned.Contains(item.Id))
+            {
+                item.Id = 0;
+            }
+        }
+
         var newItemIds = valid.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
+        // Removal goes through the DbSet, not the collection: the FK is required, so
+        // detaching the child from the navigation would try to null it and throw.
         var toRemove = existing.Items.Where(i => !newItemIds.Contains(i.Id)).ToList();
         foreach (var r in toRemove)
         {
             existing.Items.Remove(r);
+            _db.PurchaseOrderItems.Remove(r);
         }
 
         foreach (var item in valid)

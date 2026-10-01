@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -9,12 +10,14 @@ using NewVixSmart.Web.Controllers;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Accounting;
 using NewVixSmart.Web.ViewModels.Sales;
+using NewVixSmart.Web.ViewModels.Stock;
 using Xunit;
 using ApiPaymentsController = NewVixSmart.Web.Api.PaymentsController;
 
@@ -242,11 +245,18 @@ public sealed class OperationsIntegrityTests : IDisposable
         return delivery.Id;
     }
 
-    private static HttpContext CreateHttpContext()
+    private static HttpContext CreateHttpContext(string? user = null)
     {
         var ctx = new DefaultHttpContext();
         ctx.Request.ContentType = "application/x-www-form-urlencoded";
         ctx.Request.Form = new FormCollection(new Dictionary<string, StringValues>());
+        if (user != null)
+        {
+            ctx.User = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(
+                    [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user)], "TestAuth"));
+        }
+
         return ctx;
     }
 
@@ -437,12 +447,12 @@ public sealed class OperationsIntegrityTests : IDisposable
         var controller = new SaleReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
-        var result = await controller.Create(new SaleReturn
+        var result = await controller.Create(new SaleReturnFormModel
         {
             SaleInvoiceId = invoice.Id,
             CustomerId = custId,
             ReturnDate = DateTime.Today
-        }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 } });
+        }, new List<SaleReturnLineFormModel> { new() { ItemId = itemId, Quantity = 6, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<RedirectToActionResult>(result);
         Assert.True(controller.ModelState.IsValid);
@@ -477,12 +487,12 @@ public sealed class OperationsIntegrityTests : IDisposable
         var controller = new SaleReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
-        var result = await controller.Create(new SaleReturn
+        var result = await controller.Create(new SaleReturnFormModel
         {
             SaleInvoiceId = invoice.Id,
             CustomerId = custId,
             ReturnDate = DateTime.Today
-        }, new List<SaleReturnItem> { new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 80 } });
+        }, new List<SaleReturnLineFormModel> { new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 80 } });
 
         Assert.IsType<ViewResult>(result);
         Assert.False(controller.ModelState.IsValid);
@@ -517,12 +527,12 @@ public sealed class OperationsIntegrityTests : IDisposable
         var controller = new PurchaseReturnsController(db, svc, new TestPermissionService());
         WireController(controller, CreateHttpContext());
 
-        var result = await controller.Create(new PurchaseReturn
+        var result = await controller.Create(new PurchaseReturnFormModel
         {
             PurchaseInvoiceId = invoice.Id,
             SupplierId = supId,
             ReturnDate = DateTime.Today
-        }, new List<PurchaseReturnItem> { new() { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 45 } });
+        }, new List<PurchaseReturnLineFormModel> { new() { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 45 } });
 
         Assert.IsType<ViewResult>(result);
         Assert.False(controller.ModelState.IsValid);
@@ -682,8 +692,16 @@ public sealed class OperationsIntegrityTests : IDisposable
         WireController(controller, CreateHttpContext());
         controller.ModelState.AddModelError("TransferNumber", "رقم التحويل مطلوب");
 
-        var result = await controller.Create(new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh1Id, TransferDate = DateTime.UtcNow },
-            new List<StockTransferItem> { new() { ItemId = itemId, Quantity = 5, Count = 0 } });
+        var result = await controller.Create(new StockTransferFormViewModel
+        {
+            Transfer = new StockTransferFormModel
+            {
+                SourceWarehouseId = wh1Id,
+                TargetWarehouseId = wh1Id,
+                TransferDate = DateTime.UtcNow
+            },
+            Items = new List<StockTransferLineFormModel> { new() { ItemId = itemId, Quantity = 5, Count = 0 } }
+        });
 
         Assert.IsType<ViewResult>(result);
         Assert.Contains(controller.ModelState["TransferNumber"]!.Errors, e => e.ErrorMessage.Contains("مطلوب"));
@@ -705,8 +723,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         WireController(controller, CreateHttpContext());
         var vm = new DeliveryOrderViewModel
         {
-            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
-            Items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2, Count = 0 } }
+            Delivery = new DeliveryOrderFormModel { SaleInvoiceId = invoice.Id, CustomerId = custId, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderLineFormModel> { new() { ItemId = itemId, Quantity = 2, Count = 0 } }
         };
 
         var result = await controller.Create(vm);
@@ -730,8 +748,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         WireController(controller, CreateHttpContext());
         var vm = new DeliveryOrderViewModel
         {
-            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
-            Items = new List<DeliveryOrderItem>()
+            Delivery = new DeliveryOrderFormModel { SaleInvoiceId = invoice.Id, CustomerId = custId, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderLineFormModel>()
         };
 
         var result = await controller.Create(vm);
@@ -755,8 +773,8 @@ public sealed class OperationsIntegrityTests : IDisposable
         WireController(controller, CreateHttpContext());
         var vm = new DeliveryOrderViewModel
         {
-            Delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today },
-            Items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }
+            Delivery = new DeliveryOrderFormModel { SaleInvoiceId = invoice.Id, CustomerId = custId, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderLineFormModel> { new() { ItemId = itemId, Quantity = 1, Count = 0 } }
         };
 
         var result = await controller.Create(vm);
@@ -826,5 +844,452 @@ public sealed class OperationsIntegrityTests : IDisposable
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).Include(l => l.Account).ToListAsync();
         Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Debit == 400m);
         Assert.Contains(lines, l => l.Account!.Code == "2000" && l.Credit == 400m);
+    }
+
+    // ---------------------------------------------------------------------------
+    // The regression this whole change exists for: a document POST that binds its
+    // entity silently failed to save. SalesOrders posted no OrderNumber, the entity
+    // carried [Required] on it, so the save died behind an error nothing showed.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task SalesOrders_Create_WithoutServerGeneratedFields_SavesAndNumbersTheOrder()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var inventory = new InventoryService(db);
+        var controller = new SalesOrdersController(db, new SalesOrdersService(db, inventory), new StockReservationsService(db));
+        WireController(controller, CreateHttpContext());
+
+        // Exactly what the page sends: no OrderNumber, no status, no totals.
+        var vm = new SalesOrderViewModel
+        {
+            Order = new SalesOrderFormModel
+            {
+                CustomerId = custId,
+                OrderDate = DateTime.Today,
+                ExpectedDate = DateTime.Today.AddDays(7)
+            },
+            Items =
+            [
+                new SalesOrderLineFormModel { ItemId = itemId, Quantity = 3, Count = 3, UnitPrice = 80 }
+            ]
+        };
+
+        var result = await controller.Create(vm);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        // The bug being closed: an [Required] on a server-generated field put an error in
+        // ModelState on every submit, so the save died and the page looked fine.
+        Assert.True(controller.ModelState.IsValid,
+            string.Join(" | ", controller.ModelState.SelectMany(m => m.Value!.Errors.Select(e => $"{m.Key}: {e.ErrorMessage}"))));
+        var order = await db.SalesOrders.Include(o => o.Items).SingleAsync();
+        Assert.StartsWith("SO-", order.OrderNumber);
+        Assert.Single(order.Items);
+        Assert.Equal(3m, order.Items.Single().Quantity);
+        Assert.Equal("Index", redirect.ActionName);
+    }
+
+    [Fact]
+    public void SalesOrderFormModel_KeepsServerOwnedFieldsOutOfTheRequest()
+    {
+        // The guard is two different shapes, and both are asserted: a field that is simply
+        // absent cannot be posted at all, a field kept for display must carry [BindNever] or
+        // the browser can write it. Losing either is the bug this pass closed.
+        AssertNotPosted<SalesOrderFormModel>(nameof(SalesOrder.OrderNumber));
+        AssertNotPosted<SalesOrderFormModel>(nameof(SalesOrder.PublicId));
+        AssertNotPosted<SalesOrderFormModel>(nameof(SalesOrder.RowVersion));
+        AssertNotPosted<SalesOrderFormModel>(nameof(SalesOrder.CreatedAt));
+        AssertNotPosted<SalesOrderFormModel>(nameof(SalesOrder.CreatedBy));
+        AssertBindNever<SalesOrderFormModel>(nameof(SalesOrderFormModel.Status));
+
+        // The order line is the same story: the calculated quantities never reach the form.
+        AssertNotPosted<SalesOrderLineFormModel>(nameof(SalesOrderItem.InvoicedQty));
+        AssertNotPosted<SalesOrderLineFormModel>(nameof(SalesOrderItem.ReservedQty));
+        AssertNotPosted<SalesOrderLineFormModel>(nameof(SalesOrderItem.DeliveredQty));
+        AssertNotPosted<SalesOrderLineFormModel>(nameof(SalesOrderItem.SalesOrderId));
+    }
+
+    [Fact]
+    public void DocumentFormModels_KeepEveryServerOwnedFieldOutOfTheBinder()
+    {
+        // One table for the audit. Display-only fields must carry [BindNever]; fields with no
+        // business in a POST must be gone altogether.
+        AssertBindNever<DeliveryOrderFormModel>(nameof(DeliveryOrderFormModel.Status));
+        AssertBindNever<DeliveryOrderFormModel>(nameof(DeliveryOrderFormModel.DeliveryNumber));
+        AssertNotPosted<DeliveryOrderLineFormModel>(nameof(DeliveryOrderItem.Id));
+        AssertNotPosted<DeliveryOrderFormModel>(nameof(DeliveryOrder.Id));
+
+        AssertBindNever<DeliveryIssueFormModel>(nameof(DeliveryIssueFormModel.IssueNumber));
+        AssertBindNever<DeliveryIssueFormModel>(nameof(DeliveryIssueFormModel.Status));
+        AssertNotPosted<DeliveryIssueLineFormModel>(nameof(DeliveryIssueItem.Id));
+        // The order line is derived by the service, never posted.
+        AssertNotPosted<DeliveryIssueLineFormModel>(nameof(DeliveryIssueItem.SalesOrderItemId));
+
+        AssertBindNever<PaymentFormModel>(nameof(PaymentFormModel.ReceiptNumber));
+        AssertBindNever<PaymentFormModel>(nameof(PaymentFormModel.Type));
+        AssertNotPosted<PaymentFormModel>(nameof(Payment.Id));
+        AssertNotPosted<PaymentFormModel>(nameof(Payment.BranchId));
+        AssertNotPosted<PaymentFormModel>(nameof(Payment.CreatedBy));
+        AssertNotPosted<PaymentFormModel>(nameof(Payment.DedupeKey));
+
+        AssertBindNever<StockTransferFormModel>(nameof(StockTransferFormModel.TransferNumber));
+        AssertNotPosted<StockTransferLineFormModel>(nameof(StockTransferItem.Id));
+        AssertNotPosted<StockTransferLineFormModel>(nameof(StockTransferItem.StockTransferId));
+        AssertNotPosted<StockTransferFormModel>(nameof(StockTransfer.Id));
+        AssertNotPosted<StockTransferFormModel>(nameof(StockTransfer.CreatedAt));
+
+        AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.OrderNumber));
+        AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.Status));
+        AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.Id));
+        AssertBindNever<PurchaseOrderLineFormModel>(nameof(PurchaseOrderLineFormModel.RowVersion));
+        AssertNotPosted<PurchaseOrderFormModel>(nameof(PurchaseOrder.PublicId));
+        AssertNotPosted<PurchaseOrderLineFormModel>(nameof(PurchaseOrderItem.PurchaseOrderId));
+        AssertNotPosted<PurchaseOrderLineFormModel>(nameof(PurchaseOrderItem.ReceivedQty));
+    }
+
+    private static void AssertBindNever<T>(string propertyName)
+    {
+        var property = typeof(T).GetProperty(propertyName);
+        Assert.NotNull(property);
+        Assert.True(
+            property!.GetCustomAttributes(typeof(BindNeverAttribute), inherit: true).Length > 0,
+            $"{typeof(T).Name}.{propertyName} is bindable: a client can post it");
+    }
+
+    private static void AssertNotPosted<T>(string entityPropertyName)
+    {
+        var name = entityPropertyName;
+        var idx = name.LastIndexOf('.');
+        if (idx > 0)
+        {
+            name = name[(idx + 1)..];
+        }
+
+        Assert.Null(typeof(T).GetProperty(name));
+    }
+
+    [Fact]
+    public async Task UpdateOrderAsync_PostedLineIdFromAnotherOrder_AdoptedAsANewLine()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var inventory = new InventoryService(db);
+        var svc = new SalesOrdersService(db, inventory);
+        var otherItem = await SeedSecondItemAsync(db);
+
+        // Order A: one line we must not touch.
+        var a = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
+        Assert.True((await svc.CreateOrderAsync(a, [new SalesOrderItem { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 80 }], "test")).Success);
+        var aLine = await db.SalesOrderItems.FirstAsync(i => i.SalesOrderId == a.Id);
+
+        // Order B: the line a hostile POST would name to make order A's row disappear.
+        var b = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
+        Assert.True((await svc.CreateOrderAsync(b, [new SalesOrderItem { ItemId = otherItem, Quantity = 2, Count = 2, UnitPrice = 90 }], "test")).Success);
+        db.ChangeTracker.Clear();
+        var aLineId = aLine.Id;
+        var bId = b.Id;
+
+        // A fresh context, as a request would get: the update must not depend on what the
+        // seeding calls left in the change tracker.
+        using var request = CreateContext();
+        var (ok, error) = await new SalesOrdersService(request, new InventoryService(request)).UpdateOrderAsync(
+            new SalesOrder { Id = bId, CustomerId = custId, OrderDate = DateTime.Today },
+            [new SalesOrderItem { Id = aLineId, ItemId = otherItem, Quantity = 4, Count = 4, UnitPrice = 90 }],
+            "test");
+
+        Assert.True(ok, error);
+        db.ChangeTracker.Clear();
+        var aAfter = await db.SalesOrderItems.Where(i => i.SalesOrderId == a.Id).ToListAsync();
+        Assert.Single(aAfter);
+        Assert.Equal(5m, aAfter[0].Quantity);
+        Assert.Equal(a.Id, aAfter[0].SalesOrderId);
+        var bAfter = await db.SalesOrderItems.Where(i => i.SalesOrderId == b.Id).ToListAsync();
+        Assert.Single(bAfter);
+        Assert.Equal(4m, bAfter[0].Quantity);
+        Assert.NotEqual(aAfter[0].Id, bAfter[0].Id);
+    }
+
+    [Fact]
+    public async Task UpdateOrderAsync_Procurement_PostedLineIdFromAnotherOrder_AdoptedAsANewLine()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var otherItem = await SeedSecondItemAsync(db);
+        var proc = new ProcurementService(db, new InventoryService(db));
+
+        var a = new PurchaseOrder { SupplierId = supId, OrderDate = DateTime.Today };
+        Assert.True((await proc.CreateOrderAsync(a, [new PurchaseOrderItem { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 40 }], "test")).Success);
+        var aLine = await db.PurchaseOrderItems.FirstAsync(i => i.PurchaseOrderId == a.Id);
+
+        var b = new PurchaseOrder { SupplierId = supId, OrderDate = DateTime.Today };
+        Assert.True((await proc.CreateOrderAsync(b, [new PurchaseOrderItem { ItemId = otherItem, Quantity = 2, Count = 2, UnitPrice = 45 }], "test")).Success);
+        db.ChangeTracker.Clear();
+        var aLineId = aLine.Id;
+        var bId = b.Id;
+
+        using var request = CreateContext();
+        var requestProc = new ProcurementService(request, new InventoryService(request));
+        var (ok, error) = await requestProc.UpdateOrderAsync(
+            new PurchaseOrder { Id = bId, SupplierId = supId, OrderDate = DateTime.Today },
+            [new PurchaseOrderItem { Id = aLineId, ItemId = otherItem, Quantity = 4, Count = 4, UnitPrice = 45 }],
+            "test");
+
+        Assert.True(ok, error);
+        db.ChangeTracker.Clear();
+        var aAfter = await db.PurchaseOrderItems.Where(i => i.PurchaseOrderId == a.Id).ToListAsync();
+        Assert.Single(aAfter);
+        Assert.Equal(5m, aAfter[0].Quantity);
+        Assert.Equal(a.Id, aAfter[0].PurchaseOrderId);
+    }
+
+    [Fact]
+    public async Task CreateDeliveryIssueAsync_DerivesTheOrderLineThePageNeverPosts()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var svc = new InventoryService(db);
+        var sales = new SalesOrdersService(db, svc);
+
+        var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
+        Assert.True((await sales.CreateOrderAsync(order, [new SalesOrderItem { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 80 }], "test")).Success);
+        // A delivery note can only be cut against an approved order.
+        Assert.True((await sales.ApproveOrderAsync(order.Id)).Success);
+        var orderLine = await db.SalesOrderItems.FirstAsync(i => i.SalesOrderId == order.Id);
+
+        var (noteOk, noteError, note) = await svc.CreateSalesDeliveryNoteAsync(
+            order.Id, null, null,
+            [new DeliveryOrderItem { ItemId = itemId, Quantity = 5, Count = 5 }], "test", DateTime.Today, null);
+        Assert.True(noteOk, noteError);
+        db.ChangeTracker.Clear();
+        var noteLine = await db.DeliveryOrderItems.FirstAsync(i => i.DeliveryOrderId == note!.Id);
+
+        // The hostile payload: it names a different order's line.
+        var (ok, error, issue) = await svc.CreateDeliveryIssueAsync(
+            note!.Id,
+            [new DeliveryIssueItem
+            {
+                ItemId = itemId,
+                DeliveryOrderItemId = noteLine.Id,
+                SalesOrderItemId = orderLine.Id + 9999,
+                Quantity = 2,
+                Count = 2
+            }],
+            "tester");
+
+        Assert.True(ok, error);
+        db.ChangeTracker.Clear();
+        var line = await db.DeliveryIssueItems.SingleAsync(i => i.DeliveryIssueId == issue!.Id);
+        Assert.Equal(orderLine.Id, line.SalesOrderItemId);
+    }
+
+    [Fact]
+    public async Task PaymentsController_DisbursementPost_StaysADisbursement()
+    {
+        using var db = CreateContext();
+        var (itemId, _, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+        await CreateOutstandingPayableAsync(db, proc, itemId, supId, 400m);
+        var controller = new PaymentsController(db, new PaymentService(db, new AccountingService(db)));
+        WireController(controller, CreateHttpContext("tester"));
+
+        // The route used to be the only thing carrying the type; a POST that lost it
+        // defaulted to a customer receipt.
+        var vm = new PaymentFormViewModel
+        {
+            Type = "disbursement",
+            Payment = new PaymentFormModel
+            {
+                Type = PaymentType.Disbursement,
+                SupplierId = supId,
+                Amount = 100,
+                Method = PaymentMethod.Cash,
+                PaymentDate = DateTime.Today
+            }
+        };
+
+        var result = await controller.Create(vm);
+
+        Assert.True(result is RedirectToActionResult,
+            string.Join(" | ", controller.ModelState.SelectMany(m => m.Value!.Errors.Select(e => $"{m.Key}: {e.ErrorMessage}"))));
+        var payment = await db.Payments.SingleAsync();
+        Assert.Equal(PaymentType.Disbursement, payment.Type);
+        Assert.Equal(supId, payment.SupplierId);
+        Assert.Null(payment.CustomerId);
+        Assert.StartsWith("PAY-", payment.ReceiptNumber);
+    }
+
+    [Fact]
+    public async Task PaymentsController_PostedIdAndBranch_AreNotAdopted()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        SeedChartOfAccounts(db);
+        var svc = new PaymentService(db, new AccountingService(db));
+        var invoice = new SaleInvoice { CustomerId = custId, InvoiceDate = DateTime.Today };
+        Assert.True((await svcSeedSaleAsync(db, invoice, itemId, 100m, 500m)).Item1);
+
+        var controller = new PaymentsController(db, svc);
+        WireController(controller, CreateHttpContext("tester"));
+
+        // The body carries a foreign primary key and a forged receipt number: neither is on
+        // the form model, so the payment lands as a new row numbered by the service.
+        var vm = new PaymentFormViewModel
+        {
+            Type = "receipt",
+            Payment = new PaymentFormModel
+            {
+                Type = PaymentType.Receipt,
+                CustomerId = custId,
+                Amount = 60,
+                Method = PaymentMethod.Cash,
+                PaymentDate = DateTime.Today,
+                ReceiptNumber = "PAY-99999"
+            }
+        };
+
+        var result = await controller.Create(vm);
+
+        Assert.True(result is RedirectToActionResult,
+            string.Join(" | ", controller.ModelState.SelectMany(m => m.Value!.Errors.Select(e => $"{m.Key}: {e.ErrorMessage}"))));
+        db.ChangeTracker.Clear();
+        var payment = await db.Payments.SingleAsync(p => p.Amount == 60m);
+        Assert.Equal(PaymentType.Receipt, payment.Type);
+        Assert.Equal(custId, payment.CustomerId);
+        Assert.Equal("tester", payment.CreatedBy);
+        Assert.Null(payment.BranchId);
+        Assert.NotEqual("PAY-99999", payment.ReceiptNumber);
+        Assert.StartsWith("PAY-", payment.ReceiptNumber);
+        Assert.Equal(1, await db.SalePaymentAllocations.CountAsync());
+    }
+
+    /// <summary>يبيع فاتورة للعميل ويسلّمها بالكامل، فيترك رصيداً مستحقاً يمكن تحصيله.
+    /// التسليم شرط: الفاتورة لا تدخل التحصيل قبل أن تُسلَّم فعلاً.</summary>
+    private static async Task<(bool Item1, string? Item2)> svcSeedSaleAsync(
+        AppDbContext db, SaleInvoice invoice, int itemId, decimal price, decimal quantity)
+    {
+        var (ok, error) = await new InventoryService(db, new AccountingService(db))
+            .CreateSaleAsync(invoice, [QtyLine(itemId, quantity, price)], "seed");
+        if (!ok)
+        {
+            return (false, error);
+        }
+
+        var delivery = new DeliveryOrder
+        {
+            DeliveryNumber = $"DO-SEED-{Guid.NewGuid():N}".Substring(0, 12),
+            SaleInvoiceId = invoice.Id,
+            CustomerId = invoice.CustomerId,
+            DeliveryDate = invoice.InvoiceDate,
+            Status = DeliveryOrderStatus.Delivered,
+            DeliveredAt = DateTime.UtcNow
+        };
+        db.DeliveryOrders.Add(delivery);
+        await db.SaveChangesAsync();
+        db.DeliveryOrderItems.Add(new DeliveryOrderItem
+        {
+            DeliveryOrderId = delivery.Id,
+            ItemId = itemId,
+            Quantity = quantity
+        });
+        await db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>A purchase invoice the supplier can be paid against: a disbursement with
+    /// nothing outstanding is rejected by the allocation check, not by the binder.</summary>
+    private static async Task CreateOutstandingPayableAsync(
+        AppDbContext db, ProcurementService proc, int itemId, int supplierId, decimal amount)
+    {
+        // A real purchase invoice posts through the chart of accounts, so the seed has to
+        // provide the accounts it touches; otherwise this helper fails for the wrong reason.
+        if (!db.GLAccounts.Any())
+        {
+            SeedChartOfAccounts(db);
+        }
+
+        var order = new PurchaseOrder { SupplierId = supplierId, OrderDate = DateTime.Today };
+        var quantity = amount / 40m;
+        var (created, createError) = await proc.CreateOrderAsync(order,
+            [new PurchaseOrderItem { ItemId = itemId, Quantity = quantity, Count = quantity, UnitPrice = 40 }], "test");
+        Assert.True(created, createError);
+        var (approved, approveError) = await proc.ApproveOrderAsync(order.Id);
+        Assert.True(approved, approveError);
+        var line = await db.PurchaseOrderItems.FirstAsync(i => i.PurchaseOrderId == order.Id);
+        var (received, receiveError) = await proc.ReceiveOrderLineAsync(order.Id, line.Id, quantity, quantity);
+        Assert.True(received, receiveError);
+        var (invoiced, invoiceError) = await proc.CreateInvoiceFromOrderAsync(order.Id, "test");
+        Assert.True(invoiced, invoiceError);
+
+        // الفاتورة من أمر شراء تُسجَّل "دفع عند الاستلام" فتُعتبر مسدَّدة بالكامل، ولا يبقى
+        // ما يمكن صرفه؛ نحوّلها إلى آجل حتى يوجد رصيد مستحق للمورّد.
+        var invoice = await db.PurchaseInvoices.FirstAsync(p => p.PurchaseOrderId == order.Id);
+        invoice.PaymentTerms = InvoicePaymentTerms.Net30;
+        invoice.PaidAmount = 0m;
+        invoice.IsPaid = false;
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task StockTransfersController_InvalidModelState_ReRendersWhatWasPosted()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
+        var controller = new StockTransfersController(db, new InventoryService(db));
+        WireController(controller, CreateHttpContext());
+
+        var vm = new StockTransferFormViewModel
+        {
+            Transfer = new StockTransferFormModel
+            {
+                SourceWarehouseId = wh1Id,
+                TargetWarehouseId = wh2Id,
+                TransferDate = DateTime.Today,
+                Notes = "ملاحظة يجب ألا تضيع"
+            },
+            Items =
+            [
+                new StockTransferLineFormModel { ItemId = itemId, Quantity = 3, Count = 2, UnitCost = 12.5m },
+                new StockTransferLineFormModel { ItemId = itemId, Quantity = 9, Count = 0 }
+            ]
+        };
+        controller.ModelState.AddModelError("Transfer.SourceWarehouseId", "المستودع المصدر غير صحيح");
+
+        var result = await controller.Create(vm);
+
+        // A rejected transfer used to come back as one hardcoded row of zeros: everything
+        // the operator typed was gone.
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<StockTransferFormViewModel>(view.Model);
+        Assert.Equal(2, model.Items.Count);
+        Assert.Equal(3m, model.Items[0].Quantity);
+        Assert.Equal(9m, model.Items[1].Quantity);
+        Assert.Equal("ملاحظة يجب ألا تضيع", model.Transfer.Notes);
+        Assert.NotNull(model.ItemsData);
+        Assert.NotNull(model.Warehouses);
+        Assert.Equal(0, await db.StockTransfers.CountAsync());
+    }
+
+    private async Task<int> SeedSecondItemAsync(AppDbContext db)
+    {
+        var cat = await db.ItemCategories.FirstAsync();
+        var type = await db.ItemTypes.FirstAsync();
+        var unit = await db.Units.FirstAsync();
+        var item = new Item
+        {
+            Name = "صنف اختبار ثانٍ",
+            CategoryId = cat.Id,
+            ItemTypeId = type.Id,
+            CountUnitId = unit.Id,
+            QuantityUnitId = unit.Id,
+            PurchasePrice = 45,
+            SalePrice = 90,
+            CurrentCount = 50,
+            CurrentQuantity = 50
+        };
+        db.Items.Add(item);
+        await db.SaveChangesAsync();
+        return item.Id;
     }
 }

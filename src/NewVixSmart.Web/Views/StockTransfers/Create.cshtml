@@ -1,11 +1,25 @@
-@model NewVixSmart.Web.Models.Stock.StockTransfer
-@{ ViewData["Title"] = "تحويل مخزون جديد"; var warehouses = (SelectList)ViewBag.Warehouses; var items = (List<NewVixSmart.Web.Models.Core.Item>)ViewBag.ItemsData; }
+@model NewVixSmart.Web.ViewModels.Stock.StockTransferFormViewModel
+@{ ViewData["Title"] = "تحويل مخزون جديد"; var warehouses = Model.Warehouses; var items = Model.ItemsData; }
+@{
+    ViewData["LineItemColumns"] = 6;
+    ViewData["ErrorKeysWithVisibleField"] = System.Array.Empty<string>();
+    Func<int, string, IHtmlContent> fieldError = (index, field) =>
+    {
+        var key = "items[" + index + "]." + field;
+        var failed = ViewData.ModelState.Any(entry =>
+            entry.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && entry.Value!.Errors.Count > 0);
+        return failed
+            ? Html.Raw(" aria-invalid=\"true\" aria-describedby=\"line-error-" + index + "\"")
+            : Html.Raw(string.Empty);
+    };
+}
 
-<div class="page-header"><h2><i class="bi bi-arrow-left-right text-primary"></i> تحويل مخزون بين المستودعات</h2></div>
+<div class="page-header"><h2><i class="bi bi-arrow-left-right text-primary"></i> تحويل مخزون جديد</h2></div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
 <form asp-action="Create" id="transferForm">
@@ -14,23 +28,23 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label" for="sourceWh">المستودع المصدر</label>
-                    <select asp-for="SourceWarehouseId" asp-items="warehouses" class="form-select" id="sourceWh">
+                    <select asp-for="Transfer.SourceWarehouseId" asp-items="warehouses" class="form-select" id="sourceWh">
                         <option value="">-- اختر المستودع المصدر --</option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="targetWh">المستودع الوجهة</label>
-                    <select asp-for="TargetWarehouseId" asp-items="warehouses" class="form-select" id="targetWh">
+                    <select asp-for="Transfer.TargetWarehouseId" asp-items="warehouses" class="form-select" id="targetWh">
                         <option value="">-- اختر المستودع الوجهة --</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="TransferDate" class="form-label"></label>
-                    <input asp-for="TransferDate" class="form-control" type="date" />
+                    <label asp-for="Transfer.TransferDate" class="form-label"></label>
+                    <input asp-for="Transfer.TransferDate" class="form-control" type="date" />
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="Notes" class="form-label"></label>
-                    <input asp-for="Notes" class="form-control" />
+                    <label asp-for="Transfer.Notes" class="form-label"></label>
+                    <input asp-for="Transfer.Notes" class="form-control" />
                 </div>
             </div>
         </div>
@@ -40,6 +54,7 @@
         <div class="card-header"><i class="bi bi-list-ul"></i> أصناف التحويل</div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0" id="itemsTable">
+                <caption class="visually-hidden">أصناف تحويل المخزون المُدخلة: الصنف، العدد، الكمية، التكلفة، التاريخ الأصلي</caption>
                 <thead>
                     <tr>
                         <th scope="col" style="width:30%">الصنف</th>
@@ -51,20 +66,27 @@
                     </tr>
                 </thead>
                 <tbody id="itemsBody">
-                    <tr>
-                        <td>
-                            <select name="items[0].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
-                                <option value="">اختر صنف</option>
-                                @foreach (var item in items)
-                                { <option value="@item.Id" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" data-price="@item.PurchasePrice">@item.Name</option> }
-                            </select>
-                        </td>
-                        <td><input name="items[0].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-                        <td><input name="items[0].UnitCost" type="number" step="0.000001" class="form-control form-control-sm price" value="0" aria-label="التكلفة" /></td>
-                        <td><input name="items[0].DateReceived" type="date" class="form-control form-control-sm" aria-label="التاريخ الأصلي" /></td>
-                        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
-                    </tr>
+                    @for (var idx = 0; idx < Model.Items.Count; idx++)
+                    {
+                        var line = Model.Items[idx];
+                        <tr>
+                            <td>
+                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
+                                    <option value="">اختر صنف</option>
+                                    @foreach (var item in items)
+                                    {
+                                        <option value="@item.Id" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" data-price="@item.PurchasePrice" selected="@(item.Id == line.ItemId)">@item.Name</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد" @(fieldError(idx, "Count")) /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية" @(fieldError(idx, "Quantity")) /></td>
+                            <td><input name="items[@idx].UnitCost" type="number" step="0.000001" class="form-control form-control-sm price" value="@line.UnitCost" aria-label="التكلفة" @(fieldError(idx, "UnitCost")) /></td>
+                            <td><input name="items[@idx].DateReceived" type="date" class="form-control form-control-sm" aria-label="التاريخ الأصلي" value="@line.DateReceived.ToString("yyyy-MM-dd")" /></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                        </tr>
+                        @await Html.PartialAsync("_LineItemErrors", idx)
+                    }
                 </tbody>
             </table>
         </div>
@@ -87,7 +109,7 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-let rowIndex = 1;
+let rowIndex = @Model.Items.Count;
 document.getElementById('addRow').addEventListener('click', function() {
     const tbody = document.getElementById('itemsBody');
     const items = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(

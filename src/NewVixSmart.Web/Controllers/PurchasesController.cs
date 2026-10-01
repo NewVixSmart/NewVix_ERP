@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Purchases;
@@ -39,7 +40,7 @@ public class PurchasesController : Controller
         {
             Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
             ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync(),
-            Invoice = new PurchaseInvoice
+            Invoice = new PurchaseInvoiceFormModel
             {
                 InvoiceNumber = nextNumber,
                 InvoiceDate = DateTime.Today,
@@ -52,14 +53,14 @@ public class PurchasesController : Controller
     [RequirePerm("Purchases.Create")]
     public async Task<IActionResult> Create(PurchaseInvoiceViewModel vm)
     {
-        vm.Invoice ??= new PurchaseInvoice();
-        var items = vm.Items ?? new List<PurchaseInvoiceItem>();
+        vm.Invoice ??= new PurchaseInvoiceFormModel();
+        var items = vm.Items ?? new List<PurchaseInvoiceLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && items.Any(i => i.ItemId > 0))
         {
             int? branchId = HttpContext.Session.GetCurrentBranchId();
-            var (ok, error) = await _inventory.CreatePurchaseAsync(vm.Invoice, items, User.Identity?.Name, branchId);
+            var (ok, error) = await _inventory.CreatePurchaseAsync(vm.Invoice.ToEntity(), items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name, branchId);
             if (ok)
             {
                 TempData["Success"] = "تم حفظ فاتورة الشراء بنجاح";
@@ -70,7 +71,6 @@ public class PurchasesController : Controller
 
         var lastInvoice = await _db.PurchaseInvoices.AsNoTracking().OrderByDescending(p => p.Id).FirstOrDefaultAsync();
         vm.Invoice.InvoiceNumber = $"PO-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
-        ModelState.Remove("Invoice.InvoiceNumber");
 
         vm.Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().ToListAsync();

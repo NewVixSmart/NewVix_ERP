@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Purchases;
@@ -37,7 +38,7 @@ public class PurchaseOrdersController : Controller
         {
             Suppliers = new SelectList(_db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToList(), "Id", "Name"),
             ItemsData = _db.Items.Where(i => i.IsActive).AsNoTracking().Include(i => i.CountUnit).Include(i => i.QuantityUnit).ToList(),
-            Order = new PurchaseOrder { OrderDate = DateTime.Today }
+            Order = new PurchaseOrderFormModel { OrderDate = DateTime.Today }
         };
 
         if (fromQuoteId.HasValue)
@@ -50,7 +51,7 @@ public class PurchaseOrdersController : Controller
             if (quote != null)
             {
                 vm.Order.SupplierId = quote.SupplierId;
-                vm.Items.Add(new PurchaseOrderItem
+                vm.Items.Add(new PurchaseOrderLineFormModel
                 {
                     ItemId = quote.ItemId,
                     Quantity = 1,
@@ -67,13 +68,17 @@ public class PurchaseOrdersController : Controller
     [RequirePerm("PurchaseOrders.Create")]
     public async Task<IActionResult> Create(PurchaseOrderViewModel vm)
     {
-        vm.Order ??= new PurchaseOrder();
-        vm.Items ??= new List<PurchaseOrderItem>();
+        vm.Order ??= new PurchaseOrderFormModel();
+        vm.Items ??= new List<PurchaseOrderLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && vm.Items.Any(i => i.ItemId > 0))
         {
-            var (ok, error) = await _procurement.CreateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
+            // Id stays 0 on create: a posted key would ask EF to insert a row with an
+            // identity the client chose.
+            vm.Order.Id = 0;
+            var (ok, error) = await _procurement.CreateOrderAsync(
+                vm.Order.ToEntity(), Lines(vm.Items), User.Identity?.Name);
             if (ok)
             {
                 TempData["Success"] = "تم إنشاء أمر الشراء بنجاح";
@@ -104,8 +109,8 @@ public class PurchaseOrdersController : Controller
 
         var vm = new PurchaseOrderViewModel
         {
-            Order = order,
-            Items = order.Items.ToList(),
+            Order = order.ToFormModel(),
+            Items = order.Items.Select(i => i.ToFormModel()).ToList(),
             Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
             ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().Include(i => i.CountUnit).Include(i => i.QuantityUnit).ToListAsync()
         };
@@ -114,21 +119,25 @@ public class PurchaseOrdersController : Controller
 
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("PurchaseOrders.Edit")]
-    public async Task<IActionResult> Edit(PurchaseOrderViewModel vm)
+    public async Task<IActionResult> Edit(int id, PurchaseOrderViewModel vm)
     {
-        vm.Order ??= new PurchaseOrder();
-        vm.Items ??= new List<PurchaseOrderItem>();
+        vm.Order ??= new PurchaseOrderFormModel();
+        vm.Items ??= new List<PurchaseOrderLineFormModel>();
+        // The order's identity rides in the route, not in the body: a posted Order.Id is
+        // ignored, so the record edited is the one the URL names.
+        vm.Order.Id = id;
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && vm.Items.Any(i => i.ItemId > 0))
         {
             try
             {
-                var (ok, error) = await _procurement.UpdateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
+                var (ok, error) = await _procurement.UpdateOrderAsync(
+                    vm.Order.ToEntity(), Lines(vm.Items), User.Identity?.Name);
                 if (ok)
                 {
                     TempData["Success"] = "تم تحديث أمر الشراء بنجاح";
-                    return RedirectToAction(nameof(Details), new { id = vm.Order.PublicId });
+                    return await RedirectToDetailsAsync(vm.Order.Id);
                 }
                 ModelState.AddModelError("", error ?? "تعذر تحديث أمر الشراء");
             }
@@ -143,6 +152,9 @@ public class PurchaseOrdersController : Controller
         vm.ItemsData = await _db.Items.Where(i => i.IsActive).AsNoTracking().Include(i => i.CountUnit).Include(i => i.QuantityUnit).ToListAsync();
         return View(vm);
     }
+
+    private static List<PurchaseOrderItem> Lines(IEnumerable<PurchaseOrderLineFormModel> lines)
+        => lines.Select(i => i.ToEntity()).ToList();
 
     [RequirePerm("PurchaseOrders.View")]
     public async Task<IActionResult> Details(string id)

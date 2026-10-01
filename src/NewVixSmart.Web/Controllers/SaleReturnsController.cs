@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 
@@ -45,9 +46,9 @@ public class SaleReturnsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("SaleReturns.Create")]
-    public async Task<IActionResult> Create(SaleReturn saleReturn, List<SaleReturnItem> items)
+    public async Task<IActionResult> Create(SaleReturnFormModel saleReturn, List<SaleReturnLineFormModel> items)
     {
-        items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<SaleReturnItem>();
+        items = items?.Where(i => i.ItemId > 0 && (i.Count != 0 || i.Quantity != 0)).ToList() ?? new List<SaleReturnLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
         if (items.Count == 0)
         {
@@ -68,7 +69,7 @@ public class SaleReturnsController : Controller
             }
             else
             {
-                var alreadyReturned = await _db.SaleReturnItems.Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturnId != saleReturn.Id && r.SaleReturn.Status == ReturnStatus.Posted).ToListAsync();
+                var alreadyReturned = await _db.SaleReturnItems.Where(r => r.SaleReturn.SaleInvoiceId == invoice.Id && r.SaleReturn.Status == ReturnStatus.Posted).ToListAsync();
                 foreach (var line in items)
                 {
                     var invLine = invoice.Items.FirstOrDefault(i => i.ItemId == line.ItemId);
@@ -96,7 +97,7 @@ public class SaleReturnsController : Controller
             }
             else
             {
-                var (ok, error, returnId) = await _inventory.CreateSaleReturnDraftAsync(saleReturn, items, User.Identity?.Name);
+                var (ok, error, returnId) = await _inventory.CreateSaleReturnDraftAsync(saleReturn.ToEntity(), items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
                 if (ok)
                 {
                     if (submit == "post")
@@ -122,7 +123,6 @@ public class SaleReturnsController : Controller
         var taken = await _db.SaleReturns.AsNoTracking().Where(r => r.ReturnNumber.StartsWith(prefix)).Select(r => r.ReturnNumber).ToListAsync();
         var next = (taken.Count > 0 ? taken.Select(n => int.TryParse(n.AsSpan(prefix.Length), out var v) ? v : 0).Max() : 0) + 1;
         saleReturn.ReturnNumber = $"{prefix}{next:D3}";
-        ModelState.Remove("ReturnNumber");
         return View(saleReturn);
     }
 

@@ -1,0 +1,18 @@
+@model int
+@{
+    var rowIndex = Model;
+    var keyPrefix = "items[" + rowIndex + "].";
+    var colspan = ViewData["LineItemColumns"] ?? 1;
+    var messages = ViewData.ModelState.LineItemErrorMessages(keyPrefix);
+}
+@if (messages.Count > 0)
+{
+    <tr class="table-danger line-item-error">
+        <td colspan="@colspan">
+            <div id="line-error-@rowIndex" role="alert">
+                <i class="bi bi-exclamation-triangle-fill text-danger" aria-hidden="true"></i>
+                <span class="text-danger small"><strong>خطأ في السطر رقم @(rowIndex + 1):</strong> @string.Join(" — ", messages)</span>
+            </div>
+        </td>
+    </tr>
+}

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Sales;
@@ -143,7 +144,7 @@ public class DeliveryOrdersController : Controller
             SalesOrders = new SelectList((await OrderOptionsAsync()).Select(o => new { o.Id, o.OrderNumber, o.CustomerName }), "Id", "OrderNumber", salesOrderId),
             Customers = new SelectList(await CustomersAsync(), "Id", "Name"),
             ItemsData = await ItemsAsync(),
-            Delivery = new DeliveryOrder { DeliveryDate = DateTime.Today }
+            Delivery = new DeliveryOrderFormModel { DeliveryDate = DateTime.Today }
         };
 
         if (!string.IsNullOrWhiteSpace(source))
@@ -187,9 +188,14 @@ public class DeliveryOrdersController : Controller
     [RequirePerm("DeliveryOrders.Create")]
     public async Task<IActionResult> Create(DeliveryOrderViewModel vm)
     {
-        vm.Delivery ??= new DeliveryOrder();
-        vm.Items ??= new List<DeliveryOrderItem>();
+        vm.Delivery ??= new DeliveryOrderFormModel();
+        vm.Items ??= new List<DeliveryOrderLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
+
+        if (!ModelState.IsValid)
+        {
+            return await RepopulateAsync(vm);
+        }
 
         var sources = new List<int>();
         if (vm.Delivery.SalesOrderId is int orderId && orderId > 0)
@@ -220,18 +226,18 @@ public class DeliveryOrdersController : Controller
         if (vm.Delivery.SalesOrderId is int soId && soId > 0)
         {
             var (ok1, error1, _) = await _inventory.CreateSalesDeliveryNoteAsync(soId, null, null,
-                vm.Items, User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
+                Lines(vm.Items), User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
             result = (ok1, error1);
         }
         else if (vm.Delivery.SaleInvoiceId is int siId && siId > 0)
         {
-            var (ok2, error2) = await _inventory.CreateDeliveryOrderAsync(vm.Delivery, vm.Items, User.Identity?.Name);
+            var (ok2, error2) = await _inventory.CreateDeliveryOrderAsync(vm.Delivery.ToEntity(), Lines(vm.Items), User.Identity?.Name);
             result = (ok2, error2);
         }
         else
         {
             var (ok3, error3, _) = await _inventory.CreateSalesDeliveryNoteAsync(null, null,
-                vm.Delivery.CustomerId, vm.Items, User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
+                vm.Delivery.CustomerId, Lines(vm.Items), User.Identity?.Name, vm.Delivery.DeliveryDate, vm.Delivery.Notes);
             result = (ok3, error3);
         }
 
@@ -243,6 +249,9 @@ public class DeliveryOrdersController : Controller
         ModelState.AddModelError("", result.error ?? "تعذر حفظ أذن التسليم");
         return await RepopulateAsync(vm);
     }
+
+    private static List<DeliveryOrderItem> Lines(IEnumerable<DeliveryOrderLineFormModel> lines)
+        => lines.Select(i => i.ToEntity()).ToList();
 
     private async Task<IActionResult> RepopulateAsync(DeliveryOrderViewModel vm)
     {
@@ -261,7 +270,7 @@ public class DeliveryOrdersController : Controller
         return View(vm);
     }
 
-    private async Task<List<DeliveryOrderItem>?> RemainingOrderLinesAsync(int orderId)
+    private async Task<List<DeliveryOrderLineFormModel>?> RemainingOrderLinesAsync(int orderId)
     {
         var order = await _db.SalesOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId);
         if (order == null)
@@ -288,7 +297,7 @@ public class DeliveryOrdersController : Controller
         {
             var n = noted.TryGetValue(l.ItemId, out var nv) ? nv : (Qty: 0m, Cnt: 0m);
             var s = issued.TryGetValue(l.ItemId, out var sv) ? sv : (Qty: 0m, Cnt: 0m);
-            return new DeliveryOrderItem
+            return new DeliveryOrderLineFormModel
             {
                 ItemId = l.ItemId,
                 // What is still owed on this line, not what was ordered on it.
@@ -322,7 +331,7 @@ public class DeliveryOrdersController : Controller
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == id);
 
-    private async Task<List<DeliveryOrderItem>> RemainingLinesAsync(SaleInvoice invoice)
+    private async Task<List<DeliveryOrderLineFormModel>> RemainingLinesAsync(SaleInvoice invoice)
     {
         var delivered = await _db.DeliveryOrders
             .Where(d => d.SaleInvoiceId == invoice.Id && d.Status != DeliveryOrderStatus.Cancelled)
@@ -334,7 +343,7 @@ public class DeliveryOrdersController : Controller
         {
             decimal delCount = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
             decimal delQty = delivered.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
-            return new DeliveryOrderItem
+            return new DeliveryOrderLineFormModel
             {
                 ItemId = line.ItemId,
                 Quantity = line.Quantity - delQty,

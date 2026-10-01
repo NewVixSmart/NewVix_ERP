@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Accounting;
 
@@ -57,7 +58,7 @@ public class PaymentsController : Controller
             Type = type,
             Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
             Suppliers = new SelectList(await _db.Suppliers.Where(s => s.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
-            Payment = new Payment
+            Payment = new PaymentFormModel
             {
                 ReceiptNumber = "يتم التوليد تلقائياً",
                 PaymentDate = DateTime.Today,
@@ -71,14 +72,19 @@ public class PaymentsController : Controller
     [RequirePerm("Payments.Create")]
     public async Task<IActionResult> Create(PaymentFormViewModel vm)
     {
-        var payment = vm.Payment;
-        payment.Type = vm.Type == "disbursement" ? PaymentType.Disbursement : PaymentType.Receipt;
+        // The form posts Type as a hidden field of its own; trusting the route value alone
+        // made a disbursement fall back to "receipt" and post a customer receipt instead.
+        var type = (vm.Type ?? vm.Payment.Type.ToString()).ToLowerInvariant() == "disbursement"
+            ? PaymentType.Disbursement
+            : PaymentType.Receipt;
+        vm.Type = type == PaymentType.Disbursement ? "disbursement" : "receipt";
+        vm.Payment.Type = type;
 
         if (ModelState.IsValid)
         {
             try
             {
-                var (ok, error, _) = await _payment.CreatePaymentAsync(payment, User.Identity?.Name);
+                var (ok, error, _) = await _payment.CreatePaymentAsync(vm.Payment.ToEntity(type), User.Identity?.Name);
                 if (ok)
                 {
                     TempData["Success"] = "تم حفظ الدفعة بنجاح";

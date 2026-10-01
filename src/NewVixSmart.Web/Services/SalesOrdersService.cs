@@ -149,12 +149,26 @@ public sealed class SalesOrdersService : ISalesOrdersService
         existing.ExpectedDate = order.ExpectedDate;
         existing.Notes = order.Notes;
 
-        var oldItemIds = existing.Items.Select(i => i.Id).ToHashSet();
+        // A posted line id is only a reference to a line of THIS order. Anything else becomes
+        // a new line: trusting a foreign id would remove a real line (its id is then missing
+        // from newItemIds) and insert a row under a key the client picked.
+        var owned = existing.Items.Select(i => i.Id).ToHashSet();
+        foreach (var item in valid)
+        {
+            if (item.Id > 0 && !owned.Contains(item.Id))
+            {
+                item.Id = 0;
+            }
+        }
+
         var newItemIds = valid.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
+        // Removal goes through the DbSet, not the collection: the FK is required, so
+        // detaching the child from the navigation would try to null it and throw.
         var toRemove = existing.Items.Where(i => !newItemIds.Contains(i.Id)).ToList();
         foreach (var r in toRemove)
         {
             existing.Items.Remove(r);
+            _db.SalesOrderItems.Remove(r);
         }
 
         foreach (var item in valid)

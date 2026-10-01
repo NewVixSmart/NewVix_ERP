@@ -1,6 +1,19 @@
 @model NewVixSmart.Web.ViewModels.Sales.DeliveryOrderViewModel
 @using NewVixSmart.Web.Models.Sales
 @{ ViewData["Title"] = "أذن تسليم جديد"; }
+@{
+    ViewData["LineItemColumns"] = 4;
+    ViewData["ErrorKeysWithVisibleField"] = System.Array.Empty<string>();
+    Func<int, string, IHtmlContent> fieldError = (index, field) =>
+    {
+        var key = "items[" + index + "]." + field;
+        var failed = ViewData.ModelState.Any(entry =>
+            entry.Key.Equals(key, StringComparison.OrdinalIgnoreCase) && entry.Value!.Errors.Count > 0);
+        return failed
+            ? Html.Raw(" aria-invalid=\"true\" aria-describedby=\"line-error-" + index + "\"")
+            : Html.Raw(string.Empty);
+    };
+}
 
 <div class="page-header">
     <h2><i class="bi bi-truck text-primary"></i> أذن تسليم جديد</h2>
@@ -8,7 +21,8 @@
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 @if (ViewBag.OrderLabel != null)
 {
@@ -102,12 +116,13 @@
                             <tr>
                                 <td>
                                     <input type="hidden" name="items[@idx].ItemId" value="@line.ItemId" />
-                                    <strong>@(line.Item?.Name != null ? line.Item.Name : (Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}"))</strong>
+                                    <strong>@(Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}")</strong>
                                 </td>
-                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" /></td>
-                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" /></td>
+                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" @(fieldError(idx, "Count")) /></td>
+                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" @(fieldError(idx, "Quantity")) /></td>
                                 <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
                             </tr>
+                            @await Html.PartialAsync("_LineItemErrors", idx)
                         }
                     </tbody>
                 </table>
@@ -158,7 +173,7 @@ function currentSource() {
 }
 
 function renumber() {
-    document.querySelectorAll('#itemsBody tr').forEach(function (tr, i) {
+    document.querySelectorAll('#itemsBody tr:not(.line-item-error)').forEach(function (tr, i) {
         tr.querySelectorAll('input[name]').forEach(function (el) {
             el.name = el.name.replace(/items\[\d+\]/, 'items[' + i + ']');
         });
@@ -205,7 +220,7 @@ if (picker && addBtn) {
         if (!picker.value) return;
         const opt = picker.selectedOptions[0];
         const body = document.getElementById('itemsBody');
-        const idx = body.querySelectorAll('tr').length;
+        const idx = body.querySelectorAll('tr:not(.line-item-error)').length;
         const tr = document.createElement('tr');
         tr.innerHTML = '<td><input type="hidden" name="items[' + idx + '].ItemId" /><strong></strong></td>' +
             '<td><input name="items[' + idx + '].Count" type="number" step="0.0001" value="0" class="form-control form-control-sm" aria-label="العدد المسلّم" /></td>' +

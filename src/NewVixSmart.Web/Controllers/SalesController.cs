@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Sales;
@@ -53,7 +54,7 @@ public class SalesController : Controller
         {
             Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name"),
             ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync(),
-            Invoice = new SaleInvoice
+            Invoice = new SaleInvoiceFormModel
             {
                 InvoiceNumber = nextNumber,
                 InvoiceDate = DateTime.Today
@@ -66,14 +67,14 @@ public class SalesController : Controller
     [RequirePerm("Sales.Create")]
     public async Task<IActionResult> Create(SaleInvoiceViewModel vm)
     {
-        vm.Invoice ??= new SaleInvoice();
-        var items = vm.Items ?? new List<SaleInvoiceItem>();
+        vm.Invoice ??= new SaleInvoiceFormModel();
+        var items = vm.Items ?? new List<SaleInvoiceLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && items.Any(i => i.ItemId > 0))
         {
             int? branchId = HttpContext.Session.GetCurrentBranchId();
-            var (ok, error) = await _inventory.CreateSaleAsync(vm.Invoice, items, User.Identity?.Name, branchId);
+            var (ok, error) = await _inventory.CreateSaleAsync(vm.Invoice.ToEntity(), items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name, branchId);
             if (ok)
             {
                 TempData["Success"] = "تم حفظ فاتورة البيع بنجاح";
@@ -84,7 +85,6 @@ public class SalesController : Controller
 
         var lastInvoice = await _db.SaleInvoices.AsNoTracking().OrderByDescending(s => s.Id).FirstOrDefaultAsync();
         vm.Invoice.InvoiceNumber = $"SI-{(lastInvoice == null ? 1 : lastInvoice.Id + 1):D5}";
-        ModelState.Remove("Invoice.InvoiceNumber");
 
         vm.Customers = new SelectList(await _db.Customers.Where(c => c.IsActive).AsNoTracking().ToListAsync(), "Id", "Name");
         vm.ItemsData = await _db.Items.Where(i => i.IsActive && i.IsSellable).AsNoTracking().ToListAsync();

@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Services;
+using NewVixSmart.Web.ViewModels.Stock;
 
 namespace NewVixSmart.Web.Controllers;
 
@@ -30,26 +32,36 @@ public class StockTransfersController : Controller
     [RequirePerm("StockTransfers.Create")]
     public async Task<IActionResult> Create()
     {
-        await PopulateDropdowns();
-        return View();
+        return View(await BuildAsync(new StockTransferFormViewModel()));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("StockTransfers.Create")]
-    public async Task<IActionResult> Create(StockTransfer transfer, List<StockTransferItem> items)
+    public async Task<IActionResult> Create(StockTransferFormViewModel vm)
     {
-        transfer ??= new StockTransfer();
-        items ??= new List<StockTransferItem>();
-        items = items.Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0)).ToList();
+        vm.Transfer ??= new StockTransferFormModel();
+        vm.Items ??= new List<StockTransferLineFormModel>();
+        ModelState.IgnoreEmptyLineItemRows();
 
-        if (items.Count == 0)
+        var filled = vm.Items
+            .Where(i => i.ItemId > 0 && (i.Quantity > 0 || i.Count > 0))
+            .ToList();
+
+        if (!ModelState.IsValid)
         {
-            ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل");
-            await PopulateDropdowns();
-            return View(transfer);
+            vm.Items = vm.Items.Count > 0 ? vm.Items : [new StockTransferLineFormModel()];
+            return View(await BuildAsync(vm));
         }
 
-        var (ok, error) = await _inventory.CreateTransferAsync(transfer, items, User.Identity?.Name);
+        if (filled.Count == 0)
+        {
+            ModelState.AddModelError("", "يرجى إضافة صنف واحد على الأقل");
+            vm.Items = vm.Items.Count > 0 ? vm.Items : [new StockTransferLineFormModel()];
+            return View(await BuildAsync(vm));
+        }
+
+        var (ok, error) = await _inventory.CreateTransferAsync(
+            vm.Transfer.ToEntity(), filled.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
         if (ok)
         {
             TempData["Success"] = "تم تنفيذ التحويل بنجاح";
@@ -57,8 +69,8 @@ public class StockTransfersController : Controller
         }
 
         ModelState.AddModelError("", error ?? "تعذر حفظ التحويل");
-        await PopulateDropdowns();
-        return View(transfer);
+        vm.Items = vm.Items.Count > 0 ? vm.Items : [new StockTransferLineFormModel()];
+        return View(await BuildAsync(vm));
     }
 
     [RequirePerm("StockTransfers.View")]
@@ -98,11 +110,13 @@ public class StockTransfersController : Controller
         return File(bytes, "application/pdf", $"stock-transfer-{transfer.TransferNumber}.pdf");
     }
 
-    private async Task PopulateDropdowns()
+    private async Task<StockTransferFormViewModel> BuildAsync(StockTransferFormViewModel vm)
     {
-        var warehouses = await _db.Warehouses.Where(w => w.IsActive).AsNoTracking().ToListAsync();
-        ViewBag.Warehouses = new SelectList(warehouses, "Id", "Name");
-        ViewBag.ItemsData = await _db.Items.Include(i => i.CountUnit).Include(i => i.QuantityUnit)
+        vm.Warehouses = new SelectList(
+            await _db.Warehouses.Where(w => w.IsActive).AsNoTracking().ToListAsync(), "Id", "Name",
+            vm.Transfer.SourceWarehouseId);
+        vm.ItemsData = await _db.Items.Include(i => i.CountUnit).Include(i => i.QuantityUnit)
             .Where(i => i.IsActive).AsNoTracking().ToListAsync();
+        return vm;
     }
 }

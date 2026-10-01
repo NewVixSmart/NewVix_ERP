@@ -416,6 +416,11 @@ public sealed class InventoryService : IInventoryService
                     return (false, $"الكمية في أذن التسليم أكبر من المتبقي في أمر البيع للصنف رقم {line.ItemId}", null);
                 }
 
+                // The order line is derived here, never taken from the posted payload: a
+                // client-supplied SalesOrderItemId could credit DeliveredQty on another
+                // order's line when the issue is issued.
+                line.SalesOrderItemId = orderLine.Id;
+
                 var issuedQty = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Quantity);
                 var issuedCount = issuedHere.Where(x => x.ItemId == line.ItemId).Sum(x => x.Count);
                 if (line.Quantity + issuedQty > noteLine.Quantity || line.Count + issuedCount > noteLine.Count)

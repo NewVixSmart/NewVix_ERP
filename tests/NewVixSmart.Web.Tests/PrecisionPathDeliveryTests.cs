@@ -11,6 +11,7 @@ using NewVixSmart.Web.Controllers;
 using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Purchases;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
@@ -192,14 +193,9 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
             .SingleAsync(d => d.Id == noteId);
         var line = note.Items.Single();
 
-        // The order line the posted item belongs to, exactly as the raise-an-issue screen posts it: it
-        // is what carries the delivery back to SalesOrderItem.DeliveredQty when the issue is posted.
-        var orderLineId = note.SalesOrderId.HasValue
-            ? await db.SalesOrderItems.AsNoTracking()
-                .Where(i => i.SalesOrderId == note.SalesOrderId && i.ItemId == line.ItemId)
-                .Select(i => (int?)i.Id).SingleAsync()
-            : null;
-
+        // The order line is deliberately not posted: the raise-an-issue screen never sends it,
+        // and InventoryService derives it from the delivery note so the issue can carry the
+        // delivery back to SalesOrderItem.DeliveredQty when it is issued.
         var controller = new DeliveryIssuesController(db, new InventoryService(db));
         var http = new DefaultHttpContext
         {
@@ -212,7 +208,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
 
         var result = await controller.Create(new DeliveryIssueViewModel
         {
-            Issue = new DeliveryIssue
+            Issue = new DeliveryIssueFormModel
             {
                 DeliveryOrderId = note.Id,
                 CustomerId = note.CustomerId,
@@ -220,11 +216,10 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
             },
             Items =
             [
-                new DeliveryIssueItem
+                new DeliveryIssueLineFormModel
                 {
                     ItemId = line.ItemId,
                     DeliveryOrderItemId = line.Id,
-                    SalesOrderItemId = orderLineId,
                     Quantity = quantity,
                     Count = count
                 }

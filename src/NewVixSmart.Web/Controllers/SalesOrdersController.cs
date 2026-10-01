@@ -6,6 +6,7 @@ using NewVixSmart.Web.Data;
 using NewVixSmart.Web.Extensions;
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Core;
+using NewVixSmart.Web.Models.Forms;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Services;
 using NewVixSmart.Web.ViewModels.Sales;
@@ -49,7 +50,7 @@ public class SalesOrdersController : Controller
         {
             Customers = new SelectList(await CustomersAsync(), "Id", "Name"),
             ItemsData = await ItemsAsync(),
-            Order = new SalesOrder
+            Order = new SalesOrderFormModel
             {
                 OrderDate = DateTime.Today,
             }
@@ -65,7 +66,7 @@ public class SalesOrdersController : Controller
                 vm.Order.SaleQuoteId = quote.Id;
                 foreach (var l in quote.Items)
                 {
-                    vm.Items.Add(new SalesOrderItem { ItemId = l.ItemId, Quantity = l.Quantity, Count = l.Count, UnitPrice = l.UnitPrice });
+                    vm.Items.Add(new SalesOrderLineFormModel { ItemId = l.ItemId, Quantity = l.Quantity, Count = l.Count, UnitPrice = l.UnitPrice });
                 }
             }
         }
@@ -73,17 +74,22 @@ public class SalesOrdersController : Controller
         return View(vm);
     }
 
+    /// <summary>
+    /// يستقبل <see cref="SalesOrderFormModel"/> لا <see cref="SalesOrder"/>: رقم الأمر والحالة
+    /// والأختام المحسوبة ليست في <c>ModelState</c> أصلًا، فلا ينشأ خطأ تحقق لا يراه المستخدم ولا
+    /// يستطيع إصلاحه، ولا يستطيع المتصفح أن يكتب <c>Status</c>. الكيان يبقى للخدمة التي تملؤه.
+    /// </summary>
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("SalesOrders.Create")]
     public async Task<IActionResult> Create(SalesOrderViewModel vm)
     {
-        vm.Order ??= new SalesOrder();
-        vm.Items ??= new List<SalesOrderItem>();
+        vm.Order ??= new SalesOrderFormModel();
+        vm.Items ??= new List<SalesOrderLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && vm.Items.Any(i => i.ItemId > 0))
         {
-            var (ok, error) = await _orders.CreateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
+            var (ok, error) = await _orders.CreateOrderAsync(vm.Order.ToEntity(), vm.Items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
             if (ok)
             {
                 TempData["Success"] = "تم إنشاء أمر البيع بنجاح";
@@ -113,8 +119,8 @@ public class SalesOrdersController : Controller
 
         var vm = new SalesOrderViewModel
         {
-            Order = order,
-            Items = order.Items.ToList()
+            Order = order.ToFormModel(),
+            Items = order.Items.Select(i => i.ToFormModel()).ToList()
         };
         await Populate(vm);
         return View("Create", vm);
@@ -124,17 +130,19 @@ public class SalesOrdersController : Controller
     [RequirePerm("SalesOrders.Edit")]
     public async Task<IActionResult> Edit(SalesOrderViewModel vm)
     {
-        vm.Order ??= new SalesOrder();
-        vm.Items ??= new List<SalesOrderItem>();
+        vm.Order ??= new SalesOrderFormModel();
+        vm.Items ??= new List<SalesOrderLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
         if (ModelState.IsValid && vm.Items.Any(i => i.ItemId > 0))
         {
-            var (ok, error) = await _orders.UpdateOrderAsync(vm.Order, vm.Items, User.Identity?.Name);
+            var order = vm.Order.ToEntity();
+            order.Id = vm.Order.Id;
+            var (ok, error) = await _orders.UpdateOrderAsync(order, vm.Items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
             if (ok)
             {
                 TempData["Success"] = "تم تحديث أمر البيع بنجاح";
-                return RedirectToAction(nameof(Details), new { id = vm.Order.PublicId });
+                return await RedirectToDetailsAsync(vm.Order.Id);
             }
             ModelState.AddModelError("", error ?? "تعذر تحديث أمر البيع");
         }
