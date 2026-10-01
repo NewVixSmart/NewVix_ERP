@@ -4,7 +4,8 @@
   "private": true,
   "description": "Playwright + axe accessibility gate for New Vix Smart",
   "scripts": {
-    "a11y": "node a11y-gate.cjs"
+    "a11y": "node a11y-gate.cjs",
+    "verify:backup": "node verify_backup_restore.cjs"
   },
   "dependencies": {
     "axe-core": "^4.13.0",

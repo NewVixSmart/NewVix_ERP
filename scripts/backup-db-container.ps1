@@ -54,6 +54,84 @@ function Write-Ok   { Write-Host "[  OK ] $args" -ForegroundColor Green }
 function Write-Warn { Write-Host "[ WARN] $args" -ForegroundColor Yellow }
 function Write-Fail { Write-Host "[ FAIL] $args" -ForegroundColor Red }
 
+# ---------------------------------------------------------------------------
+# Prerequisite check, FIRST, before anything else is attempted.
+#
+# This script could never be executed in an environment without Docker, and the
+# old ordering made that cost real debugging time: it only checked that the
+# `docker` COMMAND existed, then went on to fail somewhere further in with
+# whatever Docker happened to print. Observed with the Docker CLI installed but
+# the daemon not running:
+#     [ FAIL] Backup FAILED: time="..." level=warning msg="The \"SQL_SA_PASSWORD\"
+#              variable is not set. Defaulting to a blank string."
+# which names neither Docker nor the daemon and reads as a .env problem.
+#
+# Every distinct missing prerequisite now gets its own message, naming the
+# command to run. It is deliberately cheap and side-effect free.
+# ---------------------------------------------------------------------------
+function Assert-DockerPrerequisites {
+    $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $dockerCmd) {
+        throw @"
+docker was not found on PATH, so the container database cannot be backed up.
+
+This is the ONLY backup path for the database started by docker-compose.yml.
+backup-db.ps1 cannot substitute: it uses Windows integrated auth (-E) and has
+no way to supply the 'sa' password.
+
+Install one of:
+  * Docker Desktop (Windows)  - https://docs.docker.com/desktop/install/windows-install/
+  * Docker Engine + the Compose plugin (Linux)
+
+Then confirm the daemon is actually running:
+  docker info
+"@
+    }
+
+    # The CLI being on PATH says nothing about the daemon: Docker Desktop
+    # installs the CLI whether or not the engine is started.
+    #
+    # $ErrorActionPreference is 'Stop' for the whole script, and PowerShell 5.1
+    # turns a native command's stderr into a terminating error the moment it is
+    # redirected - so `2>&1` here would throw Docker's own text before the exit
+    # code could be inspected, and the operator would see the raw API error
+    # instead of the message below. Probe with stderr discarded and the
+    # preference temporarily relaxed, then judge on $LASTEXITCODE.
+    $savedPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $dockerCmd.Source info --format '{{.ServerVersion}}' 2>$null | Out-Null
+        $infoExit = $LASTEXITCODE
+        & $dockerCmd.Source compose version 2>$null | Out-Null
+        $composeExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedPreference
+    }
+
+    if ($infoExit -ne 0) {
+        throw @"
+The Docker CLI is present ($($dockerCmd.Source)) but the daemon is not
+responding, so there is nothing to back up.
+
+Start Docker Desktop (or `sudo systemctl start docker`) and re-run, or:
+  docker info          # must succeed
+  docker version       # Server section must be populated
+"@
+    }
+
+    if ($composeExit -ne 0) {
+        throw @"
+The Docker daemon is running but the `docker compose` plugin is missing.
+
+  * Docker Desktop includes it.
+  * On Linux: install docker-compose-plugin for your distribution.
+
+This script uses `docker compose`; it will not fall back to `docker-compose`.
+"@
+    }
+}
+
 $Service    = 'db'
 $RemoteDir  = '/var/opt/mssql/backup'
 $SqlCmdPath = '/opt/mssql-tools/bin/sqlcmd'
@@ -98,9 +176,9 @@ echo "retention applied: keeping ${RETAIN}d"
 try {
     if ($RetainDays -lt 1) { throw "RetainDays ($RetainDays) must be at least 1." }
 
-    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        throw 'docker was not found on PATH. Install Docker Desktop / Docker Engine with the Compose plugin.'
-    }
+    # Docker presence/daemon/compose, loudly, before anything else.
+    Assert-DockerPrerequisites
+    Write-Ok 'Docker prerequisites satisfied (CLI, daemon, compose plugin).'
 
     # ---- Is the db container actually up? ----------------------------------
     $state = (& docker compose ps --format '{{.Service}} {{.State}}' $Service 2>&1) -join "`n"

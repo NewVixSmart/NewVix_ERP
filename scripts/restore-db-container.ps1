@@ -29,6 +29,20 @@
     This REPLACES the database. There is no undo. Run backup-db-container.ps1
     first if the current contents still matter.
 
+    ORDER OF OPERATIONS, and why it matters. The .bak is validated with
+    RESTORE HEADERONLY, FILELISTONLY and VERIFYONLY *before* the target database
+    is dropped. Measured on a real SQL Server: a truncated .bak fails VERIFYONLY
+    with Msg 3241 and a 0-byte .bak with Msg 3254, so both are now caught while
+    the live database is still there, with the message
+    "NOTHING HAS BEEN CHANGED". Validating after the DROP - as an earlier
+    ordering could easily have done - would destroy the live database and then
+    discover the backup was unusable.
+
+    NOT EXECUTABLE WITHOUT DOCKER. This script needs a running Docker daemon and
+    the Compose plugin. When either is missing it now fails in its first lines
+    naming the missing prerequisite, rather than surfacing a Docker API error
+    further down that reads like a .env or password problem.
+
 .EXAMPLE
     # Show what is available, change nothing
     .\scripts\restore-db-container.ps1 -ListOnly
@@ -62,6 +76,69 @@ function Write-Info { Write-Host "[INFO ] $args" -ForegroundColor Cyan }
 function Write-Ok   { Write-Host "[  OK ] $args" -ForegroundColor Green }
 function Write-Warn { Write-Host "[ WARN] $args" -ForegroundColor Yellow }
 function Write-Fail { Write-Host "[ FAIL] $args" -ForegroundColor Red }
+
+# ---------------------------------------------------------------------------
+# Prerequisite check, FIRST. Same reasoning as backup-db-container.ps1: the old
+# version only checked that the `docker` COMMAND was on PATH, so a stopped
+# daemon (or a missing Compose plugin) surfaced much later as whatever Docker
+# happened to print. This is a disaster-recovery tool; when it cannot run, it
+# must say why in the operator's first three lines.
+# ---------------------------------------------------------------------------
+function Assert-DockerPrerequisites {
+    $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $dockerCmd) {
+        throw @"
+docker was not found on PATH, so a container restore cannot run.
+
+This is the ONLY restore path for the database started by docker-compose.yml.
+
+Install one of:
+  * Docker Desktop (Windows)  - https://docs.docker.com/desktop/install/windows-install/
+  * Docker Engine + the Compose plugin (Linux)
+
+Then confirm the daemon is actually running:
+  docker info
+"@
+    }
+
+    # stderr must be discarded, not merged: with $ErrorActionPreference='Stop',
+    # PowerShell 5.1 turns a native command's redirected stderr into a
+    # terminating error, which would throw Docker's raw API text before the exit
+    # code could be inspected.
+    $savedPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $dockerCmd.Source info --format '{{.ServerVersion}}' 2>$null | Out-Null
+        $infoExit = $LASTEXITCODE
+        & $dockerCmd.Source compose version 2>$null | Out-Null
+        $composeExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedPreference
+    }
+
+    if ($infoExit -ne 0) {
+        throw @"
+The Docker CLI is present ($($dockerCmd.Source)) but the daemon is not
+responding, so a restore cannot run.
+
+Start Docker Desktop (or `sudo systemctl start docker`) and re-run, or:
+  docker info          # must succeed
+  docker version       # Server section must be populated
+"@
+    }
+
+    if ($composeExit -ne 0) {
+        throw @"
+The Docker daemon is running but the `docker compose` plugin is missing.
+
+  * Docker Desktop includes it.
+  * On Linux: install docker-compose-plugin for your distribution.
+
+This script uses `docker compose`; it will not fall back to `docker-compose`.
+"@
+    }
+}
 
 $Service   = 'db'
 $RemoteDir = '/var/opt/mssql/backup'
@@ -113,6 +190,24 @@ if [ -z "$data" ] || [ -z "$log" ]; then
     exit 6
 fi
 echo "logical files: data='$data' log='$log'"
+
+# ---- 1b. Prove the media is restorable BEFORE anything is destroyed -------
+# This runs before the DROP below, on purpose.
+#
+# Measured on a real SQL Server, a truncated .bak and a 0-byte .bak both make
+# RESTORE VERIFYONLY fail (Msg 3241 "media family ... is incorrectly formed",
+# Msg 3254 "The volume ... is empty"). Catching that here means the operator
+# learns their only backup is unusable while the live database is still intact.
+# Discovering it after the DROP means the restore target is already gone.
+if ! sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -b -Q "RESTORE VERIFYONLY FROM DISK = N'$RUN_SQL'" > /tmp/vix-verify.txt 2>&1; then
+    echo "ERROR: RESTORE VERIFYONLY rejected the backup; NOTHING HAS BEEN CHANGED." >&2
+    cat /tmp/vix-verify.txt >&2
+    echo "" >&2
+    echo "The live database was NOT dropped and NOT modified. This .bak cannot be" >&2
+    echo "restored. Take a fresh backup before retrying, or restore a different file." >&2
+    exit 7
+fi
+echo "VERIFYONLY passed: the media is a complete, readable backup set."
 
 # Restore INTO the requested name, else the name the backup was taken from.
 # It must NOT fall back to the logical log name (e.g. NewVixSmartDb_log) or
@@ -168,9 +263,8 @@ function Invoke-DbBash {
 }
 
 try {
-    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        throw 'docker was not found on PATH. Install Docker Desktop / Docker Engine with the Compose plugin.'
-    }
+    Assert-DockerPrerequisites
+    Write-Ok 'Docker prerequisites satisfied (CLI, daemon, compose plugin).'
 
     $state = (& docker compose ps --format '{{.Service}} {{.State}}' $Service 2>&1) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "'docker compose ps' failed:`n$state" }
