@@ -192,6 +192,16 @@ public class DeliveryOrdersController : Controller
         vm.Items ??= new List<DeliveryOrderLineFormModel>();
         ModelState.IgnoreEmptyLineItemRows();
 
+        // The three source selects are all on the page at once, and the two that are not the
+        // active source post their placeholder empty value. The customer travels with the
+        // order or the invoice, and neither of those paths reads the select, so a binder error
+        // on it is noise that used to make an order-sourced note impossible to save. The free
+        // path still owns the customer, so it keeps the validation.
+        if ((vm.Delivery.SalesOrderId ?? 0) > 0 || (vm.Delivery.SaleInvoiceId ?? 0) > 0)
+        {
+            ModelState.Remove("Delivery.CustomerId");
+        }
+
         if (!ModelState.IsValid)
         {
             return await RepopulateAsync(vm);

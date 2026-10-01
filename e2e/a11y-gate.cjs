@@ -8,13 +8,15 @@ const PASS = process.env.VIX_PASS || 'Admin@123';
 // Every GET action that renders a view, enumerated from src/NewVixSmart.Web/Controllers.
 // Excluded: /Account/* (redirects once authenticated), POST-only actions, JSON/Partial
 // results, and file-returning actions (Pdf/Xlsx/Csv/Template/Download/Export*/Ledger*).
-// Parameterised routes use id 1 (Details fall back to the integer key).
+// Routes that need a row of real data carry a `{id}`/`{publicId}` placeholder instead of a
+// literal `/1`: the id is scraped from a status-appropriate list page (see ID_SOURCES), so a
+// document that no longer exists fails resolution loudly instead of rendering a 404 page.
 const ROUTE_MANIFEST = [
   '/',
   '/Account/ChangePassword',
   '/Accounts',
   '/Accounts/Create',
-  '/Accounts/Edit/1',
+  '/Accounts/Edit/{id}',
   '/Backup',
   '/Batch',
   '/Batch/Adjustment',
@@ -24,15 +26,15 @@ const ROUTE_MANIFEST = [
   '/Categories',
   '/Customers',
   '/Customers/Create',
-  '/Customers/Edit/1',
-  '/Customers/Ledger/1',
-  '/Customers/PendingDeliveries/1',
+  '/Customers/Edit/{id}',
+  '/Customers/Ledger/{id}',
+  '/Customers/PendingDeliveries/{id}',
   '/DeliveryIssues',
   '/DeliveryIssues/Create',
-  '/DeliveryIssues/Details/1',
+  '/DeliveryIssues/Details/{publicId}',
   '/DeliveryOrders',
   '/DeliveryOrders/Create',
-  '/DeliveryOrders/Details/1',
+  '/DeliveryOrders/Details/{publicId}',
   '/ExportCenter',
   '/Fiscal',
   '/ImportCenter',
@@ -41,25 +43,25 @@ const ROUTE_MANIFEST = [
   '/ItemTypes',
   '/Items',
   '/Items/Create',
-  '/Items/Details/1',
-  '/Items/Edit/1',
-  '/Items/PrintLabel/1',
+  '/Items/Details/{publicId}',
+  '/Items/Edit/{id}',
+  '/Items/PrintLabel/{id}',
   '/Payments',
   '/Payments/Create',
-  '/Payments/Details/1',
+  '/Payments/Details/{publicId}',
   '/PurchaseOrders',
   '/PurchaseOrders/Create',
-  '/PurchaseOrders/Edit/1',
-  '/PurchaseOrders/Details/1',
-  '/PurchaseOrders/Receive/1',
+  '/PurchaseOrders/Edit/{id}',
+  '/PurchaseOrders/Details/{publicId}',
+  '/PurchaseOrders/Receive/{id}',
   '/PurchaseRequests',
   '/PurchaseRequests/Create',
   '/PurchaseReturns',
   '/PurchaseReturns/Create',
-  '/PurchaseReturns/Details/1',
+  '/PurchaseReturns/Details/{publicId}',
   '/Purchases',
   '/Purchases/Create',
-  '/Purchases/Details/1',
+  '/Purchases/Details/{publicId}',
   '/Reports',
   '/Reports/Aging',
   '/Reports/AuditLedger',
@@ -74,17 +76,17 @@ const ROUTE_MANIFEST = [
   '/Reports/TrialBalance',
   '/SaleReturns',
   '/SaleReturns/Create',
-  '/SaleReturns/Details/1',
+  '/SaleReturns/Details/{publicId}',
   '/Sales',
   '/Sales/Create',
-  '/Sales/Details/1',
+  '/Sales/Details/{publicId}',
   '/SalesOrders',
   '/SalesOrders/Create',
-  '/SalesOrders/Edit/1',
-  '/SalesOrders/Details/1',
+  '/SalesOrders/Edit/{id}',
+  '/SalesOrders/Details/{publicId}',
   '/SalesQuotes',
   '/SalesQuotes/Create',
-  '/SalesQuotes/Details/1',
+  '/SalesQuotes/Details/{publicId}',
   '/SalesQuotes/MassConvert',
   '/Settings',
   '/Settings/Branding',
@@ -95,20 +97,20 @@ const ROUTE_MANIFEST = [
   '/Stock/Report',
   '/StockReservations',
   '/StockReservations/Create',
-  '/StockReservations/Details/1',
+  '/StockReservations/Details/{publicId}',
   '/StockTransfers',
   '/StockTransfers/Create',
   '/Suppliers',
   '/Suppliers/Create',
-  '/Suppliers/Edit/1',
-  '/Suppliers/Ledger/1',
+  '/Suppliers/Edit/{id}',
+  '/Suppliers/Ledger/{id}',
   '/Suppliers/Quotes',
   '/Users',
   '/Users/Create',
-  '/Users/Permissions/{guid}',
+  '/Users/Permissions/{publicId}',
   '/Warehouses',
   '/Warehouses/Create',
-  '/Warehouses/Edit/1'
+  '/Warehouses/Edit/{id}'
 ];
 
 // Routes scanned again in dark mode (previously failing + chrome-heavy).
@@ -129,35 +131,65 @@ const DARK_SUBSET = [
 ];
 
 /**
- * Routes that need a seeded business document to render a body. A fresh dev database has
- * master data but no documents, so these answer 404 until someone posts one. They are still
- * visited and scanned: a 500 or any axe violation still fails the gate, and a 404 is printed
- * as `no-data` so a skip can never be mistaken for a pass. Run with STRICT=1 in CI that
- * seeds a document set, which turns those 404s into hard failures.
+ * List page each `{id}`/`{publicId}` route is resolved from. The query string matters: an
+ * editable purchase order only exists in Draft, and a receive screen only has rows while
+ * quantity is still outstanding, so both are resolved from the status they need.
  */
-const DATA_ROUTES = new Set([
-  '/Customers/Ledger/1',
-  '/Customers/PendingDeliveries/1',
-  '/DeliveryIssues/Details/1',
-  '/DeliveryOrders/Details/1',
-  '/Items/Details/1',
-  '/Items/PrintLabel/1',
-  '/Payments/Details/1',
-  '/PurchaseOrders/Details/1',
-  '/PurchaseOrders/Edit/1',
-  '/PurchaseOrders/Receive/1',
-  '/PurchaseReturns/Details/1',
-  '/Purchases/Details/1',
-  '/SaleReturns/Details/1',
-  '/Sales/Details/1',
-  '/SalesOrders/Details/1',
-  '/SalesOrders/Edit/1',
-  '/SalesQuotes/Details/1',
-  '/StockReservations/Details/1',
-  '/Suppliers/Ledger/1'
-]);
+const ID_SOURCES = {
+  '/Accounts/Edit/{id}': '/Accounts',
+  '/Customers/Edit/{id}': '/Customers',
+  '/Customers/Ledger/{id}': '/Customers',
+  '/Customers/PendingDeliveries/{id}': '/Customers',
+  '/Items/Details/{publicId}': '/Items',
+  '/Items/Edit/{id}': '/Items',
+  '/Items/PrintLabel/{id}': '/Items',
+  '/Suppliers/Edit/{id}': '/Suppliers',
+  '/Suppliers/Ledger/{id}': '/Suppliers',
+  '/Warehouses/Edit/{id}': '/Warehouses',
+  '/DeliveryIssues/Details/{publicId}': '/DeliveryIssues',
+  '/DeliveryOrders/Details/{publicId}': '/DeliveryOrders',
+  '/Payments/Details/{publicId}': '/Payments',
+  '/PurchaseOrders/Details/{publicId}': '/PurchaseOrders',
+  '/PurchaseReturns/Details/{publicId}': '/PurchaseReturns',
+  '/Purchases/Details/{publicId}': '/Purchases',
+  '/SaleReturns/Details/{publicId}': '/SaleReturns',
+  '/Sales/Details/{publicId}': '/Sales',
+  '/SalesOrders/Details/{publicId}': '/SalesOrders',
+  '/SalesOrders/Edit/{id}': '/SalesOrders?status=Draft',
+  '/SalesQuotes/Details/{publicId}': '/SalesQuotes',
+  '/StockReservations/Details/{publicId}': '/StockReservations',
+  '/Users/Permissions/{publicId}': '/Users'
+};
 
-const STRICT = process.env.STRICT === '1';
+/**
+ * Routes reachable only from another resolved page, so they are resolved in a second pass.
+ *
+ * The value is the parent route, and it may be given as `[parentRoute, listPage]`. That form is
+ * for a parent that only one document has: the purchase-order index links to Details only, and
+ * its Edit link belongs to a draft while its Receive link belongs to a partly received order,
+ * so each parent has to be picked out of the list page that still holds that status.
+ */
+const ID_SOURCE_VIA = {
+  '/Items/PrintLabel/{id}': '/Items/Details/{publicId}',
+  '/PurchaseOrders/Edit/{id}': ['/PurchaseOrders/Details/{publicId}', '/PurchaseOrders?status=0'],
+  '/PurchaseOrders/Receive/{id}': ['/PurchaseOrders/Details/{publicId}', '/PurchaseOrders?status=2']
+};
+
+/**
+ * The only routes allowed to render an empty page, each with the reason it is unreachable
+ * from seeded demo data. An empty page is a gate failure everywhere else: a 404 or a
+ * "nothing here yet" grid means the page is unscanned, which is exactly the silent hole
+ * this gate is meant to close. Keep this list as short as the reason allows.
+ */
+const DOCUMENTED_ALLOW_EMPTY = {
+  '/Backup': 'the backup index is only populated by a full backup/restore cycle, which writes .bak files outside the throwaway database and is out of scope for an accessibility scan',
+  '/DeliveryIssues/Create': 'this is a create form, not a listing: its line table starts empty and is filled either by choosing a source delivery note in the form or by the operator adding lines inline. The source-filled variant is a different url and is covered by the routes that link to it',
+  '/DeliveryOrders/Create': 'this is a create form, not a listing: its line table starts empty and is filled either by picking a sales order or invoice in the form or by the operator adding lines inline. The source-filled variant is a different url and is covered by the routes that link to it',
+  '/Items/Create': 'the two tables on the item form are a client-side preview of the categories and item types the operator adds inline; they hold no records and start empty by design',
+  '/Items/Edit/{id}': 'the two tables on the item form are a client-side preview of the categories and item types the operator adds inline; they hold no records and start empty by design'
+};
+
+const ALLOWED_EMPTY = new Set(Object.keys(DOCUMENTED_ALLOW_EMPTY));
 
 const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
@@ -187,34 +219,87 @@ async function axeRun(page) {
 }
 
 /**
- * Some keys are GUIDs, so a literal `/1` can never resolve. Rather than hardcoding an id that
- * only exists in one database, scrape the real link from the list page that links to it.
+ * Some keys are GUIDs and some state-gated actions need a specific document status, so a
+ * literal `/1` can never resolve. Rather than hardcoding an id that only exists in one
+ * database, scrape the real link from the list page that links to it. A route with no
+ * matching link is a failure: the alternative was scanning a 404 and calling it a pass.
  */
-async function resolvePlaceholders(page, routes) {
-  const needed = [...new Set(routes.filter(r => r.includes('{guid}')))];
-  if (!needed.length) return routes;
-
-  const resolved = [];
-  for (const route of needed) {
-    const prefix = route.split('{')[0];
-    await page.goto(BASE + '/Users', { waitUntil: 'load' });
-    const href = await page.evaluate(sel => {
-      const a = document.querySelector(sel);
-      return a ? a.getAttribute('href') : null;
-    }, `a[href^="${prefix}"]`);
-
-    if (!href) {
-      console.log(`  could not resolve ${route} from /Users - scanning the raw route`);
-      resolved.push(route);
-      continue;
-    }
-    resolved.push(href);
+async function resolveIdRoutes(page, routes) {
+  const bySource = new Map();
+  for (const route of routes) {
+    const source = ID_SOURCES[route];
+    if (!source) continue;
+    if (!bySource.has(source)) bySource.set(source, []);
+    bySource.get(source).push(route);
   }
-  return routes.map(r => {
-    if (!r.includes('{guid}')) return r;
-    const hit = resolved.find(x => x.startsWith(r.split('{')[0]));
-    if (!hit) throw new Error(`could not resolve ${r} from /Users`);
-    return hit;
+
+  const hits = new Map();
+  const unresolved = [];
+  for (const [source, group] of bySource) {
+    let status = 0;
+    try { const r = await page.goto(BASE + source, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
+    const hrefs = await page.evaluate(
+      prefixes => prefixes.map(p => {
+        const a = document.querySelector(`a[href^="${p}"]`);
+        return a ? a.getAttribute('href') : null;
+      }),
+      group.map(r => r.split('{')[0])
+    );
+    group.forEach((route, i) => {
+      if (hrefs[i]) hits.set(route, hrefs[i]);
+      else unresolved.push({ route, source, sourceStatus: status });
+    });
+  }
+
+  // A route that no list page links to directly is resolved from the page that does.
+  const remaining = unresolved.filter(u => !(u.route in ID_SOURCE_VIA));
+  for (const [route, via] of Object.entries(ID_SOURCE_VIA)) {
+    const [parentRoute, listPage] = Array.isArray(via) ? via : [via, null];
+    let parent = null;
+    if (listPage) {
+      // A named list page is authoritative for that parent: the unfiltered index resolves the
+      // same route to whichever order is newest, which is not the one carrying the link.
+      let listStatus = 0;
+      try { const r = await page.goto(BASE + listPage, { waitUntil: 'load' }); listStatus = r ? r.status() : 0; } catch { listStatus = 0; }
+      parent = await page.evaluate(p => {
+        const a = document.querySelector(`a[href^="${p}"]`);
+        return a ? a.getAttribute('href') : null;
+      }, parentRoute.split('{')[0]);
+      if (parent) hits.set(parentRoute, parent);
+      else { remaining.push({ route, source: listPage, sourceStatus: listStatus }); continue; }
+    } else {
+      parent = hits.get(parentRoute);
+    }
+    if (!parent) { remaining.push({ route, source: parentRoute, sourceStatus: 0 }); continue; }
+    let status = 0;
+    try { const r = await page.goto(BASE + parent, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
+    const href = await page.evaluate(p => {
+      const a = document.querySelector(`a[href^="${p}"]`);
+      return a ? a.getAttribute('href') : null;
+    }, route.split('{')[0]);
+    if (href) hits.set(route, href);
+    else remaining.push({ route, source: parent, sourceStatus: status });
+  }
+  return { hits, unresolved: remaining };
+}
+
+/**
+ * An empty grid is as unscannable as a 404: axe never sees the markup that only exists once
+ * rows exist. Flag it when every table on the page has no body rows, or when the page renders
+ * the project's "nothing here yet" notice instead of a table.
+ */
+async function detectEmptyPage(page) {
+  return page.evaluate(() => {
+    const tables = [...document.querySelectorAll('table')];
+    if (tables.some(t => t.querySelectorAll('tbody tr').length > 0)) return null;
+    if (tables.length) {
+      const named = tables
+        .map(t => (t.closest('.card, section, main, .table-container')?.querySelector('caption, .card-header, h2, h3')?.textContent || '').trim())
+        .filter(Boolean);
+      return `no body rows in ${tables.length} table(s)${named.length ? `: ${named.join(' | ')}` : ''}`;
+    }
+    const notice = (document.body.innerText || '').match(/لا (?:توجد|يوجد)[^\n]{0,90}/);
+    return notice ? `empty-state notice: ${notice[0].trim()}` : null;
   });
 }
 
@@ -226,30 +311,36 @@ async function main() {
   const page = await context.newPage();
 
   await login(page, 'light');
-  const routes = await resolvePlaceholders(page, ROUTE_MANIFEST);
+  const { hits, unresolved } = await resolveIdRoutes(page, ROUTE_MANIFEST);
+  const routes = ROUTE_MANIFEST.filter(r => !ID_SOURCES[r] || hits.has(r));
 
-  const failures = [];
-  const noData = [];
+  const failures = [...unresolved.map(u => ({ route: u.route, status: 0, reason: `no matching link on ${u.source} (source status ${u.sourceStatus})` }))];
+  const allowedEmpty = [];
   const summary = { light: {}, dark: {} };
 
-  const evaluate = (route, status, violations) => {
-    summary.light[route] = { status, violations };
+  const evaluate = (route, status, violations, empty) => {
+    summary.light[route] = { status, empty, violations };
     const serious = violations.filter(isSerious);
-    if (status === 404 && DATA_ROUTES.has(route)) {
-      noData.push(route);
-      if (STRICT) failures.push({ route, status, reason: 'no seeded document (STRICT)' });
+    if (status !== 200) { failures.push({ route, status, violations: serious }); return; }
+    if (empty) {
+      const documented = DOCUMENTED_ALLOW_EMPTY[route];
+      if (documented) { allowedEmpty.push({ route, empty, reason: documented }); return; }
+      failures.push({ route, status, reason: `page rendered no data (${empty})` });
       return;
     }
-    if (status !== 200 || serious.length) failures.push({ route, status, violations: serious });
+    if (serious.length) failures.push({ route, status, violations: serious });
   };
 
   for (const route of routes) {
+    const target = hits.get(route) || route;
     let status = 0;
-    try { const r = await page.goto(BASE + route, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
+    try { const r = await page.goto(BASE + target, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
     await page.waitForTimeout(350);
     let violations = [];
     try { violations = await axeRun(page); } catch (e) { violations = [{ id: 'AXE-EXEC-ERR', impact: 'serious', nodes: 1, targets: [e.message] }]; }
-    evaluate(route, status, violations);
+    let empty = null;
+    if (status === 200) { try { empty = await detectEmptyPage(page); } catch { empty = null; } }
+    evaluate(route, status, violations, empty);
   }
 
   const darkContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
@@ -262,14 +353,12 @@ async function main() {
     let violations = [];
     try { violations = await axeRun(dp); } catch (e) { violations = [{ id: 'AXE-EXEC-ERR', impact: 'serious', nodes: 1, targets: [e.message] }]; }
     const themeApplied = await dp.evaluate(() => document.documentElement.getAttribute('data-theme'));
-    summary.dark[route] = { status, themeApplied, violations };
+    const empty = status === 200 ? await detectEmptyPage(dp) : null;
+    summary.dark[route] = { status, themeApplied, empty, violations };
     const serious = violations.filter(isSerious);
-    if (status === 404 && DATA_ROUTES.has(route)) {
-      noData.push(route + ' [dark]');
-      if (STRICT) failures.push({ route: route + ' [dark]', status, reason: 'no seeded document (STRICT)' });
-      continue;
-    }
-    if (status !== 200 || serious.length) failures.push({ route: route + ' [dark]', status, themeApplied, violations: serious });
+    if (status !== 200) { failures.push({ route: route + ' [dark]', status, themeApplied, violations: serious }); continue; }
+    if (empty && !ALLOWED_EMPTY.has(route)) { failures.push({ route: route + ' [dark]', status, themeApplied, reason: `page rendered no data (${empty})` }); continue; }
+    if (serious.length) failures.push({ route: route + ' [dark]', status, themeApplied, violations: serious });
   }
   await darkContext.close();
   await browser.close();
@@ -286,17 +375,17 @@ async function main() {
   console.log(`Total moderate: ${countImpact('moderate')}, total minor: ${countImpact('minor')} (reported only - not gate-failing)`);
   for (const [route, r] of Object.entries(summary.dark)) console.log(`  dark ${r.themeApplied} ${route}`);
 
-  if (noData.length) {
-    console.log(`no-data (visited + scanned, 404 because no seeded document${STRICT ? '' : ' - set STRICT=1 to fail'}): ${noData.length}`);
-    for (const r of noData) console.log(`  no-data ${r}`);
+  if (allowedEmpty.length) {
+    console.log(`documented-empty (visited + scanned, rendered nothing by design): ${allowedEmpty.length}`);
+    for (const a of allowedEmpty) console.log(`  documented-empty ${a.route} - ${a.reason}`);
   }
 
   if (failures.length) {
-    console.log('GATE: FAIL');
+    console.log(`GATE: FAIL (${failures.length} failing route checks)`);
     console.log(JSON.stringify(failures, null, 2));
     process.exit(1);
   }
-  console.log(`GATE: PASS (${Object.keys(summary.light).length} light routes + ${Object.keys(summary.dark).length} dark, 0 critical/serious axe violations${noData.length ? `, ${noData.length} no-data` : ''})`);
+  console.log(`GATE: PASS (${Object.keys(summary.light).length} light routes + ${Object.keys(summary.dark).length} dark, 0 critical/serious axe violations, 0 empty pages${allowedEmpty.length ? `, ${allowedEmpty.length} documented-empty` : ''})`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

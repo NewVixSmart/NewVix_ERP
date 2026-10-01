@@ -57,7 +57,7 @@
                             var avail = i < Model.Availability.Count ? Model.Availability[i] : default;
                             <tr class="reservation-line">
                                 <td>
-                                    <select name="StandaloneItems[@idx].ItemId" class="form-select form-select-sm" data-role="item" data-label="الصنف" aria-label="الصنف — سطر @(idx + 1)" required>
+                                    <select name="StandaloneItems[@idx].ItemId" class="form-select form-select-sm" data-role="item" data-label="الصنف" aria-label="الصنف — سطر @(idx + 1)" @(idx == 0 ? "required" : "")>
                                         <option value="">— اختر الصنف —</option>
                                         @foreach (var a in Model.Availability)
                                         {

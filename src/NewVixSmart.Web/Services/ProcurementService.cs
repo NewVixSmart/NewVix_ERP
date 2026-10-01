@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NewVixSmart.Web.Data;
+using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Purchases;
 
 namespace NewVixSmart.Web.Services;
@@ -345,6 +346,7 @@ public sealed class ProcurementService : IProcurementService
                 {
                     SupplierId = order.SupplierId,
                     InvoiceDate = DateTime.Today,
+                    PaymentTerms = InvoicePaymentTerms.OpenTerm,
                     PurchaseOrderId = order.Id,
                     OrderReference = order.OrderNumber,
                     Notes = order.Notes

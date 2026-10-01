@@ -615,6 +615,31 @@ public sealed class ViewLogicSweepTests
     }
 
     /// <summary>
+    /// The standalone reservation grid always renders three lines, and every one of them used to
+    /// carry <c>required</c> on its item select. The browser then refused to submit a one-line
+    /// reservation — the operator has to fill rows they meant to leave empty, and no error message
+    /// ever reaches the page because the form never posts. The first line stays required because a
+    /// reservation needs at least one item; the spare lines are opt-in, so they must not claim to
+    /// be required to a screen reader either.
+    /// </summary>
+    [Fact]
+    public void ReservationSpareLines_AreNotMarkedRequired()
+    {
+        var view = Path.Combine(WebProjectDirectory(), "Views", "StockReservations", "Create.cshtml");
+        Assert.True(File.Exists(view), $"ملف العرض غير موجود: {view}");
+        var markup = File.ReadAllText(view);
+
+        var selectLine = markup.Split('\n')
+            .Select((text, index) => (number: index + 1, text))
+            .Where(line => line.text.Contains("StandaloneItems[@idx].ItemId"))
+            .ToList();
+        Assert.True(selectLine.Count == 1, "لم يُعثر على قائمة أصناف الحجز في العرض.");
+
+        Assert.Contains("@(idx == 0 ? \"required\" : \"\")", selectLine[0].text);
+        Assert.DoesNotMatch(@"\srequired\s*(>|aria-label)", selectLine[0].text);
+    }
+
+    /// <summary>
     /// The screens that decide whether a delivery still has lines left used to each hold their own
     /// copy of the settled/open-line calculation - one of them compared issued quantity only, so it
     /// disagreed with the other about a count-traded line. Both copies are gone; this pins that

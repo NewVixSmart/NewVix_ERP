@@ -218,9 +218,19 @@ public sealed class ProcurementServiceTests : IDisposable
 
         var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.PurchaseInvoice);
         var lines = await db.JournalEntryLines.Where(l => l.JournalEntryId == entry.Id).Include(l => l.Account).ToListAsync();
-        Assert.Single(await db.JournalEntries.Where(e => e.Source == JournalSource.Disbursement).ToListAsync());
+
+        // Receiving goods is not paying for them. A PO-derived invoice must stay
+        // outstanding, otherwise the payable is cleared and a disbursement journal
+        // entry is posted for money that never left the bank.
+        Assert.Empty(await db.JournalEntries.Where(e => e.Source == JournalSource.Disbursement).ToListAsync());
+        Assert.False(invoice.IsPaid);
+        Assert.Equal(0m, invoice.PaidAmount);
+        Assert.Equal(InvoicePaymentTerms.OpenTerm, invoice.PaymentTerms);
+
+        // The payable is credited and left open, and that is the whole entry.
         Assert.Contains(lines, l => l.Account!.Code == "1300" && l.Debit == 400m);
         Assert.Contains(lines, l => l.Account!.Code == "2000" && l.Credit == 400m);
+        Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
     }
 
     [Fact]

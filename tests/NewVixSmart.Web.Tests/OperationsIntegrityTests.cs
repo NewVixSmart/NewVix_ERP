@@ -787,6 +787,45 @@ public sealed class OperationsIntegrityTests : IDisposable
     }
 
     [Fact]
+    public async Task DeliveryOrdersController_OrderSource_IgnoresTheEmptyCustomerSelect()
+    {
+        using var db = CreateContext();
+        var (itemId, custId, _) = await SeedAsync(db);
+        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
+        var (ok, err) = await orders.CreateOrderAsync(order,
+            new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = 5, Count = 0, UnitPrice = 80 } }, "test");
+        Assert.True(ok, err);
+        var approved = await db.SalesOrders.FindAsync(order.Id);
+        approved!.Status = SalesOrderStatus.Approved;
+        await db.SaveChangesAsync();
+
+        var svc = new InventoryService(db);
+        var controller = new DeliveryOrdersController(db, svc);
+        WireController(controller, CreateHttpContext());
+        var vm = new DeliveryOrderViewModel
+        {
+            Source = "Order",
+            Delivery = new DeliveryOrderFormModel { SalesOrderId = order.Id, DeliveryDate = DateTime.Today },
+            Items = new List<DeliveryOrderLineFormModel> { new() { ItemId = itemId, Quantity = 2, Count = 0 } }
+        };
+
+        // The customer select is on the same page as the order select, so the browser posts its
+        // placeholder to a non-nullable int. That binder error is what used to make an
+        // order-sourced note unsaveable for every user, not only for a scripted form post.
+        controller.ModelState.AddModelError("Delivery.CustomerId", "The value '' is invalid.");
+
+        var result = await controller.Create(vm);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var delivery = await db.DeliveryOrders.Include(d => d.Items).SingleAsync();
+        Assert.StartsWith("DLV-", delivery.DeliveryNumber);
+        Assert.Equal(order.Id, delivery.SalesOrderId);
+        Assert.Equal(custId, delivery.CustomerId);
+        Assert.Equal(2m, delivery.Items.Single().Quantity);
+    }
+
+    [Fact]
     public async Task ReceiveOrderLine_OverReceiveAfterPartial_LeavesStateIntact()
     {
         using var db = CreateContext();
