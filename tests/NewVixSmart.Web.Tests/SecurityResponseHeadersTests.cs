@@ -429,6 +429,54 @@ public sealed class SecurityResponseHeadersTests
         Assert.Contains("ApplyHstsHeader(context, hstsOptions);", program, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// LiveWebApp transcribes the JwtBearer block below, because Program.cs cannot be started in
+    /// this suite: it calls UseSqlServer and Database.Migrate(). A transcription can drift, and the
+    /// drift would be silent - SecurityAccessTokenLifetimeTests asserts that an expired token is
+    /// refused, so if Program.cs dropped ValidateLifetime while the harness kept it, that test would
+    /// stay green against a production app that accepts expired tokens. This is the pin that keeps
+    /// the harness honest, and it is the only reason the three converted security classes still
+    /// depend on Program.cs text at all.
+    /// </summary>
+    [Fact]
+    public void Program_KeepsTheJwtBearerValidationLiveWebAppTranscribes()
+    {
+        var program = File.ReadAllText(WebProjectFile("Program.cs"));
+
+        Assert.Contains("AddJwtBearer(JwtBearerDefaults.AuthenticationScheme", program, StringComparison.Ordinal);
+        Assert.Contains("ValidateIssuer = true", program, StringComparison.Ordinal);
+        Assert.Contains("ValidateAudience = true", program, StringComparison.Ordinal);
+        Assert.Contains("ValidateLifetime = true", program, StringComparison.Ordinal);
+        Assert.Contains("ValidateIssuerSigningKey = true", program, StringComparison.Ordinal);
+        Assert.Contains("ValidIssuer = jwtIssuer", program, StringComparison.Ordinal);
+        Assert.Contains("ValidAudience = jwtAudience", program, StringComparison.Ordinal);
+        Assert.Contains("IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))",
+            program, StringComparison.Ordinal);
+        // The stamp check is the revocation channel logout rotates, so the harness's transcription of
+        // it must be pinned too, not just the lifetime checks.
+        Assert.Contains("options.Events = new JwtBearerEvents", program, StringComparison.Ordinal);
+        Assert.Contains("onTokenValidated", program, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("TokenStampChecks.StampMatches(tokenStamp, currentStamp)", program, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The cookie settings LiveWebApp transcribes. The logout tests assert behaviour that depends on
+    /// these: the deletion cookie carries the same name as the one issued, and a Secure/HttpOnly
+    /// cookie is what makes the whole exchange meaningful.
+    /// </summary>
+    [Fact]
+    public void Program_KeepsTheApplicationCookieSettingsLiveWebAppTranscribes()
+    {
+        var program = File.ReadAllText(WebProjectFile("Program.cs"));
+
+        Assert.Contains("ConfigureApplicationCookie(options =>", program, StringComparison.Ordinal);
+        Assert.Contains("options.LoginPath = \"/Account/Login\";", program, StringComparison.Ordinal);
+        Assert.Contains("options.LogoutPath = \"/Account/Logout\";", program, StringComparison.Ordinal);
+        Assert.Contains("options.Cookie.HttpOnly = true;", program, StringComparison.Ordinal);
+        Assert.Contains("options.Cookie.SameSite = SameSiteMode.Lax;", program, StringComparison.Ordinal);
+        Assert.Contains("options.Cookie.SecurePolicy = CookieSecurePolicy.Always;", program, StringComparison.Ordinal);
+    }
+
     // ---------------------------------------------------------------- harness
 
     private sealed class HeaderProbe(WebApplication app, string httpsAddress, string httpAddress) : IAsyncDisposable

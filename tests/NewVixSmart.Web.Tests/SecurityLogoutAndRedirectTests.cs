@@ -1,25 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Reflection;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using NewVixSmart.Web.Api;
-using NewVixSmart.Web.Api.Dtos;
-using NewVixSmart.Web.Controllers;
-using NewVixSmart.Web.Data;
-using NewVixSmart.Web.Infrastructure;
+using System.Net;
 using Xunit;
 
 namespace NewVixSmart.Web.Tests;
@@ -35,92 +15,115 @@ namespace NewVixSmart.Web.Tests;
 ///   2. The login POST passed ?returnUrl= straight to LocalRedirect, which THROWS on a non-local
 ///      URL. Not an open redirect - the throw stopped it - but a user-triggerable 500, and the kind
 ///      of 500 that invites a "try /%2f%2fevil.com" probe from anyone auditing the login page.
+///
+/// These are the same two defects as before, but every request now goes over HTTPS to a real Kestrel
+/// host instead of being handed to a controller that the test constructed itself. The previous
+/// version wired AccountController by hand - it built a ControllerContext, a DefaultHttpContext and a
+/// UrlHelperBase subclass just to reach LocalRedirect - which meant the framework's routing, the
+/// cookie handler's own SignOutAsync, the antiforgery filter and the site's real HomeLanding mapping
+/// were all replaced by the test's model of them. None of that machinery survives here: the client is
+/// an HttpClient with a cookie jar, and the assertions are on status codes, Location and cookies.
+///
+/// Login_GuardsAgainstOffSiteReturnUrlBeforeLocalRedirect grepped AccountController.cs for
+/// "!Url.IsLocalUrl(returnUrl)", the "returnUrl = null" assignment and their order relative to
+/// "return LocalRedirect(". The hostile-returnUrl theory below is the behavioural form of exactly
+/// that guard: with the guard removed, LocalRedirect("//evil.com") throws, the error handler turns
+/// the throw into a 500, and the theory fails on the status code. The grep test is gone because the
+/// behaviour it stood in for is now observable end to end.
 /// </summary>
-public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
+public sealed class SecurityLogoutAndRedirectTests
 {
-    private const string _jwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
     private const string _username = "logoutuser";
     private const string _password = "Log@123456";
 
-    private SqliteConnection _connection = null!;
-    private ServiceProvider _provider = null!;
-    private string _userId = null!;
-
-    public async Task InitializeAsync()
-    {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        await _connection.OpenAsync();
-
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddHttpContextAccessor();
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
-        // The real Identity stack: the cookie handler is what makes SignOutAsync do anything at all,
-        // and PasswordSignInAsync needs the same stack to answer Succeeded.
-        services.AddIdentity<IdentityUser, IdentityRole>(options => options.Password.RequiredLength = 8)
-            .AddEntityFrameworkStores<AppDbContext>()
-            .AddSignInManager()
-            .AddDefaultTokenProviders();
-        services.ConfigureApplicationCookie(options =>
-        {
-            options.Cookie.Name = "vix-test-cookie";
-            options.Cookie.HttpOnly = true;
-            options.LoginPath = "/Account/Login";
-        });
-        // Keeps the cookie handler away from the real ASP.NET Core data protection keys.
-        services.AddDataProtection().UseEphemeralDataProtectionProvider();
-
-        _provider = services.BuildServiceProvider();
-        using (var scope = _provider.CreateScope())
-        {
-            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-            var created = await userManager.CreateAsync(new IdentityUser { UserName = _username }, _password);
-            Assert.True(created.Succeeded, string.Join("; ", created.Errors.Select(e => e.Description)));
-            _userId = Assert.IsAssignableFrom<IdentityUser>(
-                await userManager.FindByNameAsync(_username)).Id;
-        }
-    }
-
-    public async Task DisposeAsync()
-    {
-        await _provider.DisposeAsync();
-        await _connection.DisposeAsync();
-    }
+    /// <summary>The cookie the Identity application cookie handler issues and, on logout, deletes.</summary>
+    private const string _authCookie = ".AspNetCore.Identity.Application";
 
     [Fact]
-    public async Task Logout_RotatesTheSecurityStamp_SoAnAlreadyIssuedTokenStopsMatching()
+    public async Task Logout_RotatesTheSecurityStamp_SoAnAlreadyIssuedTokenStopsWorking()
     {
-        using var scope = _provider.CreateScope();
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-        var user = Assert.IsAssignableFrom<IdentityUser>(await userManager.FindByNameAsync(_username));
+        await using var app = await StartAsync();
 
-        var token = await IssueTokenAsync(userManager);
-        var tokenStamp = ReadStamp(token);
-        var stampBefore = await userManager.GetSecurityStampAsync(user);
-        Assert.True(TokenStampChecks.StampMatches(tokenStamp, stampBefore),
-            "قبل الخروج: التوكن يطابق الختم الحي.");
+        var token = await IssueTokenAsync(app);
+        // Before logout the bearer token is a working credential, so a 401 after logout cannot be
+        // blamed on a host that never accepted it in the first place.
+        using (var live = await app.GetWithBearerAsync("/api/customers", token))
+        {
+            Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+        }
 
-        var result = await BuildAccountController(scope).Logout();
+        using (var login = await app.LoginAsync(_username, _password))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        }
 
-        Assert.Equal("Login", Assert.IsType<RedirectToActionResult>(result).ActionName);
-        var stampAfter = await userManager.GetSecurityStampAsync(user);
-        Assert.NotEqual(stampBefore, stampAfter);
+        using (var home = await app.GetAsync("/"))
+        {
+            Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+        }
+
+        var antiforgery = await app.AntiforgeryTokenAsync("/");
+        using (var logout = await app.PostFormAsync("/Account/Logout", LiveForm.WithAntiforgery(antiforgery)))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
+            Assert.Equal("/Account/Login", logout.Headers.Location!.ToString());
+        }
+
         // This single assertion is the whole revocation story: the JwtBearer OnTokenValidated event
-        // fails any token whose stamp claim no longer matches, so this token is now worth nothing.
-        Assert.False(TokenStampChecks.StampMatches(tokenStamp, stampAfter),
-            "بعد الخروج: يجب أن يفشل الختم القديم فيطير التوكن المصدَر قبله.");
+        // fails any token whose stamp claim no longer matches the rotated one, so the token minted
+        // before logout is now worth nothing. If logout cleared the cookie but skipped the stamp
+        // rotation, the token would still open this endpoint and the test would fail here.
+        using var afterLogout = await app.GetWithBearerAsync("/api/customers", token);
+        Assert.Equal(HttpStatusCode.Unauthorized, afterLogout.StatusCode);
     }
 
+    /// <summary>
+    /// The cookie that authenticated the browser session must be gone after logout, and it must
+    /// still have been issued hardened in the first place.
+    /// </summary>
+    [Fact]
+    public async Task Logout_DeletesTheAuthenticationCookie()
+    {
+        await using var app = await StartAsync();
+
+        using (var login = await app.LoginAsync(_username, _password))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+            var issued = SetCookies(login);
+            var cookie = Assert.Single(issued, value => value.StartsWith(_authCookie + "=", StringComparison.Ordinal));
+            Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.NotNull(app.CookieValue(_authCookie));
+
+        var antiforgery = await app.AntiforgeryTokenAsync("/");
+        using var logout = await app.PostFormAsync("/Account/Logout", LiveForm.WithAntiforgery(antiforgery));
+
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
+        var deletion = Assert.Single(SetCookies(logout), value => value.StartsWith(_authCookie + "=", StringComparison.Ordinal));
+        // A blank value plus an expiry in the past is how a cookie is deleted; the jar honours it,
+        // which the assertion below proves rather than assuming.
+        Assert.Contains("expires=Thu, 01 Jan 1970", deletion, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(app.CookieValue(_authCookie));
+    }
+
+    /// <summary>
+    /// The old form of this checked a RedirectToActionResult on a controller with no signed-in user.
+    /// Over HTTP the same situation is an anonymous POST: [Authorize] challenges it away to the
+    /// login page. The defect being fenced off is a throw (a 500), so any non-5xx redirect passes;
+    /// a 500 is what this would have produced if Logout assumed a live user.
+    /// </summary>
     [Fact]
     public async Task Logout_WithoutAUser_StillRedirectsAndDoesNotThrow()
     {
-        using var scope = _provider.CreateScope();
-        var controller = BuildAccountController(scope, authenticated: false);
+        await using var app = await StartAsync();
 
-        var result = await controller.Logout();
+        var antiforgery = await app.AntiforgeryTokenAsync("/Account/Login");
+        using var logout = await app.PostFormAsync("/Account/Logout", LiveForm.WithAntiforgery(antiforgery));
 
-        Assert.Equal("Login", Assert.IsType<RedirectToActionResult>(result).ActionName);
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
+        Assert.Contains("/Account/Login", logout.Headers.Location!.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -133,132 +136,65 @@ public sealed class SecurityLogoutAndRedirectTests : IAsyncLifetime
     [InlineData("http://evil.com")]
     public async Task Login_NeverRedirectsOffSite_AndNeverThrowsOnAHostileReturnUrl(string? returnUrl)
     {
-        using var scope = _provider.CreateScope();
-        var controller = BuildAccountController(scope, authenticated: false);
+        await using var app = await StartAsync();
 
-        var result = await controller.Login(
-            new LoginViewModel { Username = _username, Password = _password },
-            returnUrl);
+        using var response = await app.LoginAsync(_username, _password, returnUrl);
+
+        // LocalRedirect throws on a non-local URL, so a hostile returnUrl that reached LocalRedirect
+        // would leave through the error handler as a 500. A redirect is the whole point.
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        // A successful sign-in issues the auth cookie; without it the 302 would be the failure
+        // redirect back to the login page and the Location assertion below would be meaningless.
+        Assert.NotNull(app.CookieValue(_authCookie));
+
+        var location = response.Headers.Location!;
+        Assert.StartsWith("/", location.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("evil.com", location.ToString(), StringComparison.OrdinalIgnoreCase);
 
         // A non-local returnUrl is dropped and the role's landing page is used, so the browser only
-        // ever gets a same-origin path. No 500 either way.
-        var redirect = Assert.IsType<LocalRedirectResult>(result);
-        Assert.StartsWith("/", redirect.Url, StringComparison.Ordinal);
-        Assert.DoesNotContain("evil.com", redirect.Url, StringComparison.OrdinalIgnoreCase);
+        // ever gets a same-origin path - never a host the caller chose.
+        var resolved = location.IsAbsoluteUri ? location : new Uri(app.BaseAddress, location);
+        Assert.Equal(app.BaseAddress.Host, resolved.Host);
+        Assert.Equal(app.BaseAddress.Port, resolved.Port);
+        Assert.NotEqual("/Account/Login", resolved.AbsolutePath);
     }
 
     [Fact]
     public async Task Login_KeepsTheRequestedLocalReturnUrl()
     {
-        using var scope = _provider.CreateScope();
-        var controller = BuildAccountController(scope, authenticated: false);
+        await using var app = await StartAsync();
 
-        var result = await controller.Login(
-            new LoginViewModel { Username = _username, Password = _password },
-            "/StockReservations/Create");
+        using var response = await app.LoginAsync(_username, _password, "/StockReservations/Create");
 
-        Assert.Equal("/StockReservations/Create", Assert.IsType<LocalRedirectResult>(result).Url);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.NotNull(app.CookieValue(_authCookie));
+        Assert.Equal("/StockReservations/Create", response.Headers.Location!.ToString());
     }
 
-    [Fact]
-    public async Task Login_GuardsAgainstOffSiteReturnUrlBeforeLocalRedirect()
+    private static async Task<LiveWebApp> StartAsync()
     {
-        // The guard has to be an explicit IsLocalUrl check: LocalRedirect on its own throws.
-        // Matched on the predicate alone, not on the whole statement, so adding braces around
-        // the body does not break the test while still being able to catch the guard's removal.
-        var source = File.ReadAllText(TestPaths.WebProjectFile("Controllers", "AccountController.cs"));
-        var guard = source.IndexOf("!Url.IsLocalUrl(returnUrl)", StringComparison.Ordinal);
-        // Search from the guard: "returnUrl = null" also occurs as a parameter default on the
-        // GET overload, which has nothing to do with the redirect guard.
-        var guardAssigns = guard >= 0
-            ? source.IndexOf("returnUrl = null", guard, StringComparison.Ordinal)
-            : -1;
-        var localRedirect = source.IndexOf("return LocalRedirect(", StringComparison.Ordinal);
-        Assert.True(guard >= 0, "يجب فحص returnUrl بـ Url.IsLocalUrl قبل إعادة التوجيه.");
-        Assert.True(guardAssigns > guard, "يجب تصفير returnUrl غير المحلّي داخل فحص IsLocalUrl.");
-        Assert.True(guard < localRedirect, "الفحص يجب أن يسبق LocalRedirect.");
-    }
-
-    private async Task<string> IssueTokenAsync(UserManager<IdentityUser> userManager)
-    {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        var app = await LiveWebApp.StartAsync(setup =>
         {
-            ["Jwt:Key"] = _jwtKey,
-            ["Jwt:Issuer"] = "NewVixSmart",
-            ["Jwt:Audience"] = "NewVixSmart"
-        }).Build();
+            setup.Settings["Jwt:Key"] = LiveWebApp.JwtKey;
+            setup.Settings["Jwt:Issuer"] = LiveWebApp.JwtIssuer;
+            setup.Settings["Jwt:Audience"] = LiveWebApp.JwtAudience;
+        });
 
-        var result = await new TokensController(userManager, configuration)
-            .CreateToken(new TokenRequest(_username, _password));
-        var ok = Assert.IsAssignableFrom<OkObjectResult>(result);
-        return Assert.IsAssignableFrom<TokenResponse>(ok.Value).Token;
+        await app.SeedUserAsync(_username, _password, LiveWebApp.AdminRole);
+        return app;
     }
 
-    private static string ReadStamp(string token)
+    private static async Task<string> IssueTokenAsync(LiveWebApp app)
     {
-        var read = new JwtSecurityTokenHandler().ReadJwtToken(token);
-        var claim = read.Claims.SingleOrDefault(c => c.Type == TokenStampChecks.StampClaimType);
-        Assert.NotNull(claim);
-        return claim.Value;
+        using var response = await app.PostTokenAsync(_username, _password);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await LiveWebApp.ReadJsonAsync(response);
+        var token = json.GetProperty("token").GetString()!;
+        // Readable, signed and well formed: a 200 from the endpoint with a body the handler can read.
+        Assert.NotEmpty(new JwtSecurityTokenHandler().ReadJwtToken(token).Claims);
+        return token;
     }
 
-    /// <summary>
-    /// Wires a controller against the real SignInManager, the real cookie handler and the real
-    /// UrlHelperBase.IsLocalUrl, so the redirect guard is the framework's own implementation and
-    /// not a stand-in. Only IsLocalUrl is exercised, so the two link-generating members are unused.
-    ///
-    /// Deliberately synchronous: SignInManager reads HttpContext from IHttpContextAccessor, which is
-    /// AsyncLocal-backed, and an AsyncLocal written inside an async helper is discarded when that
-    /// helper returns.
-    /// </summary>
-    private AccountController BuildAccountController(IServiceScope scope, bool authenticated = true)
-    {
-        var services = scope.ServiceProvider;
-        var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
-        var signInManager = services.GetRequiredService<SignInManager<IdentityUser>>();
-
-        ClaimsPrincipal principal;
-        if (authenticated)
-        {
-            var identity = new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, _userId), new Claim(ClaimTypes.Name, _username) },
-                CookieAuthenticationDefaults.AuthenticationScheme);
-            principal = new ClaimsPrincipal(identity);
-        }
-        else
-        {
-            principal = new ClaimsPrincipal(new ClaimsIdentity());
-        }
-
-        var httpContext = new DefaultHttpContext { RequestServices = services, User = principal };
-        services.GetRequiredService<IHttpContextAccessor>().HttpContext = httpContext;
-
-        // Every piece of the ActionContext is spelled out because UrlHelperBase's constructor reads
-        // RouteData.Values straight away, and a ControllerContext built from an object initializer
-        // leaves RouteData null.
-        var controller = new AccountController(signInManager, userManager)
-        {
-            ControllerContext = new ControllerContext(new ActionContext(
-                httpContext,
-                new RouteData(),
-                new ControllerActionDescriptor { ControllerTypeInfo = typeof(AccountController).GetTypeInfo() },
-                new ModelStateDictionary()))
-        };
-        controller.Url = new LocalUrlHelper(controller.ControllerContext);
-        return controller;
-    }
-
-    /// <summary>
-    /// UrlHelperBase.IsLocalUrl is where the framework decides what "local" means, and it is concrete,
-    /// so inheriting it keeps the real rule - "/" is local, "//host" and "/\host" are not - while the
-    /// two link-generating members stay unused.
-    /// </summary>
-    private sealed class LocalUrlHelper(ActionContext actionContext) : UrlHelperBase(actionContext)
-    {
-        public override string Action(UrlActionContext actionContext) =>
-            throw new NotSupportedException("هذا الاختبار لا يبني روابط.");
-
-        public override string RouteUrl(UrlRouteContext routeContext) =>
-            throw new NotSupportedException("هذا الاختبار لا يبني روابط.");
-    }
+    private static IReadOnlyList<string> SetCookies(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("Set-Cookie", out var values) ? values.ToList() : [];
 }

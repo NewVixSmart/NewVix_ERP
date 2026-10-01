@@ -24,10 +24,13 @@ public sealed class SourceTextGuaranteeInventoryTests
     /// of this table, and they are the honest answer to "how much of the suite proves anything by
     /// reading the file rather than running it":
     ///
-    ///   9 classes rest at least one production guarantee on production source or configuration
-    ///   being read as text - 8 on C#, 1 on configuration. Those guarantees are real but weak:
+    ///   6 classes rest at least one production guarantee on production source or configuration
+    ///   being read as text - 5 on C#, 1 on configuration. Those guarantees are real but weak:
     ///   they break on a harmless refactor and survive a behaviour change. They are the honest
-    ///   remainder after the behavioural work, not an oversight.
+    ///   remainder after the behavioural work, not an oversight. The three security classes that
+    ///   used to be counted here - SecurityAccessTokenLifetimeTests, SecurityImportUploadLimitTests
+    ///   and SecurityLogoutAndRedirectTests - stopped reading source when their greps were replaced
+    ///   by requests to a real host, which is why the number fell from 9 to 6.
     ///
     ///   2 further classes read Razor markup (a view cannot be executed without a browser; the
     ///   browser-level proof is the Playwright + axe run in the docker-image CI job), and 4 read
@@ -52,9 +55,6 @@ public sealed class SourceTextGuaranteeInventoryTests
         ["DocClaimTests"] = _tooling,                        // README.md + AGENTS.md + .github/workflows/ci.yml
         ["ProductionConfigGateTests"] = _config,             // appsettings*.json
         ["RazorHygieneTests"] = _tooling,                    // scripts/check-text-hygiene.ps1 + .github/workflows/ci.yml
-        ["SecurityAccessTokenLifetimeTests"] = _cSharp,      // Api/TokensController.cs
-        ["SecurityImportUploadLimitTests"] = _cSharp,        // ImportCenterController.cs + Service.cs
-        ["SecurityLogoutAndRedirectTests"] = _cSharp,        // Controllers/AccountController.cs
         ["SecurityResponseHeadersTests"] = _cSharp,          // Program.cs
         ["SecurityViewCspNonceTests"] = _cSharp,             // Program.cs, plus _razor views
         ["ViewLogicSweepTests"] = _cSharp,                   // controllers and views
@@ -71,20 +71,21 @@ public sealed class SourceTextGuaranteeInventoryTests
     }
 
     [Fact]
-    public void TheCSharpAndConfigCountStaysNine_SoARemovalCannotSilentlyNarrowTheKnownGap()
+    public void TheCSharpAndConfigCountStaysSix_SoARemovalCannotSilentlyNarrowTheKnownGap()
     {
         // The number reported in the summary of this work. Pinned so that deleting a textual
         // guarantee is a visible act: either the behaviour became testable - in which case the
         // class should stop reading source and this number drops on purpose - or the guarantee
-        // was dropped, which should not pass unnoticed.
+        // was dropped, which should not pass unnoticed. It fell from 9 to 6 when the three
+        // security classes stopped reading source.
         var production = _textReaders
             .Where(entry => entry.Value is _cSharp or _config)
             .Select(entry => entry.Key)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
-        Assert.Equal(9, production.Count);
-        Assert.Equal(9, FindTextReadingClasses().Count(entry => entry.Kind is _cSharp or _config));
+        Assert.Equal(6, production.Count);
+        Assert.Equal(6, FindTextReadingClasses().Count(entry => entry.Kind is _cSharp or _config));
     }
 
     [Fact]

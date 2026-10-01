@@ -1,16 +1,11 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NewVixSmart.Web.Api;
-using NewVixSmart.Web.Api.Dtos;
-using NewVixSmart.Web.Data;
+using Microsoft.IdentityModel.Tokens;
 using NewVixSmart.Web.Infrastructure;
 using Xunit;
 
@@ -46,12 +41,35 @@ namespace NewVixSmart.Web.Tests;
 ///
 /// Together the two bounds pin the effective lifetime to the requested one, so a 5-minute token and
 /// a 60-minute token differ by a whole hour and cannot be confused.
+///
+/// HOW THE TOKEN IS OBTAINED. Every token here is minted by the running application: a real Kestrel
+/// host over HTTPS, a real POST to /api/auth/token, a real Identity password check. An earlier
+/// version called TokensController.CreateToken directly on a hand-built UserManager, which proved the
+/// controller's arithmetic but not that the route, the JSON binding, the antiforgery opt-out and the
+/// signing key the host actually configured all agree with it.
+///
+/// WHAT REPLACED CeilingIsNotHigherThanAnHour. That test read Api/TokensController.cs as text and
+/// asserted the two minute constants and the "1, _maxAccessTokenMinutes" clamp expression were
+/// present. It could not tell a working clamp from a deleted one - the constants would have gone in
+/// the same edit - and it asserted a comment could satisfy. It is gone. Every property it claimed is
+/// now asserted against the token the server returns: Clamp_IsAppliedAtItsEdges sweeps the boundary
+/// and every value outside it, and LifetimeBeyondTheCeiling_IsPulledBackToAnHour proves a
+/// day-long configuration still comes back as an hour.
+///
+/// THE ONE THING NOT PROVEN HERE. LiveWebApp transcribes the JwtBearer validation block out of
+/// Program.cs, so if Program.cs stopped validating the lifetime, the expired-token test below would
+/// keep passing against the transcription. That cross-check cannot be behavioural - it compares the
+/// harness with a file that is never executed in this suite - so it lives next to the same file's
+/// other pin, in SecurityResponseHeadersTests.
 /// </summary>
-public sealed class SecurityAccessTokenLifetimeTests : IDisposable
+public sealed class SecurityAccessTokenLifetimeTests
 {
     private const int _defaultMinutes = 15;
     private const int _minMinutes = 1;
     private const int _maxMinutes = 60;
+
+    private const string _username = "lifetimeuser";
+    private const string _password = "Life@123456";
 
     /// <summary>
     /// A JWT NumericDate is whole seconds, so exp is minted-lifetime rounded DOWN and can sit up to
@@ -60,36 +78,20 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     /// </summary>
     private static readonly TimeSpan _numericDateEncodingSlack = TimeSpan.FromSeconds(1);
 
-    private const string _jwtKey = "vix-token-test-secret-key-0123456789ABCDEF";
-
-    private readonly SqliteConnection _connection;
-    private readonly DbContextOptions<AppDbContext> _options;
-
-    public SecurityAccessTokenLifetimeTests()
-    {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-        _options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options;
-        using var db = CreateContext();
-        db.Database.EnsureCreated();
-    }
-
-    public void Dispose() => _connection.Dispose();
-
     [Fact]
     public async Task UnconfiguredLifetime_IsFifteenMinutes()
     {
-        var token = await IssueAsync(configuredMinutes: null);
+        await using var app = await StartAsync(configuredMinutes: null);
 
-        AssertLifetime(token, _defaultMinutes);
+        AssertLifetime(await IssueAsync(app), _defaultMinutes);
     }
 
     [Fact]
     public async Task ConfiguredLifetime_IsHonoured()
     {
-        var token = await IssueAsync(configuredMinutes: 5);
+        await using var app = await StartAsync(configuredMinutes: 5);
 
-        AssertLifetime(token, 5);
+        AssertLifetime(await IssueAsync(app), 5);
     }
 
     /// <summary>
@@ -110,9 +112,9 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     [InlineData(100000, 60)]
     public async Task Clamp_IsAppliedAtItsEdges(int configured, int expectedMinutes)
     {
-        var token = await IssueAsync(configured);
+        await using var app = await StartAsync(configured);
 
-        AssertLifetime(token, expectedMinutes);
+        AssertLifetime(await IssueAsync(app), expectedMinutes);
     }
 
     [Theory]
@@ -120,11 +122,11 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     [InlineData(100000)]
     public async Task LifetimeBeyondTheCeiling_IsPulledBackToAnHour(int configured)
     {
-        var token = await IssueAsync(configured);
+        await using var app = await StartAsync(configured);
 
         // A day-long token is exactly the window this change exists to close, so the ceiling has to
         // hold no matter what the configuration asks for.
-        AssertLifetime(token, _maxMinutes);
+        AssertLifetime(await IssueAsync(app), _maxMinutes);
     }
 
     /// <summary>
@@ -135,7 +137,9 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
     [Fact]
     public async Task ExpiryClaim_IsReadableAndIsWhatTheResponseAdvertises()
     {
-        var issued = await IssueAsync(configuredMinutes: 5);
+        await using var app = await StartAsync(configuredMinutes: 5);
+
+        var issued = await IssueAsync(app);
 
         Assert.True(issued.Token.ValidTo > DateTime.UtcNow, "التوكن يجب ألا يكون منتهيًا وقت الإصدار.");
         // ExpiresAt is what the client caches; if it drifted from exp the client would think it has
@@ -144,15 +148,114 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
         Assert.Equal(DateTimeKind.Utc, issued.ExpiresAt.Kind);
     }
 
+    /// <summary>
+    /// The token is not decoration: the endpoint that mints it and the handler that validates it are
+    /// wired to the same key, issuer and audience, so a freshly minted token opens a protected API
+    /// endpoint. This is the half the direct-controller tests could not see.
+    /// </summary>
     [Fact]
-    public void CeilingIsNotHigherThanAnHour()
+    public async Task TheMintedToken_IsAcceptedByAProtectedApiEndpoint()
     {
-        var source = File.ReadAllText(TestPaths.WebProjectFile("Api", "TokensController.cs"));
+        await using var app = await StartAsync(configuredMinutes: null);
 
-        Assert.Contains($"_maxAccessTokenMinutes = {_maxMinutes}", source, StringComparison.Ordinal);
-        Assert.Contains($"_defaultAccessTokenMinutes = {_defaultMinutes}", source, StringComparison.Ordinal);
-        // The clamp is what makes the ceiling real; without it the constant would be decorative.
-        Assert.Contains("1, _maxAccessTokenMinutes", source, StringComparison.Ordinal);
+        var issued = await IssueAsync(app);
+
+        using var response = await app.GetWithBearerAsync("/api/customers", issued.Text);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    /// <summary>
+    /// The lifetime has to be enforced, not merely advertised. This mints a token with the same
+    /// signing key, issuer, audience, user and security stamp as a live one and moves only exp into
+    /// the past, so the single failed check is the lifetime: if ValidateLifetime were off, or the
+    /// handler skipped exp, this request would succeed.
+    /// </summary>
+    [Fact]
+    public async Task AnExpiredToken_IsRefusedByAProtectedApiEndpoint()
+    {
+        await using var app = await StartAsync(configuredMinutes: null);
+        var issued = await IssueAsync(app);
+
+        // The freshly minted token works, so a 401 below cannot be blamed on a misconfigured host.
+        using (var live = await app.GetWithBearerAsync("/api/customers", issued.Text))
+        {
+            Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+        }
+
+        var (userId, stamp, roles) = await app.InScopeAsync(async services =>
+        {
+            var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+            var user = (await userManager.FindByNameAsync(_username))!;
+            return (user.Id, await userManager.GetSecurityStampAsync(user), await userManager.GetRolesAsync(user));
+        });
+
+        var expired = new JwtSecurityToken(
+            issuer: LiveWebApp.JwtIssuer,
+            audience: LiveWebApp.JwtAudience,
+            claims:
+            [
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.Name, _username),
+                new Claim(TokenStampChecks.StampClaimType, stamp),
+                .. roles.Select(role => new Claim(ClaimTypes.Role, role)),
+            ],
+            notBefore: DateTime.UtcNow.AddHours(-2),
+            expires: DateTime.UtcNow.AddHours(-1),
+            signingCredentials: new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(LiveWebApp.JwtKey)), SecurityAlgorithms.HmacSha256));
+
+        using var response = await app.GetWithBearerAsync(
+            "/api/customers", new JwtSecurityTokenHandler().WriteToken(expired));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Hosts one application with the real JWT settings, then seeds the user the endpoint
+    /// authenticates. The configuration is the only thing a caller varies, and it travels the same
+    /// way an operator's Jwt__AccessTokenMinutes would: into the host's configuration before it
+    /// starts.
+    /// </summary>
+    private static async Task<LiveWebApp> StartAsync(int? configuredMinutes)
+    {
+        var app = await LiveWebApp.StartAsync(setup =>
+        {
+            setup.Settings["Jwt:Key"] = LiveWebApp.JwtKey;
+            setup.Settings["Jwt:Issuer"] = LiveWebApp.JwtIssuer;
+            setup.Settings["Jwt:Audience"] = LiveWebApp.JwtAudience;
+            if (configuredMinutes is not null)
+            {
+                setup.Settings["Jwt:AccessTokenMinutes"] =
+                    configuredMinutes.Value.ToString(CultureInfo.InvariantCulture);
+            }
+        });
+
+        await app.SeedUserAsync(_username, _password, LiveWebApp.AdminRole);
+        return app;
+    }
+
+    /// <summary>
+    /// Asks the running API for a token and reads back what it issued. The clock sample is taken
+    /// immediately before the POST, so it is a lower bound on the mint instant that no amount of
+    /// subsequent slowness can invalidate.
+    /// </summary>
+    private static async Task<IssuedToken> IssueAsync(LiveWebApp app)
+    {
+        var sampledBefore = DateTime.UtcNow;
+
+        using var response = await app.PostTokenAsync(_username, _password);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await LiveWebApp.ReadJsonAsync(response);
+        var text = json.GetProperty("token").GetString()!;
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(text);
+        var expiresAt = DateTime.Parse(
+            json.GetProperty("expiresAt").GetString()!,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+
+        return new IssuedToken(text, token, expiresAt, sampledBefore);
     }
 
     /// <summary>
@@ -181,78 +284,6 @@ public sealed class SecurityAccessTokenLifetimeTests : IDisposable
         Assert.InRange(remaining, TimeSpan.Zero, expected);
     }
 
-    private async Task<IssuedToken> IssueAsync(int? configuredMinutes)
-    {
-        using var db = CreateContext();
-        var userManager = TestUserManager.Create(db);
-        const string username = "lifetimeuser";
-        await userManager.CreateAsync(new IdentityUser { UserName = username }, "Life@123456");
-
-        var settings = new Dictionary<string, string?>
-        {
-            ["Jwt:Key"] = _jwtKey,
-            ["Jwt:Issuer"] = "NewVixSmart",
-            ["Jwt:Audience"] = "NewVixSmart"
-        };
-        if (configuredMinutes is not null)
-        {
-            settings["Jwt:AccessTokenMinutes"] = configuredMinutes.Value.ToString();
-        }
-
-        var controller = new TokensController(userManager, new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
-
-        // Sampled immediately before the controller runs: it is a lower bound on the mint instant,
-        // and no amount of subsequent slowness can invalidate that.
-        var sampledBefore = DateTime.UtcNow;
-        var result = await controller.CreateToken(new TokenRequest(username, "Life@123456"));
-        var response = Assert.IsAssignableFrom<TokenResponse>(Assert.IsAssignableFrom<OkObjectResult>(result).Value);
-
-        var token = new JwtSecurityTokenHandler().ReadJwtToken(response.Token);
-        return new IssuedToken(token, response.ExpiresAt, sampledBefore);
-    }
-
-    private AppDbContext CreateContext() => new(_options);
-
-    private readonly record struct IssuedToken(JwtSecurityToken Token, DateTime ExpiresAt, DateTime SampledBefore);
-}
-
-internal static class TestUserManager
-{
-    public static UserManager<IdentityUser> Create(AppDbContext db)
-    {
-        var options = new OptionsWrapper<IdentityOptions>(new IdentityOptions());
-        IdentityOptionsFactory.ApplyDefaults(options.Value);
-
-        return new UserManager<IdentityUser>(
-            new UserStore<IdentityUser>(db),
-            options,
-            new PasswordHasher<IdentityUser>(),
-            new[] { new UserValidator<IdentityUser>() },
-            new[] { new PasswordValidator<IdentityUser>() },
-            new UpperInvariantLookupNormalizer(),
-            new IdentityErrorDescriber(),
-            new ServiceCollection().BuildServiceProvider(),
-            NullLogger<UserManager<IdentityUser>>.Instance);
-    }
-}
-
-internal static class TestPaths
-{
-    public static string WebProjectFile(params string[] segments) =>
-        Path.Combine([WebProjectDirectory(), .. segments]);
-
-    public static string WebProjectDirectory()
-    {
-        for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var candidate = Path.Combine(dir.FullName, "src", "NewVixSmart.Web");
-            if (Directory.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new DirectoryNotFoundException(
-            $"تعذر العثور على src\\NewVixSmart.Web بالبحث الصاعد من {AppContext.BaseDirectory}.");
-    }
+    private readonly record struct IssuedToken(
+        string Text, JwtSecurityToken Token, DateTime ExpiresAt, DateTime SampledBefore);
 }
