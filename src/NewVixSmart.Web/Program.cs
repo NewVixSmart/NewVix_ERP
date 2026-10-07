@@ -272,6 +272,7 @@ builder.Services.AddScoped<IBrandingService, BrandingService>();
 builder.Services.AddScoped<IExportCenterService, ExportCenterService>();
 builder.Services.AddScoped<IImportCenterService, ImportCenterService>();
 builder.Services.AddScoped<IPrintSettingsService, PrintSettingsService>();
+builder.Services.AddScoped<ISetWriteGate, SetWriteGate>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDistributedMemoryCache();
