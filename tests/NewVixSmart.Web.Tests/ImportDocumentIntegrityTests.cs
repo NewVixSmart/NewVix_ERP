@@ -178,6 +178,70 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
         Assert.Equal(0, state.StockMovements);
     }
 
+    /// <summary>
+    /// حسابٌ محمودٌ وقت المعاينة ثم يختفي قبل الاعتماد (لحظةُ سباقٍ بين الفحص والتطبيق).
+    /// يجب أن يرتدَّ القيدُ برسالةٍ تسمّي «9000» بوضوحٍ لا بخطأِ التوازن الصامت الذي كان
+    /// ستُرسبه النداءةُ على <c>PostAsync</c> بلا ذكرِ الحساب المختفي.
+    /// </summary>
+    [Fact]
+    public async Task Import_JournalAccountVanishingBetweenParseAndApply_NamedInTheRejection()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        db.GLAccounts.Add(new GLAccount { Code = "9000", Name = "حساب يزول", Type = GLAccountType.Liability, NormalBalance = NormalBalance.Credit, IsActive = true });
+        await db.SaveChangesAsync();
+
+        var svc = CreateImportService(db);
+        var csv = CsvBytes("رقم القيد,التاريخ,بيان القيد,رمز الحساب,مدين,دائن,بيان البند\n" +
+            "JV-DROP-1,2026-03-01,قيد مستورد,1000,500,,\n" +
+            "JV-DROP-1,2026-03-01,قيد مستورد,9000,,500,\n");
+
+        var vm = await svc.ParseAsync("journalEntries", "journalEntries.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.Equal(0, vm.ErrorCount);
+
+        db.GLAccounts.Remove(db.GLAccounts.Single(a => a.Code == "9000"));
+        await db.SaveChangesAsync();
+
+        var result = await svc.ImportAsync("journalEntries", vm.Payload, vm.ApplyToken!);
+
+        Assert.False(result.Success);
+        Assert.Contains("9000", result.Message);
+        var state = await ReadStateAsync();
+        Assert.Equal(0, state.JournalEntries);
+        Assert.Equal(0, state.JournalLines);
+    }
+
+    [Fact]
+    public async Task Import_InvoiceFile_WithUnknownItem_IsRejectedWhole_AndCreatesNothing()
+    {
+        using var db = CreateContext();
+        SeedChartOfAccounts(db);
+        await SeedStockAsync(db, 100);
+        var svc = CreateImportService(db);
+
+        // The good line must not be imported on its own: a file whose second line names an
+        // item that does not exist has to fail as a whole. Dropping the bad line would book
+        // an invoice for a smaller amount than the file describes, and the receivable ledger
+        // would then disagree with the paper document.
+        var csv = CsvBytes("رقم الفاتورة,اسم العميل,تاريخ الفاتورة,اسم الصنف,الكمية,سعر الوحدة\n" +
+            "SI-UNKNOWN-ITEM,عميل اختبار,2026-03-05,صنف اختبار,2,80\n" +
+            "SI-UNKNOWN-ITEM,عميل اختبار,2026-03-05,صنف غير موجود,1,50\n");
+
+        var vm = await svc.ParseAsync("saleInvoices", "saleInvoices.csv", csv);
+        Assert.Null(vm.FatalError);
+        Assert.True(vm.ErrorCount > 0, "يجب أن يرفض التحليلُ سطرًا بصنف غير معروف بدل تجاهله.");
+
+        var result = await svc.ImportAsync("saleInvoices", vm.Payload, vm.ApplyToken!);
+        Assert.False(result.Success);
+        Assert.Equal(0, result.Created);
+
+        var state = await ReadStateAsync();
+        Assert.Equal(0, state.Invoices);
+        Assert.Equal(0, state.InvoiceLines);
+        Assert.Equal(0, state.StockMovements);
+    }
+
     [Fact]
     public async Task Import_InvoiceFile_AppliedTwice_KeepsOneInvoiceAndOneNumber()
     {
@@ -235,7 +299,7 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedStockAsync(db, 1);
-        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db, new AccountingService(db))));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 10) };
         var (created, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>
@@ -270,7 +334,7 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
         using var db = CreateContext();
         SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedStockAsync(db, 100);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var quotes = new SalesQuotesService(db, new ThrowingApprovalOrdersService(orders));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 10) };
@@ -312,7 +376,7 @@ public sealed class ImportDocumentIntegrityTests : IDisposable
             CreatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db)));
+        var quotes = new SalesQuotesService(db, new SalesOrdersService(db, new InventoryService(db, new AccountingService(db))));
 
         var quote = new SaleQuote { CustomerId = custId, QuoteDate = new DateTime(2026, 3, 10) };
         var (created, _, saved) = await quotes.CreateAsync(quote, new List<SaleQuoteItem>

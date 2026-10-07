@@ -830,6 +830,8 @@ public class ImportCenterService : IImportCenterService
 
         var duplicates = 0;
         var duplicateRows = 0;
+        var rowWarnings = new List<string>();
+        var droppedRows = 0;
         var sourceId = def.Key == "journalEntries" ? await NextImportSourceIdAsync() : 0;
         await using var tx = SupportsBatchTransaction(def.Key)
             ? await _db.Database.BeginTransactionAsync()
@@ -847,8 +849,18 @@ public class ImportCenterService : IImportCenterService
                 continue;
             }
 
-            var (ok, error) = await ApplyDocumentAsync(def, doc, cache, sourceId + index);
-            if (ok) { created++; continue; }
+            var (ok, error, skippedRows, warning) = await ApplyDocumentAsync(def, doc, cache, sourceId + index);
+            if (ok)
+            {
+                created++;
+                droppedRows += skippedRows;
+                if (warning is not null && rowWarnings.Count < 5)
+                {
+                    rowWarnings.Add(warning);
+                }
+
+                continue;
+            }
 
             failed += doc.Count;
             if (docFailures.Count < 5 && error is not null)
@@ -877,36 +889,48 @@ public class ImportCenterService : IImportCenterService
             $" (وتُركت {failed} {(groupCol is null ? "مستندًا" : "سطرًا")} بأخطاء"
             + (docFailures.Count == 0 ? "" : "؛ أمثلة: " + string.Join(" — ", docFailures))
             + ")";
-        return new ImportResult(true, $"تم استيراد {created} مستند" + duplicateNote + suffix, created, 0, duplicateRows, failed);
+        var droppedNote = droppedRows == 0 ? "" :
+            $"، وتُرك {droppedRows} سطرًا دون استيراد"
+            + (rowWarnings.Count == 0 ? "" : "؛ أمثلة: " + string.Join(" — ", rowWarnings.Take(3)));
+        return new ImportResult(true, $"تم استيراد {created} مستند" + duplicateNote + suffix + droppedNote,
+            created, 0, duplicateRows + droppedRows, failed);
     }
 
-    private async Task<(bool Ok, string? Error)> ApplyDocumentAsync(
+    private static (bool Ok, string? Error, int SkippedRows, string? Warning) WithNoSkippedRows(
+        (bool Ok, string? Error) result) => (result.Ok, result.Error, 0, null);
+
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplyDocumentAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache, int sourceId)
     {
         try
         {
             return def.Key switch
             {
-                "payments" => await ApplyPaymentAsync(def, rows, cache),
+                "payments" => WithNoSkippedRows(await ApplyPaymentAsync(def, rows, cache)),
                 "journalEntries" => await ApplyJournalAsync(def, rows, cache, sourceId),
                 "saleInvoices" => await ApplySaleInvoiceAsync(def, rows, cache),
                 "purchaseInvoices" => await ApplyPurchaseInvoiceAsync(def, rows, cache),
                 "saleReturns" => await ApplySaleReturnAsync(def, rows, cache),
                 "purchaseReturns" => await ApplyPurchaseReturnAsync(def, rows, cache),
-                "inventoryAdjustments" => await ApplyAdjustmentAsync(def, rows, cache),
+                "inventoryAdjustments" => WithNoSkippedRows(await ApplyAdjustmentAsync(def, rows, cache)),
                 "stockTransfers" => await ApplyTransferAsync(def, rows, cache),
-                _ => (false, "نوع المستند غير معروف")
+                _ => (false, "نوع المستند غير معروف", 0, null)
             };
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return (false, "تعذر حفظ المستند بسبب تعارض في البيانات، حاول مرة أخرى", 0, null);
         }
         catch (DbUpdateException)
         {
             _db.ChangeTracker.Clear();
-            return (false, "تعارض في البيانات أثناء الحفظ؛ تأكد من عدم تكرار الأرقام");
+            return (false, "تعارض في البيانات أثناء الحفظ؛ تأكد من عدم تكرار الأرقام", 0, null);
         }
         catch (InvalidOperationException ex)
         {
             _db.ChangeTracker.Clear();
-            return (false, ex.Message);
+            return (false, ex.Message, 0, null);
         }
     }
 
@@ -1002,23 +1026,31 @@ public class ImportCenterService : IImportCenterService
         return (result.Success, result.Error);
     }
 
-    private async Task<(bool Ok, string? Error)> ApplyJournalAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplyJournalAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache, int sourceId)
     {
         var header = DocumentHeader(def, rows);
         var entryNumber = header.GetValueOrDefault("EntryNumber", "").Trim();
         if (entryNumber.Length == 0)
         {
-            return (false, "رقم القيد مطلوب لتحديد هوية المستند");
+            return (false, "رقم القيد مطلوب لتحديد هوية المستند", 0, null);
         }
 
         var lines = new List<JournalLine>();
+        var dropped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var code = cells.GetValueOrDefault("AccountCode", "").Trim();
-            if (code.Length == 0 || !cache.AccountsByCode.TryGetValue(NormKey(code), out var account))
+            if (code.Length == 0)
             {
+                dropped.Add($"صف {row.RowNumber} برمز حساب فارغ");
+                continue;
+            }
+
+            if (!cache.AccountsByCode.TryGetValue(NormKey(code), out var account))
+            {
+                dropped.Add($"صف {row.RowNumber} برمز حساب غير موجود «{code}»");
                 continue;
             }
 
@@ -1027,22 +1059,43 @@ public class ImportCenterService : IImportCenterService
         }
         if (lines.Count == 0)
         {
-            return (false, "القيد لا يحتوي على أسطر صالحة");
+            return (false, "القيد لا يحتوي على أسطر صالحة", 0, null);
+        }
+
+        string? warning = dropped.Count == 0 ? null
+            : $"لم يُستورد {dropped.Count} سطرًا من القيد «{entryNumber}» لأن رمز الحساب فارغ أو غير موجود؛ الصفوف: "
+              + string.Join("، ", dropped.Take(3));
+
+        // إسقاطُ صفٍّ حاملٍ للمبلغ يكسر التوازن، و<PostAsync> يرمي خطأً عامًّا لا يذكر
+        // رمزَ الحساب ولا الصفَّ المتروك، فيضلّل المستخدم عن سبب الرفض ويضيع التحذيرُ
+        // معه. نفحص قبل النداء لنعطيه الخللَ والصفوفَ في رسالةٍ واحدة.
+        if (dropped.Count > 0)
+        {
+            decimal totalDebit = lines.Sum(l => l.Debit);
+            decimal totalCredit = lines.Sum(l => l.Credit);
+            if (decimal.Round(totalDebit, 2) != decimal.Round(totalCredit, 2))
+            {
+                return (false,
+                    $"تعذّر استيراد القيد «{entryNumber}»: اختلّ التوازن بعد إسقاط الصفوف "
+                    + $"(مدين {decimal.Round(totalDebit, 2)} / دائن {decimal.Round(totalCredit, 2)})؛ "
+                    + string.Join("، ", dropped),
+                    dropped.Count, warning);
+            }
         }
 
         await _accounting.PostAsync(JournalSource.Import, sourceId, CellDate(header, "EntryDate", DateTime.Today),
             OptNull(header, "Description") ?? "قيد مستورد", lines.ToArray(), null, entryNumber: entryNumber);
-        return (true, null);
+        return (true, null, dropped.Count, warning);
     }
 
-    private async Task<(bool Ok, string? Error)> ApplySaleInvoiceAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplySaleInvoiceAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
     {
         var header = DocumentHeader(def, rows);
         var customerRaw = header.GetValueOrDefault("CustomerName", "").Trim();
         if (!cache.CustomersByName.TryGetValue(NormKey(customerRaw), out var customer))
         {
-            return (false, "العميل غير موجود");
+            return (false, "العميل غير موجود", 0, null);
         }
 
         var invoice = new SaleInvoice
@@ -1058,12 +1111,14 @@ public class ImportCenterService : IImportCenterService
         };
 
         var items = new List<SaleInvoiceItem>();
+        var skipped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
             if (item is null)
             {
+                skipped.Add($"صف {row.RowNumber} بصنف «{cells.GetValueOrDefault("ItemName", "").Trim()}»");
                 continue;
             }
 
@@ -1078,27 +1133,27 @@ public class ImportCenterService : IImportCenterService
         }
         if (items.Count == 0)
         {
-            return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+            return (false, "الفاتورة لا تحتوي على أصناف صالحة", 0, null);
         }
 
         var (ok, error) = await _inventory.CreateSaleAsync(invoice, items, null, null, beginOwnTransaction: false);
         if (!ok)
         {
-            return (false, error);
+            return (false, error, 0, null);
         }
 
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
-        return (true, null);
+        return UnresolvedItemsWarning(skipped, $"فاتورة البيع «{invoice.InvoiceNumber}»");
     }
 
-    private async Task<(bool Ok, string? Error)> ApplyPurchaseInvoiceAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplyPurchaseInvoiceAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
     {
         var header = DocumentHeader(def, rows);
         var supplierRaw = header.GetValueOrDefault("SupplierName", "").Trim();
         if (!cache.SuppliersByName.TryGetValue(NormKey(supplierRaw), out var supplier))
         {
-            return (false, "المورد غير موجود");
+            return (false, "المورد غير موجود", 0, null);
         }
 
         var invoice = new PurchaseInvoice
@@ -1114,12 +1169,14 @@ public class ImportCenterService : IImportCenterService
         };
 
         var items = new List<PurchaseInvoiceItem>();
+        var skipped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
             if (item is null)
             {
+                skipped.Add($"صف {row.RowNumber} بصنف «{cells.GetValueOrDefault("ItemName", "").Trim()}»");
                 continue;
             }
 
@@ -1134,27 +1191,27 @@ public class ImportCenterService : IImportCenterService
         }
         if (items.Count == 0)
         {
-            return (false, "الفاتورة لا تحتوي على أصناف صالحة");
+            return (false, "الفاتورة لا تحتوي على أصناف صالحة", 0, null);
         }
 
         var (purchaseOk, purchaseError) = await _inventory.CreatePurchaseAsync(invoice, items, null, null, beginOwnTransaction: false);
         if (!purchaseOk)
         {
-            return (false, purchaseError);
+            return (false, purchaseError, 0, null);
         }
 
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), invoice.InvoiceNumber, number => invoice.InvoiceNumber = number);
-        return (true, null);
+        return UnresolvedItemsWarning(skipped, $"فاتورة الشراء «{invoice.InvoiceNumber}»");
     }
 
-    private async Task<(bool Ok, string? Error)> ApplySaleReturnAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplySaleReturnAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
     {
         var header = DocumentHeader(def, rows);
         var customerRaw = header.GetValueOrDefault("CustomerName", "").Trim();
         if (!cache.CustomersByName.TryGetValue(NormKey(customerRaw), out var customer))
         {
-            return (false, "العميل غير موجود");
+            return (false, "العميل غير موجود", 0, null);
         }
 
         var saleReturn = new SaleReturn
@@ -1170,12 +1227,14 @@ public class ImportCenterService : IImportCenterService
         }
 
         var items = new List<SaleReturnItem>();
+        var skipped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
             if (item is null)
             {
+                skipped.Add($"صف {row.RowNumber} بصنف «{cells.GetValueOrDefault("ItemName", "").Trim()}»");
                 continue;
             }
 
@@ -1189,27 +1248,27 @@ public class ImportCenterService : IImportCenterService
         }
         if (items.Count == 0)
         {
-            return (false, "المرتجع لا يحتوي على أصناف صالحة");
+            return (false, "المرتجع لا يحتوي على أصناف صالحة", 0, null);
         }
 
         var (saleReturnOk, saleReturnError) = await _inventory.CreateSaleReturnAsync(saleReturn, items, null);
         if (!saleReturnOk)
         {
-            return (false, saleReturnError);
+            return (false, saleReturnError, 0, null);
         }
 
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), saleReturn.ReturnNumber, number => saleReturn.ReturnNumber = number);
-        return (true, null);
+        return UnresolvedItemsWarning(skipped, $"مرتجع البيع «{saleReturn.ReturnNumber}»");
     }
 
-    private async Task<(bool Ok, string? Error)> ApplyPurchaseReturnAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplyPurchaseReturnAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
     {
         var header = DocumentHeader(def, rows);
         var supplierRaw = header.GetValueOrDefault("SupplierName", "").Trim();
         if (!cache.SuppliersByName.TryGetValue(NormKey(supplierRaw), out var supplier))
         {
-            return (false, "المورد غير موجود");
+            return (false, "المورد غير موجود", 0, null);
         }
 
         var purchaseReturn = new PurchaseReturn
@@ -1225,12 +1284,14 @@ public class ImportCenterService : IImportCenterService
         }
 
         var items = new List<PurchaseReturnItem>();
+        var skipped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
             if (item is null)
             {
+                skipped.Add($"صف {row.RowNumber} بصنف «{cells.GetValueOrDefault("ItemName", "").Trim()}»");
                 continue;
             }
 
@@ -1244,17 +1305,17 @@ public class ImportCenterService : IImportCenterService
         }
         if (items.Count == 0)
         {
-            return (false, "المرتجع لا يحتوي على أصناف صالحة");
+            return (false, "المرتجع لا يحتوي على أصناف صالحة", 0, null);
         }
 
         var (purchaseReturnOk, purchaseReturnError) = await _inventory.CreatePurchaseReturnAsync(purchaseReturn, items, null);
         if (!purchaseReturnOk)
         {
-            return (false, purchaseReturnError);
+            return (false, purchaseReturnError, 0, null);
         }
 
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), purchaseReturn.ReturnNumber, number => purchaseReturn.ReturnNumber = number);
-        return (true, null);
+        return UnresolvedItemsWarning(skipped, $"مرتجع الشراء «{purchaseReturn.ReturnNumber}»");
     }
 
     private async Task<(bool Ok, string? Error)> ApplyAdjustmentAsync(
@@ -1278,7 +1339,7 @@ public class ImportCenterService : IImportCenterService
         return await _inventory.CreateAdjustmentAsync(adjustment, null);
     }
 
-    private async Task<(bool Ok, string? Error)> ApplyTransferAsync(
+    private async Task<(bool Ok, string? Error, int SkippedRows, string? Warning)> ApplyTransferAsync(
         ImportEntityDefinition def, IReadOnlyList<ImportRowPayload> rows, ReferenceCache cache)
     {
         var header = DocumentHeader(def, rows);
@@ -1287,18 +1348,18 @@ public class ImportCenterService : IImportCenterService
         var source = ResolveWarehouse(srcRaw, cache);
         if (source is null)
         {
-            return (false, "مخزن المصدر غير موجود");
+            return (false, "مخزن المصدر غير موجود", 0, null);
         }
 
         var target = ResolveWarehouse(tgtRaw, cache);
         if (target is null)
         {
-            return (false, "مخزن الهدف غير موجود");
+            return (false, "مخزن الهدف غير موجود", 0, null);
         }
 
         if (target == source)
         {
-            return (false, "لا يمكن التحويل من مستودع إلى نفسه");
+            return (false, "لا يمكن التحويل من مستودع إلى نفسه", 0, null);
         }
 
         var transfer = new StockTransfer
@@ -1309,12 +1370,14 @@ public class ImportCenterService : IImportCenterService
             Notes = OptNull(header, "Notes")
         };
         var items = new List<StockTransferItem>();
+        var skipped = new List<string>();
         foreach (var row in rows)
         {
             var cells = row.Fields ?? new Dictionary<string, string>();
             var item = ResolveItem(cells, cache);
             if (item is null)
             {
+                skipped.Add($"صف {row.RowNumber} بصنف «{cells.GetValueOrDefault("ItemName", "").Trim()}»");
                 continue;
             }
 
@@ -1329,17 +1392,30 @@ public class ImportCenterService : IImportCenterService
         }
         if (items.Count == 0)
         {
-            return (false, "التحويل لا يحتوي على أصناف صالحة");
+            return (false, "التحويل لا يحتوي على أصناف صالحة", 0, null);
         }
 
         var (transferOk, transferError) = await _inventory.CreateTransferAsync(transfer, items, null);
         if (!transferOk)
         {
-            return (false, transferError);
+            return (false, transferError, 0, null);
         }
 
         await StampDocumentNumberAsync(DocumentIdentity(def, rows), transfer.TransferNumber, number => transfer.TransferNumber = number);
-        return (true, null);
+        return UnresolvedItemsWarning(skipped, $"تحويل المخازن «{transfer.TransferNumber}»");
+    }
+
+    private static (bool Ok, string? Error, int SkippedRows, string? Warning) UnresolvedItemsWarning(
+        List<string> skipped, string documentLabel)
+    {
+        if (skipped.Count == 0)
+        {
+            return (true, null, 0, null);
+        }
+
+        var warning = $"لم يُستورد {skipped.Count} سطرًا من {documentLabel} لأن الصنف فارغ أو غير موجود؛ الصفوف: "
+            + string.Join("، ", skipped.Take(3));
+        return (true, null, skipped.Count, warning);
     }
 
     private static Item? ResolveItem(IReadOnlyDictionary<string, string> cells, ReferenceCache cache)
@@ -1529,7 +1605,11 @@ public class ImportCenterService : IImportCenterService
                 {
                     var cells = row.Fields ?? new Dictionary<string, string>();
                     var item = ResolveItem(cells, cache);
-                    if (item is not null && !seenItems.Add(item.Id))
+                    if (item is null)
+                    {
+                        errors.Add("لم يتم التعرف على صنف في سطر الفاتورة");
+                    }
+                    else if (!seenItems.Add(item.Id))
                     {
                         errors.Add($"الصنف «{item.Name}» مكرر أكثر من مرة في الفاتورة");
                     }
