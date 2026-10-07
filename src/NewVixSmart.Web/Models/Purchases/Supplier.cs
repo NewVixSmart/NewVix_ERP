@@ -9,47 +9,50 @@ public class Supplier
 {
     public int Id { get; set; }
 
-    [Required(ErrorMessage = "ط§ط³ظ… ط§ظ„ظ…ظˆط±ط¯ ظ…ط·ظ„ظˆط¨")]
+    [Required(ErrorMessage = "اسم المورد مطلوب")]
     [StringLength(200)]
-    [Display(Name = "ط§ط³ظ… ط§ظ„ظ…ظˆط±ط¯")]
+    [Display(Name = "اسم المورد")]
     public string Name { get; set; } = string.Empty;
 
     [StringLength(50)]
-    [Display(Name = "ظƒظˆط¯ ط§ظ„ظ…ظˆط±ط¯")]
+    [Display(Name = "كود المورد")]
     public string? Code { get; set; }
 
     [StringLength(200)]
-    [Display(Name = "ط§ظ„ط¹ظ†ظˆط§ظ†")]
+    [Display(Name = "العنوان")]
     public string? Address { get; set; }
 
     [StringLength(20)]
-    [Display(Name = "ط§ظ„طھظ„ظٹظپظˆظ†")]
+    [Display(Name = "التليفون")]
     [Phone]
     public string? Phone { get; set; }
 
     [StringLength(200)]
-    [Display(Name = "ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ")]
+    [Display(Name = "البريد الإلكتروني")]
     [EmailAddress]
     public string? Email { get; set; }
 
     [StringLength(20)]
-    [Display(Name = "ط§ظ„ط±ظ‚ظ… ط§ظ„ط¶ط±ظٹط¨ظٹ")]
+    [Display(Name = "الرقم الضريبي")]
     public string? TaxNumber { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    [Display(Name = "ط§ظ„ط±طµظٹط¯ ط§ظ„ط§ظپطھطھط§ط­ظٹ")]
-    [Range(0, 999999999, ErrorMessage = "ط§ظ„ط±طµظٹط¯ ط§ظ„ط§ظپطھطھط§ط­ظٹ ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ط³ط§ظ„ط¨ط§ظ‹")]
+    [Display(Name = "الرصيد الافتتاحي")]
+    [Range(0, 999999999, ErrorMessage = "الرصيد الافتتاحي لا يمكن أن يكون سالباً")]
     public decimal OpeningBalance { get; set; }
 
     [StringLength(500)]
-    [Display(Name = "ظ…ظ„ط§ط­ط¸ط§طھ")]
+    [Display(Name = "ملاحظات")]
     public string? Notes { get; set; }
 
-    [Display(Name = "ظ†ط´ط·")]
+    [Display(Name = "نشط")]
     public bool IsActive { get; set; } = true;
 
     public ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
     public ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();
     public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

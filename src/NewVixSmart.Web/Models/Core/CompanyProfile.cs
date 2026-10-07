@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NewVixSmart.Web.Models.Core;
 
@@ -49,6 +50,14 @@ public class CompanyProfile
     public string? FaviconContentType { get; set; }
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// رمزُ هذا الصفّ الوحيد. كلُّ حفظٍ للعلامة والمظهر يمرّ به، فيصلح مرساةً لعملية الحفظ
+    /// كلِّها: إن غيّره مديرٌ آخر بين العرض والحفظ رُفضت العمليةُ كلّها — بما فيها مفاتيح
+    /// المظهر — بدل أن تُحفظ ألوانٌ من نموذجٍ قديم فوق ألوان مديرٍ آخر.
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 
     public bool HasLogo => LogoData is { Length: > 0 };
 }

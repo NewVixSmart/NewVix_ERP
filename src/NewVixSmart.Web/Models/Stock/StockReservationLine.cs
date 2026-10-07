@@ -54,4 +54,8 @@ public class StockReservationLine
     [BindNever]
     [NotMapped]
     public decimal RemainingCount => Count - ConsumedCount;
+
+    [Timestamp]
+    [BindNever]
+    public byte[]? RowVersion { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace NewVixSmart.Web.Models.Core;
@@ -27,4 +28,7 @@ public class Unit
 
     [Display(Name = "نشط")]
     public bool IsActive { get; set; } = true;
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

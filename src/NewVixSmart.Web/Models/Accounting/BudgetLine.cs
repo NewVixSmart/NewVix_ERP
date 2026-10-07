@@ -22,4 +22,7 @@ public class BudgetLine
     [Column(TypeName = "decimal(18,2)")]
     [Display(Name = "المبلغ السنوي")]
     public decimal AnnualAmount { get; set; }
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

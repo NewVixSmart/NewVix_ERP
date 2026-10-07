@@ -25,6 +25,9 @@ public class JournalEntry
     [Display(Name = "معرف المستند المصدر")]
     public int SourceId { get; set; }
 
+    [Display(Name = "رقم المستند المصدر")]
+    public int? SourceDocumentId { get; set; }
+
     [Display(Name = "أنشئ بواسطة")]
     public string? CreatedBy { get; set; }
 

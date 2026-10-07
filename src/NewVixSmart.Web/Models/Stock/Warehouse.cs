@@ -22,4 +22,7 @@ public class Warehouse
 
     [Display(Name = "تاريخ الإنشاء")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

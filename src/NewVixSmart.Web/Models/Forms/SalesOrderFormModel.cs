@@ -8,13 +8,13 @@ namespace NewVixSmart.Web.Models.Forms;
 /// نموذج النموذج الخاص بأمر البيع: ما يستطيع العميل إدخاله وحده.
 /// <para>
 /// كائن <c>POST</c> لا يجب أن يكون كيان EF. ربط <see cref="SalesOrder"/> مباشرة كان يجعل
-/// <c>OrderNumber</c> و<code>Status</code> و<code>RowVersion</code> وأالكميات المحسوبة داخل
+/// <c>OrderNumber</c> و<code>Status</code> وأالكميات المحسوبة داخل
 /// <c>ModelState</c>: خطأ تحقق لا يستطيع المستخدم إصلاحه ولا يراه، و<code>Status</code> قابل للكتابة
 /// من المتصفح. هذا النوع يحسم الأمرين معًا، فما ليس عليه اسم هنا لا يُربط أصلًا.
 /// </para>
 /// <para>
 /// ما ليس هنا مقصود: ترقيم المستند و<code>Status</code> و<code>PublicId</code> و<code>CreatedAt</code>
-/// و<code>CreatedBy</code> و<code>RowVersion</code>. الثابت - أن لكل أمر رقمًا - يبقى على الكيان
+/// و<code>CreatedBy</code>. الثابت - أن لكل أمر رقمًا - يبقى على الكيان
 /// <see cref="SalesOrder"/>؛ هنا فقط لا مكان له في الطلب.
 /// </para>
 /// <para>

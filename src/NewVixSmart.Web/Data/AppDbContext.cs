@@ -259,12 +259,19 @@ public class AppDbContext : IdentityDbContext
         {
             e.HasIndex(j => j.EntryNumber).IsUnique();
             e.HasIndex(j => new { j.Source, j.SourceId });
+            e.HasIndex(j => j.SourceDocumentId);
+            e.HasIndex(j => j.Date);
         });
 
         builder.Entity<JournalEntryLine>(e =>
         {
             e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(l => l.JournalEntry).WithMany(j => j.Lines).HasForeignKey(l => l.JournalEntryId).OnDelete(DeleteBehavior.Restrict);
+            e.ToTable("JournalEntryLines", t =>
+            {
+                t.HasCheckConstraint("CK_JournalEntryLines_NonNegative", "([Debit] >= 0 AND [Credit] >= 0)");
+                t.HasCheckConstraint("CK_JournalEntryLines_OneSided", "([Debit] = 0 AND [Credit] > 0) OR ([Debit] > 0 AND [Credit] = 0)");
+            });
         });
 
         builder.Entity<StockLayer>(e =>

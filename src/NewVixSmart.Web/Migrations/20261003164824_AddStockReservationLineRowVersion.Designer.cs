@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NewVixSmart.Web.Data;
 
@@ -11,9 +12,11 @@ using NewVixSmart.Web.Data;
 namespace NewVixSmart.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261003164824_AddStockReservationLineRowVersion")]
+    partial class AddStockReservationLineRowVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -267,11 +270,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int>("BudgetYearId")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
@@ -385,11 +383,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int?>("ParentAccountId")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
@@ -441,9 +434,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int>("Source")
                         .HasColumnType("int");
 
-                    b.Property<int?>("SourceDocumentId")
-                        .HasColumnType("int");
-
                     b.Property<int>("SourceId")
                         .HasColumnType("int");
 
@@ -453,8 +443,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.HasIndex("EntryNumber")
                         .IsUnique();
-
-                    b.HasIndex("SourceDocumentId");
 
                     b.HasIndex("Source", "SourceId");
 
@@ -674,11 +662,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -729,11 +712,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.Property<string>("Tagline")
                         .HasMaxLength(200)
@@ -887,11 +865,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
@@ -919,11 +892,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 
@@ -969,11 +937,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.Property<int?>("ParentUnitId")
                         .HasColumnType("int");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.Property<string>("ShortName")
                         .HasMaxLength(20)
@@ -1386,11 +1349,6 @@ namespace NewVixSmart.Web.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<string>("TaxNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -1481,11 +1439,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.Property<string>("TaxNumber")
                         .HasMaxLength(20)
@@ -2632,11 +2585,6 @@ namespace NewVixSmart.Web.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 

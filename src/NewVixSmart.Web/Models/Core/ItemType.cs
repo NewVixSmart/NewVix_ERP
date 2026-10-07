@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace NewVixSmart.Web.Models.Core;
@@ -21,4 +22,7 @@ public class ItemType
 
     [BindNever]
     public ICollection<Item> Items { get; set; } = new List<Item>();
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

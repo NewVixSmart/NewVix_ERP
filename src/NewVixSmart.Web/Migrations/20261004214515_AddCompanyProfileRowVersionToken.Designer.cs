@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NewVixSmart.Web.Data;
 
@@ -11,9 +12,11 @@ using NewVixSmart.Web.Data;
 namespace NewVixSmart.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004214515_AddCompanyProfileRowVersionToken")]
+    partial class AddCompanyProfileRowVersionToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -441,9 +444,6 @@ namespace NewVixSmart.Web.Migrations
                     b.Property<int>("Source")
                         .HasColumnType("int");
 
-                    b.Property<int?>("SourceDocumentId")
-                        .HasColumnType("int");
-
                     b.Property<int>("SourceId")
                         .HasColumnType("int");
 
@@ -453,8 +453,6 @@ namespace NewVixSmart.Web.Migrations
 
                     b.HasIndex("EntryNumber")
                         .IsUnique();
-
-                    b.HasIndex("SourceDocumentId");
 
                     b.HasIndex("Source", "SourceId");
 

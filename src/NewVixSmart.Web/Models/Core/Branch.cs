@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NewVixSmart.Web.Models.Core;
 
@@ -30,4 +31,7 @@ public class Branch
 
     [Display(Name = "تاريخ الإنشاء")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }
