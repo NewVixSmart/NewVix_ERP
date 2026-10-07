@@ -133,7 +133,24 @@ public class AccountsController : Controller
             return RedirectToAction(nameof(Edit), new { id = model.Id });
         }
 
-        await _db.SaveChangesAsync();
+        // The posted token is the row the form was rendered from. Carrying it as the original
+        // value turns a silent overwrite of someone else's rename into a refusal.
+        if (model.RowVersion is { Length: > 0 } posted)
+        {
+            _db.Entry(account).Property(a => a.RowVersion).OriginalValue = posted;
+        }
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حفظ التعديل لأن الحساب عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Edit), new { id = model.Id });
+        }
+
         TempData["Success"] = "تم تعديل الحساب بنجاح";
         return RedirectToAction(nameof(Index));
     }
@@ -186,7 +203,20 @@ public class AccountsController : Controller
         }
 
         _db.GLAccounts.Remove(account);
-        await _db.SaveChangesAsync();
+
+        // الحذفُ نفسُه كتابةٌ، و`RowVersion` داخل شرط `DELETE`؛ فتزاحمُ زميلٍ بين القراءة والحذف
+        // يُنتج `DbUpdateConcurrencyException` لا نتيجةً هادئة، وبلا التقاطٍ يكون خطأَ ٥٠٠.
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حذف الحساب لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Success"] = "تم حذف الحساب بنجاح";
         return RedirectToAction(nameof(Index));
     }

@@ -1,5 +1,6 @@
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Purchases;
+using NewVixSmart.Web.Services;
 
 namespace NewVixSmart.Web.ViewModels.Purchases;
 
@@ -22,5 +23,6 @@ public class SupplierLedgerViewModel
         .Where(p => p.Type == PaymentType.Disbursement)
         .Sum(p => p.Amount);
 
-    public decimal ReturnsTotal => Returns.Sum(r => r.TotalAmount);
+    public decimal ReturnsTotal => Returns.Sum(r => decimal.Round(ReturnValuation.ReceivableBase(
+        r.TotalAmount, r.PurchaseInvoice?.TotalAmount ?? 0m, r.PurchaseInvoice?.NetAmount ?? 0m), 2));
 }

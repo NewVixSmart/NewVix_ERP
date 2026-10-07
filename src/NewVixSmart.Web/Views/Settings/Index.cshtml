@@ -37,7 +37,7 @@
                                     { <span class="text-danger">معطل</span> }
                                 </td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" data-rowversion="@(u.RowVersion is null ? string.Empty : Convert.ToBase64String(u.RowVersion))" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil"></i></button>
                                     <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="d-inline" data-confirm="حذف هذه الوحدة؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash"></i></button>
@@ -123,7 +123,7 @@
                                 <td>@(b.Address ?? "—")</td>
                                 <td>@(b.IsActive ? "نشط" : "معطل")</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-branch" data-id="@b.Id" data-code="@b.Code" data-name="@b.Name" data-address="@b.Address" data-phone="@b.Phone" data-active="@b.IsActive.ToString().ToLower()" aria-label="تعديل فرع @b.Code"><i class="bi bi-pencil"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-branch" data-id="@b.Id" data-code="@b.Code" data-name="@b.Name" data-address="@b.Address" data-phone="@b.Phone" data-active="@b.IsActive.ToString().ToLower()" data-rowversion="@(b.RowVersion is null ? string.Empty : Convert.ToBase64String(b.RowVersion))" aria-label="تعديل فرع @b.Code"><i class="bi bi-pencil"></i></button>
                                     @if (Model.CurrentBranchId != b.Id)
                                     {
                                         <form asp-action="SetCurrentBranch" method="post" class="d-inline" data-confirm="التعامل مع @b.Name كفرع حالي؟" data-confirm-ok="تعيين">
@@ -172,6 +172,7 @@
         <form asp-action="UpdateUnit" method="post" class="modal-content">
             @Html.AntiForgeryToken()
             <input type="hidden" name="Id" id="editUnitId" />
+            <input type="hidden" name="RowVersion" id="editUnitRowVersion" />
             <div class="modal-header"><h5 class="modal-title" id="editUnitModalTitle">تعديل الوحدة</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="editUnitName">اسم الوحدة</label><input name="Name" id="editUnitName" class="form-control" required maxlength="50" /></div>
@@ -228,6 +229,7 @@
         <form asp-action="UpdateBranch" method="post" class="modal-content">
             @Html.AntiForgeryToken()
             <input type="hidden" name="Id" id="editBranchId" />
+            <input type="hidden" name="RowVersion" id="editBranchRowVersion" />
             <div class="modal-header"><h5 class="modal-title" id="editBranchModalTitle">تعديل الفرع</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="editBranchCode">رمز الفرع</label><input name="Code" id="editBranchCode" class="form-control" required maxlength="50" /></div>
@@ -257,6 +259,7 @@
             const parent = document.getElementById('editUnitParent');
             parent.value = (this.dataset.parent && this.dataset.parent !== '') ? this.dataset.parent : '';
             document.getElementById('editUnitActive').checked = this.dataset.active === 'true';
+            document.getElementById('editUnitRowVersion').value = this.dataset.rowversion || '';
             new bootstrap.Modal(document.getElementById('editUnitModal')).show();
         }));
 
@@ -267,6 +270,7 @@
             document.getElementById('editBranchAddress').value = this.dataset.address || '';
             document.getElementById('editBranchPhone').value = this.dataset.phone || '';
             document.getElementById('editBranchActive').checked = this.dataset.active === 'true';
+            document.getElementById('editBranchRowVersion').value = this.dataset.rowversion || '';
             new bootstrap.Modal(document.getElementById('editBranchModal')).show();
         }));
     </script>

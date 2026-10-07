@@ -99,9 +99,11 @@ public class BudgetsController : Controller
             .OrderBy(a => a.Code)
             .ToListAsync();
 
+        // تُحمَّل السطور كاملةً لا المبالغ وحدها، لأنّ رمز التوفّر جزءٌ من الحالة التي
+        // سيُحفظ مقابلَها؛ فلا يصحّ عرضُ قيمةٍ على الشبكة دون ما يثبت أيّ صفّ وُسم.
         var existingLines = await _db.BudgetLines.AsNoTracking()
             .Where(l => l.BudgetYearId == budget.Id)
-            .ToDictionaryAsync(l => l.AccountId, l => l.AnnualAmount);
+            .ToDictionaryAsync(l => l.AccountId);
 
         var fiscalClosed = await _db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == year && p.IsClosed);
 
@@ -110,13 +112,18 @@ public class BudgetsController : Controller
         ViewBag.FiscalClosed = fiscalClosed;
         ViewBag.Budget = budget;
 
-        return View(plAccounts.Select(a => new BudgetLineVm
+        return View(plAccounts.Select(a =>
         {
-            AccountId = a.Id,
-            Code = a.Code,
-            Name = a.Name,
-            Type = a.Type,
-            AnnualAmount = existingLines.GetValueOrDefault(a.Id)
+            existingLines.TryGetValue(a.Id, out var stored);
+            return new BudgetLineVm
+            {
+                AccountId = a.Id,
+                Code = a.Code,
+                Name = a.Name,
+                Type = a.Type,
+                AnnualAmount = stored?.AnnualAmount ?? 0m,
+                RowVersion = stored?.RowVersion
+            };
         }).ToList());
     }
 
@@ -167,10 +174,27 @@ public class BudgetsController : Controller
             else
             {
                 existing.AnnualAmount = line.AnnualAmount;
+
+                // الشبكةُ تُحفظ ككتلةٍ واحدة، فسطرٌ واحدٌ غيّره مديرٌ آخر يجب أن يُفشل الحفظَ
+                // كلَّه؛ فتجاوزُ سطرٍ واحدٍ يُسقط تعديلَ أحد المديرين بلا أثر يُرى.
+                if (line.RowVersion is { Length: > 0 } posted)
+                {
+                    _db.Entry(existing).Property(l => l.RowVersion).OriginalValue = posted;
+                }
             }
         }
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حفظ الميزانية لأن أحد السطور عُدّل في جلسة أخرى. أعد فتح الصفحة وادخل الأرقام من جديد.";
+            return RedirectToAction(nameof(Manage), new { year });
+        }
+
         TempData["Success"] = "حُفظت الميزانية بنجاح";
         return RedirectToAction(nameof(Manage), new { year });
     }
@@ -183,4 +207,10 @@ public class BudgetLineVm
     public string Name { get; set; } = string.Empty;
     public GLAccountType Type { get; set; }
     public decimal AnnualAmount { get; set; }
+
+    /// <summary>
+    /// رمز توفّر الحجز للسطر؛ يُرسل كـBase64 في شبكة الحفظ ويُنقل إلى <c>OriginalValue</c>.
+    /// وهو <c>null</c> لسطرٍ لم يُنشأ بعد، والحالةُ الوحيدة التي يُقبل فيها إدراجٌ بلا رمز.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

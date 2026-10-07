@@ -12,6 +12,10 @@
 <form asp-action="SaveBranding" method="post" enctype="multipart/form-data" class="row g-4" data-loading-submit data-loading-text="جاري الحفظ...">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger" role="alert" tabindex="-1"></div>
+    @if (Model.RowVersion is { Length: > 0 } brandingRv)
+    {
+        <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(brandingRv)" />
+    }
 
     <div class="col-12 col-lg-6">
         <div class="card h-100">
@@ -134,14 +138,14 @@
                         <label class="form-label" for="PrimaryHex">اللون الأساسي</label>
                         <div class="input-group">
                             <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" aria-hidden="true" tabindex="-1" />
-                            <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#2e6fd8" />
+                            <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#1570ef" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <label class="form-label" for="AccentHex">لون التمييز</label>
                         <div class="input-group">
                             <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" aria-hidden="true" tabindex="-1" />
-                            <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#5bc8e8" />
+                            <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#53b1fd" />
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
@@ -163,8 +167,8 @@
                 <div class="border rounded-3 overflow-hidden">
                     <div class="d-flex" id="themePreview">
                         <div class="p-3 flex-grow-1" id="prevPage" style="background:#f8f8fa;" role="img" aria-label="معاينة لوحة الألوان">
-                            <span class="badge rounded-pill" id="prevPrimary" style="background:#2e6fd8;color:#fff;">زر أساسي</span>
-                            <span class="badge rounded-pill" id="prevAccent" style="background:#5bc8e8;color:#0d1b35;">لمسة سماوية</span>
+                            <span class="badge rounded-pill" id="prevPrimary" style="background:#1570ef;color:#fff;">زر أساسي</span>
+                            <span class="badge rounded-pill" id="prevAccent" style="background:#53b1fd;color:#0d1b35;">لمسة سماوية</span>
                             <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:#0d1b35;color:#e8e8ee;border:1px solid #3b4a66;">شريط جانبي — نص</div>
                         </div>
                     </div>

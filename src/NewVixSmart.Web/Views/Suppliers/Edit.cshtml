@@ -5,6 +5,10 @@
 <div class="card"><div class="card-body">
     <form asp-action="Edit">
         <input type="hidden" asp-for="Id" />
+        @if (Model.RowVersion is { Length: > 0 } supplierRv)
+        {
+            <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(supplierRv)" />
+        }
         <div class="row g-3">
             <div class="col-md-4"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /></div>
             <div class="col-md-4"><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control" /></div>

@@ -1,2 +1,6 @@
 @model NewVixSmart.Web.ViewModels.Purchases.PurchaseOrderViewModel
+@if (Model.Order.RowVersion is { Length: > 0 } rv)
+{
+    <input type="hidden" name="orderRowVersion" value="@Convert.ToBase64String(rv)" form="orderForm" />
+}
 @await Html.PartialAsync("Create", Model)

@@ -84,7 +84,23 @@ public class ItemTypesController : Controller
             existing.IsActive = itemType.IsActive;
         }
 
-        await _db.SaveChangesAsync();
+        // الرمز المُرسَل هو الصفّ الذي رُسم منه النموذج؛ فجعلُه قيمةً أصليةً يحوّل محوَ
+        // كتابة زميلٍ إلى رفضٍ برسالة، بدل أن يمرّ آخر كاتبٍ دون أن يعلم.
+        if (itemType.RowVersion is { Length: > 0 } posted)
+        {
+            _db.Entry(existing).Property(t => t.RowVersion).OriginalValue = posted;
+        }
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return Conflict("تعذّر حفظ التعديل لأن نوع الصنف عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.");
+        }
+
         TempData["Success"] = "تم تعديل نوع الصنف بنجاح";
         return Ok(new { id = existing.Id, name = existing.Name });
     }
@@ -106,7 +122,18 @@ public class ItemTypesController : Controller
         }
 
         _db.ItemTypes.Remove(itemType);
-        await _db.SaveChangesAsync();
+
+        // `RowVersion` داخل شرط `DELETE`، فتزاحمُ زميلٍ بين القراءة والحذف استثناءُ تزامن.
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            return Conflict("تعذّر حذف نوع الصنف لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.");
+        }
+
         TempData["Success"] = "تم حذف نوع الصنف بنجاح";
         return Ok();
     }

@@ -117,11 +117,22 @@ public class SuppliersController : Controller
 
             if (ModelState.IsValid)
             {
+                // The posted token is the row the form was rendered from. Carrying it as the
+                // original value turns a silent overwrite of someone else's edit into a refusal.
+                if (supplier.RowVersion is { Length: > 0 } posted)
+                {
+                    _db.Entry(existing).Property(s => s.RowVersion).OriginalValue = posted;
+                }
+
                 try
                 {
                     await _db.SaveChangesAsync();
                     TempData["Success"] = "تم تعديل المورد بنجاح";
                     return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    ModelState.AddModelError("", "تعذّر حفظ التعديل لأن بيانات المورد عُدّلت في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.");
                 }
                 catch (DbUpdateException)
                 {
@@ -143,7 +154,20 @@ public class SuppliersController : Controller
         }
 
         supplier.IsActive = false;
-        await _db.SaveChangesAsync();
+
+        // "الحذف" هنا تعطيلٌ، وهو كتابةٌ بـ`RowVersion` داخل شرط `UPDATE`؛ فتزاحمُ زميلٍ بين
+        // القراءة والحفظ استثناءُ تزامن لا نتيجةً هادئة.
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حذف المورد لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Success"] = "تم حذف المورد بنجاح";
         return RedirectToAction(nameof(Index));
     }
@@ -159,11 +183,10 @@ public class SuppliersController : Controller
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.InvoiceDate).ToListAsync();
         var payments = await _db.Payments.AsNoTracking().Where(p => p.SupplierId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
-        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Include(r => r.PurchaseInvoice).Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
 
         decimal totalInvoices = invoices.Sum(i => i.NetAmount);
         decimal onReceiptPaid = invoices.Where(p => p.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && p.PaidAmount > 0).Sum(p => p.PaidAmount);
-        decimal totalReturns = returns.Sum(r => r.TotalAmount);
         decimal totalPayments = payments.Where(p => p.Type == Models.Accounting.PaymentType.Disbursement).Sum(p => p.Amount);
 
         var vm = new SupplierLedgerViewModel
@@ -171,9 +194,9 @@ public class SuppliersController : Controller
             Supplier = supplier,
             Invoices = invoices,
             Payments = payments,
-            Returns = returns,
-            Balance = supplier.OpeningBalance + totalInvoices - onReceiptPaid - totalReturns - totalPayments
+            Returns = returns
         };
+        vm.Balance = supplier.OpeningBalance + totalInvoices - onReceiptPaid - vm.ReturnsTotal - totalPayments;
         return View(vm);
     }
 
@@ -199,7 +222,7 @@ public class SuppliersController : Controller
         }
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == id).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
-        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Include(r => r.PurchaseInvoice).Where(r => r.SupplierId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var disbursements = await _db.Payments.AsNoTracking()
             .Where(p => p.SupplierId == id && p.Type == Models.Accounting.PaymentType.Disbursement)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
@@ -215,7 +238,8 @@ public class SuppliersController : Controller
         }
         foreach (var r in returns)
         {
-            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع شراء {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
+            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع شراء {r.ReturnNumber}", 0, decimal.Round(ReturnValuation.ReceivableBase(
+                r.TotalAmount, r.PurchaseInvoice?.TotalAmount ?? 0m, r.PurchaseInvoice?.NetAmount ?? 0m), 2)));
         }
 
         foreach (var d in disbursements)

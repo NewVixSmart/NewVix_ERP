@@ -20,7 +20,7 @@
     <tbody>
         @foreach (var t in Model)
         {
-            <tr>
+            <tr data-id="@t.Id" data-rowversion="@(t.RowVersion is null ? string.Empty : Convert.ToBase64String(t.RowVersion))">
                 <td data-name="@t.Name">@t.Name</td>
                 <td>@(t.IsActive ? "نشط" : "غير نشط")</td>
                 <td class="text-center">

@@ -12,7 +12,7 @@ public class OverdueInvoiceViewModel
     public DateTime DueDate { get; set; }
     public decimal NetAmount { get; set; }
     public decimal PaidAmount { get; set; }
-    public decimal Outstanding => NetAmount - PaidAmount;
+    public decimal Outstanding { get; set; }
     public int DaysOverdue => Math.Max(0, (int)(DateTime.Today - DueDate).TotalDays);
 }
 

@@ -9,20 +9,20 @@ public sealed record PalettePreset(string Id, string NameAr, string Primary, str
 
 public sealed class BrandingTheme
 {
-    public string Primary { get; set; } = "#2e6fd8";
-    public string PrimaryDark { get; set; } = "#1d5bbc";
-    public string PrimaryDarker { get; set; } = "#15437f";
-    public string PrimaryFocus { get; set; } = "rgba(46, 111, 216, 0.22)";
-    public string Accent { get; set; } = "#5bc8e8";
-    public string AccentStrong { get; set; } = "#3e97bb";
-    public string AccentBright { get; set; } = "#86dff2";
+    public string Primary { get; set; } = "#1570EF";
+    public string PrimaryDark { get; set; } = "#175CD3";
+    public string PrimaryDarker { get; set; } = "#1849A9";
+    public string PrimaryFocus { get; set; } = "rgba(21, 112, 239, 0.22)";
+    public string Accent { get; set; } = "#53B1FD";
+    public string AccentStrong { get; set; } = "#2E90FA";
+    public string AccentBright { get; set; } = "#B9DCFF";
     public string SidebarBg { get; set; } = "#ffffff";
-    public string SidebarText { get; set; } = "#0d1b35";
-    public string SidebarSection { get; set; } = "#5b6b81";
-    public string PageBg { get; set; } = "#f6f7fb";
-    public string BsPrimaryBgSubtle { get; set; } = "#d9e5f8";
-    public string BsPrimaryBorderSubtle { get; set; } = "#bcd1f3";
-    public string BsPrimaryText { get; set; } = "#1e488c";
+    public string SidebarText { get; set; } = "#101828";
+    public string SidebarSection { get; set; } = "#475467";
+    public string PageBg { get; set; } = "#f9fafb";
+    public string BsPrimaryBgSubtle { get; set; } = "#eff8ff";
+    public string BsPrimaryBorderSubtle { get; set; } = "#b2ddff";
+    public string BsPrimaryText { get; set; } = "#175cd3";
 }
 
 public sealed class BrandingData
@@ -46,7 +46,7 @@ public class BrandingService : IBrandingService
     private const string _cacheKey = "branding.v1";
     private static readonly Dictionary<string, PalettePreset> _presetMap = new()
     {
-        ["modern"] = new("modern", "سافاير عالمي — Global", "#2e6fd8", "#5bc8e8", "#ffffff", "#f6f7fb"),
+        ["modern"] = new("modern", "سافاير عالمي — Global", "#1570ef", "#53b1fd", "#ffffff", "#f9fafb"),
         ["evergreen"] = new("evergreen", "زمردي ذهبي", "#115e59", "#2dd4bf", "#0f2b26", "#f4f7f6"),
         ["indigo"] = new("indigo", "ملكي نيلي", "#4f46e5", "#818cf8", "#1e1b4b", "#f5f5fb"),
         ["crimson"] = new("crimson", "قرمزي عتيق", "#be123c", "#fb7185", "#450a0a", "#faf5f7"),
@@ -103,10 +103,10 @@ public class BrandingService : IBrandingService
             return FromPreset(preset);
         }
 
-        var primary = FirstValid(Get("Theme.Primary"), "#2e6fd8");
-        var accent = FirstValid(Get("Theme.Accent"), "#5bc8e8");
+        var primary = FirstValid(Get("Theme.Primary"), "#1570ef");
+        var accent = FirstValid(Get("Theme.Accent"), "#53b1fd");
         var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#ffffff");
-        var pageBg = FirstValid(Get("Theme.PageBg"), "#f6f7fb");
+        var pageBg = FirstValid(Get("Theme.PageBg"), "#f9fafb");
 
         var sidebarDark = !ColorUtil.IsLight(sidebarBg);
         return new BrandingTheme

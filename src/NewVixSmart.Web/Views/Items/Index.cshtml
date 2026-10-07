@@ -72,7 +72,7 @@
                             bool low = (item.CurrentCount <= item.MinCount && item.MinCount > 0) || (item.CurrentQuantity <= item.MinQuantity && item.MinQuantity > 0);
                         }
                         <span class="badge @(low ? "bg-danger" : "bg-success")">
-                            @(low ? "منخفض: " : "متوفر: ")@item.CurrentCount / @item.CurrentQuantity
+                            @(low ? "منخفض: " : "متوفر: ")@item.CurrentCount.ToString("N2") / @item.CurrentQuantity.ToString("N2")
                         </span>
                     </td>
                     <td class="text-center">

@@ -504,6 +504,10 @@
                         <span class="theme-mode-label">داكن</span>
                     </button>
                 </div>
+                <button type="button" class="theme-mode-btn" data-table-density-toggle aria-pressed="false" aria-label="تبديل كثافة الجداول">
+                    <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+                    <span class="theme-mode-label">كثافة مضغوطة</span>
+                </button>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <span class="topbar-user d-none d-xl-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity.Name</span>

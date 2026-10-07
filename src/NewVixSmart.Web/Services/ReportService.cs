@@ -39,11 +39,14 @@ public class ReportService : IReportService
         var receivables = await _db.SaleInvoices
             .AsNoTracking()
             .Include(s => s.Customer)
-            .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today
-                && s.PaidAmount < s.NetAmount)
+            .Where(s => (s.DueDate ?? s.InvoiceDate).Date < today)
             .ToListAsync();
 
-        vm.OverdueReceivables = receivables.Select(s =>
+        var receivableOpen = await OpenAmountRule.SaleOpenByInvoiceAsync(_db, receivables.Select(s => s.Id).ToList());
+
+        vm.OverdueReceivables = receivables
+            .Where(s => receivableOpen.GetValueOrDefault(s.Id) > OpenAmountRule.OpenTolerance)
+            .Select(s =>
         {
             var due = s.DueDate ?? s.InvoiceDate;
             return new OverdueInvoiceViewModel
@@ -54,18 +57,22 @@ public class ReportService : IReportService
                 InvoiceDate = s.InvoiceDate,
                 DueDate = due,
                 NetAmount = s.NetAmount,
-                PaidAmount = s.PaidAmount
+                PaidAmount = s.PaidAmount,
+                Outstanding = receivableOpen[s.Id]
             };
         }).OrderByDescending(x => x.DaysOverdue).ToList();
 
         var payables = await _db.PurchaseInvoices
             .AsNoTracking()
             .Include(p => p.Supplier)
-            .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today
-                && p.PaidAmount < p.NetAmount)
+            .Where(p => (p.DueDate ?? p.InvoiceDate).Date < today)
             .ToListAsync();
 
-        vm.OverduePayables = payables.Select(p =>
+        var payableOpen = await OpenAmountRule.PurchaseOpenByInvoiceAsync(_db, payables.Select(p => p.Id).ToList());
+
+        vm.OverduePayables = payables
+            .Where(p => payableOpen.GetValueOrDefault(p.Id) > OpenAmountRule.OpenTolerance)
+            .Select(p =>
         {
             var due = p.DueDate ?? p.InvoiceDate;
             return new OverdueInvoiceViewModel
@@ -76,7 +83,8 @@ public class ReportService : IReportService
                 InvoiceDate = p.InvoiceDate,
                 DueDate = due,
                 NetAmount = p.NetAmount,
-                PaidAmount = p.PaidAmount
+                PaidAmount = p.PaidAmount,
+                Outstanding = payableOpen[p.Id]
             };
         }).OrderByDescending(x => x.DaysOverdue).ToList();
 
@@ -1264,7 +1272,7 @@ public class ReportService : IReportService
         }
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == customerId).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
-        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == customerId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Include(r => r.SaleInvoice).Where(r => r.CustomerId == customerId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var receipts = await _db.Payments.AsNoTracking()
             .Where(p => p.CustomerId == customerId && p.Type == PaymentType.Receipt)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
@@ -1280,7 +1288,8 @@ public class ReportService : IReportService
         }
         foreach (var r in returns)
         {
-            lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+            lines.Add((r.ReturnDate, "مرتجع بيع", r.ReturnNumber, 0, decimal.Round(ReturnValuation.ReceivableBase(
+                r.TotalAmount, r.SaleInvoice?.TotalAmount ?? 0m, r.SaleInvoice?.NetAmount ?? 0m), 2)));
         }
 
         foreach (var r in receipts)
@@ -1302,7 +1311,7 @@ public class ReportService : IReportService
         }
 
         var invoices = await _db.PurchaseInvoices.AsNoTracking().Where(p => p.SupplierId == supplierId).OrderBy(p => p.InvoiceDate).ThenBy(p => p.Id).ToListAsync();
-        var returns = await _db.PurchaseReturns.AsNoTracking().Where(r => r.SupplierId == supplierId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.PurchaseReturns.AsNoTracking().Include(r => r.PurchaseInvoice).Where(r => r.SupplierId == supplierId && r.Status == ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var disbursements = await _db.Payments.AsNoTracking()
             .Where(p => p.SupplierId == supplierId && p.Type == PaymentType.Disbursement)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
@@ -1318,7 +1327,8 @@ public class ReportService : IReportService
         }
         foreach (var r in returns)
         {
-            lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(r.TotalAmount, 2)));
+            lines.Add((r.ReturnDate, "مرتجع شراء", r.ReturnNumber, 0, decimal.Round(ReturnValuation.ReceivableBase(
+                r.TotalAmount, r.PurchaseInvoice?.TotalAmount ?? 0m, r.PurchaseInvoice?.NetAmount ?? 0m), 2)));
         }
 
         foreach (var d in disbursements)

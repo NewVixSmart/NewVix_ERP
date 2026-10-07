@@ -20,6 +20,7 @@
     <input type="hidden" name="year" value="@ViewBag.Year" />
     <div class="table-container">
         <table class="table table-hover mb-0">
+            <caption class="visually-hidden">بنود الميزانية</caption>
             <thead>
                 <tr>
                     <th scope="col">الرمز</th>
@@ -40,6 +41,10 @@
                             <input type="hidden" name="lines[@i].Code" value="@Model[i].Code" />
                             <input type="hidden" name="lines[@i].Name" value="@Model[i].Name" />
                             <input type="hidden" name="lines[@i].Type" value="@((int)Model[i].Type)" />
+                            @if (Model[i].RowVersion is { Length: > 0 } budgetLineRv)
+                            {
+                                <input type="hidden" name="lines[@i].RowVersion" value="@Convert.ToBase64String(budgetLineRv)" />
+                            }
                             <input type="number" name="lines[@i].AnnualAmount" value="@Model[i].AnnualAmount" step="0.01" min="0"
                                    class="form-control text-start" dir="ltr" aria-label="المبلغ السنوي لحساب @Model[i].Name" @(ViewBag.FiscalClosed == true ? "disabled" : "") />
                         </td>

@@ -84,6 +84,32 @@ public class FiscalService : IFiscalService
                 throw new InvalidOperationException($"سنة {year} بها قيد إقفال سنوي مرصّد بالفعل — أعد فتحها أولاً");
             }
 
+            // مطابقة دفتر الأستاذ قبل الإقفال. قيد مزدوج إلزامي، فميزان مراجعة غير متوازن
+            // يعني دفترًا معطوبًا لا خطأ عرضي: قيود الإقفال تنقل رصيد كل حساب نتائج إلى
+            // 3001 في أزواج متوازنة، فهي تُثبّت الخلل ولا تصحّحه، ويبقى الدفتر محرَّمًا خلف
+            // قفلٍ لا يُرفع إلا بإعادة فتح السنة يدويًا. فالحاجز هنا أرخص من اكتشافه بعد
+            // الإقفال بسنوات.
+            var trial = await _financial.TrialBalanceAsync(closeDate);
+            if (!trial.IsBalanced)
+            {
+                throw new InvalidOperationException(
+                    $"لا يمكن إقفال سنة {year}: ميزان المراجعة غير متوازن — " +
+                    $"إجمالي المدين {trial.TotalDebit:0.00} وإجمالي الدائن {trial.TotalCredit:0.00}");
+            }
+
+            // المرصّد يُولَّد تلقائيًا، والخدمة ترفض ترحيلَ أي قيد بعد الإغلاق. فالقيد
+            // المتروك غير مرصّد داخل السنة لا يُكتشف عند الإقفال أبدًا، بل يصير غير قابل
+            // للترحيل بعده. الرفض هنا أنفع من اكتشافه في السنة التالية.
+            var unposted = await _db.JournalEntries
+                .AsNoTracking()
+                .CountAsync(j => !j.IsPosted && j.Date.Year == year);
+            if (unposted > 0)
+            {
+                throw new InvalidOperationException(
+                    $"لا يمكن إقفال سنة {year}: يوجد {unposted} قيد غير مرصّد داخل السنة — " +
+                    "ارصدها أو انقل تاريخها إلى سنة أخرى قبل الإقفال");
+            }
+
             int posted = 0;
             decimal netIncome = 0;
             foreach (var line in activity)
@@ -122,7 +148,14 @@ public class FiscalService : IFiscalService
             toClose.IsClosed = true;
             toClose.ClosedById = user;
             toClose.ClosedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new InvalidOperationException($"السنة المالية {year} أُغلقت أو عُدِّلت في جلسة أخرى — أعد المحاولة");
+            }
 
             await tx.CommitAsync();
 
@@ -187,7 +220,14 @@ public class FiscalService : IFiscalService
             period.IsClosed = false;
             period.ClosedById = null;
             period.ClosedAt = null;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new InvalidOperationException($"السنة المالية {year} أُغلقت أو عُدِّلت في جلسة أخرى — أعد المحاولة");
+            }
 
             await tx.CommitAsync();
 

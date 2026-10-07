@@ -23,4 +23,6 @@ public class SalesOrderViewModel
     public List<SalesOrderLineFormModel> Items { get; set; } = new();
     public IEnumerable<SelectListItem>? Customers { get; set; }
     public List<Item> ItemsData { get; set; } = new();
+
+    public byte[]? OrderRowVersion { get; set; }
 }

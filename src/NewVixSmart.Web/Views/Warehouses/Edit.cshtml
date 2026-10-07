@@ -9,6 +9,10 @@
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="CreatedAt" />
+            @if (Model.RowVersion is { Length: > 0 } warehouseRv)
+            {
+                <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(warehouseRv)" />
+            }
             <div class="row g-3">
                 <div class="col-md-4">
                     <label asp-for="Code" class="form-label"></label>

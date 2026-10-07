@@ -68,7 +68,25 @@ public class WarehousesController : Controller
         wh.Code = warehouse.Code;
         wh.Name = warehouse.Name;
         wh.IsActive = warehouse.IsActive;
-        await _db.SaveChangesAsync();
+
+        // الرمز المُرسَل هو الصفّ الذي رُسم منه النموذج؛ فجعلُه قيمةً أصليةً يحوّل محوَ
+        // كتابة زميلٍ إلى رفضٍ برسالة، بدل أن يمرّ آخر كاتبٍ دون أن يعلم.
+        if (warehouse.RowVersion is { Length: > 0 } posted)
+        {
+            _db.Entry(wh).Property(w => w.RowVersion).OriginalValue = posted;
+        }
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حفظ التعديل لأن المستودع عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Success"] = "تم تعديل المستودع بنجاح";
         return RedirectToAction(nameof(Index));
     }
@@ -90,7 +108,19 @@ public class WarehousesController : Controller
             return RedirectToAction(nameof(Index));
         }
         _db.Warehouses.Remove(wh);
-        await _db.SaveChangesAsync();
+
+        // `RowVersion` داخل شرط `DELETE`، فتزاحمُ زميلٍ بين القراءة والحذف استثناءُ تزامن.
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حذف المستودع لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Success"] = "تم حذف المستودع بنجاح";
         return RedirectToAction(nameof(Index));
     }

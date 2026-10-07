@@ -36,16 +36,16 @@ public class BrandingViewModel
     public string? SelectedPreset { get; set; }
 
     [Display(Name = "اللون الأساسي")]
-    public string Primary { get; set; } = "#2e6fd8";
+    public string Primary { get; set; } = "#1570ef";
 
     [Display(Name = "لون التمييز")]
-    public string Accent { get; set; } = "#5bc8e8";
+    public string Accent { get; set; } = "#53b1fd";
 
     [Display(Name = "لون الشريط الجانبي")]
     public string SidebarBg { get; set; } = "#ffffff";
 
     [Display(Name = "لون خلفية الصفحات")]
-    public string PageBg { get; set; } = "#f6f7fb";
+    public string PageBg { get; set; } = "#f9fafb";
 
     [Display(Name = "شعار الشركة")]
     public IFormFile? LogoFile { get; set; }
@@ -57,4 +57,10 @@ public class BrandingViewModel
 
     public PalettePreset[] Presets { get; set; } = [];
     public BrandingTheme PreviewTheme { get; set; } = new();
+
+    /// <summary>
+    /// رمزُ صفّ <c>CompanyProfile</c> كما عُرض على المستخدم، ويُنقل إلى <c>OriginalValue</c>
+    /// عند الحفظ. هو مرساةُ النموذج كلّه لا حقلٌ من حقوله.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

@@ -119,7 +119,7 @@ public class PurchaseOrdersController : Controller
 
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("PurchaseOrders.Edit")]
-    public async Task<IActionResult> Edit(int id, PurchaseOrderViewModel vm)
+    public async Task<IActionResult> Edit(int id, PurchaseOrderViewModel vm, string? orderRowVersion)
     {
         vm.Order ??= new PurchaseOrderFormModel();
         vm.Items ??= new List<PurchaseOrderLineFormModel>();
@@ -132,8 +132,13 @@ public class PurchaseOrdersController : Controller
         {
             try
             {
-                var (ok, error) = await _procurement.UpdateOrderAsync(
-                    vm.Order.ToEntity(), Lines(vm.Items), User.Identity?.Name);
+                var order = vm.Order.ToEntity();
+                if (SalesOrdersController.TryDecodeRowVersion(orderRowVersion, out var rowVersion))
+                {
+                    order.RowVersion = rowVersion;
+                }
+
+                var (ok, error) = await _procurement.UpdateOrderAsync(order, Lines(vm.Items), User.Identity?.Name);
                 if (ok)
                 {
                     TempData["Success"] = "تم تحديث أمر الشراء بنجاح";

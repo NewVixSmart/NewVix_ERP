@@ -179,7 +179,7 @@ public class PrintSettingsService : IPrintSettingsService
         o.FontScale = Math.Clamp(Math.Round(o.FontScale * 20) / 20, 0.8, 1.3);
         o.Decimals = Math.Clamp((int)Math.Round((double)o.Decimals), 0, 4);
         o.LogoScalePercent = Math.Clamp((int)Math.Round(o.LogoScalePercent / 10d) * 10, 50, 150);
-        o.AccentColor = AsHex(o.AccentColor, "#2e6fd8");
+        o.AccentColor = AsHex(o.AccentColor, "#1570ef");
         o.TableHeaderBg = AsHex(o.TableHeaderBg, "#eaf3fc");
         o.TableHeaderText = AsHex(o.TableHeaderText, "#0d1b35");
         o.FooterNoteText = AsText(o.FooterNoteText, "شكراً لتعاملكم معنا", 500);

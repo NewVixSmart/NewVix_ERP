@@ -120,7 +120,8 @@ public class SalesOrdersController : Controller
         var vm = new SalesOrderViewModel
         {
             Order = order.ToFormModel(),
-            Items = order.Items.Select(i => i.ToFormModel()).ToList()
+            Items = order.Items.Select(i => i.ToFormModel()).ToList(),
+            OrderRowVersion = order.RowVersion
         };
         await Populate(vm);
         return View("Create", vm);
@@ -128,7 +129,7 @@ public class SalesOrdersController : Controller
 
     [HttpPost, ValidateAntiForgeryToken]
     [RequirePerm("SalesOrders.Edit")]
-    public async Task<IActionResult> Edit(SalesOrderViewModel vm)
+    public async Task<IActionResult> Edit(SalesOrderViewModel vm, string? orderRowVersion)
     {
         vm.Order ??= new SalesOrderFormModel();
         vm.Items ??= new List<SalesOrderLineFormModel>();
@@ -138,13 +139,22 @@ public class SalesOrdersController : Controller
         {
             var order = vm.Order.ToEntity();
             order.Id = vm.Order.Id;
-            var (ok, error) = await _orders.UpdateOrderAsync(order, vm.Items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
-            if (ok)
+            try
             {
-                TempData["Success"] = "تم تحديث أمر البيع بنجاح";
-                return await RedirectToDetailsAsync(vm.Order.Id);
+                await ApplyOrderRowVersionAsync(vm.Order.Id, orderRowVersion);
+                var (ok, error) = await _orders.UpdateOrderAsync(order, vm.Items.Select(i => i.ToEntity()).ToList(), User.Identity?.Name);
+                if (ok)
+                {
+                    TempData["Success"] = "تم تحديث أمر البيع بنجاح";
+                    return await RedirectToDetailsAsync(vm.Order.Id);
+                }
+                ModelState.AddModelError("", error ?? "تعذر تحديث أمر البيع");
             }
-            ModelState.AddModelError("", error ?? "تعذر تحديث أمر البيع");
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                ModelState.AddModelError("", "تعذر تعديل أمر البيع بسبب تعارض في البيانات، حاول مرة أخرى");
+            }
         }
 
         await Populate(vm);
@@ -260,6 +270,39 @@ public class SalesOrdersController : Controller
         }
 
         return RedirectToAction(nameof(Details), new { id = publicId.Value });
+    }
+
+    private async Task ApplyOrderRowVersionAsync(int orderId, string? postedRowVersion)
+    {
+        if (orderId <= 0 || !TryDecodeRowVersion(postedRowVersion, out var rowVersion))
+        {
+            return;
+        }
+
+        var tracked = await _db.SalesOrders.FirstOrDefaultAsync(o => o.Id == orderId);
+        if (tracked != null)
+        {
+            _db.Entry(tracked).Property(o => o.RowVersion).OriginalValue = rowVersion;
+        }
+    }
+
+    internal static bool TryDecodeRowVersion(string? posted, out byte[] rowVersion)
+    {
+        rowVersion = [];
+        if (string.IsNullOrWhiteSpace(posted))
+        {
+            return false;
+        }
+
+        try
+        {
+            rowVersion = Convert.FromBase64String(posted);
+            return rowVersion.Length > 0;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private async Task Populate(SalesOrderViewModel vm)

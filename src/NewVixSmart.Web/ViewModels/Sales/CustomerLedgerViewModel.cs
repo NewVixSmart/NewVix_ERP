@@ -1,5 +1,6 @@
 using NewVixSmart.Web.Models.Accounting;
 using NewVixSmart.Web.Models.Sales;
+using NewVixSmart.Web.Services;
 
 namespace NewVixSmart.Web.ViewModels.Sales;
 
@@ -23,7 +24,8 @@ public class CustomerLedgerViewModel
         .Where(p => p.Type == PaymentType.Receipt)
         .Sum(p => p.Amount);
 
-    public decimal ReturnsTotal => Returns.Sum(r => r.TotalAmount);
+    public decimal ReturnsTotal => Returns.Sum(r => decimal.Round(ReturnValuation.ReceivableBase(
+        r.TotalAmount, r.SaleInvoice?.TotalAmount ?? 0m, r.SaleInvoice?.NetAmount ?? 0m), 2));
 
     public decimal PendingValueTotal => PendingLines.Sum(l => l.PendingValue);
 }

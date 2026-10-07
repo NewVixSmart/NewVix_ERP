@@ -50,6 +50,14 @@ public class UserPermissionViewModel
     public List<string> Roles { get; set; } = new();
     public bool IsAdmin { get; set; }
     public List<ModulePermissionViewModel> Modules { get; set; } = new();
+
+    /// <summary>
+    /// مفاتيحُ الصلاحيات كما رُسمت للمستخدم، مُفصولةٌ بفواصل ومرتّبة. تُعاد مع النموذج
+    /// فيقارنها الخادمُ بالمحفوظ عند الحفظ، فترفض كلَّه إن اختلفت — وهذا هو الحارسُ
+    /// الممكن هنا: لا <c>RowVersion</c> على <c>UserPermission</c> يحمي شيئًا، لأنّ الحفظ
+    /// يحذفُ كلَّ الصفوف ويعيد بناءها، فلا يبقى صفٌّ قديمٌ يُرافَق برمزه.
+    /// </summary>
+    public string RenderedKeys { get; set; } = string.Empty;
 }
 
 public class ModulePermissionViewModel

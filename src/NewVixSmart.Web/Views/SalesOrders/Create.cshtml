@@ -29,6 +29,10 @@
 <form asp-action="@(Model.Order.Id > 0 ? "Edit" : "Create")" id="orderForm">
     <input type="hidden" asp-for="Order.Id" />
     <input type="hidden" asp-for="Order.SaleQuoteId" />
+    @if (Model.OrderRowVersion is { Length: > 0 } orderRv)
+    {
+        <input type="hidden" name="orderRowVersion" value="@Convert.ToBase64String(orderRv)" />
+    }
 
     <div class="card mb-3">
         <div class="card-body">

@@ -132,11 +132,22 @@ public class CustomersController : Controller
 
             if (ModelState.IsValid)
             {
+                // The posted token is the row the form was rendered from. Carrying it as the
+                // original value turns a silent overwrite of someone else's edit into a refusal.
+                if (customer.RowVersion is { Length: > 0 } posted)
+                {
+                    _db.Entry(existing).Property(c => c.RowVersion).OriginalValue = posted;
+                }
+
                 try
                 {
                     await _db.SaveChangesAsync();
                     TempData["Success"] = "تم تعديل العميل بنجاح";
                     return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    ModelState.AddModelError("", "تعذّر حفظ التعديل لأن بيانات العميل عُدّلت في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.");
                 }
                 catch (DbUpdateException)
                 {
@@ -158,7 +169,20 @@ public class CustomersController : Controller
         }
 
         customer.IsActive = false;
-        await _db.SaveChangesAsync();
+
+        // "الحذف" هنا تعطيلٌ، وهو كتابةٌ بـ`RowVersion` داخل شرط `UPDATE`؛ فتزاحمُ زميلٍ بين
+        // القراءة والحفظ استثناءُ تزامن لا نتيجةً هادئة.
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حذف العميل لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Index));
+        }
+
         TempData["Success"] = "تم حذف العميل بنجاح";
         return RedirectToAction(nameof(Index));
     }
@@ -253,11 +277,10 @@ public class CustomersController : Controller
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderByDescending(s => s.InvoiceDate).ToListAsync();
         var payments = await _db.Payments.AsNoTracking().Where(p => p.CustomerId == id).OrderByDescending(p => p.PaymentDate).ToListAsync();
-        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Include(r => r.SaleInvoice).Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderByDescending(r => r.ReturnDate).ToListAsync();
 
         decimal totalInvoices = invoices.Sum(i => i.NetAmount);
         decimal onReceiptPaid = invoices.Where(i => i.PaymentTerms == Models.Accounting.InvoicePaymentTerms.OnReceipt && i.PaidAmount > 0).Sum(i => i.PaidAmount);
-        decimal totalReturns = returns.Sum(r => r.TotalAmount);
         decimal totalPayments = payments.Where(p => p.Type == Models.Accounting.PaymentType.Receipt).Sum(p => p.Amount);
 
         var vm = new CustomerLedgerViewModel
@@ -266,9 +289,9 @@ public class CustomersController : Controller
             Invoices = invoices,
             Payments = payments,
             Returns = returns,
-            Balance = customer.OpeningBalance + totalInvoices - onReceiptPaid - totalReturns - totalPayments,
             PendingLines = await PendingLinesAsync(id)
         };
+        vm.Balance = customer.OpeningBalance + totalInvoices - onReceiptPaid - vm.ReturnsTotal - totalPayments;
         return View(vm);
     }
 
@@ -294,7 +317,7 @@ public class CustomersController : Controller
         }
 
         var invoices = await _db.SaleInvoices.AsNoTracking().Where(s => s.CustomerId == id).OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
-        var returns = await _db.SaleReturns.AsNoTracking().Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+        var returns = await _db.SaleReturns.AsNoTracking().Include(r => r.SaleInvoice).Where(r => r.CustomerId == id && r.Status == Models.Accounting.ReturnStatus.Posted).OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
         var receipts = await _db.Payments.AsNoTracking()
             .Where(p => p.CustomerId == id && p.Type == Models.Accounting.PaymentType.Receipt)
             .OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
@@ -310,7 +333,8 @@ public class CustomersController : Controller
         }
         foreach (var r in returns)
         {
-            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(r.TotalAmount, 2)));
+            lines.Add(new StatementLine(r.ReturnDate, $"مرتجع بيع {r.ReturnNumber}", 0, decimal.Round(ReturnValuation.ReceivableBase(
+                r.TotalAmount, r.SaleInvoice?.TotalAmount ?? 0m, r.SaleInvoice?.NetAmount ?? 0m), 2)));
         }
 
         foreach (var r in receipts)

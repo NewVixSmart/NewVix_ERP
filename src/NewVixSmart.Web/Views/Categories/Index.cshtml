@@ -36,7 +36,7 @@
     <tbody>
         @foreach (var c in Model)
         {
-            <tr>
+            <tr data-id="@c.Id" data-rowversion="@(c.RowVersion is null ? string.Empty : Convert.ToBase64String(c.RowVersion))">
                 <td data-name="@c.Name">@c.Name</td>
                 <td>@(c.IsActive ? "نشط" : "غير نشط")</td>
                 <td class="text-center">

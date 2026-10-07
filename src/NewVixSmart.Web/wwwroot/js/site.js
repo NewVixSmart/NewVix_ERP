@@ -200,7 +200,9 @@
             var input = div.querySelector('#editNameInput');
             var val = input.value.trim();
             if (!val || !editTarget) return;
-            postForm('/' + editTarget.endpoint + '/Edit', { Id: editTarget.id, Name: val })
+            var payload = { Id: editTarget.id, Name: val };
+            if (editTarget.rowVersion) payload.RowVersion = editTarget.rowVersion;
+            postForm('/' + editTarget.endpoint + '/Edit', payload)
                 .then(function (res) {
                     if (res.ok) {
                         editModal.hide();
@@ -358,10 +360,13 @@
             var delBtn = e.target.closest('.btn-del');
 
             if (editBtn) {
-                var nameTd = editBtn.closest('tr').querySelector('td[data-name]');
+                var row = editBtn.closest('tr');
+                var nameTd = row.querySelector('td[data-name]');
                 var current = nameTd ? nameTd.dataset.name : '';
                 ensureEditModal();
-                editTarget = { id: editBtn.dataset.id, endpoint: endpoint };
+                // الرمز يُقرأ من الصفّ المعروض فيُحمل إلى الخادم ليتحقّق من أنّ الصفّ لم
+                // يتغيّر بين العرض والحفظ؛ وإلا قام آخر كاتبٍ فوق هذا التعديل دون أن يعلم.
+                editTarget = { id: editBtn.dataset.id, endpoint: endpoint, rowVersion: row.dataset.rowversion || '' };
                 var input = document.getElementById('editNameInput');
                 input.value = current;
                 editModal.show();
@@ -1161,10 +1166,50 @@
             seen.push(table);
             buildDataTable(table, seen.length - 1);
         });
+        applyFirstColFreezeAll();
+    }
+
+    function applyFirstColFreezeAll() {
+        document.querySelectorAll('.table-container .table').forEach(function (table) {
+            var head = table.tHead;
+            if (!head || !head.rows.length || table.querySelector('.nvs-frozen-col')) return;
+            var colCount = head.rows[0].cells.length;
+            if (colCount <= 8) return;
+            head.rows[0].cells[0].classList.add('nvs-frozen-col');
+            [].forEach.call(table.rows, function (tr) {
+                var cell0 = tr.cells && tr.cells[0];
+                if (cell0 && tr.cells.length === colCount) cell0.classList.add('nvs-frozen-col');
+            });
+        });
+    }
+
+    function applyTableDensity(density) {
+        document.body.setAttribute('data-table-density', density);
+        var btn = document.querySelector('[data-table-density-toggle]');
+        if (!btn) return;
+        var pressed = density === 'comfortable';
+        btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        var label = btn.querySelector('.theme-mode-label');
+        if (label) label.textContent = pressed ? 'كثافة مريحة' : 'كثافة مضغوطة';
+        var icon = btn.querySelector('.bi');
+        if (icon) icon.className = 'bi ' + (pressed ? 'bi-arrows-angle-expand' : 'bi-arrows-collapse');
+    }
+
+    function initTableDensity() {
+        var stored = 'compact';
+        try { stored = localStorage.getItem('vix-table-density') || 'compact'; } catch (e) { stored = 'compact'; }
+        applyTableDensity(stored === 'comfortable' ? 'comfortable' : 'compact');
+        document.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('[data-table-density-toggle]') : null;
+            if (!btn) return;
+            var next = document.body.getAttribute('data-table-density') === 'comfortable' ? 'compact' : 'comfortable';
+            try { localStorage.setItem('vix-table-density', next); } catch (err) { }
+            applyTableDensity(next);
+        });
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initNavFilter(); initTables(); initCounters(); initTheme(); initClock(); initDataTables(); });
+        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initNavFilter(); initTables(); initCounters(); initTheme(); initClock(); initDataTables(); initTableDensity(); });
     } else {
         initSidebar();
         initNavFilter();
@@ -1173,6 +1218,7 @@
         initTheme();
         initClock();
         initDataTables();
+        initTableDensity();
     }
 
     // ---------- Prefetch same-origin navigation on hover/focus ----------
