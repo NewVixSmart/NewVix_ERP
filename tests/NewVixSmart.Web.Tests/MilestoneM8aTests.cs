@@ -91,7 +91,7 @@ public sealed class MilestoneM8aTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedSaleAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId, Discount = 10, Tax = 5 };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) };
@@ -109,7 +109,7 @@ public sealed class MilestoneM8aTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedSaleAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 5, 50) }, "test");
@@ -128,7 +128,7 @@ public sealed class MilestoneM8aTests : IDisposable
         SeedChartOfAccounts(db);
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         var accounting = new AccountingService(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var branch = new Branch { Code = "BR-T", Name = "فرع اختبار", IsActive = true, CreatedAt = DateTime.UtcNow };
         db.Branches.Add(branch);
@@ -166,7 +166,7 @@ public sealed class MilestoneM8aTests : IDisposable
         SeedChartOfAccounts(db);
         var (itemId, custId, supId) = await SeedSaleAsync(db);
         var accounting = new AccountingService(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, _) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
@@ -199,7 +199,7 @@ public sealed class MilestoneM8aTests : IDisposable
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 10, Count = 0, UnitCost = 40m, RemainingQty = 10, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var invoice = new SaleInvoice { CustomerId = custId };
 
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 4, 80) }, "test");
@@ -261,7 +261,7 @@ public sealed class MilestoneM8aTests : IDisposable
         await db.SaveChangesAsync();
 
         var (itemId, custId, supId) = await SeedSaleAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var invoice = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test", branch.Id);
         Assert.Equal(branch.Id, (await db.SaleInvoices.SingleAsync()).BranchId);
@@ -284,7 +284,7 @@ public sealed class MilestoneM8aTests : IDisposable
         db.StockLayers.Add(new StockLayer { ItemId = itemId, Qty = 5, Count = 0, UnitCost = 40m, RemainingQty = 5, RemainingCount = 0, DateReceived = new DateTime(2026, 1, 1), CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var sale = new SaleInvoice { CustomerId = custId };
         var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 50) }, "test");
         Assert.True(ok);
@@ -325,12 +325,12 @@ public sealed class MilestoneM8aTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, supId) = await SeedSaleAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var sale = new SaleInvoice { CustomerId = custId };
         var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
         Assert.True(ok);
 
-        var posting = new InventoryService(db);
+        var posting = new InventoryService(db, new AccountingService(db));
         var delivery = new DeliveryOrder { SaleInvoiceId = sale.Id, DeliveryDate = DateTime.Today };
         var (dOk, dErr) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 3 } }, "test");
         Assert.False(dOk);
@@ -343,12 +343,12 @@ public sealed class MilestoneM8aTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, supId) = await SeedSaleAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var sale = new SaleInvoice { CustomerId = custId };
         var (ok, _) = await svc.CreateSaleAsync(sale, new List<SaleInvoiceItem> { QtyLine(itemId, 2, 50) }, "test");
         Assert.True(ok);
 
-        var posting = new InventoryService(db);
+        var posting = new InventoryService(db, new AccountingService(db));
         var delivery = new DeliveryOrder { SaleInvoiceId = sale.Id, DeliveryDate = DateTime.Today };
         var (dOk, _) = await posting.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2 } }, "test");
         Assert.True(dOk);

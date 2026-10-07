@@ -51,6 +51,7 @@ public sealed class SourceTextGuaranteeInventoryTests
         ["AuthzExportCenterDatasetTests"] = _cSharp,         // Services/ExportCenterService.cs (row cap)
         ["AuthzMenuLinkTests"] = _razor,                     // Views/Shared/_Layout.cshtml
         ["AuthzPublicIdAndItemBindingTests"] = _cSharp,      // ten Controllers/*.cs
+        ["ConcurrencyPropagationTests"] = _razor,             // two order views + their controllers
         ["DependencyPinTests"] = _tooling,                   // *.csproj + .github/dependabot.yml
         ["DocClaimTests"] = _tooling,                        // README.md + AGENTS.md + .github/workflows/ci.yml
         ["ProductionConfigGateTests"] = _config,             // appsettings*.json

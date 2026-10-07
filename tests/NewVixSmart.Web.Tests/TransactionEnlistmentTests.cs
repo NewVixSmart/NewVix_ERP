@@ -74,7 +74,8 @@ public sealed class TransactionEnlistmentTests : IDisposable
             new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true },
             new GLAccount { Code = "5000", Name = "تكلفة المبيعات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
             new GLAccount { Code = "5101", Name = "مردودات المبيعات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
-            new GLAccount { Code = "5102", Name = "مردودات المشتريات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
+            new GLAccount { Code = "5102", Name = "مردودات المشتريات", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
+            new GLAccount { Code = "5200", Name = "فروق الجرد", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
         db.SaveChanges();
     }
 
@@ -157,7 +158,7 @@ public sealed class TransactionEnlistmentTests : IDisposable
 
     private static async Task<int> CreateDraftOrderAsync(AppDbContext db, int customerId, int itemId, decimal quantity)
     {
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = customerId, OrderDate = DateTime.Today };
         var (created, error) = await orders.CreateOrderAsync(order, new List<SalesOrderItem>
         {

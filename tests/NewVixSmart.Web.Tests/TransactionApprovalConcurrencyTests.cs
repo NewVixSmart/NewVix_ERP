@@ -75,7 +75,7 @@ public sealed class TransactionApprovalConcurrencyTests : IDisposable
         var itemId = (await db.Items.SingleAsync()).Id;
         var customerId = (await db.Customers.SingleAsync()).Id;
 
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = customerId, OrderDate = DateTime.Today };
         var (created, error) = await orders.CreateOrderAsync(order, new List<SalesOrderItem>
         {
@@ -103,7 +103,7 @@ public sealed class TransactionApprovalConcurrencyTests : IDisposable
             try
             {
                 using var db = CreateContext();
-                var service = new SalesOrdersService(db, new InventoryService(db));
+                var service = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
                 var (ok, error) = await service.ApproveOrderAsync(orderId);
                 return (Ok: ok, Error: error);
             }

@@ -28,12 +28,29 @@ public sealed class DocumentNumberingTests : IDisposable
 
     private AppDbContext CreateContext() => new(_options);
 
+    private static void SeedChartOfAccounts(AppDbContext db)
+    {
+        db.GLAccounts.AddRange(
+            new GLAccount { Code = "1000", Name = "النقدية" },
+            new GLAccount { Code = "1100", Name = "البنوك" },
+            new GLAccount { Code = "1200", Name = "ذمم العملاء" },
+            new GLAccount { Code = "1300", Name = "المخزون" },
+            new GLAccount { Code = "2000", Name = "الدائنون" },
+            new GLAccount { Code = "2055", Name = "ضريبة القيمة المضافة" },
+            new GLAccount { Code = "3000", Name = "رأس المال" },
+            new GLAccount { Code = "4000", Name = "إيرادات المبيعات" },
+            new GLAccount { Code = "5000", Name = "تكلفة المبيعات" },
+            new GLAccount { Code = "5101", Name = "مردودات المبيعات" },
+            new GLAccount { Code = "5102", Name = "مردودات المشتريات" });
+    }
+
     private static string TodayPrefix() => DateTime.Now.ToString("yyyyMMdd");
 
     [Fact]
     public async Task Payment_Numbering_Advances_Past_Committed_Max_Not_Count()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var customer = new Customer { Name = "عميل ترقيم المدفوعات" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -65,7 +82,7 @@ public sealed class DocumentNumberingTests : IDisposable
         });
         await db.SaveChangesAsync();
 
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
         var (ok, error, payment) = await svc.CreatePaymentAsync(new Payment
         {
             Type = PaymentType.Receipt,
@@ -84,6 +101,7 @@ public sealed class DocumentNumberingTests : IDisposable
     public async Task Payment_Sequential_Creates_Use_Strictly_Increasing_Numbers()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var customer = new Customer { Name = "عميل التسلسل" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -110,7 +128,7 @@ public sealed class DocumentNumberingTests : IDisposable
         });
         await db.SaveChangesAsync();
 
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
         var (ok1, e1, p1) = await svc.CreatePaymentAsync(new Payment { Type = PaymentType.Receipt, CustomerId = customer.Id, Amount = 100m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today }, "tester");
         var (ok2, e2, p2) = await svc.CreatePaymentAsync(new Payment { Type = PaymentType.Receipt, CustomerId = customer.Id, Amount = 200m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today }, "tester");
         Assert.True(ok1 && ok2, $"{e1} | {e2}");

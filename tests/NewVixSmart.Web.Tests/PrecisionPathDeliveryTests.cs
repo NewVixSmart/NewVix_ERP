@@ -90,12 +90,16 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     {
         db.GLAccounts.AddRange(
             new GLAccount { Code = "1000", Name = "النقدية" },
+            new GLAccount { Code = "1100", Name = "البنوك" },
             new GLAccount { Code = "1200", Name = "ذمم العملاء" },
             new GLAccount { Code = "1300", Name = "المخزون" },
+            new GLAccount { Code = "2000", Name = "الدائنون" },
             new GLAccount { Code = "2055", Name = "ضريبة القيمة المضافة" },
+            new GLAccount { Code = "3000", Name = "رأس المال" },
             new GLAccount { Code = "4000", Name = "إيرادات المبيعات" },
             new GLAccount { Code = "5000", Name = "تكلفة المبيعات" },
-            new GLAccount { Code = "5101", Name = "مردودات المبيعات" });
+            new GLAccount { Code = "5101", Name = "مردودات المبيعات" },
+            new GLAccount { Code = "5102", Name = "مردودات المشتريات" });
     }
 
     private static async Task<(int ItemId, int CustomerId)> SeedItemAsync(
@@ -143,7 +147,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     private static async Task<int> CreateApprovedOrderAsync(
         AppDbContext db, int itemId, int customerId, decimal quantity, decimal unitPrice, decimal count = 0m)
     {
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = customerId, OrderDate = DateTime.Today };
         var (ok, error) = await orders.CreateOrderAsync(order,
             [new SalesOrderItem { ItemId = itemId, Quantity = quantity, Count = count, UnitPrice = unitPrice }],
@@ -196,7 +200,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         // The order line is deliberately not posted: the raise-an-issue screen never sends it,
         // and InventoryService derives it from the delivery note so the issue can carry the
         // delivery back to SalesOrderItem.DeliveredQty when it is issued.
-        var controller = new DeliveryIssuesController(db, new InventoryService(db));
+        var controller = new DeliveryIssuesController(db, new InventoryService(db, new AccountingService(db)));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -258,10 +262,11 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     public async Task Fourth_decimal_delivery_through_the_controller_is_stored_and_reported_open()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db);
         await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, OrderedQuantity);
 
         Assert.IsType<RedirectToActionResult>((await PostIssueAsync(note.Id, DeliveredQuantity)).Result);
@@ -318,10 +323,11 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     public async Task An_exactly_complete_delivery_settles_the_line()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db);
         await SeedLayerAsync(db, itemId, OrderedQuantity, _layerCost);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, OrderedQuantity, UnitPriceValue);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, OrderedQuantity);
 
         Assert.IsType<RedirectToActionResult>((await PostIssueAsync(note.Id, OrderedQuantity)).Result);
@@ -410,7 +416,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         using var db = CreateContext();
         var (itemId, customerId) = await SeedItemAsync(db, quantity: 200m);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, 200m, UnitPriceValue);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, 200m);
 
         var (result, error) = await PostIssueAsync(note.Id, posted);
@@ -442,7 +448,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         using var db = CreateContext();
         var (itemId, customerId) = await SeedItemAsync(db, quantity: 200m);
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, 200m, UnitPriceValue);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var note = await CreateNoteAsync(db, inventory, orderId, itemId, 200m);
 
         Assert.IsType<RedirectToActionResult>((await PostIssueAsync(note.Id, posted)).Result);
@@ -506,7 +512,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         await db.SaveChangesAsync();
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, customerId, 0m, UnitPriceValue, count: 200m);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var (ok, error, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             [new DeliveryOrderItem { ItemId = itemId, Count = 200m }], "tester");
         Assert.True(ok, error);
@@ -536,10 +542,11 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     public async Task Reservation_residual_and_consumption_keep_the_fourth_decimal()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, customerId) = await SeedItemAsync(db, quantity: 150m);
 
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db, null, reservations);
+        var inventory = new InventoryService(db, new AccountingService(db), reservations);
 
         // Order 100 units and deliver 0.0004 of them, so the residual is 99.9996 rather than the 100.00
         // a two-decimal figure would leave.
@@ -743,12 +750,13 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
     public async Task A_purchase_price_reaches_the_stock_layer_at_the_six_decimal_cost_width()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, _) = await SeedItemAsync(db, quantity: 0m);
         var supplier = new Supplier { Name = "مورد الدقة" };
         db.Suppliers.Add(supplier);
         await db.SaveChangesAsync();
 
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var (ok, error) = await inventory.CreatePurchaseAsync(
             new PurchaseInvoice { SupplierId = supplier.Id, InvoiceDate = new DateTime(2026, 2, 1) },
             [new PurchaseInvoiceItem { ItemId = itemId, Quantity = 4m, Count = 0m, UnitPrice = UnitPriceValue }],
@@ -775,7 +783,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         // 3 units of stock: a per-unit cost of 3.333333, which no hundredth grid can hold.
         await SeedLayerAsync(db, itemId, 3m, 3.333333m, source);
 
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var (ok, error) = await inventory.CreateTransferAsync(
             new StockTransfer { SourceWarehouseId = source, TargetWarehouseId = target, TransferDate = DateTime.UtcNow },
             [new StockTransferItem { ItemId = itemId, Quantity = 3m, Count = 0m }], "tester");
@@ -804,7 +812,7 @@ public sealed class PrecisionPathDeliveryTests : IDisposable
         var (source, target) = await SeedWarehousesAsync(db, "PPZ");
         await SeedLayerAsync(db, itemId, 3m, 3.333333m, source);
 
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var (ok, error) = await inventory.CreateTransferAsync(
             new StockTransfer { SourceWarehouseId = source, TargetWarehouseId = target, TransferDate = DateTime.UtcNow },
             [new StockTransferItem { ItemId = itemId, Quantity = 0m, Count = 0m }], "tester");

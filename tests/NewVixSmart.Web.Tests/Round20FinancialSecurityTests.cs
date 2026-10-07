@@ -62,7 +62,7 @@ public sealed class Round20FinancialSecurityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedBasicAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, err) = await svc.CreateSaleAsync(invoice,
@@ -143,7 +143,7 @@ public sealed class Round20FinancialSecurityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedBasicAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice,
@@ -173,7 +173,7 @@ public sealed class Round20FinancialSecurityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedBasicAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var (ok, err) = await svc.CreateSaleReturnAsync(new SaleReturn
         {
@@ -196,7 +196,7 @@ public sealed class Round20FinancialSecurityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supplierId) = await SeedBasicAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var (ok, err) = await svc.CreatePurchaseReturnAsync(new PurchaseReturn
         {

@@ -31,6 +31,8 @@ public sealed class ReturnsFixtureTests : IDisposable
 
     private static async Task<(int itemId, int custId, int supId)> SeedAsync(AppDbContext db)
     {
+        SeedChart(db);
+
         var cat = new ItemCategory { Name = "تصنيف اختبار" };
         var type = new ItemType { Name = "نوع اختبار" };
         var unit = new Unit { Name = "قطعة" };
@@ -91,7 +93,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 3, 1) };
         var (ok, err, id) = await svc.CreateSaleReturnDraftAsync(ret,
@@ -125,7 +127,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         });
         await db.SaveChangesAsync();
 
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
@@ -166,7 +168,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
@@ -195,7 +197,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
@@ -222,7 +224,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var purchase = new PurchaseInvoice { SupplierId = supId };
         var (ok, err) = await svc.CreatePurchaseAsync(purchase,
@@ -249,7 +251,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         var (itemId, custId, _) = await SeedAsync(db);
         db.FiscalPeriods.Add(new FiscalPeriod { Year = 2026, IsClosed = true });
         await db.SaveChangesAsync();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 5, 1) };
         var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,
@@ -272,7 +274,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         var (itemId, custId, _) = await SeedAsync(db);
         db.FiscalPeriods.Add(new FiscalPeriod { Year = 2026, IsClosed = true });
         await db.SaveChangesAsync();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 5, 1) };
         var (ok, err) = await svc.CreateSaleReturnAsync(ret,
@@ -290,7 +292,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 80 } }, "test");
@@ -321,7 +323,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var purchaseInv = new PurchaseInvoice { SupplierId = supId };
         await svc.CreatePurchaseAsync(purchaseInv, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 20, Count = 0, UnitPrice = 45 } }, "test");
@@ -353,7 +355,7 @@ public sealed class ReturnsFixtureTests : IDisposable
         var (itemId, _, supId) = await SeedAsync(db);
         db.FiscalPeriods.Add(new FiscalPeriod { Year = 2026, IsClosed = true });
         await db.SaveChangesAsync();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new PurchaseReturn { SupplierId = supId, ReturnDate = new DateTime(2026, 5, 1) };
         var (ok, _, id) = await svc.CreatePurchaseReturnDraftAsync(ret,
@@ -453,7 +455,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 3, 1) };
         var (ok, err, _) = await svc.CreateSaleReturnDraftAsync(ret,
@@ -471,7 +473,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new PurchaseReturn { SupplierId = supId, ReturnDate = new DateTime(2026, 3, 1) };
         var (ok, err, _) = await svc.CreatePurchaseReturnDraftAsync(ret,
@@ -488,7 +490,7 @@ public sealed class ReturnsFixtureTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn { CustomerId = custId, ReturnDate = new DateTime(2026, 3, 2) };
         var (ok, _, id) = await svc.CreateSaleReturnDraftAsync(ret,

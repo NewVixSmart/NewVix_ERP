@@ -175,6 +175,109 @@ public sealed class FiscalCloseTests : IDisposable
         Assert.Equal(100m, (await db.JournalEntryLines.Where(l => l.AccountId == r3001.Id).ToListAsync()).Sum(l => l.Credit));
     }
 
+    /// <summary>
+    /// دفترٌ غير متوازن يجب أن يمنع الإقفال. ولا يُنشأ هذا الدفتر من <c>PostAsync</c> — فذاك
+    /// يتحقّق من التساوي — بل من قيدٍ قديمٍ أو استيرادٍ لم يمرّ بالخدمة، وهو بالضبط الاحتمال
+    /// الذي وُضع له هذا الحاجز. فيُبنى هنا سطرٌ واحدٌ مدينٌ بلا دائن، وهو ما تجيزه قيود
+    /// الجدول (<c>CK_JournalEntryLines_OneSided</c>) لأنّ اختلال التساوي لا يراه صفٌّ واحد.
+    /// </summary>
+    [Fact]
+    public async Task Guard_CloseYear_WithUnbalancedLedger_Throws_AndLeavesTheYearOpen()
+    {
+        using var db = CreateContext();
+        var fiscal = CreateFiscalService(db);
+        await fiscal.EnsurePeriodAsync(2026);
+
+        var cash = await db.GLAccounts.SingleAsync(a => a.Code == "1000");
+        db.JournalEntries.Add(new JournalEntry
+        {
+            EntryNumber = "JE-UNBALANCED",
+            Date = new DateTime(2026, 5, 1),
+            Description = "قيد تالف بلا مقابل",
+            Source = JournalSource.Import,
+            SourceId = 1,
+            IsPosted = true,
+            Lines = [new JournalEntryLine { AccountId = cash.Id, Debit = 100m, Credit = 0m }]
+        });
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => fiscal.CloseYearAsync(2026, "admin"));
+        Assert.Contains("ميزان المراجعة غير متوازن", ex.Message);
+
+        // الرفض يجب ألّا يترك أثرًا: لا قيد إقفال، والسنة ما زالت مفتوحة.
+        db.ChangeTracker.Clear();
+        Assert.Equal(0, await db.JournalEntries.CountAsync(j => j.Source == JournalSource.YearEndClose));
+        Assert.False(await db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == 2026 && p.IsClosed));
+    }
+
+    /// <summary>
+    /// القيد غير المرصّد داخل السنة يُمنع الإقفال، لأنّ <c>PostAsync</c> يرفض الترحيل في سنة
+    /// مغلقة: فتركه يعني فقدانه إلى الأبد. والاختبار يثبت حدودَ الفحص بالسنة، بمسودةٍ في
+    /// 2025 يجب ألّا تمنع إقفال 2026 — وإلا صار الحاجز أبعدَ ما ينبغي.
+    /// </summary>
+    [Fact]
+    public async Task Guard_CloseYear_WithUnpostedDraftInThatYear_Throws()
+    {
+        using var db = CreateContext();
+        var fiscal = CreateFiscalService(db);
+        await fiscal.EnsurePeriodAsync(2026);
+
+        var cash = await db.GLAccounts.SingleAsync(a => a.Code == "1000");
+        var capital = await db.GLAccounts.SingleAsync(a => a.Code == "3000");
+        db.JournalEntries.Add(new JournalEntry
+        {
+            EntryNumber = "JE-DRAFT-2026",
+            Date = new DateTime(2026, 7, 1),
+            Description = "مسودة متروكة",
+            Source = JournalSource.Import,
+            SourceId = 1,
+            IsPosted = false,
+            Lines =
+            [
+                new JournalEntryLine { AccountId = cash.Id, Debit = 25m, Credit = 0m },
+                new JournalEntryLine { AccountId = capital.Id, Debit = 0m, Credit = 25m }
+            ]
+        });
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => fiscal.CloseYearAsync(2026, "admin"));
+        Assert.Contains("غير مرصّد", ex.Message);
+
+        db.ChangeTracker.Clear();
+        Assert.False(await db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == 2026 && p.IsClosed));
+    }
+
+    [Fact]
+    public async Task Guard_CloseYear_IgnoresUnpostedDraftsFromAnotherYear()
+    {
+        using var db = CreateContext();
+        var fiscal = CreateFiscalService(db);
+        await fiscal.EnsurePeriodAsync(2026);
+
+        var cash = await db.GLAccounts.SingleAsync(a => a.Code == "1000");
+        var capital = await db.GLAccounts.SingleAsync(a => a.Code == "3000");
+        db.JournalEntries.Add(new JournalEntry
+        {
+            EntryNumber = "JE-DRAFT-2025",
+            Date = new DateTime(2025, 7, 1),
+            Description = "مسودة من سنة سابقة",
+            Source = JournalSource.Import,
+            SourceId = 1,
+            IsPosted = false,
+            Lines =
+            [
+                new JournalEntryLine { AccountId = cash.Id, Debit = 25m, Credit = 0m },
+                new JournalEntryLine { AccountId = capital.Id, Debit = 0m, Credit = 25m }
+            ]
+        });
+        await db.SaveChangesAsync();
+
+        var summary = await fiscal.CloseYearAsync(2026, "admin");
+
+        Assert.Equal(2026, summary.Year);
+        Assert.True(await db.FiscalPeriods.AsNoTracking().AnyAsync(p => p.Year == 2026 && p.IsClosed));
+    }
+
     [Fact]
     public async Task Guard_PostingInClosedYear_Throws()
     {
@@ -207,7 +310,7 @@ public sealed class FiscalCloseTests : IDisposable
     public async Task Guard_CreatePurchaseInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         await CloseYearAsync(db);
 
@@ -223,7 +326,7 @@ public sealed class FiscalCloseTests : IDisposable
     public async Task Guard_CreateSaleInvoiceInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         var unit = new NewVixSmart.Web.Models.Core.Unit { Name = "قطعة" };
         db.Units.Add(unit);
@@ -262,7 +365,7 @@ public sealed class FiscalCloseTests : IDisposable
     public async Task Guard_CreateAdjustmentInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         await CloseYearAsync(db);
 
@@ -283,7 +386,7 @@ public sealed class FiscalCloseTests : IDisposable
     public async Task Guard_CreatePaymentInClosedYear_ReturnsFalse()
     {
         using var db = CreateContext();
-        var payments = new PaymentService(db);
+        var payments = new PaymentService(db, new AccountingService(db));
 
         await CloseYearAsync(db);
 

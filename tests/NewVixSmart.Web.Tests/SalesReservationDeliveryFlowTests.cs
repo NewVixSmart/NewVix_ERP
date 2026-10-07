@@ -71,7 +71,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
 
     private async Task<int> CreateApprovedOrderAsync(AppDbContext db, int itemId, int custId, decimal qty, decimal unitPrice = 80m)
     {
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
         var (ok, err) = await orders.CreateOrderAsync(order,
             new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = qty, UnitPrice = unitPrice } }, "test");
@@ -138,7 +138,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var draft = new SalesOrder { CustomerId = custId };
         var (ok, _) = await orders.CreateOrderAsync(draft,
             new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = 5m, UnitPrice = 80 } }, "test");
@@ -353,7 +353,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db), reservations);
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)), reservations);
 
         var order = new SalesOrder { CustomerId = custId };
         var (created, _) = await orders.CreateOrderAsync(order,
@@ -381,7 +381,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db, qty: 5m);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = custId };
         await orders.CreateOrderAsync(order,
             new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = 9m, UnitPrice = 80 } }, "tester");
@@ -398,7 +398,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var reservations = new StockReservationsService(db);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 25m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
@@ -425,7 +425,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         var (ok, err, note) = await inventory.CreateSalesDeliveryNoteAsync(null, null, custId,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Count = 3m } }, "tester");
@@ -447,7 +447,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orders = new SalesOrdersService(db, inventory);
         var order = new SalesOrder { CustomerId = custId };
         await orders.CreateOrderAsync(order,
@@ -537,7 +537,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db, qty: 30m);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 20m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
 
@@ -567,13 +567,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task IssueDelivery_ReservationOfOtherOrder_CannotBeConsumed()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db, qty: 40m);
         var secondCustomer = new Customer { Name = "عميل ثانٍ" };
         db.Customers.Add(secondCustomer);
         await db.SaveChangesAsync();
 
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var firstOrderId = await CreateApprovedOrderAsync(db, itemId, custId, 10m);
         var secondOrderId = await CreateApprovedOrderAsync(db, itemId, secondCustomer.Id, 10m);
         Assert.True((await reservations.ReserveOrderAsync(firstOrderId, "tester")).Success);
@@ -604,8 +605,9 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task IssueDelivery_Twice_IsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 5m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 5m } }, "tester");
@@ -626,7 +628,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 6m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 6m } }, "tester");
@@ -647,7 +649,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 10m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 10m } }, "tester");
@@ -676,9 +678,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task FullIssue_MarksDeliveryDelivered_AndBlocksOrderCancellation()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orders = new SalesOrdersService(db, inventory, reservations);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 7m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
@@ -705,7 +708,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 9m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
 
@@ -729,7 +732,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 5m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 5m } }, "tester");
@@ -743,8 +746,9 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task CancelDeliveryNote_WithIssuedIssue_IsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 5m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 5m } }, "tester");
@@ -908,10 +912,11 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceFromIssues_TwoIssuesOneInvoice_CollapsesLines()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 40m, unitPrice: 70m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
@@ -948,10 +953,11 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceFromIssues_FullDelivery_ClosesOrder()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 10m, unitPrice: 55m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
@@ -978,9 +984,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceFromIssues_StandaloneUsesItemSalePrice()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
 
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(null, null, custId,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 3m } }, "tester");
@@ -1002,9 +1009,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceFromIssues_RejectsDraftOrAlreadyInvoicedIssues()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
 
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(null, null, custId,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 2m } }, "tester");
@@ -1033,13 +1041,14 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceFromIssues_RejectsMixedCustomers()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
         var other = new Customer { Name = "عميل آخر" };
         db.Customers.Add(other);
         await db.SaveChangesAsync();
 
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
 
         var (_, _, firstNote) = await inventory.CreateSalesDeliveryNoteAsync(null, null, custId,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1m } }, "tester");
@@ -1067,9 +1076,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task InvoiceOutstandingDeliveries_RequiresIssuedIssue()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
-        var invoicing = new DeliveriesInvoicingService(db, inventory);
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var invoicing = new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
         var orders = new SalesOrdersService(db, inventory, reservations: null, invoicing);
 
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 12m, unitPrice: 90m);
@@ -1097,9 +1107,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task IssueDelivery_UsesOwnReservation_WhenStockFullyReserved()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db, qty: 40m);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db, null, null, reservations);
+        var inventory = new InventoryService(db, null, new AccountingService(db), reservations);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 40m); Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
 
         var item = await db.Items.SingleAsync();
@@ -1128,7 +1139,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db, null, null, reservations);
+        var inventory = new InventoryService(db, null, new AccountingService(db), reservations);
 
         var reserving = await CreateApprovedOrderAsync(db, itemId, custId, 70m);
         Assert.True((await reservations.ReserveOrderAsync(reserving, "tester")).Success);
@@ -1154,9 +1165,10 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     public async Task DraftIssue_DoesNotCountAsDelivered()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db, null, null, reservations);
+        var inventory = new InventoryService(db, null, new AccountingService(db), reservations);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 20m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
         var orderLineId = await db.SalesOrderItems.Where(i => i.SalesOrderId == orderId).Select(i => i.Id).SingleAsync();
@@ -1187,7 +1199,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
         var reservations = new StockReservationsService(db);
-        var inventory = new InventoryService(db, null, null, reservations);
+        var inventory = new InventoryService(db, null, new AccountingService(db), reservations);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 30m);
         Assert.True((await reservations.ReserveOrderAsync(orderId, "tester")).Success);
 
@@ -1217,7 +1229,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         var (noCustomer, err, _) = await inventory.CreateSalesDeliveryNoteAsync(null, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 1m } }, "tester");
@@ -1237,7 +1249,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId, InvoiceDate = new DateTime(2026, 5, 4) };
         var (ok, err) = await inventory.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
@@ -1256,7 +1268,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orders = new SalesOrdersService(db, inventory);
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 3m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
@@ -1273,7 +1285,7 @@ public sealed class SalesReservationDeliveryFlowTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var orderId = await CreateApprovedOrderAsync(db, itemId, custId, 4m);
         var (_, _, note) = await inventory.CreateSalesDeliveryNoteAsync(orderId, null, null,
             new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = 4m } }, "tester");

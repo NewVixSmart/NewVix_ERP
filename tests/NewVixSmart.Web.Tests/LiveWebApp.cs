@@ -245,8 +245,8 @@ internal sealed class LiveWebApp : IAsyncDisposable
         builder.Services.AddScoped<IPaymentService, PaymentService>();
         builder.Services.AddScoped<IImportCenterService>(provider => new ImportCenterService(
             provider.GetRequiredService<AppDbContext>(),
-            new InventoryService(provider.GetRequiredService<AppDbContext>()),
-            new PaymentService(provider.GetRequiredService<AppDbContext>()),
+            new InventoryService(provider.GetRequiredService<AppDbContext>(), new AccountingService(provider.GetRequiredService<AppDbContext>())),
+            new PaymentService(provider.GetRequiredService<AppDbContext>(), new AccountingService(provider.GetRequiredService<AppDbContext>())),
             new AccountingService(provider.GetRequiredService<AppDbContext>()),
             provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
         // Only reached through Home/StatusCode, which is what UseStatusCodePagesWithReExecute

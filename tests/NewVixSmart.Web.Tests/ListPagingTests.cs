@@ -205,7 +205,7 @@ public sealed class ListPagingTests : IDisposable
         }
         await db.SaveChangesAsync();
 
-        var controller = new PaymentsController(db, new PaymentService(db));
+        var controller = new PaymentsController(db, new PaymentService(db, new AccountingService(db)));
 
         var first = Assert.IsType<ViewResult>(await controller.Index(page: 1));
         Assert.Equal(50, Assert.IsType<List<Payment>>(first.Model).Count);
@@ -288,7 +288,7 @@ public sealed class ListPagingTests : IDisposable
         await um.AddToRoleAsync(acct!, "Accountant");
         await um.AddToRoleAsync(wh!, "Warehouse");
 
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
         var result = Assert.IsType<ViewResult>(await controller.Index());
         var items = Assert.IsType<List<UserListItemViewModel>>(result.Model);
 
@@ -323,7 +323,7 @@ public sealed class ListPagingTests : IDisposable
             new UserPermission { UserId = user.Id, PermissionKey = "Batch.SalesCreate" });
         await db.SaveChangesAsync();
 
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
         var result = Assert.IsType<ViewResult>(await controller.Permissions(user.Id));
         var vm = Assert.IsType<UserPermissionViewModel>(result.Model);
@@ -356,15 +356,61 @@ public sealed class ListPagingTests : IDisposable
             new UserPermission { UserId = user.Id, PermissionKey = "Batch.SalesCreate" });
         await db.SaveChangesAsync();
 
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
-        await controller.Permissions(user.Id, new[] { "Warehouses.View", "Warehouses.Edit" });
+
+        // المُمرَّرُ هو ما عرضه النموذجُ فعلًا: الحارسُ يقارن المجموعة renderedKeys بالمحفوظ
+        // ويرفض إن اختلفت، ولا بدّ أن تتطابق هنا وإلا رُفض الحفظُ على غير سبب.
+        var renderedKeys = string.Join(",", new[] { "Sales.Create", "Batch.SalesCreate" });
+        await controller.Permissions(user.Id, new[] { "Warehouses.View", "Warehouses.Edit" }, renderedKeys);
 
         var remaining = await db.UserPermissions.Where(p => p.UserId == user.Id).Select(p => p.PermissionKey).ToListAsync();
         Assert.Contains("Warehouses.View", remaining);
         Assert.Contains("Warehouses.Edit", remaining);
         Assert.DoesNotContain("Sales.Create", remaining);
         Assert.DoesNotContain("Batch.SalesCreate", remaining);
+    }
+
+    /// <summary>
+    /// رفضُ الحفظِ إذا تغيّرت الصلاحيات بعد العرض. هذا هو الخطرُ الحقيقيّ في نموذج «احذف
+    /// صلاحية»: يفتحها صاحبُها فتُلغى من مكانٍ آخر، ويُرسَل النموذجُ بصمةً قديمة، فيُقبل
+    /// أو يُعيد منعًا أمنيًّا لا يعرف أنه فعل.
+    /// </summary>
+    [Fact]
+    public async Task Permissions_Post_RefusesWhenGrantsChangedAfterRender()
+    {
+        using var db = CreateContext();
+        var um = CreateUserManager(db);
+
+        db.Roles.AddRange(
+            new IdentityRole { Name = "Admin", NormalizedName = "ADMIN" },
+            new IdentityRole { Name = "Accountant", NormalizedName = "ACCOUNTANT" });
+        await db.SaveChangesAsync();
+
+        var created = await um.CreateAsync(new IdentityUser { UserName = "perms-user3" }, "Perms@12345");
+        Assert.True(created.Succeeded);
+        var user = await um.FindByNameAsync("perms-user3");
+        await um.AddToRoleAsync(user!, "Accountant");
+
+        // ما رُسم على الشاشة وقت العرض:
+        db.UserPermissions.Add(new UserPermission { UserId = user!.Id, PermissionKey = "Sales.Create" });
+        await db.SaveChangesAsync();
+        var renderedKeys = "Sales.Create";
+
+        // ثم غيّره مديرٌ آخر قبل أن يحفظ الأول:
+        db.UserPermissions.Add(new UserPermission { UserId = user.Id, PermissionKey = "Sales.Delete" });
+        await db.SaveChangesAsync();
+
+        var controller = new UsersController(um, db, new SetWriteGate(db));
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+        await controller.Permissions(user.Id, new[] { "Warehouses.View" }, renderedKeys);
+
+        var remaining = await db.UserPermissions.Where(p => p.UserId == user.Id).Select(p => p.PermissionKey).ToListAsync();
+
+        // لم يُحفظ شيء: لم يُطبَّق ما أرسله الأول، ولم يسقط تعديلُ الثاني.
+        Assert.Contains("Sales.Create", remaining);
+        Assert.Contains("Sales.Delete", remaining);
+        Assert.DoesNotContain("Warehouses.View", remaining);
     }
 
     private sealed class FakeTempDataProvider : ITempDataProvider

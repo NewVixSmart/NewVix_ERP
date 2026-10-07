@@ -28,6 +28,22 @@ public sealed class ConcurrencyTests : IDisposable
 
     private AppDbContext CreateContext() => new(_options);
 
+    private static void SeedChartOfAccounts(AppDbContext db)
+    {
+        db.GLAccounts.AddRange(
+            new GLAccount { Code = "1000", Name = "النقدية" },
+            new GLAccount { Code = "1100", Name = "البنوك" },
+            new GLAccount { Code = "1200", Name = "ذمم العملاء" },
+            new GLAccount { Code = "1300", Name = "المخزون" },
+            new GLAccount { Code = "2000", Name = "الدائنون" },
+            new GLAccount { Code = "2055", Name = "ضريبة القيمة المضافة" },
+            new GLAccount { Code = "3000", Name = "رأس المال" },
+            new GLAccount { Code = "4000", Name = "إيرادات المبيعات" },
+            new GLAccount { Code = "5000", Name = "تكلفة المبيعات" },
+            new GLAccount { Code = "5101", Name = "مردودات المبيعات" },
+            new GLAccount { Code = "5102", Name = "مردودات المشتريات" });
+    }
+
     private static async Task MarkDeliveredAsync(AppDbContext db, int invoiceId, int customerId)
     {
         db.DeliveryOrders.Add(new DeliveryOrder
@@ -46,6 +62,7 @@ public sealed class ConcurrencyTests : IDisposable
     public async Task DuplicateReceipt_WithinTwoMinuteWindow_IsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var customer = new Customer { Name = "عميل الدفع المكرر" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -64,7 +81,7 @@ public sealed class ConcurrencyTests : IDisposable
         await db.SaveChangesAsync();
         await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, customer.Id);
 
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var first = new Payment
         {
@@ -158,6 +175,7 @@ public sealed class ConcurrencyTests : IDisposable
     public async Task SequentialPayments_ReceiveDistinctNumbers()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var customer = new Customer { Name = "عميل الأرقام" };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -176,7 +194,7 @@ public sealed class ConcurrencyTests : IDisposable
         await db.SaveChangesAsync();
         await MarkDeliveredAsync(db, (await db.SaleInvoices.SingleAsync()).Id, customer.Id);
 
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var (ok1, _, p1) = await svc.CreatePaymentAsync(new Payment
         {
@@ -222,7 +240,7 @@ public sealed class ConcurrencyTests : IDisposable
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
 
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = customer.Id, OrderDate = DateTime.Today };
         var (okCreate, _) = await orders.CreateOrderAsync(order, new List<SalesOrderItem>
         {
@@ -240,7 +258,7 @@ public sealed class ConcurrencyTests : IDisposable
         Assert.Equal(SalesOrderStatus.Invoiced, (await db.SalesOrders.FindAsync(order.Id))!.Status);
 
         using var verify = CreateContext();
-        var again = new SalesOrdersService(verify, new InventoryService(verify));
+        var again = new SalesOrdersService(verify, new InventoryService(verify, new AccountingService(verify)));
         var (ok2, err2) = await again.CreateInvoiceFromOrderAsync(order.Id, "tester");
         Assert.False(ok2);
         Assert.Contains("بالفعل", err2);
@@ -252,6 +270,7 @@ public sealed class ConcurrencyTests : IDisposable
     public async Task PurchaseOrder_CannotBeInvoicedTwice()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var unit = new Unit { Name = "قطعة فاتورة شراء" };
         var item = new Item
         {
@@ -268,7 +287,7 @@ public sealed class ConcurrencyTests : IDisposable
         db.Suppliers.Add(supplier);
         await db.SaveChangesAsync();
 
-        var proc = new ProcurementService(db, new InventoryService(db));
+        var proc = new ProcurementService(db, new InventoryService(db, new AccountingService(db)));
         var order = new PurchaseOrder { SupplierId = supplier.Id, OrderDate = DateTime.Today };
         var (okCreate, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
         {

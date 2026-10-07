@@ -6,6 +6,7 @@ using NewVixSmart.Web.Models.Core;
 using NewVixSmart.Web.Models.Sales;
 using NewVixSmart.Web.Models.Stock;
 using NewVixSmart.Web.Services;
+using NewVixSmart.Web.Tests.Fakes;
 using Xunit;
 
 namespace NewVixSmart.Web.Tests;
@@ -41,6 +42,7 @@ public sealed class BatchOperationsTests : IDisposable
             ("3000", "رأس المال", GLAccountType.Equity, NormalBalance.Credit),
             ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
+            ("5200", "فروق الجرد", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
         {
@@ -93,7 +95,7 @@ public sealed class BatchOperationsTests : IDisposable
 
     private static BatchService CreateBatchService(AppDbContext db, bool withAccounting = true)
     {
-        var accounting = withAccounting ? new AccountingService(db) : null;
+        IAccountingService accounting = withAccounting ? new AccountingService(db) : new ThrowingAccountingService();
         return new BatchService(db, new InventoryService(db, accounting));
     }
 
@@ -238,18 +240,18 @@ public sealed class BatchOperationsTests : IDisposable
         Assert.Equal(2, await db.JournalEntries.CountAsync());
 
         var increaseEntry = await db.JournalEntries.Include(e => e.Lines).SingleAsync(e => e.SourceId == item1.Id);
-        Assert.Equal(JournalSource.OpeningStock, increaseEntry.Source);
+        Assert.Equal(JournalSource.InventoryAdjustment, increaseEntry.Source);
         Assert.Equal(2, increaseEntry.Lines.Count);
         var inventoryLine = increaseEntry.Lines.Single(l => l.Debit > 0);
         Assert.Equal(50 * 50m, inventoryLine.Debit);
         Assert.Equal("1300", (await db.GLAccounts.SingleAsync(a => a.Id == inventoryLine.AccountId)).Code);
 
         var writeDownEntry = await db.JournalEntries.Include(e => e.Lines).SingleAsync(e => e.SourceId == item2.Id);
-        Assert.Equal(JournalSource.OpeningStock, writeDownEntry.Source);
+        Assert.Equal(JournalSource.InventoryAdjustment, writeDownEntry.Source);
         Assert.Equal(2, writeDownEntry.Lines.Count);
         var writeDownDebit = writeDownEntry.Lines.Single(l => l.Debit > 0);
         Assert.Equal(60 * 50m, writeDownDebit.Debit);
-        Assert.Equal("3000", (await db.GLAccounts.SingleAsync(a => a.Id == writeDownDebit.AccountId)).Code);
+        Assert.Equal("5200", (await db.GLAccounts.SingleAsync(a => a.Id == writeDownDebit.AccountId)).Code);
 
         var movements = await db.StockMovements.OrderBy(m => m.Id).ToListAsync();
         Assert.Equal(2, movements.Count);

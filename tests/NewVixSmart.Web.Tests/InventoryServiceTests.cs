@@ -32,6 +32,20 @@ public sealed class InventoryServiceTests : IDisposable
 
     private async Task<(int itemId, int custId, int supId)> SeedAsync(AppDbContext db)
     {
+        db.GLAccounts.AddRange(
+            new GLAccount { Code = "1000", Name = "النقدية" },
+            new GLAccount { Code = "1100", Name = "البنوك" },
+            new GLAccount { Code = "1200", Name = "ذمم العملاء" },
+            new GLAccount { Code = "1300", Name = "المخزون" },
+            new GLAccount { Code = "2000", Name = "الدائنون" },
+            new GLAccount { Code = "2055", Name = "ضريبة القيمة المضافة" },
+            new GLAccount { Code = "3000", Name = "رأس المال" },
+            new GLAccount { Code = "4000", Name = "إيرادات المبيعات" },
+            new GLAccount { Code = "5000", Name = "تكلفة المبيعات" },
+            new GLAccount { Code = "5101", Name = "مردودات المبيعات" },
+            new GLAccount { Code = "5102", Name = "مردودات المشتريات" },
+            new GLAccount { Code = "5200", Name = "فروق الجرد" });
+
         var cat = new ItemCategory { Name = "تصنيف اختبار" };
         var type = new ItemType { Name = "نوع اختبار" };
         var unit = new Unit { Name = "قطعة" };
@@ -80,7 +94,7 @@ public sealed class InventoryServiceTests : IDisposable
 
     private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty, decimal? count = null)
     {
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var items = new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = count.HasValue ? 0 : qty, Count = count ?? 0 } };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, items, "test");
@@ -105,7 +119,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice
         {
@@ -132,7 +146,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, -5) };
@@ -149,7 +163,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var lines = new List<SaleInvoiceItem>
@@ -170,7 +184,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (_, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId };
         var lines = new List<PurchaseInvoiceItem> { new() { ItemId = db.Items.Single().Id, Quantity = 5, Count = 0, UnitPrice = -10 } };
@@ -187,7 +201,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = -5, AdjustmentDate = DateTime.Today };
 
@@ -231,10 +245,6 @@ public sealed class InventoryServiceTests : IDisposable
             DateReceived = DateTime.Today.AddDays(-5),
             CreatedAt = DateTime.UtcNow
         });
-        db.GLAccounts.Add(new GLAccount { Code = "1200", Name = "المدينون", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true });
-        db.GLAccounts.Add(new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true });
-        db.GLAccounts.Add(new GLAccount { Code = "1300", Name = "المخزون", Type = GLAccountType.Asset, NormalBalance = NormalBalance.Debit, IsActive = true });
-        db.GLAccounts.Add(new GLAccount { Code = "5000", Name = "تكلفة البضاعة المباعة", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true });
         await db.SaveChangesAsync();
 
         var svc = new InventoryService(db, new AccountingService(db));
@@ -270,7 +280,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 150, 50) };
@@ -296,7 +306,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId, Discount = 1000 };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) };
@@ -312,7 +322,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId, Discount = 50, Tax = 25 };
         var lines = new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) };
@@ -329,7 +339,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var lines = new List<SaleInvoiceItem> { CountLine(itemId, 4, 100) };
@@ -351,7 +361,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId };
         var lines = new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 20, Count = 0, UnitPrice = 45 } };
@@ -369,7 +379,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId, Discount = 100, Tax = 50 };
         var lines = new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 20, Count = 0, UnitPrice = 45 } };
@@ -388,7 +398,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
@@ -410,7 +420,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
@@ -431,7 +441,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
@@ -452,7 +462,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { CountLine(itemId, 5, 100) }, "test");
@@ -472,7 +482,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var saleInv = new SaleInvoice { CustomerId = custId };
         await svc.CreateSaleAsync(saleInv, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 50) }, "test");
@@ -495,7 +505,7 @@ public sealed class InventoryServiceTests : IDisposable
     public async Task CreateSaleReturn_NoLines_IsRejected()
     {
         using var db = CreateContext();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var ret = new SaleReturn();
         var (ok, _) = await svc.CreateSaleReturnAsync(ret, new List<SaleReturnItem>(), "test");
@@ -510,7 +520,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice
         {
@@ -531,7 +541,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice
         {
@@ -550,7 +560,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice
         {
@@ -574,7 +584,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId };
         await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 3, Count = 0, UnitPrice = 60 } }, "test");
@@ -589,7 +599,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv1 = new PurchaseInvoice { SupplierId = supId };
         await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitPrice = 60 } }, "test");
@@ -609,7 +619,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice
         {
@@ -631,7 +641,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv1 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 40 } }, "test");
@@ -652,7 +662,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv1 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 40 } }, "test");
@@ -675,7 +685,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
         var custId = await SeedCustomer(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv1 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 10, Count = 0, UnitPrice = 40 } }, "test");
@@ -697,7 +707,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv1 = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(inv1, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 5, Count = 0, UnitPrice = 30 } }, "test");
@@ -716,7 +726,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var inv = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(inv, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 0, Count = 8, UnitPrice = 75 } }, "test");
@@ -772,7 +782,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 10, 30, new DateTime(2026, 1, 1));
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 10, 50, new DateTime(2026, 2, 1));
@@ -801,7 +811,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 5, 30, new DateTime(2026, 1, 1));
 
@@ -820,7 +830,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, _) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var transfer = new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh1Id, TransferDate = DateTime.UtcNow };
         var items = new List<StockTransferItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitCost = 0 } };
@@ -839,7 +849,7 @@ public sealed class InventoryServiceTests : IDisposable
             new Warehouse { Id = 1, Code = "W1", Name = "م1" },
             new Warehouse { Id = 2, Code = "W2", Name = "م2" });
         await db.SaveChangesAsync();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var transfer = new StockTransfer { SourceWarehouseId = 1, TargetWarehouseId = 2, TransferDate = DateTime.UtcNow };
         var (ok, err) = await svc.CreateTransferAsync(transfer, new List<StockTransferItem>(), "test");
@@ -854,7 +864,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 10, 30, new DateTime(2026, 1, 1));
 
@@ -877,7 +887,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 8, 40, new DateTime(2026, 3, 15));
 
@@ -898,7 +908,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         await SeedPurchaseLayerAsync(db, itemId, null, 4, 30, new DateTime(2026, 1, 1));
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 6, 50, new DateTime(2026, 2, 1));
@@ -929,7 +939,7 @@ public sealed class InventoryServiceTests : IDisposable
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
         db.FiscalPeriods.Add(new FiscalPeriod { Year = 2026, IsClosed = true });
         await db.SaveChangesAsync();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var transfer = new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh2Id, TransferDate = new DateTime(2026, 5, 1) };
         var items = new List<StockTransferItem> { new() { ItemId = itemId, Quantity = 1, Count = 0, UnitCost = 0 } };
@@ -948,7 +958,7 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var item = await db.Items.SingleAsync(i => i.Id == itemId);
         item.CurrentCount = 0;
@@ -978,19 +988,47 @@ public sealed class InventoryServiceTests : IDisposable
     // ---------- Adjustment delete (M-3) ----------
 
     [Fact]
-    public async Task DeleteAdjustment_RestoresStockAndRemovesMovement()
+    public async Task DeleteAdjustment_WhenAdjustmentPostedToLedger_IsRejectedAndLeavesEverythingIntact()
     {
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var before = await db.Items.SingleAsync(i => i.Id == itemId);
         Assert.Equal(100m, before.CurrentQuantity);
+        Assert.Equal(50m, before.PurchasePrice);
 
         var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 150, AdjustmentDate = DateTime.Today };
         var (cOk, cErr) = await svc.CreateAdjustmentAsync(adjustment, "test");
         Assert.True(cOk, cErr);
         Assert.Equal(150m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+
+        Assert.NotEmpty(await db.JournalEntries.Where(j => j.Source == JournalSource.InventoryAdjustment && j.SourceId == itemId).ToListAsync());
+
+        var (ok, err) = await svc.DeleteAdjustmentAsync(adjustment.Id, "test");
+        Assert.False(ok);
+        Assert.Contains("قيود اليومية", err);
+        Assert.Equal(150m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+        Assert.Equal(1, await db.InventoryAdjustments.CountAsync(a => a.Id == adjustment.Id));
+        Assert.NotEmpty(await db.StockMovements.Where(m => m.DocumentType == DocumentType.Adjustment).ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeleteAdjustment_WhenNothingWasPostedToLedger_RestoresStockAndRemovesMovement()
+    {
+        using var db = CreateContext();
+        var (itemId, _, _) = await SeedAsync(db);
+        var svc = new InventoryService(db, new AccountingService(db));
+
+        var before = await db.Items.SingleAsync(i => i.Id == itemId);
+        before.PurchasePrice = 0m;
+        await db.SaveChangesAsync();
+
+        var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 150, AdjustmentDate = DateTime.Today };
+        var (cOk, cErr) = await svc.CreateAdjustmentAsync(adjustment, "test");
+        Assert.True(cOk, cErr);
+        Assert.Equal(150m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+        Assert.Empty(await db.JournalEntries.Where(j => j.Source == JournalSource.InventoryAdjustment && j.SourceId == itemId).ToListAsync());
 
         var (ok, err) = await svc.DeleteAdjustmentAsync(adjustment.Id, "test");
         Assert.True(ok, err);
@@ -1004,7 +1042,11 @@ public sealed class InventoryServiceTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
+
+        var item = await db.Items.SingleAsync(i => i.Id == itemId);
+        item.PurchasePrice = 0m;
+        await db.SaveChangesAsync();
 
         var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 150, AdjustmentDate = new DateTime(2026, 3, 1) };
         var (cOk, cErr) = await svc.CreateAdjustmentAsync(adjustment, "test");
@@ -1024,7 +1066,7 @@ public sealed class InventoryServiceTests : IDisposable
     public async Task DeleteAdjustment_MissingRecord_ReturnsFalse()
     {
         using var db = CreateContext();
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var (ok, err) = await svc.DeleteAdjustmentAsync(99999, "test");
         Assert.False(ok);
         Assert.Contains("غير موجود", err);
@@ -1038,7 +1080,7 @@ public sealed class InventoryServiceTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
         var (wh1Id, _) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId, InvoiceDate = new DateTime(2026, 1, 1) };
         await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem> { new() { ItemId = itemId, Quantity = 25, Count = 0, UnitPrice = 40 } }, "test");

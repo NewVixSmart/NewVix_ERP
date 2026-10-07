@@ -19,15 +19,22 @@ namespace NewVixSmart.Web.Tests;
 public sealed class ConcurrencyTokenModelTests
 {
     /// <summary>
-    /// الجداول الخمسة عشر التي يجب أن تحمل <c>RowVersion</c> من نوع <c>rowversion</c>. القائمة
+    /// الجداول التي يجب أن تحمل <c>RowVersion</c> من نوع <c>rowversion</c>. القائمة
     /// مقصودة <b>محدّدة</b>: إضافة جدول أو حذفه منها تفشل الاختبارات، فيُعاد النظر في قراره
     /// صراحةً بدل أن يمرّ صامتًا.
     /// </summary>
     private static readonly string[] _expectedRowVersionTables =
     [
+        "Branches",
+        "BudgetLines",
+        "CompanyProfiles",
+        "Customers",
         "DeliveryIssues",
         "DeliveryOrders",
         "FiscalPeriods",
+        "GLAccounts",
+        "ItemCategories",
+        "ItemTypes",
         "Items",
         "PurchaseInvoices",
         "PurchaseOrderItems",
@@ -39,7 +46,11 @@ public sealed class ConcurrencyTokenModelTests
         "SalesOrderItems",
         "SalesOrders",
         "StockLayers",
-        "StockReservations"
+        "StockReservationLines",
+        "StockReservations",
+        "Suppliers",
+        "Units",
+        "Warehouses"
     ];
 
     /// <summary>
@@ -91,7 +102,7 @@ public sealed class ConcurrencyTokenModelTests
     }
 
     [Fact]
-    public void TheRowversionTables_AreExactlyTheseFifteen()
+    public void TheRowversionTables_AreExactlyTheseTwentySix()
     {
         using var db = CreateContext();
         var actual = RowVersionTables(db).OrderBy(t => t, StringComparer.Ordinal).ToList();
@@ -105,7 +116,7 @@ public sealed class ConcurrencyTokenModelTests
             $"جداول rowversion لا تطابق القائمة: ناقص=[{string.Join(", ", missing)}] " +
             $"زائد=[{string.Join(", ", extra)}]");
         Assert.Equal(expected, actual);
-        Assert.Equal(15, actual.Count);
+        Assert.Equal(26, actual.Count);
     }
 
     [Fact]
@@ -144,8 +155,8 @@ public sealed class ConcurrencyTokenModelTests
 
     /// <summary>
     /// حارس ضد مسحٍ يمرّ دائمًا: رمز النسخ ليس كل رمز تزامن. <c>ConcurrencyStamp</c> في هوية
-    /// ASP.NET رمز تزامن حقيقيّ، ومع ذلك لا يدخل القائمة؛ و<code>Customer</code> ليس له رمز
-    /// نسخ أصلًا. لولاه لما نفع المسح.
+    /// ASP.NET رمز تزامن حقيقيّ، ومع ذلك لا يدخل القائمة لأن عموده ليس <c>rowversion</c>؛
+    /// لولاه لما نفع المسح.
     /// </summary>
     [Fact]
     public void TheSweep_SelectsOnlyStoreGeneratedRowVersion_AndNotEveryConcurrencyToken()
@@ -157,17 +168,9 @@ public sealed class ConcurrencyTokenModelTests
         Assert.NotNull(stamp);
         Assert.True(stamp!.IsConcurrencyToken);
 
-        var customer = db.Model.FindEntityType(typeof(Customer))!;
-        var customerStore = StoreObjectIdentifier.Create(customer, StoreObjectType.Table);
-        Assert.NotNull(customerStore);
-        Assert.DoesNotContain(
-            customer.GetProperties(),
-            p => IsStoreGeneratedRowVersion(p, customerStore.Value));
-
         var tables = RowVersionTables(db);
         Assert.DoesNotContain("AspNetUsers", tables);
         Assert.DoesNotContain("AspNetRoles", tables);
-        Assert.DoesNotContain("Customers", tables);
 
         // وسيناريو الفحص: جدولٌ داخل القائمة فعلًا، فالمسح ليس فارغًا بالصدفة.
         Assert.Contains("FiscalPeriods", tables);

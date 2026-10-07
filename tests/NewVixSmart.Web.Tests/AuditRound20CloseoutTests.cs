@@ -171,7 +171,7 @@ public sealed class AuditRound20CloseoutTests : IDisposable
         var staff = new IdentityUser { UserName = "staff1" };
         Assert.True((await um.CreateAsync(staff, "Staff@12345")).Succeeded);
 
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
 
         // Acting as the admin: the admin may not revoke their own access.
         var selfResult = await InvokeToggleAsync(controller, um, db, actingAs: admin.Id, targetId: admin.Id);
@@ -198,7 +198,7 @@ public sealed class AuditRound20CloseoutTests : IDisposable
         Assert.True((await um.CreateAsync(staff, "Staff@12345")).Succeeded);
         await um.SetLockoutEndDateAsync(staff, DateTimeOffset.MaxValue);
 
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = PrincipalFor("someone-else") }

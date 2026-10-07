@@ -59,7 +59,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
 
     private async Task<int> CreateDraftOrderAsync(AppDbContext db, int itemId, int custId, decimal qty)
     {
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
         var (ok, _) = await orders.CreateOrderAsync(order, new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = qty, Count = 0, UnitPrice = 80 } }, "test");
         Assert.True(ok);
@@ -71,7 +71,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
 
         var order = new SalesOrder { CustomerId = custId };
         var (ok, _) = await orders.CreateOrderAsync(order, new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = 2, Count = 0, UnitPrice = 80 } }, "test");
@@ -86,7 +86,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
 
         var order = new SalesOrder { CustomerId = custId };
         var (ok, err) = await orders.CreateOrderAsync(order, new List<SalesOrderItem>
@@ -106,7 +106,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
 
         var orderId = await CreateDraftOrderAsync(db, itemId, custId, 1);
 
@@ -125,7 +125,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
 
         var orderId = await CreateDraftOrderAsync(db, itemId, custId, 1);
 
@@ -139,7 +139,7 @@ public sealed class SalesOrderLifecycleTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
 
         var orderId = await CreateDraftOrderAsync(db, itemId, custId, 1);
         var order = await db.SalesOrders.FindAsync(orderId);

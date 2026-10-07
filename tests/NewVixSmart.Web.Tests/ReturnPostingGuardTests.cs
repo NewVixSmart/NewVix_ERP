@@ -71,7 +71,8 @@ public sealed class ReturnPostingGuardTests : IDisposable
             ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
             ("5101", "مرتجعات المبيعات", GLAccountType.Expense, NormalBalance.Debit),
-            ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit)
+            ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
+            ("5200", "فروق الجرد", GLAccountType.Expense, NormalBalance.Debit)
         };
         foreach (var (code, name, type, normal) in accounts)
         {
@@ -81,7 +82,7 @@ public sealed class ReturnPostingGuardTests : IDisposable
     }
 
     [Fact]
-    public async Task Adjustment_BackDatedIncrease_PostsOpeningStockOnAdjustmentDate()
+    public async Task Adjustment_BackDatedIncrease_PostsVarianceOnAdjustmentDate()
     {
         using var db = CreateContext();
         SeedChart(db);
@@ -99,7 +100,7 @@ public sealed class ReturnPostingGuardTests : IDisposable
         var (ok, error) = await inventory.CreateAdjustmentAsync(adjustment, "tester");
 
         Assert.True(ok, error);
-        var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.OpeningStock);
+        var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.InventoryAdjustment);
         Assert.Equal(new DateTime(2026, 4, 15), entry.Date);
         Assert.NotEqual(DateTime.UtcNow.Date, entry.Date.Date);
 
@@ -126,7 +127,7 @@ public sealed class ReturnPostingGuardTests : IDisposable
         var (ok, error) = await inventory.CreateAdjustmentAsync(adjustment, "tester");
 
         Assert.True(ok, error);
-        var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.OpeningStock);
+        var entry = await db.JournalEntries.SingleAsync(e => e.Source == JournalSource.InventoryAdjustment);
         Assert.Equal(new DateTime(2026, 6, 10), entry.Date);
         Assert.NotEqual(DateTime.UtcNow.Date, entry.Date.Date);
     }

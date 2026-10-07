@@ -184,11 +184,16 @@ public sealed class OperationsIntegrityTests : IDisposable
         (string Code, string Name, GLAccountType Type, NormalBalance Normal)[] accounts =
         {
             ("1000", "النقد", GLAccountType.Asset, NormalBalance.Debit),
+            ("1100", "البنوك", GLAccountType.Asset, NormalBalance.Debit),
             ("1200", "المدينون", GLAccountType.Asset, NormalBalance.Debit),
             ("1300", "المخزون", GLAccountType.Asset, NormalBalance.Debit),
             ("2000", "الدائنون", GLAccountType.Liability, NormalBalance.Credit),
+            ("2055", "ضريبة القيمة المضافة", GLAccountType.Liability, NormalBalance.Credit),
             ("3000", "رأس المال", GLAccountType.Equity, NormalBalance.Credit),
+            ("4000", "إيرادات المبيعات", GLAccountType.Revenue, NormalBalance.Credit),
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
+            ("5101", "مرتجعات المبيعات", GLAccountType.Expense, NormalBalance.Debit),
+            ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
         {
@@ -228,7 +233,7 @@ public sealed class OperationsIntegrityTests : IDisposable
 
     private static async Task<int> DeliverAsync(AppDbContext db, SaleInvoice invoice, int itemId, decimal qty)
     {
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var delivery = new DeliveryOrder { SaleInvoiceId = invoice.Id, DeliveryDate = DateTime.Today };
         var (ok, err) = await svc.CreateDeliveryOrderAsync(delivery, new List<DeliveryOrderItem> { new() { ItemId = itemId, Quantity = qty, Count = 0 } }, "test");
         if (!ok)
@@ -277,7 +282,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
@@ -297,7 +302,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId };
         var (ok, err) = await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
@@ -317,9 +322,10 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task CreateSale_TwoLinesDifferentItems_Accepted()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (item1Id, custId, _) = await SeedAsync(db);
         var item2Id = await AddItemAsync(db, "صنف اختبار ثانٍ");
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (ok, err) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem>
@@ -352,7 +358,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
         await SeedPurchaseLayerAsync(db, itemId, wh1Id, 20, 30);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var transfer = new StockTransfer { SourceWarehouseId = wh1Id, TargetWarehouseId = wh2Id, TransferDate = DateTime.UtcNow };
         var (ok, err) = await svc.CreateTransferAsync(transfer, new List<StockTransferItem>
@@ -372,8 +378,9 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task SaleReturn_PostedOnly_CountsTowardReturnableRemainder()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
@@ -417,8 +424,9 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task SaleReturnsController_DraftDoesNotReduceReturnableRemainder()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
@@ -465,8 +473,9 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task SaleReturnsController_PostedReturn_ExceedingRemainder_IsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 10, 80) }, "test");
@@ -504,8 +513,9 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task PurchaseReturnsController_PostedReturn_ExceedingRemainder_IsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var (itemId, _, supId) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supId };
         var (okInv, errInv) = await svc.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
@@ -544,9 +554,10 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task CreatePayment_DuplicateIdentical_SecondIsRejected()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var custId = await AddCustomerAsync(db, "عميل مدفوعات");
         await SeedSaleInvoiceAsync(db, custId, 1000m);
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var p1 = new Payment { Type = PaymentType.Receipt, CustomerId = custId, Amount = 200m, Method = PaymentMethod.Cash, PaymentDate = DateTime.Today };
         var (ok1, err1, _) = await svc.CreatePaymentAsync(p1, "test");
@@ -567,9 +578,10 @@ public sealed class OperationsIntegrityTests : IDisposable
         // With one currency the duplicate key is amount + party + date + type. It must still
         // discriminate on the amount, otherwise two real instalments would be refused.
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var custId = await AddCustomerAsync(db, "عميل أقساط");
         await SeedSaleInvoiceAsync(db, custId, 1000m);
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var (ok1, e1, _) = await svc.CreatePaymentAsync(new Payment
         {
@@ -599,9 +611,10 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task CreatePayment_MissingReceiptNumber_ServiceAssignsPayNumber()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var custId = await AddCustomerAsync(db, "عميل أرقام");
         await SeedSaleInvoiceAsync(db, custId, 500m);
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var (ok, err, payment) = await svc.CreatePaymentAsync(new Payment
         {
@@ -623,9 +636,10 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task CreatePayment_TwoRapidPayments_GetDistinctServiceNumbers()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var custId = await AddCustomerAsync(db, "عميل أرقام متتالية");
         await SeedSaleInvoiceAsync(db, custId, 1000m);
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var (ok1, e1, p1) = await svc.CreatePaymentAsync(new Payment
         {
@@ -656,9 +670,10 @@ public sealed class OperationsIntegrityTests : IDisposable
     public async Task ApiCreatePayment_ReceiptNumber_AssignedByService()
     {
         using var db = CreateContext();
+        SeedChartOfAccounts(db);
         var custId = await AddCustomerAsync(db, "عميل API");
         await SeedSaleInvoiceAsync(db, custId, 500m);
-        var svc = new PaymentService(db);
+        var svc = new PaymentService(db, new AccountingService(db));
 
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
         var controller = new ApiPaymentsController(svc, http)
@@ -686,7 +701,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
 
         var controller = new StockTransfersController(db, svc);
         WireController(controller, CreateHttpContext());
@@ -714,7 +729,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
         Assert.True(okInv, errInv);
@@ -739,7 +754,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
         Assert.True(okInv, errInv);
@@ -764,7 +779,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var invoice = new SaleInvoice { CustomerId = custId };
         var (okInv, errInv) = await svc.CreateSaleAsync(invoice, new List<SaleInvoiceItem> { QtyLine(itemId, 1, 80) }, "test");
         Assert.True(okInv, errInv);
@@ -791,7 +806,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var orders = new SalesOrdersService(db, new InventoryService(db));
+        var orders = new SalesOrdersService(db, new InventoryService(db, new AccountingService(db)));
         var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
         var (ok, err) = await orders.CreateOrderAsync(order,
             new List<SalesOrderItem> { new() { ItemId = itemId, Quantity = 5, Count = 0, UnitPrice = 80 } }, "test");
@@ -800,7 +815,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         approved!.Status = SalesOrderStatus.Approved;
         await db.SaveChangesAsync();
 
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var controller = new DeliveryOrdersController(db, svc);
         WireController(controller, CreateHttpContext());
         var vm = new DeliveryOrderViewModel
@@ -896,7 +911,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var controller = new SalesOrdersController(db, new SalesOrdersService(db, inventory), new StockReservationsService(db));
         WireController(controller, CreateHttpContext());
 
@@ -982,6 +997,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.Status));
         AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.Id));
         AssertBindNever<PurchaseOrderLineFormModel>(nameof(PurchaseOrderLineFormModel.RowVersion));
+        AssertBindNever<PurchaseOrderFormModel>(nameof(PurchaseOrderFormModel.RowVersion));
         AssertNotPosted<PurchaseOrderFormModel>(nameof(PurchaseOrder.PublicId));
         AssertNotPosted<PurchaseOrderLineFormModel>(nameof(PurchaseOrderItem.PurchaseOrderId));
         AssertNotPosted<PurchaseOrderLineFormModel>(nameof(PurchaseOrderItem.ReceivedQty));
@@ -1013,7 +1029,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
         var svc = new SalesOrdersService(db, inventory);
         var otherItem = await SeedSecondItemAsync(db);
 
@@ -1032,7 +1048,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         // A fresh context, as a request would get: the update must not depend on what the
         // seeding calls left in the change tracker.
         using var request = CreateContext();
-        var (ok, error) = await new SalesOrdersService(request, new InventoryService(request)).UpdateOrderAsync(
+        var (ok, error) = await new SalesOrdersService(request, new InventoryService(request, new AccountingService(request))).UpdateOrderAsync(
             new SalesOrder { Id = bId, CustomerId = custId, OrderDate = DateTime.Today },
             [new SalesOrderItem { Id = aLineId, ItemId = otherItem, Quantity = 4, Count = 4, UnitPrice = 90 }],
             "test");
@@ -1055,7 +1071,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, supId) = await SeedAsync(db);
         var otherItem = await SeedSecondItemAsync(db);
-        var proc = new ProcurementService(db, new InventoryService(db));
+        var proc = new ProcurementService(db, new InventoryService(db, new AccountingService(db)));
 
         var a = new PurchaseOrder { SupplierId = supId, OrderDate = DateTime.Today };
         Assert.True((await proc.CreateOrderAsync(a, [new PurchaseOrderItem { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 40 }], "test")).Success);
@@ -1068,7 +1084,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         var bId = b.Id;
 
         using var request = CreateContext();
-        var requestProc = new ProcurementService(request, new InventoryService(request));
+        var requestProc = new ProcurementService(request, new InventoryService(request, new AccountingService(request)));
         var (ok, error) = await requestProc.UpdateOrderAsync(
             new PurchaseOrder { Id = bId, SupplierId = supId, OrderDate = DateTime.Today },
             [new PurchaseOrderItem { Id = aLineId, ItemId = otherItem, Quantity = 4, Count = 4, UnitPrice = 45 }],
@@ -1087,7 +1103,7 @@ public sealed class OperationsIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, custId, _) = await SeedAsync(db);
-        var svc = new InventoryService(db);
+        var svc = new InventoryService(db, new AccountingService(db));
         var sales = new SalesOrdersService(db, svc);
 
         var order = new SalesOrder { CustomerId = custId, OrderDate = DateTime.Today };
@@ -1275,7 +1291,7 @@ public sealed class OperationsIntegrityTests : IDisposable
         using var db = CreateContext();
         var (itemId, _, _) = await SeedAsync(db);
         var (wh1Id, wh2Id) = await SeedWarehousesAsync(db);
-        var controller = new StockTransfersController(db, new InventoryService(db));
+        var controller = new StockTransfersController(db, new InventoryService(db, new AccountingService(db)));
         WireController(controller, CreateHttpContext());
 
         var vm = new StockTransferFormViewModel
