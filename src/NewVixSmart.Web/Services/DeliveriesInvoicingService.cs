@@ -9,9 +9,9 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
     private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly IInventoryService _inventory;
-    private readonly IAccountingService? _accounting;
+    private readonly IAccountingService _accounting;
 
-    public DeliveriesInvoicingService(AppDbContext db, IInventoryService inventory, IAccountingService? accounting = null)
+    public DeliveriesInvoicingService(AppDbContext db, IInventoryService inventory, IAccountingService accounting)
     {
         _db = db;
         _inventory = inventory;
@@ -195,7 +195,7 @@ public sealed class DeliveriesInvoicingService : IDeliveriesInvoicingService
                 // because the goods did leave stock. Mirrors the purchase invoice path, which
                 // guards the same way - without it RecordSaleInvoiceRevenueAsync throws on a
                 // zero value and rolls the whole delivery back.
-                if (_accounting != null && invoice.NetAmount > 0m)
+                if (invoice.NetAmount > 0m)
                 {
                     await _accounting.RecordSaleInvoiceRevenueAsync(invoice.InvoiceDate, invoice.CustomerId,
                         invoice.NetAmount, invoice.Tax, user, branchId, invoice.Id);

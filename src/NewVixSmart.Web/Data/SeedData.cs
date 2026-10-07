@@ -167,7 +167,8 @@ public static class SeedData
             new GLAccount { Code = "4000", Name = "إيرادات المبيعات", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true },
             new GLAccount { Code = "4100", Name = "مرتجعات البيع", Type = GLAccountType.Revenue, NormalBalance = NormalBalance.Credit, IsActive = true },
             new GLAccount { Code = "5000", Name = "تكلفة البضاعة المباعة (COGS)", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
-            new GLAccount { Code = "5100", Name = "مرتجعات الشراء", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true }
+            new GLAccount { Code = "5100", Name = "مرتجعات الشراء", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true },
+            new GLAccount { Code = "5200", Name = "فروق الجرد", Type = GLAccountType.Expense, NormalBalance = NormalBalance.Debit, IsActive = true }
         };
         foreach (var chartAccount in chartAccounts)
         {

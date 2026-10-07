@@ -261,7 +261,7 @@ public class AccountingService : IAccountingService
             new[] { new JournalLine("1300", amount, 0), new JournalLine("3000", 0, amount) }, user, branchId);
     }
 
-    public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null)
+    public async Task RecordStockWriteDownAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null, int? adjustmentId = null)
     {
         decimal amount = (qty > 0 ? qty : count) * cost;
         if (amount <= 0)
@@ -269,11 +269,23 @@ public class AccountingService : IAccountingService
             return;
         }
 
-        await PostAsync(JournalSource.OpeningStock, itemId, date ?? DateTime.UtcNow, "جرد تخفيض",
-            new[] { new JournalLine("3000", amount, 0), new JournalLine("1300", 0, amount) }, user, branchId);
+        await PostAsync(JournalSource.InventoryAdjustment, itemId, date ?? DateTime.UtcNow, "تسوية مخزون",
+            new[] { new JournalLine("5200", amount, 0), new JournalLine("1300", 0, amount) }, user, branchId, sourceDocumentId: adjustmentId);
     }
 
-    public async Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null, string? entryNumber = null)
+    public async Task RecordStockVarianceUpAsync(int itemId, decimal qty, decimal count, decimal cost, string? user, int? branchId = null, DateTime? date = null, int? adjustmentId = null)
+    {
+        decimal amount = (qty > 0 ? qty : count) * cost;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        await PostAsync(JournalSource.InventoryAdjustment, itemId, date ?? DateTime.UtcNow, "تسوية مخزون",
+            new[] { new JournalLine("1300", amount, 0), new JournalLine("5200", 0, amount) }, user, branchId, sourceDocumentId: adjustmentId);
+    }
+
+    public async Task PostAsync(JournalSource source, int sourceId, DateTime date, string description, JournalLine[] lines, string? user, int? branchId = null, string? entryNumber = null, int? sourceDocumentId = null)
     {
         var validLines = new List<(int AccountId, decimal Debit, decimal Credit, string? Desc)>();
         decimal totalDebit = 0, totalCredit = 0;
@@ -283,11 +295,6 @@ public class AccountingService : IAccountingService
             if ((line.Debit > 0) == (line.Credit > 0))
             {
                 throw new InvalidOperationException("كل سطر في القيد يجب أن يكون مدينًا أو دائنًا وليس كلاهما");
-            }
-
-            if (line.Debit > 0 && line.Credit > 0)
-            {
-                throw new InvalidOperationException("لا يمكن أن يكون السطر مدينًا ودائنًا في نفس الوقت");
             }
 
             if (line.Debit < 0 || line.Credit < 0)
@@ -334,6 +341,7 @@ public class AccountingService : IAccountingService
                 Description = description,
                 Source = source,
                 SourceId = sourceId,
+                SourceDocumentId = sourceDocumentId,
                 CreatedBy = user,
                 CreatedAt = DateTime.UtcNow,
                 IsPosted = true,

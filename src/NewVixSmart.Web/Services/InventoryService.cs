@@ -14,19 +14,15 @@ public sealed class InventoryService : IInventoryService
     private const int _maxAttempts = 3;
     private readonly AppDbContext _db;
     private readonly ILogger<InventoryService>? _logger;
-    private readonly IAccountingService? _accounting;
+    private readonly IAccountingService _accounting;
     private readonly IStockReservationsService _reservations;
 
-    public InventoryService(AppDbContext db) : this(db, null, null) { }
+    public InventoryService(AppDbContext db, IAccountingService accounting) : this(db, null, accounting) { }
 
-    public InventoryService(AppDbContext db, ILogger<InventoryService>? logger) : this(db, logger, null) { }
-
-    public InventoryService(AppDbContext db, IAccountingService? accounting) : this(db, null, accounting) { }
-
-    public InventoryService(AppDbContext db, IAccountingService? accounting, IStockReservationsService? reservations)
+    public InventoryService(AppDbContext db, IAccountingService accounting, IStockReservationsService? reservations)
         : this(db, null, accounting, reservations) { }
 
-    public InventoryService(AppDbContext db, ILogger<InventoryService>? logger, IAccountingService? accounting,
+    public InventoryService(AppDbContext db, ILogger<InventoryService>? logger, IAccountingService accounting,
         IStockReservationsService? reservations = null)
     {
         _db = db;
@@ -634,7 +630,7 @@ public sealed class InventoryService : IInventoryService
                 var consumed = await ConsumeFifoLayersAsync(stockLines, issue.IssueDate);
                 var costTotal = consumed.DominantTotal;
 
-                if (_accounting != null && costTotal > 0)
+                if (costTotal > 0)
                 {
                     await _accounting.RecordSaleIssueCostAsync(issue.IssueDate, issue.Id, costTotal,
                         user, branchId);
@@ -696,9 +692,57 @@ public sealed class InventoryService : IInventoryService
         }
 
         issue.Status = DeliveryIssueStatus.Cancelled;
-        await _db.SaveChangesAsync();
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
+        {
+            try
+            {
+                await _db.SaveChangesAsync();
+                break;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (attempt == _maxAttempts)
+                {
+                    DetachAll();
+                    return (false, "تعذر حفظ التغييرات بسبب تعارض في البيانات؛ أعد المحاولة");
+                }
+
+                DetachAll();
+                issue = await _db.DeliveryIssues.FirstOrDefaultAsync(i => i.Id == issueId);
+                if (issue == null)
+                {
+                    return (false, "أمر التسليم غير موجود");
+                }
+
+                if (issue.Status == DeliveryIssueStatus.Cancelled)
+                {
+                    break;
+                }
+
+                issue.Status = DeliveryIssueStatus.Cancelled;
+            }
+        }
+
         await RefreshDeliveryStatusAsync(issue.DeliveryOrderId);
-        await _db.SaveChangesAsync();
+        for (int attempt = 1; attempt <= _maxAttempts; attempt++)
+        {
+            try
+            {
+                await _db.SaveChangesAsync();
+                break;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (attempt == _maxAttempts)
+                {
+                    DetachAll();
+                    return (false, "تعذر حفظ حالة أذن التسليم بسبب تعارض في البيانات؛ أعد المحاولة");
+                }
+
+                DetachAll();
+                await RefreshDeliveryStatusAsync(issue.DeliveryOrderId);
+            }
+        }
         _logger?.LogInformation("أُلغي أمر تسليم {Number}", issue.IssueNumber);
         return (true, null);
     }
@@ -903,7 +947,7 @@ public sealed class InventoryService : IInventoryService
                         taxShare = invoice.Tax * share;
                     }
                 }
-                if (_accounting != null && (value > 0 || costTotal > 0))
+                if (value > 0 || costTotal > 0)
                 {
                     await _accounting.RecordSaleDeliveryAsync(delivery.DeliveryDate, invoice.CustomerId,
                         value, costTotal, user, branchId, delivery.Id, taxShare);
@@ -1101,12 +1145,12 @@ public sealed class InventoryService : IInventoryService
 
         await ReplenishFifoLayersAsync(valid, invoice.InvoiceDate);
 
-        if (_accounting != null && invoice.NetAmount > 0)
+        if (invoice.NetAmount > 0)
         {
             await _accounting.RecordPurchaseInvoiceAsync(invoice.InvoiceDate, invoice.SupplierId, invoice.NetAmount, user, branchId);
         }
 
-        if (_accounting != null && invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
+        if (invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt && invoice.NetAmount > 0)
         {
             await _accounting.RecordDisbursementAsync(invoice.InvoiceDate,
                 invoice.NetAmount,
@@ -1315,7 +1359,7 @@ public sealed class InventoryService : IInventoryService
 
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && mirror.Receivable > 0m)
+                if (mirror.Receivable > 0m)
                 {
                     await _accounting.RecordSaleReturnWithCostAsync(
                         saleReturn.ReturnDate, saleReturn.Id, saleReturn.CustomerId,
@@ -1552,7 +1596,7 @@ public sealed class InventoryService : IInventoryService
 
                 await _db.SaveChangesAsync();
 
-                if (_accounting != null && mirror.Receivable > 0m)
+                if (mirror.Receivable > 0m)
                 {
                     await _accounting.RecordPurchaseReturnWithCostAsync(
                         purchaseReturn.ReturnDate, purchaseReturn.Id, purchaseReturn.SupplierId,
@@ -1696,24 +1740,21 @@ public sealed class InventoryService : IInventoryService
                 {
                     var consumed = await ConsumeAdjustmentLayersAsync(adjustment.ItemId, -addedQty, -addedCount);
                     await _db.SaveChangesAsync();
-                    if (_accounting != null)
+                    var writtenQty = Math.Max(-addedQty, 0);
+                    var writtenCount = Math.Max(-addedCount, 0);
+                    if (consumed.QtyCost > 0 || consumed.CountCost > 0)
                     {
-                        var writtenQty = Math.Max(-addedQty, 0);
-                        var writtenCount = Math.Max(-addedCount, 0);
-                        if (consumed.QtyCost > 0 || consumed.CountCost > 0)
-                        {
-                            await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user, date: adjustment.AdjustmentDate);
-                        }
-                        else if (writtenQty > 0 || writtenCount > 0)
-                        {
-                            await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user, date: adjustment.AdjustmentDate);
-                        }
+                        await _accounting.RecordStockWriteDownAsync(item.Id, consumed.QtyCost, consumed.CountCost, 1m, user, date: adjustment.AdjustmentDate, adjustmentId: adjustment.Id);
+                    }
+                    else if (writtenQty > 0 || writtenCount > 0)
+                    {
+                        await _accounting.RecordStockWriteDownAsync(item.Id, writtenQty, writtenCount, item.PurchasePrice, user, date: adjustment.AdjustmentDate, adjustmentId: adjustment.Id);
                     }
                 }
 
-                if (_accounting != null && (addedQty > 0 || addedCount > 0))
+                if (addedQty > 0 || addedCount > 0)
                 {
-                    await _accounting.RecordOpeningStockAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user, date: adjustment.AdjustmentDate);
+                    await _accounting.RecordStockVarianceUpAsync(item.Id, Math.Max(addedQty, 0), Math.Max(addedCount, 0), item.PurchasePrice, user, date: adjustment.AdjustmentDate, adjustmentId: adjustment.Id);
                 }
 
                 if (tx is not null)
@@ -1756,9 +1797,20 @@ public sealed class InventoryService : IInventoryService
                     return (false, "سجل الجرد غير موجود");
                 }
 
-                if (await _db.JournalEntries.AnyAsync(j => j.Source == JournalSource.OpeningStock && j.SourceId == adj.ItemId))
+                // بيانُ التعديلِ يحمل الآن `SourceDocumentId = adjustment.Id`، فيُمْكن الحارسُ من
+                // تمييزِ مستندٍ بعينه لا كلَّ مستنداتِ الصنفِ. ولمستنداتِ ما قبل هذا العمودِ
+                // (حيث `SourceDocumentId` معدوم) يبقى الرجوعُ إلى مستوى الصنف، فالمسارُ قديمٌ
+                // لا يفتحُ بابَ الحذفِ خلفَ بيانٍ مرصود.
+                // <para>
+                // ومصدرُ التعديلِ لا يزال `SourceId = itemId` — عقدٌ مكتوبٌ في الاختباراتِ
+                // يصلحُ لتقاريرِ المخزونِ — فلا يمسُّ العمودُ الجديدُ علاقتَهُ.
+                // </para>
+                if (await _db.JournalEntries.AnyAsync(j =>
+                        (j.Source == JournalSource.InventoryAdjustment && j.SourceId == adj.ItemId
+                            && (j.SourceDocumentId == adj.Id || j.SourceDocumentId == null))
+                        || (j.Source == JournalSource.OpeningStock && j.SourceId == adj.ItemId)))
                 {
-                    return (false, "لا يمكن حذف هذا الجرد لأن بياناته رُحّلت إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
+                    return (false, "لا يمكن حذف هذا الجرد لأن حركات هذا الصنف مُرحّلة إلى قيود اليومية؛ اضبط المخزون بجرد جديد بدلاً من ذلك");
                 }
 
                 var movements = await _db.StockMovements

@@ -44,6 +44,7 @@ public sealed class FinancialIntegrityTests : IDisposable
             ("5000", "تكلفة البضاعة", GLAccountType.Expense, NormalBalance.Debit),
             ("5101", "مرتجعات البيع", GLAccountType.Revenue, NormalBalance.Credit),
             ("5102", "مرتجعات المشتريات", GLAccountType.Expense, NormalBalance.Debit),
+            ("5200", "فروق الجرد", GLAccountType.Expense, NormalBalance.Debit),
         };
         foreach (var (code, name, type, normal) in accounts)
         {
@@ -232,7 +233,7 @@ public sealed class FinancialIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, supplierId) = await ProcurementSeedAsync(db);
-        var proc = new ProcurementService(db, new InventoryService(db));
+        var proc = new ProcurementService(db, new InventoryService(db, new AccountingService(db)));
 
         var order = new PurchaseOrder { SupplierId = supplierId, OrderDate = DateTime.Today };
         var (ok, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
@@ -243,7 +244,7 @@ public sealed class FinancialIntegrityTests : IDisposable
         await proc.ApproveOrderAsync(order.Id);
 
         using var second = CreateContext();
-        var proc2 = new ProcurementService(second, new InventoryService(second));
+        var proc2 = new ProcurementService(second, new InventoryService(second, new AccountingService(second)));
         var (ok1, err1) = await proc.ReceiveOrderLineAsync(order.Id, (await db.PurchaseOrderItems.SingleAsync()).Id, 7, 7);
         Assert.True(ok1, err1);
         var (ok2, err2) = await proc2.ReceiveOrderLineAsync(order.Id, (await second.PurchaseOrderItems.SingleAsync()).Id, 7, 7);
@@ -259,7 +260,7 @@ public sealed class FinancialIntegrityTests : IDisposable
     {
         using var db = CreateContext();
         var (itemId, supplierId) = await ProcurementSeedAsync(db);
-        var proc = new ProcurementService(db, new InventoryService(db));
+        var proc = new ProcurementService(db, new InventoryService(db, new AccountingService(db)));
 
         var order = new PurchaseOrder { SupplierId = supplierId, OrderDate = DateTime.Today };
         var (ok, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
@@ -608,7 +609,7 @@ public sealed class FinancialIntegrityTests : IDisposable
         var supplier = new Supplier { Name = "مورد شراء مالي" };
         db.Suppliers.Add(supplier);
         await db.SaveChangesAsync();
-        var inventory = new InventoryService(db);
+        var inventory = new InventoryService(db, new AccountingService(db));
 
         var invoice = new PurchaseInvoice { SupplierId = supplier.Id, InvoiceDate = DateTime.Today };
         var (ok, err) = await inventory.CreatePurchaseAsync(invoice, new List<PurchaseInvoiceItem>
@@ -633,12 +634,174 @@ public sealed class FinancialIntegrityTests : IDisposable
         var adjustment = new InventoryAdjustment { ItemId = itemId, NewCount = 0, NewQuantity = 25, AdjustmentDate = DateTime.Today };
         var (cOk, cErr) = await inventory.CreateAdjustmentAsync(adjustment, "test");
         Assert.True(cOk, cErr);
-        Assert.True(await db.JournalEntries.AnyAsync(j => j.Source == JournalSource.OpeningStock && j.SourceId == itemId));
+        Assert.True(await db.JournalEntries.AnyAsync(j => j.Source == JournalSource.InventoryAdjustment && j.SourceId == itemId));
 
         var (dOk, dErr) = await inventory.DeleteAdjustmentAsync(adjustment.Id, "test");
         Assert.False(dOk);
-        Assert.Contains("رُحّلت إلى قيود اليومية", dErr);
+        Assert.Contains("حركات هذا الصنف مُرحّلة إلى قيود اليومية", dErr);
         Assert.Equal(1, await db.InventoryAdjustments.CountAsync(a => a.Id == adjustment.Id));
         Assert.Equal(25m, (await db.Items.SingleAsync(i => i.Id == itemId)).CurrentQuantity);
+    }
+
+    /// <summary>
+    /// الحارسُ يجب أن يقارن بمفتاحِ الصنف لا بمفتاحِ التعديلِ نفسِه. فالبيانُ يُنشئُ
+    /// <c>SourceId = itemId</c> ولا رابطَ في الجدولِ إلى التعديل، فقِياسُه بمفتاحِ
+    /// التعديلِ لا يجد شيئًا أبدًا.
+    /// <para>
+    /// وبقيةَ الاختبارات تصدمُ في الصدفةِ لا في الحقيقة: أوّلُ صنفٍ وأوّلُ تعديلٍ
+    /// يتساويان في المفتاح، فيبدو الحارسُ سليمًا وهو لا يمسُّ شيئًا. ولا يظهر الأثرُ
+    /// إلا في الإنتاج، حيث تُستعاد الكمياتُ ويُحذَف الجردُ بينما يبقى بيانُ
+    /// <c>Dr 5200 / Cr 1300</c> مرصودًا — أي انفصالٌ دائمٌ بين الدفترِ والمخزون.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Adjustment_Delete_MatchesTheJournalByItemIdNotByAdjustmentId()
+    {
+        using var db = CreateContext();
+        await SeedItemAndCustomerAsync(db);
+
+        var unit = new Unit { Name = "وحدة الجرد" };
+        var second = new Item
+        {
+            Name = "صنف الجرد الثاني",
+            Category = new ItemCategory { Name = "تصنيف الجرد" },
+            ItemType = new ItemType { Name = "نوع الجرد" },
+            CountUnit = unit,
+            QuantityUnit = unit,
+            PurchasePrice = 40,
+            SalePrice = 100,
+            CurrentCount = 10m,
+            CurrentQuantity = 10m
+        };
+        db.Items.Add(second);
+        await db.SaveChangesAsync();
+
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        var adjustment = new InventoryAdjustment
+        {
+            ItemId = second.Id,
+            NewCount = 15,
+            NewQuantity = 25,
+            AdjustmentDate = DateTime.Today
+        };
+        var (cOk, cErr) = await inventory.CreateAdjustmentAsync(adjustment, "test");
+        Assert.True(cOk, cErr);
+
+        // وإلا عاد الاختبارُ إلى الصدفةِ نفسِها ولا يقيس شيئًا.
+        Assert.NotEqual(adjustment.Id, adjustment.ItemId);
+
+        var journal = await db.JournalEntries.SingleAsync(j => j.Source == JournalSource.InventoryAdjustment);
+        Assert.Equal(second.Id, journal.SourceId);
+
+        var (dOk, dErr) = await inventory.DeleteAdjustmentAsync(adjustment.Id, "test");
+        Assert.False(dOk, "حُذِل جردٌ بيانُه مرصودٌ في اليومية، فتفرّق الأرصدةُ بين الدفترِ والمخزون");
+        Assert.Contains("حركات هذا الصنف مُرحّلة إلى قيود اليومية", dErr);
+        Assert.Equal(1, await db.InventoryAdjustments.CountAsync(a => a.Id == adjustment.Id));
+        Assert.Equal(25m, (await db.Items.SingleAsync(i => i.Id == second.Id)).CurrentQuantity);
+    }
+
+    [Fact]
+    public async Task Adjustment_CreatedJournal_RecordsTheExactSourceDocumentId()
+    {
+        using var db = CreateContext();
+        var (itemId, _) = await SeedItemAndCustomerAsync(db);
+
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        var adjustment = new InventoryAdjustment
+        {
+            ItemId = itemId,
+            NewCount = 25,
+            NewQuantity = 25,
+            AdjustmentDate = DateTime.Today
+        };
+        var (cOk, cErr) = await inventory.CreateAdjustmentAsync(adjustment, "test");
+        Assert.True(cOk, cErr);
+
+        var journal = await db.JournalEntries.SingleAsync(j => j.Source == JournalSource.InventoryAdjustment);
+        Assert.Equal(adjustment.Id, journal.SourceDocumentId);
+        Assert.Equal(itemId, journal.SourceId);
+    }
+
+    [Fact]
+    public async Task Adjustment_Delete_WithSiblingZeroCostOnTheSameItem_IsAllowed()
+    {
+        using var db = CreateContext();
+        var (itemId, _) = await SeedItemAndCustomerAsync(db);
+
+        var inventory = new InventoryService(db, new AccountingService(db));
+
+        var costed = new InventoryAdjustment
+        {
+            ItemId = itemId,
+            NewCount = 25,
+            NewQuantity = 25,
+            AdjustmentDate = DateTime.Today
+        };
+        var (cOk, cErr) = await inventory.CreateAdjustmentAsync(costed, "test");
+        Assert.True(cOk, cErr);
+
+        var item = await db.Items.SingleAsync(i => i.Id == itemId);
+        item.PurchasePrice = 0;
+        await db.SaveChangesAsync();
+
+        var zero = new InventoryAdjustment
+        {
+            ItemId = itemId,
+            NewCount = 30,
+            NewQuantity = 30,
+            AdjustmentDate = DateTime.Today
+        };
+        var (zOk, zErr) = await inventory.CreateAdjustmentAsync(zero, "test");
+        Assert.True(zOk, zErr);
+        Assert.Equal(0, await db.JournalEntries.CountAsync(j => j.SourceDocumentId == zero.Id));
+
+        var (dOk, dErr) = await inventory.DeleteAdjustmentAsync(zero.Id, "test");
+        Assert.True(dOk, dErr);
+        Assert.Equal(0, await db.InventoryAdjustments.CountAsync(a => a.Id == zero.Id));
+
+        var (xOk, xErr) = await inventory.DeleteAdjustmentAsync(costed.Id, "test");
+        Assert.False(xOk, "بيانُ الجردِ المرصودِ لا يزال يمنع حذفَ مستندِه");
+        Assert.Contains("حركات هذا الصنف مُرحّلة إلى قيود اليومية", xErr);
+    }
+
+    [Fact]
+    public async Task Adjustment_Delete_WithLegacyItemLevelJournal_StillBlocks()
+    {
+        using var db = CreateContext();
+        var (itemId, _) = await SeedItemAndCustomerAsync(db);
+
+        db.JournalEntries.Add(new JournalEntry
+        {
+            EntryNumber = "LEGACY-ADJ-1",
+            Date = DateTime.Today,
+            Description = "تسوية مخزون سابقة",
+            Source = JournalSource.InventoryAdjustment,
+            SourceId = itemId,
+            SourceDocumentId = null,
+            IsPosted = true
+        });
+        await db.SaveChangesAsync();
+
+        var item = await db.Items.SingleAsync(i => i.Id == itemId);
+        item.PurchasePrice = 0;
+        await db.SaveChangesAsync();
+
+        var inventory = new InventoryService(db, new AccountingService(db));
+        var push = new InventoryAdjustment
+        {
+            ItemId = itemId,
+            NewCount = 25,
+            NewQuantity = 25,
+            AdjustmentDate = DateTime.Today
+        };
+        var (cOk, cErr) = await inventory.CreateAdjustmentAsync(push, "test");
+        Assert.True(cOk, cErr);
+        Assert.Equal(0, await db.JournalEntries.CountAsync(j => j.SourceDocumentId == push.Id));
+
+        var (dOk, dErr) = await inventory.DeleteAdjustmentAsync(push.Id, "test");
+        Assert.False(dOk, "بيانُ ما قبل العمودِ الجديدِ له سندُه عند مستوى الصنف، فلا يُعاود الحذفُ أبدًا");
+        Assert.Contains("حركات هذا الصنف مُرحّلة إلى قيود اليومية", dErr);
     }
 }

@@ -10,10 +10,10 @@ namespace NewVixSmart.Web.Services;
 public sealed class PaymentService : IPaymentService
 {
     private readonly AppDbContext _db;
-    private readonly IAccountingService? _accounting;
+    private readonly IAccountingService _accounting;
     private readonly ILogger<PaymentService>? _logger;
 
-    public PaymentService(AppDbContext db, IAccountingService? accounting = null, ILogger<PaymentService>? logger = null)
+    public PaymentService(AppDbContext db, IAccountingService accounting, ILogger<PaymentService>? logger = null)
     {
         _db = db;
         _accounting = accounting;
@@ -88,16 +88,13 @@ public sealed class PaymentService : IPaymentService
                     return (false, "المبلغ أكبر من إجمالي المستحق لهذا الطرف بعد خصم المرتجعات المرحّلة", null);
                 }
 
-                if (_accounting != null)
+                if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
                 {
-                    if (payment.Type == PaymentType.Receipt && payment.CustomerId.HasValue)
-                    {
-                        await _accounting.RecordReceiptAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.CustomerId.Value, user, branchId);
-                    }
-                    else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
-                    {
-                        await _accounting.RecordDisbursementAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.SupplierId.Value, user, branchId);
-                    }
+                    await _accounting.RecordReceiptAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.CustomerId.Value, user, branchId);
+                }
+                else if (payment.Type == PaymentType.Disbursement && payment.SupplierId.HasValue)
+                {
+                    await _accounting.RecordDisbursementAsync(payment.PaymentDate, payment.Amount, payment.Method, payment.SupplierId.Value, user, branchId);
                 }
 
                 if (tx is not null)

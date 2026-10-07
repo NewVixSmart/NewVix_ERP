@@ -21,7 +21,7 @@ public sealed class SalesOrdersService : ISalesOrdersService
         _db = db;
         _inventory = inventory;
         _reservations = reservations ?? new StockReservationsService(db);
-        _deliveriesInvoicing = deliveriesInvoicing ?? new DeliveriesInvoicingService(db, inventory);
+        _deliveriesInvoicing = deliveriesInvoicing ?? new DeliveriesInvoicingService(db, inventory, new AccountingService(db));
     }
 
     public async Task<IReadOnlyList<SalesOrder>> GetOrdersAsync(SalesOrderStatus? status = null)
