@@ -69,6 +69,8 @@
               data-action-pdf="@Url.Action("PrintPdfPreview")">
             @Html.AntiForgeryToken()
             <input type="hidden" name="group" id="activeGroup" value="0" />
+            @* بصمةُ ما عُرض فعلًا، فيقارنها الخادم بالمحفوظ قبل الكتابة. *@
+            <input type="hidden" name="printFingerprint" value="@ViewBag.PrintFingerprint" />
 
             <div class="row g-4">
                 <div class="col-xl-7">

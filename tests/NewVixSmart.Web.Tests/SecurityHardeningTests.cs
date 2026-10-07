@@ -141,6 +141,109 @@ public sealed class SecurityHardeningTests : IDisposable
         Assert.Equal(2, items.Count);
     }
 
+    /// <summary>
+    /// رفضُ حفظ إعدادات الطباعة إذا تغيّرت المحفوظة بعد العرض. الاختبارُ الحركيّ: البصمةُ
+    /// المرسودة تُنتَج من حالةٍ ثمانية، ثم تُغيَّر القاعدةُ، فيجب أن يرفض <c>SavePrinting</c>
+    /// ولا يستدعي خدمةَ الطباعة أصلًا — فالدليلُ على الرفض هو غيابُ الكتابة.
+    /// </summary>
+    [Fact]
+    public async Task SavePrinting_RefusesWhenStoredLayoutsDivergeFromTheRenderedFingerprint()
+    {
+        using var db = CreateContext();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
+        var print = new RecordingPrintSettingsService();
+        var controller = new SettingsController(db, http, new FakeBrandingService(), print, new SetWriteGate(db));
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+
+        db.SystemSettings.Add(new SystemSetting { Key = "PrintStudio.sales_invoice.PageSize", Value = "A4" });
+        await db.SaveChangesAsync();
+
+        var printing = Assert.IsType<ViewResult>(await controller.Printing());
+        var rendered = (string)printing.ViewData["PrintFingerprint"]!;
+        Assert.NotEmpty(rendered);
+
+        // مديرٌ آخر يحفظ تخطيطًا مختلفًا بعد أن عُرضت الصفحة.
+        db.SystemSettings.Single(s => s.Key == "PrintStudio.sales_invoice.PageSize").Value = "A5";
+        await db.SaveChangesAsync();
+
+        var result = await controller.SavePrinting(
+            PrintGroup.SalesInvoice,
+            new PrintLayoutOptions { PageSize = PrintPageSize.A4 },
+            applyToAll: false,
+            printFingerprint: rendered);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(0, print.SaveCount);
+
+        // وقبل كلّ هذا: لو طابقت البصمة لَما رُفض شيء، وإلا كان الحارسُ يرفض بلا سبب.
+        var matching = await controller.SavePrinting(
+            PrintGroup.SalesInvoice,
+            new PrintLayoutOptions { PageSize = PrintPageSize.A4 },
+            applyToAll: false,
+            printFingerprint: await RecomputeAsync(db));
+        Assert.IsType<RedirectToActionResult>(matching);
+        Assert.Equal(1, print.SaveCount);
+    }
+
+    /// <summary>
+    /// البصمةُ الغائبةُ ليست إذنًا للكتابة. فالنموذجُ الوحيدُ الذي ينشر إلى
+    /// <c>SavePrinting</c> يحملها دومًا، فغيابُها يعني أن الصفحةَ المعروضةَ قديمةٌ أو أن
+    /// الحقلَ طُوي؛ والحالان يستوجبان الرفض. وإلا لكان الحارسُ يُغلقُ على مَن يحمل
+    /// البصمةَ الصحيحةَ ويفتحُ لمن لا يحمل شيئًا، فتصبح الحمايةُ اختياريةً لمن يريد.
+    /// </summary>
+    [Fact]
+    public async Task SavePrinting_RefusesWhenTheFingerprintIsAbsent()
+    {
+        using var db = CreateContext();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
+        var print = new RecordingPrintSettingsService();
+        var controller = new SettingsController(db, http, new FakeBrandingService(), print, new SetWriteGate(db));
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+
+        db.SystemSettings.Add(new SystemSetting { Key = "PrintStudio.sales_invoice.PageSize", Value = "A4" });
+        await db.SaveChangesAsync();
+
+        var printing = Assert.IsType<ViewResult>(await controller.Printing());
+        Assert.NotEmpty((string)printing.ViewData["PrintFingerprint"]!);
+
+        var result = await controller.SavePrinting(
+            PrintGroup.SalesInvoice,
+            new PrintLayoutOptions { PageSize = PrintPageSize.A5 },
+            applyToAll: false,
+            printFingerprint: null);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(0, print.SaveCount);
+        Assert.NotNull(controller.TempData["Error"]);
+    }
+
+    /// <summary>
+    /// تُحسب البصمةُ نفسُها المستخدَمة في الخادم، حتى لا يعتمد الاختبار على تنفيذٍ خاصٍّ به.
+    /// </summary>
+    private static Task<string> RecomputeAsync(AppDbContext db)
+    {
+        var rows = db.SystemSettings.AsNoTracking()
+            .Where(s => s.Key.StartsWith("PrintStudio.") || s.Key.StartsWith("Print."))
+            .OrderBy(s => s.Key)
+            .Select(s => new { s.Key, s.Value })
+            .ToList();
+        var payload = string.Join("\n", rows.Select(r => $"{r.Key}={r.Value ?? string.Empty}"));
+        return Task.FromResult(Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload))));
+    }
+
+    /// <summary>يحصي المراتِ التي حُفظت فعلًا، فدليلُ الرفض غيابُ العدد لا مجرّدُ التوجيه.</summary>
+    private sealed class RecordingPrintSettingsService : FakePrintSettingsService
+    {
+        public int SaveCount { get; private set; }
+
+        public override Task SaveLayoutAsync(PrintGroup group, PrintLayoutOptions options)
+        {
+            SaveCount++;
+            return Task.CompletedTask;
+        }
+    }
+
     [Fact]
     public async Task SetCurrentBranch_UnknownBranch_Rejects()
     {
@@ -149,7 +252,7 @@ public sealed class SecurityHardeningTests : IDisposable
         await db.SaveChangesAsync();
 
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
-        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService());
+        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService(), new SetWriteGate(db));
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
 
         var result = await controller.SetCurrentBranch(9999);
@@ -182,7 +285,7 @@ public sealed class SecurityHardeningTests : IDisposable
             new IdentityRole { Name = "Accountant", NormalizedName = "ACCOUNTANT" });
         await db.SaveChangesAsync();
         var um = CreateUserManager(db);
-        var controller = new UsersController(um, db);
+        var controller = new UsersController(um, db, new SetWriteGate(db));
         controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
 
         var result = await controller.Create(new CreateUserViewModel
@@ -230,6 +333,67 @@ public sealed class SecurityHardeningTests : IDisposable
         }
     }
 
+
+    /// <summary>
+    /// ترتيبُ الفحصِ في <c>SaveBranding</c> ليس ترتيبًا شكليًّا. المفتاحُ غير الموجود يجعل
+    /// <c>SetSettingAsync</c> تحفظ وحدَها، و<c>SaveChanges</c> يشمل كلَّ المتتبَّع — منه
+    /// تعديلُ <c>CompanyProfile</c> المحمَّل قبل قليل. فلو سُبق وضعُ الرمزِ بنداءاتِ
+    /// المظهر لَكُتبت هذه القيمُ قبل الفحص، ولما بلغ <c>catch</c> الاستثناءَ قطّ.
+    /// <para>
+    /// والاختبارُ حقيقيٌّ لا نصّيٌّ: يُرسل رمزًا قديمًا بعد تعديل زميل، ومفتاحُ مظهرٍ
+    /// غيرِ موجودٍ يُجبر المسارَ على الحفظ المبكر. والنتيجةُ لا تُشترَط أن ترمِي استثناءً —
+    /// المطلوبُ وحدَه ألّا يكتب سطرًا واحدًا.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SaveBranding_RefusesStaleBrandingEvenWhenAThemeKeyIsMissing()
+    {
+        using var db = CreateContext();
+        db.CompanyProfiles.Add(new CompanyProfile { CompanyName = "الاسم الأصلي", Tagline = "الشعار الأصلي" });
+        await db.SaveChangesAsync();
+
+        // لا مفاتيحَ مظهرٍ إطلاقًا، وهذا هو ما يجعل `SetSettingAsync` تحفظ وحدَها أوّلَ مرّة.
+        Assert.Empty(db.SystemSettings);
+
+        // SQLite لا يولّد `rowversion`، فالرمزُ هنا يأتي من محرّكٍ حقيقيّ وحده. نُحاكي
+        // ما يفعله ذلك المحرّك بقيمتين مختلفتين: واحدةٌ في الصفّ وأخرى مُرسَلةٌ قديمة.
+        // المعروضُ للاختبار هو الشرطُ نفسُه: أن يُوضع الرمزُ القديم في شرط الحفظ.
+        //
+        // و`x'..'` حرفيٌّ BLOB في SQLite. لو كُتبت القيمة hexً نصًّا لخُزِّنت TEXT
+        // فلم تساوِ بايتًا أبدًا، فرفض الحفظُ كلَّ مرّة — ويمرّ الاختبارُ والحارسُ غائب.
+        var stale = new byte[] { 0xCC, 0xDD };
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE [CompanyProfiles] SET [RowVersion] = x'00AABB'");
+
+        // ولا بدّ من نسيان المتتبِّع: لولا ذلك حمل `SaveBranding` الكيانَ قادمًا بالرمز
+        // الفارغ، فيرفضه الحفظُ لتعارضٍ مع تحديثٍ آخر لا صلة له بالرمز المُرسَل.
+        db.ChangeTracker.Clear();
+
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { Session = new FakeSession() } };
+        var controller = new SettingsController(db, http, new FakeBrandingService(), new FakePrintSettingsService(), new SetWriteGate(db));
+        controller.TempData = new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+
+        using var verify = CreateContext();
+        var result = await controller.SaveBranding(new BrandingViewModel
+        {
+            CompanyName = "اسمي أنا",
+            Tagline = "شعارّي أنا",
+            Primary = "#112233",
+            Accent = "#112233",
+            SidebarBg = "#112233",
+            PageBg = "#112233",
+            RowVersion = stale
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+
+        // لم يكتب سطرٌ واحد: لا الاسمُ ولا أيُّ مفتاحِ مظهر.
+        var settled = await verify.CompanyProfiles.AsNoTracking().SingleAsync();
+        Assert.Equal("الاسم الأصلي", settled.CompanyName);
+        Assert.Equal("الشعار الأصلي", settled.Tagline);
+        Assert.Empty(await verify.SystemSettings.AsNoTracking().ToListAsync());
+    }
+
     private sealed class FakeBrandingService : IBrandingService
     {
         public PalettePreset[] Presets => [];
@@ -240,7 +404,7 @@ public sealed class SecurityHardeningTests : IDisposable
         public void Invalidate() { }
     }
 
-    private sealed class FakePrintSettingsService : IPrintSettingsService
+    private class FakePrintSettingsService : IPrintSettingsService
     {
         public Task<PrintSettingsViewModel> LoadAsync() => Task.FromResult(new PrintSettingsViewModel());
         public bool ShowLogo(PrintGroup group) => true;
@@ -254,7 +418,13 @@ public sealed class SecurityHardeningTests : IDisposable
         public double FontScale(PrintGroup group) => 1.0;
         public string PaperMargin(PrintGroup group) => "normal";
         public Task<PrintLayoutOptions> GetLayoutAsync(PrintGroup group) => Task.FromResult(new PrintLayoutOptions());
-        public Task SaveLayoutAsync(PrintGroup group, PrintLayoutOptions options) => Task.CompletedTask;
+
+        /// <summary>
+        /// <c>virtual</c> ليعمل به <see cref="RecordingPrintSettingsService"/>؛ فالإخفاءُ مع
+        /// <c>new</c> لا يُخترق عبر الاستدعاء من <c>SettingsController</c>-interface، إذ يبقى
+        /// التنفيذُ الأصلي هو الذي يُنفَّذ.
+        /// </summary>
+        public virtual Task SaveLayoutAsync(PrintGroup group, PrintLayoutOptions options) => Task.CompletedTask;
         public Task<PrintLayoutOptions> GetPreviewLayoutAsync(PrintGroup group, string? state)
         {
             if (PrintSettingsService.DecodeState(state) is { } layout)

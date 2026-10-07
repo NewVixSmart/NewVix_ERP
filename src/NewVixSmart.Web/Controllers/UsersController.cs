@@ -15,11 +15,13 @@ public class UsersController : Controller
 {
     private readonly UserManager<IdentityUser> _userManager;
     private readonly AppDbContext _db;
+    private readonly ISetWriteGate _gates;
 
-    public UsersController(UserManager<IdentityUser> userManager, AppDbContext db)
+    public UsersController(UserManager<IdentityUser> userManager, AppDbContext db, ISetWriteGate gates)
     {
         _userManager = userManager;
         _db = db;
+        _gates = gates;
     }
 
     public async Task<IActionResult> Index()
@@ -174,13 +176,14 @@ public class UsersController : Controller
             UserName = user.UserName ?? user.Id,
             Roles = roles,
             IsAdmin = roles.Contains("Admin"),
-            Modules = modules
+            Modules = modules,
+            RenderedKeys = string.Join(",", granted.OrderBy(k => k, StringComparer.Ordinal))
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Permissions(string id, string[] perm)
+    public async Task<IActionResult> Permissions(string id, string[] perm, string? renderedKeys)
     {
         var user = await _userManager.FindByIdAsync(id);
         if (user == null)
@@ -216,14 +219,53 @@ public class UsersController : Controller
             }
         }
 
-        var existing = await _db.UserPermissions.Where(p => p.UserId == user.Id).ToListAsync();
-        _db.UserPermissions.RemoveRange(existing);
-        _db.UserPermissions.AddRange(selected.Select(k => new UserPermission
+        // الحفظ هنا يحذفُ كلَّ الصلاحيات ويعيد بناءها، فلا يعود هناك صفٌّ قديمٌ يُرافَق برمز
+        // توفّرٍ ليُقارَن؛ فالحارسُ هو مطابقةُ المجموعة: إن اختلف ما على الشاشة عمّا هو
+        // محفوظٌ الآن، فإحداهما تعديلُ مديرٍ لم يُحفظ بعد، ولا يجوز أن يبتلع أحدُهما الآخر؛
+        // وخصوصًا هنا، إذ قد يُحيي أحدُهما منعًا أمنيًّا أو يُسقط صلاحيةً بلا أثر.
+        //
+        // والقفلُ يُؤخذ قبل القراءة، فلا تُقرأ المجموعةُ إلا بعد أن يُطردَ rivalٌ سابق.
+        // فالمقارنةُ وحدَها لا تكفي: طلبان متزامنان يقرآن المجموعةَ نفسَها فيعدّان التصريحَين
+        // متطابقَين ثم يحذف الثاني ويبني جديدَه، فيمحو تنقيحَ الأول — ومن ذلك إحياءُ منعٍ
+        // أمنيٍّ سقط للتو. والقراءةُ تحت القفل هي التي تجعل المقارنةَ بعده صحيحة.
+        await using var tx = await _gates.AcquireAsync(SetSubjects.Permissions(user.Id));
+
+        try
         {
-            UserId = user.Id,
-            PermissionKey = k
-        }));
-        await _db.SaveChangesAsync();
+            var currentKeys = (await _db.UserPermissions.AsNoTracking()
+                .Where(p => p.UserId == user.Id)
+                .Select(p => p.PermissionKey)
+                .ToListAsync())
+                .OrderBy(k => k, StringComparer.Ordinal);
+
+            var rendered = (renderedKeys ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .OrderBy(k => k, StringComparer.Ordinal)
+                .ToList();
+
+            if (!currentKeys.SequenceEqual(rendered, StringComparer.Ordinal))
+            {
+                await tx.RollbackAsync();
+                TempData["Error"] = "تغيّرت صلاحيات هذا المستخدم في جلسة أخرى بعد أن عرضتَها، فلم يُحفظ شيء احترامًا لتعديلك. أعد فتح الصفحة وابدأ من الحالة الحالية.";
+                return RedirectToAction(nameof(Permissions), new { id });
+            }
+
+            var existing = await _db.UserPermissions.Where(p => p.UserId == user.Id).ToListAsync();
+            _db.UserPermissions.RemoveRange(existing);
+            _db.UserPermissions.AddRange(selected.Select(k => new UserPermission
+            {
+                UserId = user.Id,
+                PermissionKey = k
+            }));
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (Exception ex) when (ISetWriteGate.IsWriteConflict(ex))
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعارضَ حفظُ الصلاحيات مع تعديلٍ آخر في اللحظة نفسها، فلم يُحفظ شيء. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Permissions), new { id });
+        }
 
         TempData["Success"] = $"تم تحديث صلاحيات «{user.UserName}»";
         return RedirectToAction(nameof(Index));

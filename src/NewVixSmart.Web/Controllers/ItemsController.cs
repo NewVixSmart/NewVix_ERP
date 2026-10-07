@@ -166,9 +166,9 @@ public class ItemsController : Controller
             {
                 try
                 {
-                    if (item.RowVersion != null)
+                    if (item.RowVersion is { Length: > 0 } posted)
                     {
-                        _db.Entry(existing).Property(i => i.RowVersion).OriginalValue = item.RowVersion;
+                        _db.Entry(existing).Property(i => i.RowVersion).OriginalValue = posted;
                     }
 
                     await _db.SaveChangesAsync();
@@ -202,7 +202,16 @@ public class ItemsController : Controller
         }
 
         item.IsActive = false;
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تغير الصنف بواسطة عملية أخرى أثناء التعديل؛ أعد المحاولة";
+            return RedirectToAction(nameof(Index));
+        }
         TempData["Success"] = "تم حذف الصنف بنجاح";
         return RedirectToAction(nameof(Index));
     }
@@ -240,8 +249,16 @@ public class ItemsController : Controller
         if (string.IsNullOrWhiteSpace(item.Barcode))
         {
             item.Barcode = string.IsNullOrWhiteSpace(item.Code) ? $"ITM{item.Id:D8}" : item.Code;
-            _db.Items.Update(item);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                TempData["Error"] = "تغير الصنف بواسطة عملية أخرى أثناء التعديل؛ أعد المحاولة";
+                return View(item);
+            }
         }
         return View(item);
     }

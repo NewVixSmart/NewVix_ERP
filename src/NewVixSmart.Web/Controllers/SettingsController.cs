@@ -21,12 +21,15 @@ public class SettingsController : Controller
     private readonly IHttpContextAccessor _http;
     private readonly IBrandingService _branding;
     private readonly IPrintSettingsService _printSettings;
-    public SettingsController(AppDbContext db, IHttpContextAccessor http, IBrandingService branding, IPrintSettingsService printSettings)
+    private readonly ISetWriteGate _gates;
+
+    public SettingsController(AppDbContext db, IHttpContextAccessor http, IBrandingService branding, IPrintSettingsService printSettings, ISetWriteGate gates)
     {
         _db = db;
         _http = http;
         _branding = branding;
         _printSettings = printSettings;
+        _gates = gates;
     }
 
     public async Task<IActionResult> Index()
@@ -98,8 +101,24 @@ public class SettingsController : Controller
                 existing.Address = branch.Address;
                 existing.Phone = branch.Phone;
                 existing.IsActive = branch.IsActive;
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم تعديل الفرع بنجاح";
+
+                // الرمز المُرسَل هو الصفّ الذي رُسم منه النموذج؛ فجعلُه قيمةً أصليةً يحوّل
+                // محوَ كتابة زميلٍ إلى رفضٍ برسالة، بدل أن يمرّ آخر كاتبٍ دون أن يعلم.
+                if (branch.RowVersion is { Length: > 0 } posted)
+                {
+                    _db.Entry(existing).Property(b => b.RowVersion).OriginalValue = posted;
+                }
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    TempData["Success"] = "تم تعديل الفرع بنجاح";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    _db.ChangeTracker.Clear();
+                    TempData["Error"] = "تعذّر حفظ التعديل لأن الفرع عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                }
             }
         }
         else
@@ -126,14 +145,39 @@ public class SettingsController : Controller
                      await _db.JournalEntries.AnyAsync(j => j.BranchId == id);
         if (inUse)
         {
+            // التعطيلُ كتابةٌ على الصفّ نفسِه، فيشارك شرط `RowVersion` مع الحذفِ تحت.
+            // وحراسةُ مسارٍ لا تُغني عن أخيه: الاثنان يكتبان الصفَّ نفسَه بالشرطِ نفسِه.
             branch.IsActive = false;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                TempData["Error"] = "تعذّر تعطيل الفرع لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Error"] = "لا يمكن حذف الفرع لأن لديه حركات؛ تم تعطيله بدلاً من ذلك";
         }
         else
         {
             _db.Branches.Remove(branch);
-            await _db.SaveChangesAsync();
+
+            // الفرعُ المُعطَّل كتابةٌ بـ`RowVersion` داخل شرط الحفظ، والحذفُ يشاركه
+            // الشرطَ نفسَه؛ فتزاحمُ زميلٍ بين القراءة والحفظ استثناءُ تزامن لا نتيجةً هادئة.
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                TempData["Error"] = "تعذّر حذف الفرع لأنه عُدّل في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                return RedirectToAction(nameof(Index));
+            }
+
             _http.SetCurrentBranchId(null);
             TempData["Success"] = "تم حذف الفرع بنجاح";
         }
@@ -208,8 +252,24 @@ public class SettingsController : Controller
                 existing.SubUnits = unit.SubUnits;
                 existing.ParentUnitId = unit.ParentUnitId;
                 existing.IsActive = unit.IsActive;
-                await _db.SaveChangesAsync();
-                TempData["Success"] = "تم تعديل الوحدة بنجاح";
+
+                // الرمز المُرسَل هو الصفّ الذي رُسم منه النموذج؛ فجعلُه قيمةً أصليةً يحوّل
+                // محوَ كتابة زميلٍ إلى رفضٍ برسالة، بدل أن يمرّ آخر كاتبٍ دون أن يعلم.
+                if (unit.RowVersion is { Length: > 0 } posted)
+                {
+                    _db.Entry(existing).Property(u => u.RowVersion).OriginalValue = posted;
+                }
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    TempData["Success"] = "تم تعديل الوحدة بنجاح";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    _db.ChangeTracker.Clear();
+                    TempData["Error"] = "تعذّر حفظ التعديل لأن الوحدة عُدّلت في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                }
             }
         }
         else
@@ -235,14 +295,38 @@ public class SettingsController : Controller
 
         if (inUse)
         {
+            // التعطيلُ والحذفُ يشاركان الصفَّ والشرط، فحارسُ أحدهما لا يُغني عن الآخر.
             unit.IsActive = false;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                TempData["Error"] = "تعذّر تعطيل الوحدة لأنها عُدّلت في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Error"] = "لا يمكن حذف الوحدة لأنها مستخدمة في أصناف؛ تم تعطيلها بدلاً من ذلك";
         }
         else
         {
             _db.Units.Remove(unit);
-            await _db.SaveChangesAsync();
+
+            // التعطيلُ والحذفُ يشاركان شرط `RowVersion`، فتزاحمُ زميلٍ بين القراءة والحفظ
+            // استثناءُ تزامن لا نتيجةً هادئة.
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+                TempData["Error"] = "تعذّر حذف الوحدة لأنها عُدّلت في جلسة أخرى. أعد فتح الصفحة وحاول مجددًا.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Success"] = "تم حذف الوحدة بنجاح";
         }
         return RedirectToAction(nameof(Index));
@@ -267,6 +351,7 @@ public class SettingsController : Controller
             HasLogo = p.HasLogo,
             LogoFileName = p.LogoFileName,
             LogoDataUri = p.LogoDataUri(),
+            RowVersion = p.RowVersion,
             Presets = _branding.Presets
         };
     }
@@ -341,13 +426,37 @@ public class SettingsController : Controller
             return View("Branding", vm);
         }
 
-        await SetSettingAsync("Theme.Primary", NormalizeHex(vm.Primary));
-        await SetSettingAsync("Theme.Accent", NormalizeHex(vm.Accent));
-        await SetSettingAsync("Theme.SidebarBg", NormalizeHex(vm.SidebarBg));
-        await SetSettingAsync("Theme.PageBg", NormalizeHex(vm.PageBg));
-        await SetSettingAsync("Theme.Preset", presetId);
+        // الرمزُ المُرسَل هو صفُّ الملفّ كما رُسم منه النموذج، وهو مرساةٌ لألوانه الخمسة
+        // أيضًا: رفضُه يمنع أن تُحفظ مفاتيحُ المظهر فوق ألوان مديرٍ آخر، فيبقى النموذجُ
+        // متسقًا مع ما على الشاشة.
+        //
+        // والأمرُ ليس ترتيبًا شكليًّا: `SetSettingAsync` تحفظ هي نفسها أوّلَ مرّةٍ يظهر فيها
+        // مفتاحٌ جديد، و`SaveChanges` يشمل كلَّ ما في المتتبِّع — منها تعديلُ هذا الصفّ
+        // الذي حُمِّل قبل قليل. فلو وُضع الرمزُ بعد النداءات لتُكتب هذه القيمُ قبل الفحص
+        //، ولما بلغ `catch` الاستثناءَ قطّ: التعارضُ لا يُكتشَف إلا إن كان السطرُ الذي يحمل
+        // الرمزَ هو السطرَ الذي يكتب.
+        if (vm.RowVersion is { Length: > 0 } postedProfileRv)
+        {
+            _db.Entry(profile).Property(p => p.RowVersion).OriginalValue = postedProfileRv;
+        }
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await SetSettingAsync("Theme.Primary", NormalizeHex(vm.Primary));
+            await SetSettingAsync("Theme.Accent", NormalizeHex(vm.Accent));
+            await SetSettingAsync("Theme.SidebarBg", NormalizeHex(vm.SidebarBg));
+            await SetSettingAsync("Theme.PageBg", NormalizeHex(vm.PageBg));
+            await SetSettingAsync("Theme.Preset", presetId);
+
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تعذّر حفظ العلامة التجارية لأن مديرًا آخر عدّلها في جلسة سابقة. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Branding));
+        }
+
         _branding.Invalidate();
         TempData["Success"] = "تم حفظ العلامة التجارية والمظهر بنجاح";
         return RedirectToAction(nameof(Branding));
@@ -391,13 +500,38 @@ public class SettingsController : Controller
             state[slug] = entry;
         }
         ViewBag.StudioState = JsonSerializer.Serialize(state).Replace("<", "\\u003c").Replace(">", "\\u003e");
+        ViewBag.PrintFingerprint = await ComputePrintFingerprintAsync();
         return View();
+    }
+
+    /// <summary>
+    /// بصمةٌ واحدةٌ لكلِّ إعدادات الطباعة المحفوظة (المفتاح والقيمة معًا، مرتّبةً). تُرسل مع
+    /// النموذج وتُعاد حسابَها عند الحفظ، فترفض العمليةُ إن تغيّرت أيُّ مجموعةٍ بعد العرض.
+    /// <para>
+    /// سببُ اختيار البصمة على <c>RowVersion</c> لكلِّ مفتاح: كلُّ مفتاحٍ صفٌّ مستقلّ،
+    /// والحفظُ يكتب إحدى عشرة مجموعةً دفعةً واحدة. ورمزُ مفتاحٍ واحدٍ لا يحمي العشرة
+    /// الأخرى؛ فلا يدري أحدٌ أنّ حفظًا وصل إلى مجموعةٍ تغيّرت بعد العرض.
+    /// </para>
+    /// </summary>
+    private async Task<string> ComputePrintFingerprintAsync()
+    {
+        var rows = await _db.SystemSettings.AsNoTracking()
+            .Where(s => s.Key.StartsWith("PrintStudio.") || s.Key.StartsWith("Print."))
+            .OrderBy(s => s.Key)
+            .Select(s => new { s.Key, s.Value })
+            .ToListAsync();
+
+        var payload = string.Join("\n", rows.Select(r => $"{r.Key}={r.Value ?? string.Empty}"));
+        var hash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(payload));
+
+        return Convert.ToHexString(hash);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePerm("Settings.Edit")]
-    public async Task<IActionResult> SavePrinting(PrintGroup group, PrintLayoutOptions vm, bool applyToAll)
+    public async Task<IActionResult> SavePrinting(PrintGroup group, PrintLayoutOptions vm, bool applyToAll, string? printFingerprint)
     {
         if (!ModelState.IsValid)
         {
@@ -406,21 +540,51 @@ public class SettingsController : Controller
         }
 
         var options = PrintSettingsService.Clamp(vm);
-        if (applyToAll)
+
+        // القفلُ يُؤخذ قبل القراءة لا بعدها. فالبصمةُ قراءةٌ في سطر، والحفظُ كتابةٌ في
+        // سطرٍ بعده، والطلبان المتزامنان يمرّان بالقراءةِ معًا فيعدّان التصريحَين
+        // متطابقَين ثم يكتب الثاني فيمحو الأول. والقفلُ يردُّ الطلبَ الثاني عند سطر
+        // القفل نفسه حتى يُنهي الأولُ عملَه، فيقرأ بعدَه الحالةَ الجديدةَ ويرفض.
+        await using var tx = await _gates.AcquireAsync(SetSubjects.PrintSettings);
+
+        try
         {
-            await using var tx = await _db.Database.BeginTransactionAsync();
-            foreach (var g in Enum.GetValues<PrintGroup>())
+            // الحارسُ قبل أيّ كتابة. والفحصُ يشمل مفاتيح ResetPrinting في بصمته، فيُرفض الحفظُ
+            // بعد استعادةِ الإعدادات إلى الافتراضي أيضًا — وإلا عاد ما استُعيد للتو بصمت.
+            // والبصمةُ الغائبةُ تُعامل معاملةَ البصمةِ الخاطئة لا كإعفاء: فالنموذجُ الوحيدُ
+            // الذي ينشر إلى هنا يحملها دومًا، فغيابُها يعني صفحةً قديمةً أو حقلًا طُوي.
+            // والتحفّظُ في الرفضِ دون القبولِ، وإلّا انقلب الحارسُ إلى بابٍ مفتوحٍ لمن لا
+            // يحمل شيئًا — وهي الحالُ التي كانت عليها قبل تصحيحِ هذا الشرط.
+            if (!string.Equals(printFingerprint ?? string.Empty,
+                await ComputePrintFingerprintAsync(), StringComparison.Ordinal))
             {
-                await _printSettings.SaveLayoutAsync(g, options);
+                await tx.RollbackAsync();
+                TempData["Error"] = "تغيّرت إعدادات الطباعة في جلسة أخرى بعد أن عرضتها، فلم يُحفظ شيء. أعد فتح الصفحة وابدأ من الحالة الحالية.";
+                return RedirectToAction(nameof(Printing));
+            }
+
+            if (applyToAll)
+            {
+                foreach (var g in Enum.GetValues<PrintGroup>())
+                {
+                    await _printSettings.SaveLayoutAsync(g, options);
+                }
+            }
+            else
+            {
+                await _printSettings.SaveLayoutAsync(Enum.IsDefined(group) ? group : PrintGroup.SalesInvoice, options);
             }
 
             await tx.CommitAsync();
-            _printSettings.Invalidate();
         }
-        else
+        catch (Exception ex) when (ISetWriteGate.IsWriteConflict(ex))
         {
-            await _printSettings.SaveLayoutAsync(Enum.IsDefined(group) ? group : PrintGroup.SalesInvoice, options);
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تغيّرت إعدادات الطباعة في جلسة أخرى أثناء الحفظ، فلم يُحفظ شيء. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Printing));
         }
+
+        _printSettings.Invalidate();
         TempData["Success"] = "تم حفظ إعدادات الطباعة بنجاح";
         return RedirectToAction(nameof(Printing));
     }
@@ -430,12 +594,30 @@ public class SettingsController : Controller
     [RequirePerm("Settings.Edit")]
     public async Task<IActionResult> ResetPrinting()
     {
-        var keys = await _db.SystemSettings.Where(s => s.Key.StartsWith("PrintStudio.") || s.Key.StartsWith("Print.")).ToListAsync();
-        if (keys.Count > 0)
+        // الاستعادةُ تحذفُ المفاتيحَ نفسَها التي يكتبُها `SavePrinting`، فتقاسمه القفلَ
+        // وإلا تداخلتا: يستعيد أحدُهما الافتراضي في أثناء حفظِ الآخر، فتخرج مجموعةٌ
+        // نصفُها محفوظٌ ونصفُها مستعاد. وهي تلتزم القفلَ بلا مقارنةِ بصمة، لأن مَن
+        // استعادَه طلبُه صريحٌ لا يحمل تصريحًا.
+        await using var tx = await _gates.AcquireAsync(SetSubjects.PrintSettings);
+
+        try
         {
-            _db.SystemSettings.RemoveRange(keys);
-            await _db.SaveChangesAsync();
+            var keys = await _db.SystemSettings.Where(s => s.Key.StartsWith("PrintStudio.") || s.Key.StartsWith("Print.")).ToListAsync();
+            if (keys.Count > 0)
+            {
+                _db.SystemSettings.RemoveRange(keys);
+                await _db.SaveChangesAsync();
+            }
+
+            await tx.CommitAsync();
         }
+        catch (Exception ex) when (ISetWriteGate.IsWriteConflict(ex))
+        {
+            _db.ChangeTracker.Clear();
+            TempData["Error"] = "تغيّرت إعدادات الطباعة في جلسة أخرى أثناء الاستعادة، فلم يُستعَد شيء. أعد فتح الصفحة وحاول مجددًا.";
+            return RedirectToAction(nameof(Printing));
+        }
+
         _printSettings.Invalidate();
         TempData["Success"] = "تم استعادة إعدادات الطباعة الافتراضية";
         return RedirectToAction(nameof(Printing));
@@ -474,7 +656,14 @@ public class SettingsController : Controller
             {
                 await _db.SaveChangesAsync();
             }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+            catch (DbUpdateConcurrencyException)
+            {
+                // `DbUpdateConcurrencyException` فرعٌ من `DbUpdateException`، فبلا هذا
+                // السطر كان التعارضُ يُلتقط في الأسفل ويُعامل كتعذّرِ إدراج مفتاحٍ جديد:
+                // يُعادُ الإدراجُ مع أنَّ تعارضًا وقع، أو يبتلع الصمتُ ألوانَ مديرٍ آخر.
+                throw;
+            }
+            catch (DbUpdateException)
             {
                 _db.Entry(created).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 existing = await _db.SystemSettings.FindAsync(key);

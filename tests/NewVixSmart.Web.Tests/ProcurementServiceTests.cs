@@ -371,4 +371,59 @@ public sealed class ProcurementServiceTests : IDisposable
         Assert.False(ok);
         Assert.Contains("المورد", err);
     }
+
+    /// <summary>
+    /// رمز التزامن مملوكٌ للخادم في هذا المسار: لا يأتي من النموذج ولا من الواجهة، فلا يجوز
+    /// أن يتسرّب إلى <c>SaveChanges</c>. ولو دخل من النموذج إلى
+    /// الخدمة لأصبحت القيمة الأصلية في EF رمزًا اختاره العميل، وبات الحفظ يرفض أو يقبل على
+    /// هواه. يلتقط الاختبار القيمة الأصلية لحظة الحفظ نفسه، لا بعد فوات الأوان.
+    /// </summary>
+    [Fact]
+    public async Task UpdateOrder_ACallerSuppliedLineToken_NeverReachesTheSave()
+    {
+        using var db = CreateContext();
+        var (itemId, supId) = await SeedAsync(db);
+        var (proc, _) = Services(db);
+
+        var order = new PurchaseOrder { SupplierId = supId };
+        var (okC, _) = await proc.CreateOrderAsync(order, new List<PurchaseOrderItem>
+        {
+            new() { ItemId = itemId, Quantity = 5, Count = 5, UnitPrice = 40 }
+        }, "test");
+        Assert.True(okC);
+
+        var lineId = await db.PurchaseOrderItems.Select(i => i.Id).SingleAsync();
+        var foreignToken = new byte[] { 9, 9, 9, 9 };
+
+        byte[]? originalAtSaveTime = null;
+        var reachedSave = false;
+        db.SavingChanges += (_, __) =>
+        {
+            reachedSave = true;
+            originalAtSaveTime = db.ChangeTracker.Entries<PurchaseOrderItem>()
+                .Where(e => e.Entity.Id == lineId)
+                .Select(e => e.Property(i => i.RowVersion).OriginalValue)
+                .FirstOrDefault();
+        };
+
+        var (ok, error) = await proc.UpdateOrderAsync(
+            new PurchaseOrder { Id = order.Id, SupplierId = supId },
+            new List<PurchaseOrderItem>
+            {
+                new()
+                {
+                    Id = lineId,
+                    ItemId = itemId,
+                    Quantity = 7,
+                    Count = 7,
+                    UnitPrice = 40,
+                    RowVersion = foreignToken
+                }
+            },
+            "test");
+
+        Assert.True(ok, error);
+        Assert.True(reachedSave);
+        Assert.NotEqual(foreignToken, originalAtSaveTime);
+    }
 }

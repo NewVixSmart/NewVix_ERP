@@ -133,6 +133,11 @@ public sealed class ProcurementService : IProcurementService
         existing.ExpectedDate = order.ExpectedDate;
         existing.Notes = order.Notes;
 
+        if (order.RowVersion != null)
+        {
+            _db.Entry(existing).Property(o => o.RowVersion).OriginalValue = order.RowVersion;
+        }
+
         // A posted line id is only a reference to a line of THIS order. Anything else is
         // dropped to 0 and treated as a new line: trusting it would let a client delete a real
         // line here (its id is absent from newItemIds) while inserting a foreign row under a
@@ -179,48 +184,70 @@ public sealed class ProcurementService : IProcurementService
 
     public async Task<(bool Success, string? Error)> ApproveOrderAsync(int orderId)
     {
-        var order = await _db.PurchaseOrders.FindAsync(orderId);
-        if (order == null)
+        for (int attempt = 1; attempt <= 3; attempt++)
         {
-            return (false, "أمر الشراء غير موجود");
-        }
+            var order = await _db.PurchaseOrders.FindAsync(orderId);
+            if (order == null)
+            {
+                return (false, "أمر الشراء غير موجود");
+            }
 
-        if (order.Status != PurchaseOrderStatus.Draft)
-        {
-            return (false, "يمكن اعتماد المسودات فقط");
-        }
+            if (order.Status != PurchaseOrderStatus.Draft)
+            {
+                return (false, "يمكن اعتماد المسودات فقط");
+            }
 
-        order.Status = PurchaseOrderStatus.Approved;
-        await _db.SaveChangesAsync();
-        return (true, null);
+            order.Status = PurchaseOrderStatus.Approved;
+            try
+            {
+                await _db.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+            }
+        }
+        return (false, "تعذر اعتماد أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> CancelOrderAsync(int orderId)
     {
-        var order = await _db.PurchaseOrders.FindAsync(orderId);
-        if (order == null)
+        for (int attempt = 1; attempt <= 3; attempt++)
         {
-            return (false, "أمر الشراء غير موجود");
-        }
+            var order = await _db.PurchaseOrders.FindAsync(orderId);
+            if (order == null)
+            {
+                return (false, "أمر الشراء غير موجود");
+            }
 
-        if (order.Status == PurchaseOrderStatus.Cancelled)
-        {
-            return (false, "الأمر ملغي بالفعل");
-        }
+            if (order.Status == PurchaseOrderStatus.Cancelled)
+            {
+                return (false, "الأمر ملغي بالفعل");
+            }
 
-        if (order.Status != PurchaseOrderStatus.Draft && order.Status != PurchaseOrderStatus.Approved)
-        {
-            return (false, "لا يمكن إلغاء أمر تم استلام أو فوترة جزء منه");
-        }
+            if (order.Status != PurchaseOrderStatus.Draft && order.Status != PurchaseOrderStatus.Approved)
+            {
+                return (false, "لا يمكن إلغاء أمر تم استلام أو فوترة جزء منه");
+            }
 
-        if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
-        {
-            return (false, "لا يمكن إلغاء أمر تمت فوترته");
-        }
+            if (await _db.PurchaseInvoices.AnyAsync(p => p.PurchaseOrderId == orderId))
+            {
+                return (false, "لا يمكن إلغاء أمر تمت فوترته");
+            }
 
-        order.Status = PurchaseOrderStatus.Cancelled;
-        await _db.SaveChangesAsync();
-        return (true, null);
+            order.Status = PurchaseOrderStatus.Cancelled;
+            try
+            {
+                await _db.SaveChangesAsync();
+                return (true, null);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _db.ChangeTracker.Clear();
+            }
+        }
+        return (false, "تعذر إلغاء أمر الشراء بسبب تعارض في البيانات، حاول مرة أخرى");
     }
 
     public async Task<(bool Success, string? Error)> ReceiveOrderLineAsync(int orderId, int orderItemId, decimal receiveQty, decimal receiveCount)
