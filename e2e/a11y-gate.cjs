@@ -113,23 +113,6 @@ const ROUTE_MANIFEST = [
   '/Warehouses/Edit/{id}'
 ];
 
-// Routes scanned again in dark mode (previously failing + chrome-heavy).
-const DARK_SUBSET = [
-  '/',
-  '/Settings',
-  '/Settings/Branding',
-  '/Reports',
-  '/Reports/AuditLedger',
-  '/Reports/Dashboard',
-  '/Items',
-  '/Customers',
-  '/Sales',
-  '/Purchases',
-  '/Accounts',
-  '/StockReservations',
-  '/DeliveryIssues'
-];
-
 /**
  * List page each `{id}`/`{publicId}` route is resolved from. The query string matters: an
  * editable purchase order only exists in Draft, and a receive screen only has rows while
@@ -194,17 +177,30 @@ const ALLOWED_EMPTY = new Set(Object.keys(DOCUMENTED_ALLOW_EMPTY));
 const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
-async function login(page, theme) {
-  await page.goto(BASE + '/Account/Login', { waitUntil: 'domcontentloaded' });
-  await page.evaluate(t => { try { localStorage.setItem('theme-mode', t); } catch (e) {} }, theme);
-  await page.goto(BASE + '/Account/Login', { waitUntil: 'domcontentloaded' });
-  await page.fill('#Username', USER);
-  await page.fill('#Password', PASS);
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'load' }),
-    page.click('button[type="submit"]')
-  ]);
-  await page.waitForTimeout(1200);
+/**
+ * Sign in and do not start crawling until the session cookie actually works. A submit
+ * that lands on a fresh /Account/* page means the credentials were rejected (or the POST was
+ * swallowed), and crawling on that page is indistinguishable from a crawl of the real app:
+ * every route answers 200 and renders no violations, and the id-keyed routes can never find
+ * their anchors. Retry instead of letting a silent login failure poison the whole scan.
+ */
+async function login(page) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    await page.goto(BASE + '/Account/Login', { waitUntil: 'domcontentloaded' });
+    await page.fill('#Username', USER);
+    await page.fill('#Password', PASS);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'load' }),
+      page.click('button[type="submit"]')
+    ]);
+    await page.waitForTimeout(500);
+    const authed = await page.evaluate(() => !location.pathname.startsWith('/Account/'));
+    if (authed) {
+      await page.waitForTimeout(800);
+      return;
+    }
+  }
+  throw new Error('login did not authenticate after 4 attempts');
 }
 
 async function axeRun(page) {
@@ -238,6 +234,7 @@ async function resolveIdRoutes(page, routes) {
   for (const [source, group] of bySource) {
     let status = 0;
     try { const r = await page.goto(BASE + source, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
+    await page.waitForTimeout(250);
     const hrefs = await page.evaluate(
       prefixes => prefixes.map(p => {
         const a = document.querySelector(`a[href^="${p}"]`);
@@ -310,13 +307,13 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
 
-  await login(page, 'light');
+  await login(page);
   const { hits, unresolved } = await resolveIdRoutes(page, ROUTE_MANIFEST);
   const routes = ROUTE_MANIFEST.filter(r => !ID_SOURCES[r] || hits.has(r));
 
   const failures = [...unresolved.map(u => ({ route: u.route, status: 0, reason: `no matching link on ${u.source} (source status ${u.sourceStatus})` }))];
   const allowedEmpty = [];
-  const summary = { light: {}, dark: {} };
+  const summary = { light: {} };
 
   const evaluate = (route, status, violations, empty) => {
     summary.light[route] = { status, empty, violations };
@@ -343,37 +340,16 @@ async function main() {
     evaluate(route, status, violations, empty);
   }
 
-  const darkContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
-  const dp = await darkContext.newPage();
-  await login(dp, 'dark');
-  for (const route of DARK_SUBSET) {
-    let status = 0;
-    try { const r = await dp.goto(BASE + route, { waitUntil: 'load' }); status = r ? r.status() : 0; } catch { status = 0; }
-    await dp.waitForTimeout(350);
-    let violations = [];
-    try { violations = await axeRun(dp); } catch (e) { violations = [{ id: 'AXE-EXEC-ERR', impact: 'serious', nodes: 1, targets: [e.message] }]; }
-    const themeApplied = await dp.evaluate(() => document.documentElement.getAttribute('data-theme'));
-    const empty = status === 200 ? await detectEmptyPage(dp) : null;
-    summary.dark[route] = { status, themeApplied, empty, violations };
-    const serious = violations.filter(isSerious);
-    if (status !== 200) { failures.push({ route: route + ' [dark]', status, themeApplied, violations: serious }); continue; }
-    if (empty && !ALLOWED_EMPTY.has(route)) { failures.push({ route: route + ' [dark]', status, themeApplied, reason: `page rendered no data (${empty})` }); continue; }
-    if (serious.length) failures.push({ route: route + ' [dark]', status, themeApplied, violations: serious });
-  }
-  await darkContext.close();
   await browser.close();
 
   const countByImpact = rows => rows.reduce((a, v) => ({ ...a, [v.impact]: (a[v.impact] || 0) + 1 }), {});
   const lightAll = Object.values(summary.light).flatMap(r => r.violations);
-  const darkAll = Object.values(summary.dark).flatMap(r => r.violations);
 
-  console.log(`Routes scanned: light=${Object.keys(summary.light).length}, dark=${Object.keys(summary.dark).length}`);
+  console.log(`Routes scanned: light=${Object.keys(summary.light).length}`);
   console.log('Light non-critical/serious: ' + JSON.stringify(countByImpact(lightAll.filter(v => !isSerious(v)))));
-  console.log('Dark  non-critical/serious: ' + JSON.stringify(countByImpact(darkAll.filter(v => !isSerious(v)))));
-  const nonSeriousAll = [...lightAll, ...darkAll].filter(v => !isSerious(v));
+  const nonSeriousAll = lightAll.filter(v => !isSerious(v));
   const countImpact = impact => nonSeriousAll.filter(v => v.impact === impact).length;
   console.log(`Total moderate: ${countImpact('moderate')}, total minor: ${countImpact('minor')} (reported only - not gate-failing)`);
-  for (const [route, r] of Object.entries(summary.dark)) console.log(`  dark ${r.themeApplied} ${route}`);
 
   if (allowedEmpty.length) {
     console.log(`documented-empty (visited + scanned, rendered nothing by design): ${allowedEmpty.length}`);
@@ -385,7 +361,7 @@ async function main() {
     console.log(JSON.stringify(failures, null, 2));
     process.exit(1);
   }
-  console.log(`GATE: PASS (${Object.keys(summary.light).length} light routes + ${Object.keys(summary.dark).length} dark, 0 critical/serious axe violations, 0 empty pages${allowedEmpty.length ? `, ${allowedEmpty.length} documented-empty` : ''})`);
+  console.log(`GATE: PASS (${Object.keys(summary.light).length} light routes, 0 critical/serious axe violations, 0 empty pages${allowedEmpty.length ? `, ${allowedEmpty.length} documented-empty` : ''})`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

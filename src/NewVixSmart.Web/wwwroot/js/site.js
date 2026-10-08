@@ -469,9 +469,7 @@
     });
 
     var sectionsKey = 'vix-sidebar-sections';
-    var railKey = 'vix-sidebar-rail';
     var navGroups = document.querySelectorAll('.nav-group[data-group]');
-    var railToggle = document.getElementById('railToggle');
 
     function setGroupState(group, expanded) {
         if (!group) return;
@@ -494,50 +492,12 @@
             var group = btn.closest('.nav-group');
             if (!group) return;
             setGroupState(group, group.classList.contains('is-collapsed'));
-            if (sidebar && !sidebar.classList.contains('is-rail')) storeSections();
+            storeSections();
         });
     });
 
     function isDesktop() {
         return window.innerWidth >= 992;
-    }
-
-    var preRailState = null;
-
-    function setRail(active) {
-        if (!sidebar) return;
-        if (!isDesktop()) {
-            sidebar.classList.remove('is-rail');
-            if (railToggle) railToggle.setAttribute('aria-expanded', 'true');
-            return;
-        }
-        var wasRail = sidebar.classList.contains('is-rail');
-        sidebar.classList.toggle('is-rail', active);
-        if (railToggle) railToggle.setAttribute('aria-expanded', active ? 'false' : 'true');
-        if (active && !wasRail) {
-            preRailState = {};
-            navGroups.forEach(function (group) {
-                var key = group.getAttribute('data-group');
-                preRailState[key] = !group.classList.contains('is-collapsed');
-                setGroupState(group, false);
-            });
-        } else if (!active && wasRail) {
-            if (preRailState) {
-                navGroups.forEach(function (group) {
-                    var key = group.getAttribute('data-group');
-                    if (key && typeof preRailState[key] === 'boolean') setGroupState(group, preRailState[key]);
-                });
-            }
-            preRailState = null;
-        }
-    }
-
-    if (railToggle) {
-        railToggle.addEventListener('click', function () {
-            var on = sidebar ? !sidebar.classList.contains('is-rail') : false;
-            setRail(on);
-            try { localStorage.setItem(railKey, on ? '1' : '0'); } catch (e) { }
-        });
     }
 
     window.addEventListener('resize', function () {
@@ -547,9 +507,6 @@
             overlay.setAttribute('aria-hidden', 'true');
         }
         if (!isResponsive()) document.body.style.overflow = '';
-        var persisted = '0';
-        try { persisted = localStorage.getItem(railKey) || '0'; } catch (e) { persisted = '0'; }
-        setRail(persisted === '1');
         syncSidebarInert();
     });
 
@@ -573,15 +530,8 @@
         });
     }
 
-    function initRail() {
-        var persisted = '0';
-        try { persisted = localStorage.getItem(railKey) || '0'; } catch (e) { persisted = '0'; }
-        setRail(persisted === '1');
-    }
-
     function initSidebar() {
         initNavGroups();
-        initRail();
         syncSidebarInert();
     }
 
@@ -795,50 +745,6 @@
             var checked = selectAll.checked;
             document.querySelectorAll('.mass-convert-check').forEach(function (cb) { cb.checked = checked; });
         });
-    }
-
-    function getStoredThemeMode() {
-        var mode = 'system';
-        try { mode = localStorage.getItem('theme-mode') || 'system'; } catch (e) { mode = 'system'; }
-        if (mode !== 'system' && mode !== 'light' && mode !== 'dark') mode = 'system';
-        return mode;
-    }
-
-    function setStoredThemeMode(mode) {
-        try { localStorage.setItem('theme-mode', mode); } catch (e) { }
-    }
-
-    function applyThemeMode(mode) {
-        var resolved = mode === 'system'
-            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-            : mode;
-        document.documentElement.setAttribute('data-theme-mode', mode);
-        document.documentElement.setAttribute('data-theme', resolved);
-        document.documentElement.setAttribute('data-bs-theme', resolved);
-        document.querySelectorAll('.theme-mode-btn').forEach(function (btn) {
-            btn.setAttribute('aria-pressed', btn.getAttribute('data-theme-value') === mode ? 'true' : 'false');
-        });
-        if (window.__applyDarkThemeCss) { window.__applyDarkThemeCss(resolved === 'dark'); }
-    }
-
-    function initTheme() {
-        var buttons = document.querySelectorAll('.theme-mode-btn');
-        if (!buttons.length) return;
-        buttons.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var mode = btn.getAttribute('data-theme-value');
-                if (mode !== 'system' && mode !== 'light' && mode !== 'dark') return;
-                setStoredThemeMode(mode);
-                applyThemeMode(mode);
-            });
-        });
-        var mq = window.matchMedia('(prefers-color-scheme: dark)');
-        function onSystemChange() {
-            if (getStoredThemeMode() === 'system') applyThemeMode('system');
-        }
-        if (mq.addEventListener) mq.addEventListener('change', onSystemChange);
-        else if (mq.addListener) mq.addListener(onSystemChange);
-        applyThemeMode(getStoredThemeMode());
     }
 
     function initClock() {
@@ -1196,9 +1102,9 @@
     }
 
     function initTableDensity() {
-        var stored = 'compact';
-        try { stored = localStorage.getItem('vix-table-density') || 'compact'; } catch (e) { stored = 'compact'; }
-        applyTableDensity(stored === 'comfortable' ? 'comfortable' : 'compact');
+        var stored = 'comfortable';
+        try { stored = localStorage.getItem('vix-table-density') || 'comfortable'; } catch (e) { stored = 'comfortable'; }
+        applyTableDensity(stored === 'compact' ? 'compact' : 'comfortable');
         document.addEventListener('click', function (e) {
             var btn = e.target && e.target.closest ? e.target.closest('[data-table-density-toggle]') : null;
             if (!btn) return;
@@ -1209,13 +1115,12 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initNavFilter(); initTables(); initCounters(); initTheme(); initClock(); initDataTables(); initTableDensity(); });
+        document.addEventListener('DOMContentLoaded', function () { initSidebar(); initNavFilter(); initTables(); initCounters(); initClock(); initDataTables(); initTableDensity(); });
     } else {
         initSidebar();
         initNavFilter();
         initTables();
         initCounters();
-        initTheme();
         initClock();
         initDataTables();
         initTableDensity();

@@ -185,18 +185,6 @@ public class BrandingService : IBrandingService
         return current;
     }
 
-    private static string BrightenToLuminance(string hex, double target)
-    {
-        var current = hex;
-        var guard = 0;
-        while (ColorUtil.RelativeLuminance(current) < target && guard++ < 40)
-        {
-            current = ColorUtil.Lighten(current, 0.04);
-        }
-
-        return current;
-    }
-
     public string RenderThemeCss(BrandingTheme t)
     {
         var rb = ColorUtil.RgbList(t.Primary);
@@ -205,20 +193,8 @@ public class BrandingService : IBrandingService
         var linkHoverRgb = ColorUtil.RgbList(linkHover);
         var linkInkRgb = ColorUtil.RgbList(linkInk);
 
-        // §3.4 — recompute the brand chroma for the carbon background (#0A0B0D):
-        // keep the hue but brighten until it reads as a light-accent on dark surfaces.
-        var dPrimary = BrightenToLuminance(t.Primary, 0.21);
-        var dPrimaryHover = BrightenToLuminance(t.Primary, 0.38);
-        var dPrimaryBright = BrightenToLuminance(t.Primary, 0.48);
-        var dPrimaryRgb = ColorUtil.RgbList(dPrimary);
-        var dGold = BrightenToLuminance(t.Accent, 0.30);
-        var dGoldStrong = BrightenToLuminance(t.Accent, 0.48);
-        var dGoldBright = BrightenToLuminance(t.Accent, 0.62);
-        var dLink = BrightenToLuminance(t.Primary, 0.40);
-        var dLinkHover = BrightenToLuminance(t.Primary, 0.52);
-
         return string.Join('\n',
-            ":root[data-theme=\"light\"] {",
+            ":root {",
             $"    --color-primary: {t.Primary};",
             $"    --color-primary-dark: {t.PrimaryDark};",
             $"    --color-primary-darker: {t.PrimaryDarker};",
@@ -242,27 +218,6 @@ public class BrandingService : IBrandingService
             $"    --bs-link-hover-color-rgb: {linkHoverRgb};",
             $"    --bs-body-bg: {t.PageBg};",
             $"    --bs-focus-ring-color: rgba({rb}, 0.28);",
-            "}",
-            "",
-            "html:root[data-theme=\"dark\"] {",
-            $"    --color-primary: {dPrimary};",
-            $"    --color-primary-dark: {dPrimaryHover};",
-            $"    --color-primary-darker: {dPrimaryBright};",
-            $"    --color-primary-focus: rgba({dPrimaryRgb}, 0.30);",
-            $"    --color-gold: {dGold};",
-            $"    --color-gold-strong: {dGoldStrong};",
-            $"    --color-gold-bright: {dGoldBright};",
-            $"    --color-focus-ring: {dPrimaryHover};",
-            $"    --bs-primary: {dPrimary};",
-            $"    --bs-primary-rgb: {dPrimaryRgb};",
-            $"    --bs-primary-bg-subtle: {ColorUtil.Blend(dPrimaryHover, "#0A0B0D", 0.82)};",
-            $"    --bs-primary-border-subtle: {dPrimaryHover};",
-            $"    --bs-primary-text: {dPrimaryBright};",
-            $"    --bs-link-color: {dLink};",
-            $"    --bs-link-color-rgb: {ColorUtil.RgbList(dLink)};",
-            $"    --bs-link-hover-color: {dLinkHover};",
-            $"    --bs-link-hover-color-rgb: {ColorUtil.RgbList(dLinkHover)};",
-            $"    --bs-focus-ring-color: rgba({dPrimaryRgb}, 0.30);",
             "}");
     }
 }

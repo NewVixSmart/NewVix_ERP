@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme-mode="system" data-theme="light" data-bs-theme="light">
+<html lang="ar" dir="rtl">
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @inject NewVixSmart.Web.Services.IBrandingService Branding
 @{ var _brand = await Branding.LoadAsync(); }
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
     <title>@ViewData["Title"] - @_brand.Profile.CompanyName</title>
     <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
     <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
+    <link href="~/css/tokens.css" rel="stylesheet" asp-append-version="true" />
     <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
     <style nonce="@Context.GetCspNonce()">
         @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
     </style>
-    @await Html.PartialAsync("_ThemeScript", true)
 </head>
 <body>
     @Html.AntiForgeryToken()
@@ -36,9 +36,6 @@
                 <strong>@_brand.Profile.CompanyName</strong>
                 <small>@(_brand.Profile.Tagline ?? "Smart Solutions")</small>
             </span>
-            <button type="button" class="rail-toggle" id="railToggle" aria-expanded="true" aria-controls="sidebar" aria-label="طي القائمة الجانبية" title="طي القائمة الجانبية">
-                <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
-            </button>
         </div>
         <nav class="sidebar-nav" id="mainMenu" aria-label="القائمة الرئيسية">
             <div class="nav-filter" role="search">
@@ -463,20 +460,6 @@
                 <span class="topbar-greeting" data-greeting></span>
                 <span class="topbar-spacer"></span>
                 <span class="topbar-clock"><i class="bi bi-clock" aria-hidden="true"></i> <span class="topbar-date" data-clock></span></span>
-                <div class="theme-selector" role="group" aria-label="مظهر الواجهة">
-                    <button type="button" class="theme-mode-btn" data-theme-value="system" aria-pressed="true">
-                        <i class="bi bi-display" aria-hidden="true"></i>
-                        <span class="theme-mode-label">النظام</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="light" aria-pressed="false">
-                        <i class="bi bi-sun" aria-hidden="true"></i>
-                        <span class="theme-mode-label">فاتح</span>
-                    </button>
-                    <button type="button" class="theme-mode-btn" data-theme-value="dark" aria-pressed="false">
-                        <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                        <span class="theme-mode-label">داكن</span>
-                    </button>
-                </div>
                 <button type="button" class="theme-mode-btn" data-table-density-toggle aria-pressed="false" aria-label="تبديل كثافة الجداول">
                     <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
                     <span class="theme-mode-label">كثافة مضغوطة</span>

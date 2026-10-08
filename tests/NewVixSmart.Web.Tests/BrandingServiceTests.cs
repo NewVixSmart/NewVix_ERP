@@ -29,14 +29,13 @@ public sealed class BrandingServiceTests : IDisposable
         new(db, new MemoryCache(new MemoryCacheOptions()));
 
     [Fact]
-    public void RenderThemeCss_EmitsBothThemeScopes()
+    public void RenderThemeCss_EmitsSingleLightScope()
     {
         using var db = CreateContext();
         var css = CreateService(db).RenderThemeCss(new BrandingTheme());
 
-        Assert.Contains(":root[data-theme=\"light\"] {", css, StringComparison.Ordinal);
-        Assert.Contains("html:root[data-theme=\"dark\"] {", css, StringComparison.Ordinal);
-        Assert.DoesNotContain(":root {", css, StringComparison.Ordinal);
+        Assert.Contains(":root {", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-theme", css, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -50,28 +49,12 @@ public sealed class BrandingServiceTests : IDisposable
     }
 
     [Fact]
-    public void RenderThemeCss_RecomputesBrandPrimaryForDarkMode()
+    public void RenderThemeCss_DoesNotEmitDarkChromaRecomputation()
     {
         using var db = CreateContext();
         var theme = new BrandingTheme { Primary = "#be123c" };
         var css = CreateService(db).RenderThemeCss(theme);
-        var darkBlock = css.Substring(css.IndexOf("html:root[data-theme=\"dark\"] {", StringComparison.Ordinal));
-        var darkPrimaryLine = darkBlock
-            .Split('\n')
-            .First(l => l.Contains("--color-primary:", StringComparison.Ordinal));
 
-        Assert.NotEqual("--color-primary: #be123c;", darkPrimaryLine.Trim());
-    }
-
-    [Fact]
-    public void RenderThemeCss_DarkBlockDoesNotOverrideCarbonSurfaces()
-    {
-        using var db = CreateContext();
-        var css = CreateService(db).RenderThemeCss(new BrandingTheme());
-        var darkBlock = css.Substring(css.IndexOf("html:root[data-theme=\"dark\"] {", StringComparison.Ordinal));
-
-        Assert.DoesNotContain("--color-bg-page:", darkBlock, StringComparison.Ordinal);
-        Assert.DoesNotContain("--bs-body-bg:", darkBlock, StringComparison.Ordinal);
-        Assert.DoesNotContain("--color-sidebar-bg:", darkBlock, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-theme", css, StringComparison.Ordinal);
     }
 }

@@ -1,37 +1,49 @@
 /* ============================================================
-   New Vix Smart — Design Tokens (v0.9)
-   Source of truth: docs/DESIGN-SYSTEM.md (§14 deliverable 2)
-   Layered on top of Bootstrap 5.3.3 — must be loaded AFTER
-   bootstrap.rtl.min.css and BEFORE site.css/theme styles.
-   No colors may be hard-coded in templates outside this file
-   and the Branding renderer (which writes scoped to [data-theme]).
+   New Vix Smart — Design Tokens (Light only — "Light Minimal Pro")
+   Single light theme. No dark scope, no data-theme switch.
+   Source of truth: docs/DESIGN-SYSTEM.md
+   Loaded AFTER bootstrap.rtl.min.css and BEFORE site.css.
+   Colors must not be hard-coded in templates outside this file
+   and the Branding renderer (which writes a single :root scope).
    ============================================================ */
 
-:root,
-:root[data-theme="light"] {
+:root {
     /* ---- Surfaces ---- */
-    --bg: #F6F7F9;
+    --bg: #F4F6FA;
     --surface: #FFFFFF;
-    --surface-2: #F9FAFB;
+    --surface-2: #F9FAFC;
+    --table-hover-bg: #F3F6FC;
     --surface-elevated: #FFFFFF;
 
     /* ---- Borders ---- */
-    --border-subtle: #E7E9EE;
-    --border: #D8DCE3;
-    --border-strong: #B9BFC9;
+    --border-subtle: #E9EDF3;
+    --border: #DCE2EB;
+    --border-strong: #C3CCD9;
+    --border-control: #7E8CA3;
 
-    /* ---- Text ---- */
-    --text: #0D1520;
-    --text-secondary: #3D4756;
-    --text-muted: #66707E;
-    --text-faint: #677380;
+    /* ---- Text (slate) ---- */
+    --text: #101B2C;
+    --text-secondary: #3E4A5C;
+    --text-muted: #667285;
+    --text-faint: #5F6E85;
 
-    /* ---- Brand (navy) ---- */
-    --primary: #00213F;
-    --primary-hover: #06305A;
-    --primary-active: #0A3A6B;
+    /* ---- Brand (deep navy) ---- */
+    --primary: #12345E;
+    --primary-hover: #1B4177;
+    --primary-active: #0C2749;
     --on-primary: #FFFFFF;
-    --primary-subtle: #EAF0F7;
+    --primary-subtle: #EAF1FB;
+    --primary-border-subtle: #CFDFF3;
+
+    /* ---- Sidebar (deep navy — white text on #12345E = 12.5:1) ---- */
+    --sidebar-bg: #12345E;
+    --sidebar-bg-gradient: linear-gradient(180deg, #16406F 0%, #12345E 55%, #0F2C52 100%);
+    --sidebar-text: rgba(255, 255, 255, 0.82);
+    --sidebar-text-strong: #FFFFFF;
+    --sidebar-muted: rgba(255, 255, 255, 0.68);
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+    --sidebar-active-bg: rgba(255, 255, 255, 0.16);
+    --sidebar-hairline: rgba(255, 255, 255, 0.12);
 
     /* ---- Accent (brass, decorative) ---- */
     --accent: #B08A2E;
@@ -66,10 +78,10 @@
     --radius-lg: 12px;
     --radius-xl: 16px;
 
-    /* ---- Elevation ---- */
-    --shadow-1: 0 1px 2px rgba(13, 21, 32, 0.05), 0 1px 1px rgba(13, 21, 32, 0.03);
-    --shadow-2: 0 4px 12px rgba(13, 21, 32, 0.08), 0 2px 4px rgba(13, 21, 32, 0.04);
-    --shadow-3: 0 12px 32px rgba(13, 21, 32, 0.14), 0 4px 8px rgba(13, 21, 32, 0.06);
+    /* ---- Elevation (SaaS depth) ---- */
+    --shadow-1: 0 1px 2px rgba(13, 25, 44, 0.05), 0 6px 16px -6px rgba(13, 25, 44, 0.10);
+    --shadow-2: 0 4px 12px rgba(13, 25, 44, 0.08), 0 12px 28px -12px rgba(13, 25, 44, 0.16);
+    --shadow-3: 0 8px 24px rgba(13, 25, 44, 0.12), 0 24px 56px -20px rgba(13, 25, 44, 0.24);
 
     /* ---- Motion ---- */
     --motion-fast: 120ms;
@@ -90,52 +102,10 @@
     --font-weight-numeric: 500;
 }
 
-:root[data-theme="dark"] {
-    --bg: #0A101E;
-    --surface: #101828;
-    --surface-2: #16203A;
-    --surface-elevated: #182338;
-
-    --border-subtle: rgba(255, 255, 255, 0.07);
-    --border: rgba(255, 255, 255, 0.12);
-    --border-strong: rgba(255, 255, 255, 0.20);
-
-    --text: #EAEDF3;
-    --text-secondary: #C0C7D4;
-    --text-muted: #8B95A7;
-    --text-faint: #7C889B;
-
-    --primary: #2B6CB8;
-    --primary-hover: #3376BD;
-    --primary-active: #3A86D9;
-    --on-primary: #FFFFFF;
-    --primary-subtle: #214160;
-
-    --accent: #D4B36A;
-    --accent-strong: #CFA84C;
-
-    --success: #4CC38A;
-    --warning: #E3B341;
-    --danger: #F97066;
-    --info: #6BA6F5;
-
-    --success-bg: rgba(76, 195, 138, 0.14);
-    --warning-bg: rgba(227, 179, 65, 0.14);
-    --danger-bg: rgba(249, 112, 102, 0.14);
-    --info-bg: rgba(107, 166, 245, 0.14);
-    --neutral-bg: rgba(255, 255, 255, 0.08);
-
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
-    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55), 0 4px 8px rgba(0, 0, 0, 0.35);
-}
-
 /* ============================================================
-   Bootstrap 5.3 semantic variable mapping (both themes)
+   Bootstrap 5.3 semantic variable mapping (light only)
    ============================================================ */
-:root,
-:root[data-theme="light"],
-:root[data-theme="dark"] {
+:root {
     --bs-body-font-family: var(--font-sans);
     --bs-body-font-size: var(--font-size-body);
     --bs-body-bg: var(--bg);
@@ -152,7 +122,7 @@
     --bs-focus-ring-color: var(--primary);
 
     --bs-primary: var(--primary);
-    --bs-primary-rgb: 34, 47, 80;        /* overridden per theme below */
+    --bs-primary-rgb: 18, 52, 94;
     --bs-primary-color: var(--on-primary);
     --bs-primary-bg-subtle: var(--primary-subtle);
     --bs-primary-border-subtle: var(--primary-subtle);
@@ -161,18 +131,22 @@
     --bs-btn-primary-color: var(--on-primary);
 
     --bs-success: var(--success);
+    --bs-success-rgb: 15, 123, 77;
     --bs-success-bg-subtle: var(--success-bg);
     --bs-success-border-subtle: var(--success-bg);
     --bs-success-text: var(--success);
     --bs-warning: var(--warning);
+    --bs-warning-rgb: 255, 244, 214;
     --bs-warning-bg-subtle: var(--warning-bg);
     --bs-warning-border-subtle: var(--warning-bg);
     --bs-warning-text: var(--warning);
     --bs-danger: var(--danger);
+    --bs-danger-rgb: 180, 35, 24;
     --bs-danger-bg-subtle: var(--danger-bg);
     --bs-danger-border-subtle: var(--danger-bg);
     --bs-danger-text: var(--danger);
     --bs-info: var(--info);
+    --bs-info-rgb: 23, 92, 211;
     --bs-info-bg-subtle: var(--info-bg);
     --bs-info-border-subtle: var(--info-bg);
     --bs-info-text: var(--info);
@@ -180,14 +154,6 @@
     --bs-table-bg: var(--surface);
     --bs-table-hover-bg: var(--surface-2);
     --bs-table-color: var(--text);
-}
-
-:root[data-theme="light"] {
-    --bs-primary-rgb: 0, 33, 63;
-}
-
-:root[data-theme="dark"] {
-    --bs-primary-rgb: 43, 108, 184;
 }
 
 /* ============================================================
@@ -198,7 +164,6 @@
     direction: ltr;
     unicode-bidi: embed;
     text-align: end;
-    text-align: right; /* numeric cells align to the block-end in RTL */
     font-variant-numeric: tabular-nums;
     font-weight: var(--font-weight-numeric);
 }

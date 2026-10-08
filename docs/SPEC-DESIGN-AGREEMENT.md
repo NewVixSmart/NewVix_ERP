@@ -197,10 +197,10 @@ UI · Linear · Mercury · Tremor · Vercel · Xero/QBO/Zoho/FreshBooks).
 ## 11. قائمة الحماية — عقود لا تُمس أثناء إعادة الجلد (من تدقيق 2026-10-06)
 
 - **الثيم**: `data-theme-mode`/`data-theme`/`data-bs-theme` على `<html>`؛ `localStorage['theme-mode']`؛ `window.__applyDarkThemeCss`؛ `link#dark-theme-css`؛ `meta[name=color-scheme]`.
-- **Sidebar**: `#sidebar`/`#mobileOverlay`/`#sidebarToggle`/`#railToggle`؛ `.sidebar.is-rail`؛ أصفان `.show`/`inert`/`aria-hidden`؛ عقد الطي المحفور site.css:811-833 (`.sidebar-nav .nav-group-body`, `.nav-group.is-collapsed`, `.nav-group-content`, `.sidebar.is-filtering`)؛ معرّفات الجلد `vix-sidebar-rail`/`vix-sidebar-sections`؛ `#mainMenu`/`.nav-link.active`؛ `[data-nav-filter]`/`[data-nav-filter-clear]`/`[data-nav-empty]`؛ `.nav-group[data-group]`.
+- **Sidebar**: `#sidebar`/`#mobileOverlay`/`#sidebarToggle`؛ أصفان `.show`/`inert`/`aria-hidden`؛ عقد الطي المحفور site.css:811-833 (`.sidebar-nav .nav-group-body`, `.nav-group.is-collapsed`, `.nav-group-content`, `.sidebar.is-filtering`)؛ معرّف الجلد `vix-sidebar-sections`؛ `#mainMenu`/`.nav-link.active`؛ `[data-nav-filter]`/`[data-nav-filter-clear]`/`[data-nav-empty]`؛ `.nav-group[data-group]`. (**`#railToggle`/`.is-rail`/`vix-sidebar-rail` حُذفت نهائيًا في 2026-10-08**)
 - **خطافات JS**: `data-confirm`/`data-confirm-ok` مع `#appConfirmBtn`/`#appConfirmMsg`؛ `data-confirm-delete`؛ `data-loading-submit`/`data-loading-text`؛ `data-password-toggle`؛ `data-auto-submit`؛ `data-auto-print`؛ `data-focus-target`/`data-create-category`؛ `table[data-load="true"]`+`aria-busy`+`.skeleton-row td`؛ الأرقام الحية `data-count`/`data-decimals`/`data-count-formatted`؛ `data-greeting`/`data-clock`؛ `[role="tablist"][data-tablist-roving]` و`[role="tab"]`.
 - **أمان/أساسيات**: CSP + `@Context.GetCspNonce()` لأي `script/style` inline جديد؛ `@Html.AntiForgeryToken()`/`__RequestVerificationToken`؛ `skip-link`→`#mainContent`؛ `i.bi` + `aria-hidden` (site.js:6-11)؛ `--touch-target-min:44px` و`.page-link` 44px.
-- **توكينز قائمة**: عائلتا `--em-*`/`--go-*`/`--n-*` و`--r-*` و`--sh-*` و`--sidebar-width:280px`/`--sidebar-rail-width:76px` — لا تُستبدل إلا بـremap موحّد يخدم العائلة الجديدة.
+- **توكينز قائمة**: عائلتا `--em-*`/`--go-*`/`--n-*` و`--r-*` و`--sh-*` — لا تُستبدل إلا بـremap موحّد يخدم العائلة الجديدة.
 
 ## 12. عيوب مُرصودة تُصلح أثناء التنفيذ
 

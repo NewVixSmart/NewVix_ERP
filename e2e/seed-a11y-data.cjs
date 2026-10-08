@@ -64,7 +64,6 @@ async function post(page, clickSelector) {
 
 async function login(page) {
   await go(page, '/Account/Login');
-  await page.evaluate(() => { try { localStorage.setItem('theme-mode', 'light'); } catch (e) { /* storage off */ } });
   await page.fill('#Username', USER);
   await page.fill('#Password', PASS);
   await post(page, '#login-form button[type="submit"], form button[type="submit"]');
