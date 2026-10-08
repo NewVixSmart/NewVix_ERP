@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "فواتير البيع"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-cart-check text-primary"></i> فواتير البيع</h2>
+    <h2><i class="bi bi-cart-check text-primary" aria-hidden="true"></i> فواتير البيع</h2>
     @if (await Perm.HasAsync("Sales.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> فاتورة جديدة</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> فاتورة جديدة</a>
     }
 </div>
 
@@ -39,7 +39,7 @@
                     <td>@inv.PaymentTerms.GetDisplayName()@(inv.DueDate.HasValue ? $" حتى {inv.DueDate.Value:dd/MM/yyyy}" : "")</td>
                     <td>@(inv.IsPaid ? "مدفوعة" : "غير مدفوعة")</td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@inv.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض فاتورة @inv.InvoiceNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@inv.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض فاتورة @inv.InvoiceNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                     </td>
                 </tr>
             }

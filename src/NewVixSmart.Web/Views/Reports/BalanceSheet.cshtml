@@ -2,8 +2,8 @@
 @{ ViewData["Title"] = "الميزانية العمومية"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-layers text-primary"></i> الميزانية العمومية</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+    <h2><i class="bi bi-layers text-primary" aria-hidden="true"></i> الميزانية العمومية</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
 </div>
 
 <div class="card mb-4"><div class="card-body">
@@ -12,7 +12,7 @@
             <label class="form-label" for="asOfDate">حتى تاريخ</label>
             <input type="date" name="asOf" value="@Model.AsOf.ToString("yyyy-MM-dd")" id="asOfDate" class="form-control" />
         </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> عرض</button></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
     </form>
 </div></div>
 
@@ -22,9 +22,9 @@
     <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
         <div class="text-muted small">حالة التوازن</div>
         @if (Model.IsBalanced)
-        { <h4 class="mb-0 text-success"><i class="bi bi-check-circle"></i> متوازنة</h4> }
+        { <h4 class="mb-0 text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> متوازنة</h4> }
         else
-        { <h4 class="mb-0 text-danger"><i class="bi bi-x-circle"></i> غير متوازنة</h4> }
+        { <h4 class="mb-0 text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> غير متوازنة</h4> }
     </div></div>
 </div>
 
@@ -92,13 +92,13 @@
 @if (!Model.Assets.Lines.Any() && !Model.Liabilities.Lines.Any() && !Model.Equity.Lines.Any())
 {
     <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
         <p class="mt-2">لا توجد حسابات في القائمة</p>
     </div>
 }
 
 <div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer"></i> طباعة</button>
-    <a asp-action="ExportBalanceSheetPdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> تصدير PDF</a>
-    <a asp-action="ExportBalanceSheetXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
+    <a asp-action="ExportBalanceSheetPdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> تصدير PDF</a>
+    <a asp-action="ExportBalanceSheetXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
 </div>

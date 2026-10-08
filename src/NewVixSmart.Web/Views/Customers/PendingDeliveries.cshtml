@@ -2,16 +2,16 @@
 @{ ViewData["Title"] = $"تسليمات معلّقة - {Model.Customer?.Name ?? ""}"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-truck text-primary"></i> تسليمات معلّقة: @(Model.Customer?.Name ?? "—")</h2>
+    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> تسليمات معلّقة: @(Model.Customer?.Name ?? "—")</h2>
     <div>
         <span class="badge bg-info text-dark fs-6">إجمالي غير المسلَّم: @Money.Format(Model.TotalValue)</span>
-        <a asp-action="Ledger" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-primary"><i class="bi bi-journal-bookmark"></i> كشف الحساب</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+        <a asp-action="Ledger" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-primary"><i class="bi bi-journal-bookmark" aria-hidden="true"></i> كشف الحساب</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
 <div class="alert alert-info" role="note">
-    <i class="bi bi-info-circle"></i>
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
     هذه الكميات متعاقد عليها في أوامر بيع معتمدة ولم تُسلَّم بعد.
     قيمتها <strong>لا تدخل</strong> في رصيد ذمم العميل؛ الرصيد يبقى محسوباً من الفواتير فقط.
 </div>
@@ -19,7 +19,7 @@
 @if (!Model.Lines.Any())
 {
     <div class="alert alert-success">
-        <i class="bi bi-check2-circle"></i> لا توجد التزامات تسليم معلّقة لهذا العميل — كل الكميات المتعاقد عليها سُلِّمت أو فُوترت.
+        <i class="bi bi-check2-circle" aria-hidden="true"></i> لا توجد التزامات تسليم معلّقة لهذا العميل — كل الكميات المتعاقد عليها سُلِّمت أو فُوترت.
     </div>
 }
 else

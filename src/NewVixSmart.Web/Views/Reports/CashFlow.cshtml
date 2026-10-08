@@ -4,8 +4,8 @@
 @{ ViewData["Title"] = "كشف التدفق النقدي"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-cash-stack text-success"></i> كشف التدفق النقدي</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+    <h2><i class="bi bi-cash-stack text-success" aria-hidden="true"></i> كشف التدفق النقدي</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
 </div>
 
 <div class="card mb-4"><div class="card-body">
@@ -18,11 +18,11 @@
             <label class="form-label" for="to">إلى تاريخ</label>
             <input type="date" name="to" id="to" value="@Model.To.ToString("yyyy-MM-dd")" class="form-control" />
         </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> عرض</button></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
         @if (await Perm.HasAsync("Reports.Export"))
         {
             <div class="col-md-2">
-                <a asp-action="CashFlowXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+                <a asp-action="CashFlowXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
             </div>
         }
     </form>
@@ -42,7 +42,7 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-method-heading"><i class="bi bi-wallet2 text-primary"></i> التوزيع حسب طريقة الدفع</h3></div>
+    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-method-heading"><i class="bi bi-wallet2 text-primary" aria-hidden="true"></i> التوزيع حسب طريقة الدفع</h3></div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" aria-labelledby="cashflow-method-heading">
             <caption class="visually-hidden">مقبوضات ومصروفات الفترة مقسمة حسب طريقة الدفع</caption>
@@ -74,7 +74,7 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-detail-heading"><i class="bi bi-list-ul text-success"></i> تفاصيل الحركات</h3></div>
+    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-detail-heading"><i class="bi bi-list-ul text-success" aria-hidden="true"></i> تفاصيل الحركات</h3></div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" aria-labelledby="cashflow-detail-heading">
             <caption class="visually-hidden">حركات المقبوضات والمصروفات في الفترة المحددة</caption>

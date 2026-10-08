@@ -284,12 +284,6 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--color-text-strong);
 }
 
-/* Defensive: v3 decorative layers are gone (no markup, no styles) */
-.aurora,
-.aurora .motes {
-    display: none !important;
-}
-
 /* ---------- 5. ACCESSIBILITY ---------- */
 .skip-link {
     position: absolute;
@@ -333,8 +327,6 @@ html:not([data-theme="dark"]) .form-select:focus-visible {
 
 /* Light-canvas focus rings (sidebar, topbar, login stage) */
 .sidebar a:focus-visible, .sidebar button:focus-visible, .nav-group-header:focus-visible,
-.login-stage a:focus-visible, .login-stage button:focus-visible,
-.auth-panel a:focus-visible, .auth-panel button:focus-visible,
 .topbar a:focus-visible, .topbar button:focus-visible {
     outline-color: var(--color-focus-ring);
 }
@@ -1415,35 +1407,6 @@ html:not([data-theme="dark"]) .form-select:focus-visible {
     border-color: transparent !important;
 }
 
-/* Legacy topbar aliases (pre-v4 markup safety net) */
-.top-bar {
-    position: sticky;
-    top: 0;
-    z-index: 1015;
-    background: var(--color-surface);
-    color: var(--color-chrome-text);
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: var(--sh-sm);
-    padding: 0 1.5rem;
-    min-height: 64px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-}
-.top-bar h6 {
-    font-size: 1.05rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    margin: 0;
-    color: var(--color-chrome-text);
-}
-#topbar-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0;
-}
 #clock {
     font-variant-numeric: tabular-nums;
     font-weight: 700;
@@ -2601,174 +2564,6 @@ th[aria-sort="descending"] {
 }
 
 /* ---------- 17. AUTH STAGE (login / access denied) ---------- */
-.login-stage {
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 1.5rem;
-    position: relative;
-    background: var(--color-bg-page);
-}
-.login-aura {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.auth-wrap {
-    position: relative;
-    z-index: 1;
-    width: min(1000px, 100%);
-    display: grid;
-    grid-template-columns: 1fr 1.05fr;
-    border-radius: var(--r-xl);
-    overflow: hidden;
-    border: none;
-    box-shadow: var(--sh-lg);
-}
-.auth-panel {
-    position: relative;
-}
-.auth-brand {
-    background: linear-gradient(135deg, #101828 0%, #101828 45%, #101828 100%);
-    color: #fff;
-    padding: 3rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.9rem;
-    text-align: center;
-    overflow: hidden;
-}
-.auth-brand h1 {
-    color: #F8F8FA;
-    font-weight: 800;
-    font-size: 1.65rem;
-    letter-spacing: -0.01em;
-    margin: 0;
-    position: relative;
-}
-.auth-tagline {
-    color: #C4C4CC;
-    font-size: 1.02rem;
-    font-weight: 500;
-    margin: 0;
-    position: relative;
-}
-.auth-points {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    text-align: start;
-    position: relative;
-    justify-content: center;
-}
-.auth-points li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: #DCE8F4;
-}
-.auth-points li i {
-    color: var(--color-gold);
-    font-size: 1rem;
-}
-.auth-form {
-    background: var(--color-surface);
-    padding: 3rem 2.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-.auth-form h2 {
-    font-weight: 800;
-    margin: 0;
-    color: var(--color-text-strong);
-}
-.auth-form .subtitle {
-    color: var(--color-text-secondary);
-    margin: 0;
-    font-size: 0.92rem;
-}
-.auth-form .form-control {
-    padding: 0.65rem 0.95rem;
-    min-height: 48px;
-}
-.auth-form .btn-primary {
-    padding: 0.7rem;
-    font-size: 1rem;
-    min-height: 48px;
-}
-.auth-monogram,
-.login-stage .brand-monogram {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 1.2rem;
-    border-radius: var(--r-lg);
-    background: var(--color-primary);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    line-height: 1;
-    box-shadow: var(--sh-glow);
-    forced-color-adjust: none;
-}
-.login-stage .login-logo {
-    max-height: 80px;
-    width: auto;
-    object-fit: contain;
-    margin: 0 auto 1.2rem;
-    border-radius: var(--r-lg);
-    background: #fff;
-    padding: 0.55rem;
-}
-
-/* Auth theme selector on white panel — light chip (same as topbar) */
-.auth-form .theme-selector {
-    align-self: flex-end;
-}
-
-/* Legacy auth-card alias (standalone panel fallback) */
-.auth-card {
-    position: relative;
-    background: var(--color-surface);
-    border-radius: var(--r-xl);
-    border: none;
-    padding: 2.6rem 2.4rem;
-    width: 100%;
-    max-width: 440px;
-    box-shadow: var(--sh-lg);
-}
-.auth-card h2 {
-    font-weight: 800;
-    color: var(--color-text-strong);
-    text-align: center;
-    margin-bottom: 0.4rem;
-}
-.auth-card .subtitle {
-    color: var(--color-text-secondary);
-    text-align: center;
-    margin-bottom: 2rem;
-    font-size: 0.9rem;
-}
-.auth-card .form-control {
-    padding: 0.65rem 0.95rem;
-    min-height: 48px;
-}
-.auth-card .btn-primary {
-    padding: 0.7rem;
-    font-size: 1rem;
-    min-height: 48px;
-}
 
 /* Preset swatches (settings) */
 .preset-card {
@@ -3084,30 +2879,6 @@ th[aria-sort="descending"] {
         white-space: nowrap;
         border: 0;
     }
-    .auth-brand,
-    .auth-form {
-        padding: 2rem 1.5rem;
-    }
-}
-
-/* Auth split-stack below 768px */
-@media (max-width: 767.98px) {
-    .auth-wrap {
-        grid-template-columns: 1fr;
-        border-radius: var(--r-xl);
-    }
-    .auth-brand {
-        padding: 2rem;
-    }
-    .auth-brand h1 {
-        font-size: 1.5rem;
-    }
-    .auth-points {
-        display: none;
-    }
-    .auth-form {
-        padding: 2.4rem 1.5rem;
-    }
 }
 
 /* Reflow: 320px max-width - no horizontal scroll on key pages */
@@ -3167,7 +2938,7 @@ th[aria-sort="descending"] {
 
 /* ---------- 22. PRINT ---------- */
 @media print {
-    .sidebar, .topbar, .top-bar, .login-aura, .no-print, .d-print-none, .toast-region, .mobile-overlay, .aurora, .motes {
+    .sidebar, .topbar, .no-print, .d-print-none, .toast-region, .mobile-overlay {
         display: none !important;
     }
     .main-content {
@@ -3176,32 +2947,6 @@ th[aria-sort="descending"] {
     .page-content {
         padding: 0 !important;
         background: #fff !important;
-    }
-    .login-stage {
-        padding: 0;
-        display: block;
-        background: #fff !important;
-    }
-    .auth-wrap {
-        width: 100%;
-        max-width: none;
-        border-radius: 0;
-        grid-template-columns: 1fr;
-        border: none !important;
-        box-shadow: none !important;
-    }
-    .auth-brand {
-        padding: 1rem;
-        background: #fff !important;
-        color: #0d1b35 !important;
-    }
-    .auth-brand h1,
-    .auth-brand .auth-tagline,
-    .auth-brand .auth-points li {
-        color: #0d1b35 !important;
-    }
-    .auth-panel {
-        padding: 1rem;
     }
     .table-container {
         max-height: none !important;
@@ -3247,9 +2992,6 @@ th[aria-sort="descending"] {
         background: #fff !important;
         border: 1px solid #0d1b35 !important;
     }
-    .print-toolbar {
-        display: none !important;
-    }
     .print-doc {
         max-width: none !important;
         margin: 0 !important;
@@ -3276,17 +3018,6 @@ th[aria-sort="descending"] {
 .print-doc .table td,
 .print-doc .table th {
     padding: 0.5rem 0.6rem;
-}
-.print-header-logo {
-    max-height: 64px;
-    max-width: 170px;
-    object-fit: contain;
-}
-.print-footer {
-    text-align: center;
-    font-size: 0.85rem;
-    color: var(--color-text-secondary);
-    padding: 10px 0 4px;
 }
 
 /* ---------- 23. SCREEN-READER ONLY ---------- */
@@ -3366,8 +3097,7 @@ th[aria-sort="descending"] {
     .sidebar {
         border-color: ButtonText;
     }
-    .topbar,
-    .top-bar {
+    .topbar {
         border-color: ButtonText;
         background: ButtonFace;
         color: ButtonText;
@@ -3410,14 +3140,6 @@ th[aria-sort="descending"] {
     .data-pager {
         border-color: ButtonText;
     }
-    .auth-panel {
-        forced-color-adjust: none;
-    }
-    .auth-brand {
-        background: Canvas;
-        color: CanvasText;
-        border: 1px solid ButtonText;
-    }
     .skip-link {
         forced-color-adjust: none;
         background: Highlight;
@@ -3425,7 +3147,6 @@ th[aria-sort="descending"] {
     }
     .stat-icon,
     .tile-xl,
-    .auth-monogram,
     .page-header h2 i {
         forced-color-adjust: none;
     }

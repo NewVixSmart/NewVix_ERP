@@ -6,35 +6,35 @@
 @{ ViewData["Title"] = $"أمر بيع {Model.OrderNumber}"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary"></i> أمر بيع: @Model.OrderNumber</h2>
+    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> أمر بيع: @Model.OrderNumber</h2>
     <div class="d-flex gap-2">
         @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status == SalesOrderStatus.Draft)
         {
             <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="تتم فوترة أمر البيع المعتمد؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> اعتماد</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
             </form>
         }
         @if (await Perm.HasAsync("SalesOrders.Convert") && (Model.Status == SalesOrderStatus.Approved || Model.Status == SalesOrderStatus.PartiallyInvoiced))
         {
             <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إنشاء فاتورة من الكميات المسلَّمة غير المفوترة فقط. هل تريد المتابعة؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> فاتورة التسليمات</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة التسليمات</button>
             </form>
         }
         @if (await Perm.HasAsync("SalesOrders.Edit") && Model.Status == SalesOrderStatus.Draft)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> تعديل</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
         }
         @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status != SalesOrderStatus.Cancelled && Model.Status != SalesOrderStatus.Invoiced)
         {
             <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> إلغاء</button>
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> طباعة</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
@@ -97,7 +97,7 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-bookmark-check"></i> الحجز</div>
+    <div class="card-header"><i class="bi bi-bookmark-check" aria-hidden="true"></i> الحجز</div>
     <div class="card-body">
         @{
             var reservation = ViewBag.Reservation as NewVixSmart.Web.Models.Stock.StockReservation;
@@ -121,7 +121,7 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-truck"></i> أذونات التسليم وأوامرها</div>
+    <div class="card-header"><i class="bi bi-truck" aria-hidden="true"></i> أذونات التسليم وأوامرها</div>
     <div class="card-body p-0">
         <div class="table-container">
             <table class="table mb-0">
@@ -163,7 +163,7 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-receipt"></i> الفواتير</div>
+    <div class="card-header"><i class="bi bi-receipt" aria-hidden="true"></i> الفواتير</div>
     <div class="card-body p-0">
         <div class="table-container">
             <table class="table mb-0">

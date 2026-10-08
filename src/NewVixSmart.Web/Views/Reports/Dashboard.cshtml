@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "لوحة التقارير"; }
 
 <div class="page-header">
-    <h2><i class="bi bi-speedometer2 text-primary"></i> لوحة التقارير التشغيلية</h2>
+    <h2><i class="bi bi-speedometer2 text-primary" aria-hidden="true"></i> لوحة التقارير التشغيلية</h2>
     <p class="text-muted mb-0">تنبيهات الاستحقاق والمخزون المنخفض — حتى @Model.AsOf.ToString("dd/MM/yyyy")</p>
 </div>
 
@@ -23,21 +23,21 @@
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-down-circle text-danger"></i></div>
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-down-circle text-danger" aria-hidden="true"></i></div>
             <div class="text-muted small mt-2">ذمم عملاء متأخرة (عدد)</div>
             <h3 class="mb-0 text-danger" data-count="@Model.OverdueReceivableCount" data-decimals="0" data-count-formatted="@Model.OverdueReceivableCount.ToString("N0")">@Model.OverdueReceivableCount.ToString("N0")</h3>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-up-circle text-danger"></i></div>
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-up-circle text-danger" aria-hidden="true"></i></div>
             <div class="text-muted small mt-2">ذمم موردين متأخرة (عدد)</div>
             <h3 class="mb-0 text-danger" data-count="@Model.OverduePayableCount" data-decimals="0" data-count-formatted="@Model.OverduePayableCount.ToString("N0")">@Model.OverduePayableCount.ToString("N0")</h3>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card text-center border-warning">
-            <div class="stat-icon mx-auto bg-warning-subtle"><i class="bi bi-exclamation-triangle text-warning"></i></div>
+            <div class="stat-icon mx-auto bg-warning-subtle"><i class="bi bi-exclamation-triangle text-warning" aria-hidden="true"></i></div>
             <div class="text-muted small mt-2">أصناف منخفضة المخزون</div>
             <div><span class="badge @(Model.LowStockCount > 0 ? "bg-warning" : "bg-success")">@(Model.LowStockCount > 0 ? "منخفض" : "متوفر")</span></div>
             <h3 class="mb-0 text-warning" data-count="@Model.LowStockCount" data-decimals="0" data-count-formatted="@Model.LowStockCount.ToString("N0")">@Model.LowStockCount.ToString("N0")</h3>
@@ -46,7 +46,7 @@
     </div>
     <div class="col-md-3">
         <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-cash-coin text-danger"></i></div>
+            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-cash-coin text-danger" aria-hidden="true"></i></div>
             <div class="text-muted small mt-2">إجمالي المتأخر</div>
             <h3 class="mb-0 text-danger" data-count="@(Model.OverdueReceivableTotal + Model.OverduePayableTotal)" data-decimals="2" data-count-formatted="@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)">@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)</h3>
         </div>
@@ -86,7 +86,7 @@
         </div>
         @if (!Model.OverdueReceivables.Any())
         {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد ذمم عملاء متأخرة</p></div>
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد ذمم عملاء متأخرة</p></div>
         }
     </div>
     <div class="col-lg-6">
@@ -121,7 +121,7 @@
         </div>
         @if (!Model.OverduePayables.Any())
         {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد ذمم موردين متأخرة</p></div>
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد ذمم موردين متأخرة</p></div>
         }
     </div>
 </div>
@@ -156,7 +156,7 @@
         </div>
         @if (!Model.LowStockItems.Any())
         {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;"></i><p class="mt-2 mb-0">لا توجد أصناف منخفضة المخزون</p></div>
+            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد أصناف منخفضة المخزون</p></div>
         }
     </div>
 </div>

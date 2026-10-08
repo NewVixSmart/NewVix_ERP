@@ -3,7 +3,7 @@
 @{ ViewData["Title"] = "النسخ الاحتياطي والاستعادة"; }
 
 <div class="page-header">
-    <h2><i class="bi bi-database text-primary"></i> النسخ الاحتياطي والاستعادة</h2>
+    <h2><i class="bi bi-database text-primary" aria-hidden="true"></i> النسخ الاحتياطي والاستعادة</h2>
 </div>
 
 <p class="text-muted mb-3">أنشئ نسخًا احتياطية كاملة لقاعدة البيانات، واستعدها عند الحاجة، أو أعد ضبط النظام بالكامل.</p>
@@ -74,7 +74,7 @@
                 @if (!Model.Any())
                 {
                     <div class="empty-state text-center py-5">
-                        <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+                        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
                         <h4>لا توجد نسخ احتياطية بعد</h4>
                         <p class="text-muted">أنشئ أول نسخة احتياطية لحماية بياناتك.</p>
                     </div>

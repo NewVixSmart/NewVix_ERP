@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "المستودعات"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-building text-primary"></i> المستودعات</h2>
+    <h2><i class="bi bi-building text-primary" aria-hidden="true"></i> المستودعات</h2>
     @if (await Perm.HasAsync("Warehouses.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> مستودع جديد</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> مستودع جديد</a>
     }
 </div>
 

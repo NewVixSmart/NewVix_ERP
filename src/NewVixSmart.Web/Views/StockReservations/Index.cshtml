@@ -5,10 +5,10 @@
 @{ ViewData["Title"] = "حجوزات المخزون"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-bookmark-check text-primary"></i> حجوزات المخزون</h2>
+    <h2><i class="bi bi-bookmark-check text-primary" aria-hidden="true"></i> حجوزات المخزون</h2>
     @if (await Perm.HasAsync("StockReservations.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> حجز جديد</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> حجز جديد</a>
     }
 </div>
 
@@ -61,7 +61,7 @@ else
                         <td><span class="badge @(r.Status switch { StockReservationStatus.Released => "bg-secondary", StockReservationStatus.Consumed => "bg-success", _ => "bg-warning text-dark" })">@r.Status.GetDisplayName()</span></td>
                         <td>@r.CreatedAt.ToString("dd/MM/yyyy")</td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض الحجز @r.ReservationNumber"><i class="bi bi-eye"></i></a>
+                            <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض الحجز @r.ReservationNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                         </td>
                     </tr>
                 }

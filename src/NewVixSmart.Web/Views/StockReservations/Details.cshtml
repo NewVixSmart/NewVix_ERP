@@ -8,14 +8,14 @@
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-bookmark-check text-primary"></i> حجز <code>@Model.ReservationNumber</code></h2>
+    <h2><i class="bi bi-bookmark-check text-primary" aria-hidden="true"></i> حجز <code>@Model.ReservationNumber</code></h2>
     <div class="d-flex gap-2">
         <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
         @if (Model.Status == StockReservationStatus.Active && await Perm.HasAsync("StockReservations.Release"))
         {
             <form method="post" asp-action="Release" asp-route-id="@Model.PublicId" class="d-inline"
                   onsubmit="return confirm('هل تريد تحرير هذا الحجز؟');">
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> تحرير الحجز</button>
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> تحرير الحجز</button>
             </form>
         }
     </div>

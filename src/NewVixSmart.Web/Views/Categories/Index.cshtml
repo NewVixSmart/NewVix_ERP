@@ -11,10 +11,10 @@
 @if (!isAjax)
 {
     <div class="page-header d-flex justify-content-between align-items-center">
-        <h2><i class="bi bi-tags text-primary"></i> التصنيفات الرئيسية</h2>
+        <h2><i class="bi bi-tags text-primary" aria-hidden="true"></i> التصنيفات الرئيسية</h2>
         @if (await Perm.HasAsync("Items.Create"))
         {
-            <button type="button" class="btn btn-primary" id="pageAddCatBtn" data-focus-target="pageNewCat"><i class="bi bi-plus-lg"></i> إضافة تصنيف</button>
+            <button type="button" class="btn btn-primary" id="pageAddCatBtn" data-focus-target="pageNewCat"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة تصنيف</button>
         }
     </div>
     @if (await Perm.HasAsync("Items.Create"))
@@ -24,7 +24,7 @@
             <div class="input-group">
                 <label for="pageNewCat" class="visually-hidden">اسم تصنيف جديد</label>
                 <input type="text" id="pageNewCat" class="form-control" placeholder="اسم تصنيف جديد..." autocomplete="off" />
-                <button type="button" class="btn btn-success" id="pageAddCatBtn2" data-create-category><i class="bi bi-check-lg"></i> إضافة</button>
+                <button type="button" class="btn btn-success" id="pageAddCatBtn2" data-create-category><i class="bi bi-check-lg" aria-hidden="true"></i> إضافة</button>
             </div>
         </div>
     </div>

@@ -1,7 +1,7 @@
 @model NewVixSmart.Web.ViewModels.Stock.StockIndexViewModel
 @{ ViewData["Title"] = "حركة المخزون"; }
 
-<div class="page-header"><h2><i class="bi bi-boxes text-primary"></i> حركة المخزون</h2></div>
+<div class="page-header"><h2><i class="bi bi-boxes text-primary" aria-hidden="true"></i> حركة المخزون</h2></div>
 
 <div class="card mb-4"><div class="card-body">
     <form method="get" class="row g-2 align-items-end">
@@ -25,7 +25,7 @@
             <label class="visually-hidden" for="stockSearch">بحث في الحركة</label>
             <input type="search" name="search" id="stockSearch" value="@ViewBag.Search" class="form-control" placeholder="رقم المستند أو الصنف">
         </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> بحث</button></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> بحث</button></div>
     </form>
 </div></div>
 
@@ -65,7 +65,7 @@
 @if (!Model.Movements.Any())
 {
     <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
         <p class="mt-2">لا توجد حركات مخزون</p>
     </div>
 }

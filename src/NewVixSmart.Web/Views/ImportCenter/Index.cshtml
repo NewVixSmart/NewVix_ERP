@@ -5,7 +5,7 @@
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-box-arrow-in-down text-primary"></i> مركز الاستيراد</h2>
+    <h2><i class="bi bi-box-arrow-in-down text-primary" aria-hidden="true"></i> مركز الاستيراد</h2>
 </div>
 <p class="text-muted mb-4">
     ارفع ملف Excel (.xlsx) أو CSV (بترميز UTF-8) لكل وحدة من وحدات النظام بعد تعبئته من القالب، ثم اعاين النتائج قبل اعتماد الاستيراد.
@@ -30,11 +30,11 @@
                         @Html.AntiForgeryToken()
                         <div class="input-group input-group-sm">
                             <input type="file" name="file" accept=".xlsx,.csv" class="form-control" aria-label="اختر ملف @item.NameAr" required />
-                            <button type="submit" class="btn btn-sm btn-primary" aria-label="عاينة استيراد @item.NameAr"><i class="bi bi-eye"></i> عاينة</button>
+                            <button type="submit" class="btn btn-sm btn-primary" aria-label="عاينة استيراد @item.NameAr"><i class="bi bi-eye" aria-hidden="true"></i> عاينة</button>
                         </div>
                     </form>
                     <div class="d-flex gap-2">
-                        <a asp-action="Template" asp-route-key="@item.Key" class="btn btn-sm btn-outline-success" aria-label="تحميل قالب @item.NameAr"><i class="bi bi-file-earmark-excel"></i> تحميل القالب</a>
+                        <a asp-action="Template" asp-route-key="@item.Key" class="btn btn-sm btn-outline-success" aria-label="تحميل قالب @item.NameAr"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تحميل القالب</a>
                     </div>
                 </div>
             </div>

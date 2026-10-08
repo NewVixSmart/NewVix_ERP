@@ -4,10 +4,10 @@
 @{ ViewData["Title"] = "أوامر الشراء"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-clipboard-check text-primary"></i> أوامر الشراء</h2>
+    <h2><i class="bi bi-clipboard-check text-primary" aria-hidden="true"></i> أوامر الشراء</h2>
     @if (await Perm.HasAsync("PurchaseOrders.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> أمر شراء جديد</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر شراء جديد</a>
     }
 </div>
 
@@ -23,7 +23,7 @@
                 }
             </select>
         </div>
-        <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel"></i> تصفية</button></div>
+        <div class="col-auto"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> تصفية</button></div>
     </form>
 </div>
 
@@ -43,7 +43,7 @@
                     <td><span class="badge @(order.Status switch { PurchaseOrderStatus.Approved => "bg-success", PurchaseOrderStatus.Received => "bg-info", PurchaseOrderStatus.PartiallyReceived => "bg-warning", PurchaseOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@order.Status.GetDisplayName()</span></td>
                     <td>@t.ReceivedQuantity.ToString("N0") / @t.OrderedQuantity.ToString("N0")</td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@order.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر الشراء @order.OrderNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@order.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر الشراء @order.OrderNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                     </td>
                 </tr>
             }

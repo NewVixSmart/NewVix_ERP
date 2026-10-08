@@ -16,7 +16,7 @@
 }
 
 <div class="page-header">
-    <h2><i class="bi bi-clipboard-check text-primary"></i> @ViewData["Title"]</h2>
+    <h2><i class="bi bi-clipboard-check text-primary" aria-hidden="true"></i> @ViewData["Title"]</h2>
 </div>
 
 @if (!ViewData.ModelState.IsValid)
@@ -65,7 +65,7 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul"></i> أصناف أمر الشراء</div>
+        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف أمر الشراء</div>
         @if (!ViewData.ModelState.IsValid && !Model.Items.Any())
         {
             <div class="card-body pb-0">@await Html.PartialAsync("_NoLineItemsNotice")</div>
@@ -103,7 +103,7 @@
                             <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية المطلوبة" @(fieldError(idx, "Quantity")) /></td>
                             <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
                             <td><span class="total fw-bold">0.00</span></td>
-                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                         </tr>
                         @await Html.PartialAsync("_LineItemErrors", idx)
                     }
@@ -111,7 +111,7 @@
             </table>
         </div>
         <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus"></i> إضافة صنف</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
@@ -120,7 +120,7 @@
     </div>
 
     <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
         <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
     </div>
 </form>
@@ -147,7 +147,7 @@ document.getElementById('addRow').addEventListener('click', function() {
         <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية المطلوبة" /></td>
         <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><span class="total fw-bold">0.00</span></td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>`;
     tbody.appendChild(tr);
     rowIndex++;
     bindEvents();

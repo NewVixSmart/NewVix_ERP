@@ -5,7 +5,7 @@
 }
 
 <div class="page-header">
-    <h2><i class="bi bi-plus-circle text-primary"></i> إضافة صنف جديد</h2>
+    <h2><i class="bi bi-plus-circle text-primary" aria-hidden="true"></i> إضافة صنف جديد</h2>
 </div>
 
 <div class="card">
@@ -13,7 +13,7 @@
         <form asp-action="Create">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle"></i> البيانات الأساسية</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle" aria-hidden="true"></i> البيانات الأساسية</h6>
             <div class="row g-3">
                 <div class="col-md-4">
                     <label asp-for="Code" class="form-label"></label>
@@ -31,7 +31,7 @@
                             <option value="">-- اختر نوع الصنف --</option>
                         </select>
                         <button type="button" class="btn btn-outline-primary" id="manageItemTypesBtn" title="إدارة أنواع الأصناف" aria-label="إدارة أنواع الأصناف">
-                            <i class="bi bi-gear"></i>
+                            <i class="bi bi-gear" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -53,7 +53,7 @@
                             <option value="">-- اختر المجموعة / العائلة --</option>
                         </select>
                         <button type="button" class="btn btn-outline-primary" id="manageCategoriesBtn" title="إدارة التصنيفات" aria-label="إدارة التصنيفات">
-                            <i class="bi bi-gear"></i>
+                            <i class="bi bi-gear" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -65,9 +65,9 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-rulers"></i> وحدات العدد والكمية</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-rulers" aria-hidden="true"></i> وحدات العدد والكمية</h6>
             <div class="alert alert-info py-2 small">
-                <i class="bi bi-info-circle"></i> مثال: صنف "سلك" — العدد = 10 بكرات، الكمية = 2500 متر
+                <i class="bi bi-info-circle" aria-hidden="true"></i> مثال: صنف "سلك" — العدد = 10 بكرات، الكمية = 2500 متر
             </div>
             <div class="row g-3">
                 <div class="col-md-3">
@@ -86,7 +86,7 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-currency-dollar"></i> الأسعار</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-currency-dollar" aria-hidden="true"></i> الأسعار</h6>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="PurchasePrice" class="form-label"></label>
@@ -100,13 +100,13 @@
             @if (ViewBag.IsAdmin == false)
             {
                 <div class="col-12">
-                    <small class="text-warning"><i class="bi bi-shield-lock"></i> إدارة الأسعار متاحة للأدمن فقط.</small>
+                    <small class="text-warning"><i class="bi bi-shield-lock" aria-hidden="true"></i> إدارة الأسعار متاحة للأدمن فقط.</small>
                 </div>
             }
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-box-seam"></i> الحد الأدنى للمخزون</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-box-seam" aria-hidden="true"></i> الحد الأدنى للمخزون</h6>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="MinCount" class="form-label"></label>
@@ -122,9 +122,9 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-boxes"></i> المخزون</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-boxes" aria-hidden="true"></i> المخزون</h6>
             <div class="alert alert-light border small">
-                <i class="bi bi-info-circle"></i> يُنشأ الصنف برصيد صفري. بعد الإنشاء أضِف رصيد الافتتاح عبر «سجل الجرد» لتسجيل الكمية والعدد في حركة المخزون.
+                <i class="bi bi-info-circle" aria-hidden="true"></i> يُنشأ الصنف برصيد صفري. بعد الإنشاء أضِف رصيد الافتتاح عبر «سجل الجرد» لتسجيل الكمية والعدد في حركة المخزون.
             </div>
             <div class="col-md-4">
                 <div class="form-check form-switch">
@@ -134,8 +134,8 @@
             </div>
 
             <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
             </div>
         </form>
     </div>
@@ -154,7 +154,7 @@
                         <input type="text" id="newCatName" class="form-control" placeholder="اسم تصنيف جديد..." aria-label="اسم تصنيف جديد" />
                     </div>
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-success w-100" id="addCatBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                        <button type="button" class="btn btn-success w-100" id="addCatBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                     </div>
                 </div>
                 <div class="table-container">
@@ -183,7 +183,7 @@
                         <input type="text" id="newTypeName" class="form-control" placeholder="اسم نوع جديد..." aria-label="اسم نوع صنف جديد" />
                     </div>
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-success w-100" id="addTypeBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                        <button type="button" class="btn btn-success w-100" id="addTypeBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                     </div>
                 </div>
                 <div class="table-container">

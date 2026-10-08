@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "العملاء"; }
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <h2><i class="bi bi-people text-primary"></i> العملاء</h2>
+    <h2><i class="bi bi-people text-primary" aria-hidden="true"></i> العملاء</h2>
     @if (await Perm.HasAsync("Customers.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> عميل جديد</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> عميل جديد</a>
     }
 </div>
 
@@ -36,16 +36,16 @@
                     <td>@(c.Address ?? "—")</td>
                     <td>@Money.Format(c.OpeningBalance)</td>
                     <td class="text-center">
-                        <a asp-action="Ledger" asp-route-id="@c.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ العميل @c.Name"><i class="bi bi-journal-bookmark"></i></a>
-                        <a asp-action="PendingDeliveries" asp-route-id="@c.Id" class="btn btn-sm btn-outline-info" aria-label="تسليمات معلّقة للعميل @c.Name"><i class="bi bi-truck"></i></a>
+                        <a asp-action="Ledger" asp-route-id="@c.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ العميل @c.Name"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></a>
+                        <a asp-action="PendingDeliveries" asp-route-id="@c.Id" class="btn btn-sm btn-outline-info" aria-label="تسليمات معلّقة للعميل @c.Name"><i class="bi bi-truck" aria-hidden="true"></i></a>
                         @if (await Perm.HasAsync("Customers.Edit"))
                         {
-                            <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل العميل @c.Name"><i class="bi bi-pencil"></i></a>
+                            <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل العميل @c.Name"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                         }
                         @if (await Perm.HasAsync("Customers.Delete"))
                         {
                             <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="هل أنت متأكد من حذف هذا العميل؟" data-confirm-ok="حذف">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف العميل @c.Name"><i class="bi bi-trash"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف العميل @c.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                             </form>
                         }
                     </td>

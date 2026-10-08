@@ -4,37 +4,37 @@
 @{ ViewData["Title"] = $"أمر شراء {Model.OrderNumber}"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary"></i> أمر شراء: @Model.OrderNumber</h2>
+    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> أمر شراء: @Model.OrderNumber</h2>
     <div class="d-flex gap-2">
         @if (await Perm.HasAsync("PurchaseOrders.Approve") && Model.Status == PurchaseOrderStatus.Draft)
         {
             <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> اعتماد</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
             </form>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived))
         {
-            <a asp-action="Receive" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-box-arrow-in-down"></i> استلام</a>
+            <a asp-action="Receive" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> استلام</a>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived) && OrderProgress.HasReceived(Model))
         {
             <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> تحويل إلى فاتورة</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt" aria-hidden="true"></i> تحويل إلى فاتورة</button>
             </form>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Edit") && Model.Status == PurchaseOrderStatus.Draft)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> تعديل</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Approve") && Model.Status != PurchaseOrderStatus.Cancelled && Model.Status != PurchaseOrderStatus.Received)
         {
             <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> إلغاء</button>
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> طباعة</a>
-        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf"></i> تحميل PDF</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 

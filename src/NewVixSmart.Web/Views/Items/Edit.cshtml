@@ -5,7 +5,7 @@
 }
 
 <div class="page-header">
-    <h2><i class="bi bi-pencil text-primary"></i> تعديل الصنف: @Model.Name</h2>
+    <h2><i class="bi bi-pencil text-primary" aria-hidden="true"></i> تعديل الصنف: @Model.Name</h2>
 </div>
 
 <div class="card">
@@ -16,7 +16,7 @@
             <input type="hidden" asp-for="CreatedAt" />
             <input type="hidden" asp-for="RowVersion" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle"></i> البيانات الأساسية</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-info-circle" aria-hidden="true"></i> البيانات الأساسية</h6>
             <div class="row g-3">
                 <div class="col-md-4">
                     <label asp-for="Code" class="form-label"></label>
@@ -34,7 +34,7 @@
                             <option value="">-- اختر نوع الصنف --</option>
                         </select>
                         <button type="button" class="btn btn-outline-primary" id="manageItemTypesBtn" title="إدارة أنواع الأصناف" aria-label="إدارة أنواع الأصناف">
-                            <i class="bi bi-gear"></i>
+                            <i class="bi bi-gear" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -52,7 +52,7 @@
                             <option value="">-- اختر المجموعة / العائلة --</option>
                         </select>
                         <button type="button" class="btn btn-outline-primary" id="manageCategoriesBtn" title="إدارة التصنيفات" aria-label="إدارة التصنيفات">
-                            <i class="bi bi-gear"></i>
+                            <i class="bi bi-gear" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-rulers"></i> وحدات العدد والكمية</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-rulers" aria-hidden="true"></i> وحدات العدد والكمية</h6>
             <div class="row g-3">
                 <div class="col-md-3">
                     <label asp-for="CountUnitId" class="form-label"></label>
@@ -82,7 +82,7 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-box-seam"></i> الأسعار والحد الأدنى للمخزون</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-box-seam" aria-hidden="true"></i> الأسعار والحد الأدنى للمخزون</h6>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="PurchasePrice" class="form-label"></label>
@@ -104,9 +104,9 @@
 
             <hr class="my-4" />
 
-            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-boxes"></i> الرصيد الحالي</h6>
+            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-boxes" aria-hidden="true"></i> الرصيد الحالي</h6>
             <div class="alert alert-info py-2 small">
-                <i class="bi bi-info-circle"></i> يتم تعديل الرصيد من خلال "تسوية جرد" فقط لضمان توثيق الحركات
+                <i class="bi bi-info-circle" aria-hidden="true"></i> يتم تعديل الرصيد من خلال "تسوية جرد" فقط لضمان توثيق الحركات
             </div>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -126,8 +126,8 @@
             </div>
 
             <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ التعديلات</button>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ التعديلات</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
             </div>
         </form>
     </div>
@@ -146,7 +146,7 @@
                         <input type="text" id="newCatName" class="form-control" placeholder="اسم تصنيف جديد..." aria-label="اسم تصنيف جديد" />
                     </div>
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-success w-100" id="addCatBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                        <button type="button" class="btn btn-success w-100" id="addCatBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                     </div>
                 </div>
                 <div class="table-container">
@@ -175,7 +175,7 @@
                         <input type="text" id="newTypeName" class="form-control" placeholder="اسم نوع جديد..." aria-label="اسم نوع صنف جديد" />
                     </div>
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-success w-100" id="addTypeBtn"><i class="bi bi-plus-lg"></i> إضافة</button>
+                        <button type="button" class="btn btn-success w-100" id="addTypeBtn"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                     </div>
                 </div>
                 <div class="table-container">

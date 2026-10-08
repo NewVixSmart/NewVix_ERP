@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "تسجيل عرض سعر"; }
 
 <div class="page-header">
-    <h2><i class="bi bi-envelope-open text-primary"></i> تسجيل عرض سعر</h2>
+    <h2><i class="bi bi-envelope-open text-primary" aria-hidden="true"></i> تسجيل عرض سعر</h2>
 </div>
 
 @if (!ViewData.ModelState.IsValid)
@@ -43,7 +43,7 @@
                 </div>
             </div>
             <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
                 <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
             </div>
         </div>

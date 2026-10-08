@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "مرتجعات البيع"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-arrow-return-left text-primary"></i> مرتجعات البيع</h2>
+    <h2><i class="bi bi-arrow-return-left text-primary" aria-hidden="true"></i> مرتجعات البيع</h2>
     @if (await Perm.HasAsync("SaleReturns.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> مرتجع جديد</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> مرتجع جديد</a>
     }
 </div>
 
@@ -33,12 +33,12 @@
                         }
                     </td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye"></i></a>
+                        <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                         @if (r.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Draft && await Perm.HasAsync("SaleReturns.Post"))
                         {
                             <form asp-action="Post" asp-route-id="@r.Id" method="post" class="d-inline" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-success" aria-label="ترحيل مرتجع البيع @r.ReturnNumber"><i class="bi bi-check-circle"></i></button>
+                                <button type="submit" class="btn btn-sm btn-outline-success" aria-label="ترحيل مرتجع البيع @r.ReturnNumber"><i class="bi bi-check-circle" aria-hidden="true"></i></button>
                             </form>
                         }
                     </td>

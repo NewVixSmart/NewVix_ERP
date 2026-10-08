@@ -2,15 +2,15 @@
 @{ ViewData["Title"] = $"دفتر أستاذ - {Model.Customer?.Name ?? ""}"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-journal-bookmark text-primary"></i> كشف حساب: @(Model.Customer?.Name ?? "—")</h2>
+    <h2><i class="bi bi-journal-bookmark text-primary" aria-hidden="true"></i> كشف حساب: @(Model.Customer?.Name ?? "—")</h2>
     <div>
         <span class="badge @(Model.Balance >= 0 ? "bg-success" : "bg-danger") fs-6">الرصيد: @Money.Format(Model.Balance)</span>
         <a asp-action="PendingDeliveries" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-primary">
-            <i class="bi bi-truck"></i> تسليمات معلّقة (@Model.PendingLines.Count)
+            <i class="bi bi-truck" aria-hidden="true"></i> تسليمات معلّقة (@Model.PendingLines.Count)
         </a>
-        <a asp-action="LedgerXlsx" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
-        <a asp-action="LedgerPdf" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> كشف PDF</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+        <a asp-action="LedgerXlsx" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+        <a asp-action="LedgerPdf" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> كشف PDF</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
@@ -27,13 +27,13 @@
 
 <div class="row g-4">
     <div class="col-lg-6">
-        <div class="card"><div class="card-header"><i class="bi bi-cart-check"></i> فواتير البيع</div><div class="card-body p-0">
+        <div class="card"><div class="card-header"><i class="bi bi-cart-check" aria-hidden="true"></i> فواتير البيع</div><div class="card-body p-0">
             <table class="table table-hover mb-0"><caption class="visually-hidden">فواتير البيع: رقم الفاتورة، التاريخ، المبلغ، المدفوع</caption><thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
             <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td>@Money.Format(i.NetAmount)</td><td>@Money.Format(i.PaidAmount)</td></tr> }</tbody></table>
         </div></div>
     </div>
     <div class="col-lg-6">
-        <div class="card"><div class="card-header"><i class="bi bi-wallet2"></i> المدفوعات (المقبوضات)</div><div class="card-body p-0">
+        <div class="card"><div class="card-header"><i class="bi bi-wallet2" aria-hidden="true"></i> المدفوعات (المقبوضات)</div><div class="card-body p-0">
             <table class="table table-hover mb-0"><caption class="visually-hidden">المدفوعات (المقبوضات): رقم الإيصال، التاريخ، المبلغ، طريقة الدفع</caption><thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
             <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">@Money.Format(p.Amount)</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody></table>
         </div></div>
@@ -41,7 +41,7 @@
 </div>
 
 <div class="card mt-4"><div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-arrow-counterclockwise"></i> مرتجعات البيع</span>
+        <span><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> مرتجعات البيع</span>
     </div><div class="card-body p-0">
     <table class="table table-hover mb-0"><caption class="visually-hidden">مرتجعات البيع: رقم المرتجع، التاريخ، المبلغ</caption><thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
     <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">-@Money.Format(decimal.Round(ReturnValuation.ReceivableBase(r.TotalAmount, r.SaleInvoice?.TotalAmount ?? 0m, r.SaleInvoice?.NetAmount ?? 0m), 2))</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody></table>
@@ -49,7 +49,7 @@
 
 <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-truck"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
+        <span><i class="bi bi-truck" aria-hidden="true"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
         <a asp-action="PendingDeliveries" asp-route-id="@Model.Customer?.Id" class="btn btn-sm btn-outline-primary">التفاصيل</a>
     </div>
     <div class="card-body p-0">
@@ -99,7 +99,7 @@
 @if (!Model.Invoices.Any() && !Model.Payments.Any() && !Model.Returns.Any() && !Model.PendingLines.Any())
 {
     <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
         <p class="mt-2">لا توجد حركات على هذا العميل</p>
     </div>
 }

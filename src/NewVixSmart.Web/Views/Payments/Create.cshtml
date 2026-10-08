@@ -3,7 +3,7 @@
     ViewData["Title"] = Model.Payment.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt ? "قبض من عميل" : "صرف لمورد";
 }
 
-<div class="page-header"><h2><i class="bi bi-wallet2 text-primary"></i> @ViewData["Title"]</h2></div>
+<div class="page-header"><h2><i class="bi bi-wallet2 text-primary" aria-hidden="true"></i> @ViewData["Title"]</h2></div>
 
 <div class="card"><div class="card-body">
     <form asp-action="Create" asp-route-type="@Model.Type">
@@ -64,7 +64,7 @@
             </div>
         </div>
         <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
             <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
         </div>
     </form>

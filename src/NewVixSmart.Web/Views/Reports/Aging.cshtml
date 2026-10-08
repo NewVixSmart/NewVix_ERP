@@ -4,14 +4,14 @@
 
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-        <h2><i class="bi bi-hourglass-split text-warning"></i> القائمة العمرية</h2>
+        <h2><i class="bi bi-hourglass-split text-warning" aria-hidden="true"></i> القائمة العمرية</h2>
         <p class="text-muted mb-0">حتى تاريخ @Model.AsOf.ToString("dd/MM/yyyy") — تحليل ذمم العملاء والموردين حسب تأخر الاستحقاق</p>
     </div>
     <div class="d-flex gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> كل التقارير</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
         @if (await Perm.HasAsync("Aging.Export"))
         {
-            <a asp-action="AgingXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير Excel</a>
+            <a asp-action="AgingXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
         }
     </div>
 </div>
@@ -24,7 +24,7 @@
                     <div class="text-muted small">ذمم عملاء — إجمالي</div>
                     <h3 class="mb-0 mt-1">@Money.Format(Model.ArTotal)</h3>
                 </div>
-                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-people"></i></div>
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-people" aria-hidden="true"></i></div>
             </div>
         </div>
     </div>
@@ -35,7 +35,7 @@
                     <div class="text-muted small">ذمم عملاء — متأخر</div>
                     <h3 class="mb-0 mt-1">@Money.Format(Model.ArOverdue)</h3>
                 </div>
-                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon"></i></div>
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i></div>
             </div>
         </div>
     </div>
@@ -46,7 +46,7 @@
                     <div class="text-muted small">ذمم موردين — إجمالي</div>
                     <h3 class="mb-0 mt-1">@Money.Format(Model.ApTotal)</h3>
                 </div>
-                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-truck"></i></div>
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-truck" aria-hidden="true"></i></div>
             </div>
         </div>
     </div>
@@ -57,7 +57,7 @@
                     <div class="text-muted small">ذمم موردين — متأخر</div>
                     <h3 class="mb-0 mt-1">@Money.Format(Model.ApOverdue)</h3>
                 </div>
-                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon"></i></div>
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i></div>
             </div>
         </div>
     </div>
@@ -65,7 +65,7 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-5" id="aging-ar-heading"><i class="bi bi-people text-primary"></i> ذمم العملاء</h3>
+        <h3 class="mb-0 fs-5" id="aging-ar-heading"><i class="bi bi-people text-primary" aria-hidden="true"></i> ذمم العملاء</h3>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" aria-labelledby="aging-ar-heading">
@@ -116,7 +116,7 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-5" id="aging-ap-heading"><i class="bi bi-truck text-warning"></i> ذمم الموردين</h3>
+        <h3 class="mb-0 fs-5" id="aging-ap-heading"><i class="bi bi-truck text-warning" aria-hidden="true"></i> ذمم الموردين</h3>
     </div>
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle" aria-labelledby="aging-ap-heading">

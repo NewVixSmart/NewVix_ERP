@@ -14,7 +14,7 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-arrow-return-right text-primary"></i> مرتجع شراء جديد</h2></div>
+<div class="page-header"><h2><i class="bi bi-arrow-return-right text-primary" aria-hidden="true"></i> مرتجع شراء جديد</h2></div>
 
 <form asp-action="Create" id="returnForm">
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
@@ -49,7 +49,7 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul"></i> الأصناف المرتجعة للمورد</div>
+        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> الأصناف المرتجعة للمورد</div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0" id="itemsTable">
                 <caption class="visually-hidden">الأصناف المرتجعة للمورد المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
@@ -74,14 +74,14 @@
                         <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" @(fieldError(0, "Quantity")) /></td>
                         <td><input name="items[0].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" @(fieldError(0, "UnitPrice")) /></td>
                         <td><span class="total fw-bold">0.00</span></td>
-                        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                     </tr>
                     @await Html.PartialAsync("_LineItemErrors", 0)
                 </tbody>
             </table>
         </div>
         <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus"></i> إضافة صنف</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
@@ -91,9 +91,9 @@
     </div>
 
     <div class="mt-4 d-flex gap-2">
-        <button type="submit" name="submitAction" value="post" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ وترحيل</button>
-        <button type="submit" name="submitAction" value="draft" class="btn btn-outline-primary"><i class="bi bi-pencil-square"></i> حفظ كمسودة</button>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+        <button type="submit" name="submitAction" value="post" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ وترحيل</button>
+        <button type="submit" name="submitAction" value="draft" class="btn btn-outline-primary"><i class="bi bi-pencil-square" aria-hidden="true"></i> حفظ كمسودة</button>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
     </div>
 </form>
 
@@ -111,7 +111,7 @@
             <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
             <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
             <td><span class="total fw-bold">0.00</span></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>`;
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>`;
         tbody.appendChild(tr);
         rowIndex++;
         bindEvents();

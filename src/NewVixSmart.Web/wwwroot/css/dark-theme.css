@@ -273,11 +273,7 @@ html[data-theme="dark"] [tabindex]:focus-visible {
 html[data-theme="dark"] .sidebar a:focus-visible,
 html[data-theme="dark"] .sidebar button:focus-visible,
 html[data-theme="dark"] .topbar a:focus-visible,
-html[data-theme="dark"] .topbar button:focus-visible,
-html[data-theme="dark"] .login-stage a:focus-visible,
-html[data-theme="dark"] .login-stage button:focus-visible,
-html[data-theme="dark"] .auth-panel a:focus-visible,
-html[data-theme="dark"] .auth-panel button:focus-visible {
+html[data-theme="dark"] .topbar button:focus-visible {
     outline-color: var(--color-focus-ring-dark);
 }
 
@@ -506,8 +502,7 @@ html[data-theme="dark"] .popover-body { color: #E9EDF5; }
 
 /* Theme selector — solid L2 chip (NO backdrop-filter; glass only on
    transient overlays). Active = cyan capsule #0A0B0D bg, white text.
-   Specificity beats light file's `.theme-mode-btn[data-theme-value]` /
-   `.auth-form .theme-mode-btn`. */
+   Specificity beats light file's `.theme-mode-btn[data-theme-value]`. */
 html[data-theme="dark"] .theme-selector {
     background: var(--color-surface-2);
     border: 1px solid var(--color-border);
@@ -763,16 +758,14 @@ html[data-theme="dark"] .sidebar.is-collapsed .sidebar-profile .btn { display: n
 }
 
 /* Topbar — solid surface (NO backdrop-filter), 64px, hairline base */
-html[data-theme="dark"] .topbar,
-html[data-theme="dark"] .top-bar {
+html[data-theme="dark"] .topbar {
     height: 64px;
     background: var(--color-surface);
     border-bottom-color: rgba(255, 255, 255, 0.08);
     color: #E9EDF5;
     box-shadow: var(--sh-sm);
 }
-html[data-theme="dark"] .topbar-title h6,
-html[data-theme="dark"] .top-bar h6 { color: #FFFFFF; }
+html[data-theme="dark"] .topbar-title h6 { color: #FFFFFF; }
 html[data-theme="dark"] .topbar-greeting,
 html[data-theme="dark"] .topbar-clock,
 html[data-theme="dark"] .topbar-user,
@@ -793,22 +786,7 @@ html[data-theme="dark"] .topbar .btn-outline-danger:focus-visible {
 html[data-theme="dark"] .navbar-toggler { border-color: rgba(255, 255, 255, 0.14); color: #E9EDF5; background: rgba(255, 255, 255, 0.08); border-radius: var(--r-sm); }
 html[data-theme="dark"] .navbar-toggler:hover { background: rgba(255, 255, 255, 0.16); color: #FFFFFF; }
 
-/* ---------- 6. AUTH DARK (split screen, dark form panel) ---------- */
-html[data-theme="dark"] .login-stage { background-color: #0A0B0D; }
-html[data-theme="dark"] .auth-wrap { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); border-radius: 24px; box-shadow: var(--sh-lg); }
-html[data-theme="dark"] .auth-panel.auth-form,
-html[data-theme="dark"] .auth-form { background: var(--color-surface); border-inline-start: 1px solid rgba(255, 255, 255, 0.08); }
-html[data-theme="dark"] .auth-brand { border-inline-end: 1px solid rgba(255, 255, 255, 0.08); }
-/* auth-brand keeps G3's navy gradient from the light file — do NOT redefine */
-html[data-theme="dark"] .auth-form h2 { color: #FFFFFF; }
-html[data-theme="dark"] .auth-form .subtitle { color: #94A0B8; }
-html[data-theme="dark"] .auth-card { background: var(--color-surface); border-color: rgba(255, 255, 255, 0.16); border-radius: 24px; box-shadow: var(--sh-lg); }
-/* Theme selector inside the dark form panel — same navy tint chip */
-html[data-theme="dark"] .auth-form .theme-selector { background: rgba(10, 17, 32, 0.55); border-color: rgba(255, 255, 255, 0.08); }
-html[data-theme="dark"] .auth-form .theme-mode-btn,
-html[data-theme="dark"] .auth-form .theme-mode-btn[data-theme-value] { color: rgba(233, 237, 245, 0.85); }
-html[data-theme="dark"] .auth-form .theme-mode-btn:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.10); }
-html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { background: #0A0B0D; border-color: #53B1FD; color: #FFFFFF; font-weight: 700; box-shadow: var(--sh-glow-cyan); }
+/* ---------- 6. AUTH DARK (lg-shell split screen — see auth.css for the light grammar) ---------- */
 
 /* ---------- 7. PRINT RESET (dark -> print-light palette flip) ---------- */
 @media print {
@@ -939,13 +917,11 @@ html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { backgr
     html[data-theme="dark"] .sidebar-footer,
     html[data-theme="dark"] .topbar,
     html[data-theme="dark"] .topbar-inner,
-    html[data-theme="dark"] .mobile-overlay,
-    html[data-theme="dark"] .login-aura { display: none !important; }
+    html[data-theme="dark"] .mobile-overlay { display: none !important; }
     html[data-theme="dark"] .main-content { margin-left: 0 !important; margin-inline: 0 !important; }
     /* Flatten every dark surface to print-light */
     html[data-theme="dark"] .stat-card,
     html[data-theme="dark"] .card,
-    html[data-theme="dark"] .auth-card,
     html[data-theme="dark"] .data-shell,
     html[data-theme="dark"] .data-shell .table-container,
     html[data-theme="dark"] .data-toolbar,
@@ -957,7 +933,6 @@ html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { backgr
     html[data-theme="dark"] .report-tile,
     html[data-theme="dark"] .theme-selector,
     html[data-theme="dark"] .preset-card,
-    html[data-theme="dark"] .login-stage,
     html[data-theme="dark"] .dash-hero {
         background-color: #ffffff;
         border-color: #d8dce2;
@@ -993,15 +968,6 @@ html[data-theme="dark"] .auth-form .theme-mode-btn[aria-pressed="true"] { backgr
     html[data-theme="dark"] .form-actions { background: #ffffff; border-top-color: #d8dce2; box-shadow: none; }
     html[data-theme="dark"] .topbar { background: #ffffff; border-bottom-color: #d8dce2; box-shadow: none; }
     html[data-theme="dark"] .topbar h6 { color: #1a2f4d; }
-    html[data-theme="dark"] .auth-wrap,
-    html[data-theme="dark"] .auth-panel,
-    html[data-theme="dark"] .auth-form { background: #ffffff; border-color: #d8dce2; color: #1a2f4d; box-shadow: none !important; }
-    html[data-theme="dark"] .auth-brand { background: #ffffff !important; color: #1a2f4d !important; border-inline-end: none; }
-    html[data-theme="dark"] .auth-brand h1,
-    html[data-theme="dark"] .auth-tagline,
-    html[data-theme="dark"] .auth-points li { color: #1a2f4d; }
-    html[data-theme="dark"] .auth-points li i { color: #2E90FA; }
-    html[data-theme="dark"] .auth-monogram { background: #ffffff !important; color: #1a2f4d !important; border: 1px solid #d8dce2; box-shadow: none !important; }
     html[data-theme="dark"] .dash-hero h4,
     html[data-theme="dark"] .stat-card strong,
     html[data-theme="dark"] .card h5,
@@ -1128,7 +1094,6 @@ html[data-theme="dark"] .table-container::-webkit-scrollbar-thumb:hover {
     html[data-theme="dark"] .app-toast { border: 1px solid ButtonText; background-color: Canvas; color: CanvasText; }
     html[data-theme="dark"] .sidebar,
     html[data-theme="dark"] .topbar,
-    html[data-theme="dark"] .top-bar,
     html[data-theme="dark"] .modal-content,
     html[data-theme="dark"] .form-control,
     html[data-theme="dark"] .form-select {
@@ -1150,7 +1115,5 @@ html[data-theme="dark"] .table-container::-webkit-scrollbar-thumb:hover {
     html[data-theme="dark"] .skip-link { border: 2px solid ButtonText; background-color: ButtonFace; color: ButtonText; }
     html[data-theme="dark"] .empty-state .empty-icon,
     html[data-theme="dark"] .tile-xl,
-    html[data-theme="dark"] .all-clear,
-    html[data-theme="dark"] .auth-monogram,
-    html[data-theme="dark"] .auth-panel.auth-brand { forced-color-adjust: none; }
+    html[data-theme="dark"] .all-clear { forced-color-adjust: none; }
 }

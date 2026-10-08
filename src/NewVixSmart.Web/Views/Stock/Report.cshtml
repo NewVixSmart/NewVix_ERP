@@ -4,10 +4,10 @@
 }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-clipboard2-data text-primary"></i> تقرير المخزون الكامل</h2>
+    <h2><i class="bi bi-clipboard2-data text-primary" aria-hidden="true"></i> تقرير المخزون الكامل</h2>
     <div class="d-flex gap-2">
-        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> تصدير الأصناف</a>
-        <a asp-controller="Reports" asp-action="ExportStockXlsx" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel"></i> لقطة المخزون</a>
+        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير الأصناف</a>
+        <a asp-controller="Reports" asp-action="ExportStockXlsx" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> لقطة المخزون</a>
     </div>
 </div>
 
@@ -27,7 +27,7 @@
                 <label class="form-check-label" for="lowOnly">فقط المخزون المنخفض</label>
             </div>
         </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> تصفية</button></div>
+        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> تصفية</button></div>
     </form>
 </div></div>
 
@@ -77,7 +77,7 @@
 @if (!Model.Items.Any())
 {
     <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
         <p class="mt-2">لا توجد أصناف مطابقة</p>
     </div>
 }

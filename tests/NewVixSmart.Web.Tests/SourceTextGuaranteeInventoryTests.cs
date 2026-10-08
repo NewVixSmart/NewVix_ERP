@@ -58,6 +58,7 @@ public sealed class SourceTextGuaranteeInventoryTests
         ["RazorHygieneTests"] = _tooling,                    // scripts/check-text-hygiene.ps1 + .github/workflows/ci.yml
         ["SecurityResponseHeadersTests"] = _cSharp,          // Program.cs
         ["SecurityViewCspNonceTests"] = _cSharp,             // Program.cs, plus _razor views
+        ["ThemeScriptPartialTests"] = _razor,                // Views/Shared/_ThemeScript.cshtml + three host views
         ["ViewLogicSweepTests"] = _cSharp,                   // controllers and views
     };
 

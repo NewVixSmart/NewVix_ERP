@@ -5,7 +5,7 @@
     var itemsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
-<div class="page-header"><h2><i class="bi bi-clipboard-data text-primary"></i> جرد / تعديل مخزون يدوي</h2></div>
+<div class="page-header"><h2><i class="bi bi-clipboard-data text-primary" aria-hidden="true"></i> جرد / تعديل مخزون يدوي</h2></div>
 
 <div class="card">
     <div class="card-body">
@@ -32,7 +32,7 @@
 
                 <div class="col-12">
                     <div class="alert alert-light border small py-2 mb-0" id="currentStockBox">
-                        <i class="bi bi-info-circle"></i> اختر صنفًا لعرض الرصيد الحالي لديك.
+                        <i class="bi bi-info-circle" aria-hidden="true"></i> اختر صنفًا لعرض الرصيد الحالي لديك.
                     </div>
                 </div>
 
@@ -54,8 +54,8 @@
             </div>
 
             <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ الجرد</button>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> إلغاء</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الجرد</button>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
             </div>
         </form>
     </div>
@@ -82,8 +82,8 @@
 
     itemSelect.addEventListener('change', function() {
         const it = selectedItem();
-        if (!it) { stockBox.innerHTML = '<i class="bi bi-info-circle"></i> اختر صنفًا لعرض الرصيد الحالي.'; return; }
-        stockBox.innerHTML = '<i class="bi bi-info-circle"></i> الرصيد الحالي: ' +
+        if (!it) { stockBox.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> اختر صنفًا لعرض الرصيد الحالي.'; return; }
+        stockBox.innerHTML = '<i class="bi bi-info-circle" aria-hidden="true"></i> الرصيد الحالي: ' +
             '<strong>' + it.currentCount + '</strong> ' + escapeHtml(it.countUnit || '') +
             ' / <strong>' + it.currentQuantity + '</strong> ' + escapeHtml(it.quantityUnit || '') +
             '. أدخل العدد والكمية <b>الجديدين</b> بعد الجرد.';

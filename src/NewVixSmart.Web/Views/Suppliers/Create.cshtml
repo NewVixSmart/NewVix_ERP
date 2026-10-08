@@ -1,7 +1,7 @@
 @model NewVixSmart.Web.Models.Purchases.Supplier
 @{ ViewData["Title"] = "إضافة مورد"; }
 
-<div class="page-header"><h2><i class="bi bi-truck text-primary"></i> إضافة مورد</h2></div>
+<div class="page-header"><h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> إضافة مورد</h2></div>
 <div class="card"><div class="card-body">
     <form asp-action="Create">
         <div class="row g-3">
@@ -15,7 +15,7 @@
             <div class="col-12"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="2"></textarea></div>
         </div>
         <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
             <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
         </div>
     </form>

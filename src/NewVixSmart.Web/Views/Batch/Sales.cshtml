@@ -7,7 +7,7 @@
         new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
-<div class="page-header"><h2><i class="bi bi-collection text-primary"></i> المبيعات الجماعية</h2></div>
+<div class="page-header"><h2><i class="bi bi-collection text-primary" aria-hidden="true"></i> المبيعات الجماعية</h2></div>
 
 @if (!ViewData.ModelState.IsValid)
 {
@@ -16,7 +16,7 @@
 
 <form asp-action="Sales" id="batchSalesForm">
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-receipt"></i> بيانات مشتركة لكل الفواتير</div>
+        <div class="card-header"><i class="bi bi-receipt" aria-hidden="true"></i> بيانات مشتركة لكل الفواتير</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
@@ -70,7 +70,7 @@
             var blockItems = Model.Invoices[i].Items ?? new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem>();
             <div class="card invoice-block mb-3" data-invoice="@i" data-rows="@(Math.Max(1, blockItems.Count))">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-receipt"></i> فاتورة @(i + 1)</span>
+                    <span><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة @(i + 1)</span>
                     <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
                 </div>
                 <div class="card-body p-0">
@@ -106,26 +106,26 @@
                                     <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                                     <td><input name="Invoices[@i].Items[@j].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="@(line?.Discount ?? 0)" aria-label="خصم الصنف" /></td>
                                     <td><span class="total fw-bold">0.00</span></td>
-                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
                 <div class="card-footer d-flex gap-2 justify-content-between">
-                    <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus"></i> إضافة صنف</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x"></i> حذف الفاتورة</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x" aria-hidden="true"></i> حذف الفاتورة</button>
                 </div>
             </div>
         }
     </div>
 
     <div class="mb-3">
-        <button type="button" class="btn btn-outline-primary" id="addInvoice"><i class="bi bi-plus-lg"></i> إضافة فاتورة أخرى</button>
+        <button type="button" class="btn btn-outline-primary" id="addInvoice"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة فاتورة أخرى</button>
     </div>
 
     <div class="mt-2 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> ترحيل الفواتير دفعة واحدة</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> ترحيل الفواتير دفعة واحدة</button>
         <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
     </div>
 </form>
@@ -153,7 +153,7 @@ function lineRow(invIdx, rowIdx) {
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="0" aria-label="خصم الصنف" /></td>
         <td><span class="total fw-bold">0.00</span></td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
     </tr>`;
 }
 
@@ -164,7 +164,7 @@ function newInvoiceBlock(invIdx) {
     div.dataset.rows = 1;
     div.innerHTML = `
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-receipt"></i> فاتورة ${invIdx + 1}</span>
+            <span><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة ${invIdx + 1}</span>
             <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
         </div>
         <div class="card-body p-0">
@@ -185,8 +185,8 @@ function newInvoiceBlock(invIdx) {
             </table>
         </div>
         <div class="card-footer d-flex gap-2 justify-content-between">
-            <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus"></i> إضافة صنف</button>
-            <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x"></i> حذف الفاتورة</button>
+            <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x" aria-hidden="true"></i> حذف الفاتورة</button>
         </div>`;
     document.getElementById('invoicesContainer').appendChild(div);
     bindBlock(div);

@@ -6,7 +6,7 @@
         new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
-<div class="page-header"><h2><i class="bi bi-clipboard-check text-primary"></i> الجرد الجماعي — جرد عدة أصناف دفعة واحدة</h2></div>
+<div class="page-header"><h2><i class="bi bi-clipboard-check text-primary" aria-hidden="true"></i> الجرد الجماعي — جرد عدة أصناف دفعة واحدة</h2></div>
 
 @if (!ViewData.ModelState.IsValid)
 {
@@ -15,7 +15,7 @@
 
 <form asp-action="Adjustment" id="batchAdjustForm">
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-calendar-event"></i> بيانات مشتركة</div>
+        <div class="card-header"><i class="bi bi-calendar-event" aria-hidden="true"></i> بيانات مشتركة</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
@@ -32,8 +32,8 @@
 
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-clipboard-data"></i> الأصناف — أدخل العدد والكمية <b>الجديدين</b> بعد الجرد</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus"></i> إضافة صنف</button>
+            <span><i class="bi bi-clipboard-data" aria-hidden="true"></i> الأصناف — أدخل العدد والكمية <b>الجديدين</b> بعد الجرد</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
@@ -65,7 +65,7 @@
                             <td><input name="Lines[@j].NewCount" type="number" step="0.0001" class="form-control form-control-sm new-count" value="@Model.Lines[j].NewCount" aria-label="العدد الجديد" /></td>
                             <td><input name="Lines[@j].NewQuantity" type="number" step="0.0001" class="form-control form-control-sm new-qty" value="@Model.Lines[j].NewQuantity" aria-label="الكمية الجديدة" /></td>
                             <td><span class="diff-info small fw-bold">—</span></td>
-                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                         </tr>
                     }
                 </tbody>
@@ -74,7 +74,7 @@
     </div>
 
     <div class="mt-2 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> ترحيل الجرد دفعة واحدة</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> ترحيل الجرد دفعة واحدة</button>
         <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
     </div>
 </form>
@@ -102,7 +102,7 @@ function rowHtml(idx) {
         <td><input name="Lines[${idx}].NewCount" type="number" step="0.0001" class="form-control form-control-sm new-count" value="0" aria-label="العدد الجديد" /></td>
         <td><input name="Lines[${idx}].NewQuantity" type="number" step="0.0001" class="form-control form-control-sm new-qty" value="0" aria-label="الكمية الجديدة" /></td>
         <td><span class="diff-info small fw-bold">—</span></td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
     </tr>`;
 }
 

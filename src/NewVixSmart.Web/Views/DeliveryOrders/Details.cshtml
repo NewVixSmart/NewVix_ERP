@@ -4,21 +4,21 @@
 @{ ViewData["Title"] = $"أذن تسليم {Model.DeliveryNumber}"; }
 
 <div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-truck text-primary"></i> أذن تسليم: @Model.DeliveryNumber</h2>
+    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> أذن تسليم: @Model.DeliveryNumber</h2>
     <div class="d-flex gap-2">
         @if (await Perm.HasAsync("DeliveryOrders.Deliver") && Model.Status == DeliveryOrderStatus.Draft)
         {
             <form asp-action="Deliver" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="ترحيل أذن التسليم: خصم المخزون وتسجيل قيود البيع؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> ترحيل التسليم</button>
+                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> ترحيل التسليم</button>
             </form>
             <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إلغاء أذن التسليم؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> إلغاء</button>
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer"></i> طباعة</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
@@ -77,11 +77,11 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="h5 mb-0"><i class="bi bi-box-arrow-up-right text-primary"></i> أوامر التسليم</h3>
+    <h3 class="h5 mb-0"><i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true"></i> أوامر التسليم</h3>
     @if (canCreateIssue && await Perm.HasAsync("DeliveryIssues.Create"))
     {
         <a asp-controller="DeliveryIssues" asp-action="Create" asp-route-deliveryOrderId="@Model.Id"
-           class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> أمر تسليم جديد</a>
+           class="btn btn-primary btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر تسليم جديد</a>
     }
 </div>
 
@@ -122,7 +122,7 @@
                     </td>
                     <td class="text-center">
                         <a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId"
-                           class="btn btn-sm btn-outline-info" aria-label="عرض أمر التسليم @issue.IssueNumber"><i class="bi bi-eye"></i></a>
+                           class="btn btn-sm btn-outline-info" aria-label="عرض أمر التسليم @issue.IssueNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                     </td>
                 </tr>
             }

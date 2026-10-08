@@ -1,0 +1,232 @@
+/* ============================================================
+   New Vix Smart — Design Tokens (v0.9)
+   Source of truth: docs/DESIGN-SYSTEM.md (§14 deliverable 2)
+   Layered on top of Bootstrap 5.3.3 — must be loaded AFTER
+   bootstrap.rtl.min.css and BEFORE site.css/theme styles.
+   No colors may be hard-coded in templates outside this file
+   and the Branding renderer (which writes scoped to [data-theme]).
+   ============================================================ */
+
+:root,
+:root[data-theme="light"] {
+    /* ---- Surfaces ---- */
+    --bg: #F6F7F9;
+    --surface: #FFFFFF;
+    --surface-2: #F9FAFB;
+    --surface-elevated: #FFFFFF;
+
+    /* ---- Borders ---- */
+    --border-subtle: #E7E9EE;
+    --border: #D8DCE3;
+    --border-strong: #B9BFC9;
+
+    /* ---- Text ---- */
+    --text: #0D1520;
+    --text-secondary: #3D4756;
+    --text-muted: #66707E;
+    --text-faint: #677380;
+
+    /* ---- Brand (navy) ---- */
+    --primary: #00213F;
+    --primary-hover: #06305A;
+    --primary-active: #0A3A6B;
+    --on-primary: #FFFFFF;
+    --primary-subtle: #EAF0F7;
+
+    /* ---- Accent (brass, decorative) ---- */
+    --accent: #B08A2E;
+    --accent-strong: #8C6D1F;
+
+    /* ---- Status ---- */
+    --success: #0F7B4D;
+    --warning: #8F5F00;
+    --danger: #B42318;
+    --info: #175CD3;
+
+    --success-bg: #E7F5EE;
+    --warning-bg: #FFF4D6;
+    --danger-bg: #FEECEB;
+    --info-bg: #EAF1FD;
+    --neutral-bg: #EEF1F5;
+
+    /* ---- Spacing ---- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+
+    /* ---- Radius ---- */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* ---- Elevation ---- */
+    --shadow-1: 0 1px 2px rgba(13, 21, 32, 0.05), 0 1px 1px rgba(13, 21, 32, 0.03);
+    --shadow-2: 0 4px 12px rgba(13, 21, 32, 0.08), 0 2px 4px rgba(13, 21, 32, 0.04);
+    --shadow-3: 0 12px 32px rgba(13, 21, 32, 0.14), 0 4px 8px rgba(13, 21, 32, 0.06);
+
+    /* ---- Motion ---- */
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-slow: 240ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ---- Focus ---- */
+    --focus-width: 2px;
+    --focus-offset: 2px;
+
+    /* ---- Typography ---- */
+    --font-sans: "Cairo", "Segoe UI", system-ui, sans-serif;
+    --font-size-body: 14px;
+    --font-size-table: 13.5px;
+    --font-size-caption: 12px;
+    --font-weight-label: 600;
+    --font-weight-numeric: 500;
+}
+
+:root[data-theme="dark"] {
+    --bg: #0A101E;
+    --surface: #101828;
+    --surface-2: #16203A;
+    --surface-elevated: #182338;
+
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.20);
+
+    --text: #EAEDF3;
+    --text-secondary: #C0C7D4;
+    --text-muted: #8B95A7;
+    --text-faint: #7C889B;
+
+    --primary: #2B6CB8;
+    --primary-hover: #3376BD;
+    --primary-active: #3A86D9;
+    --on-primary: #FFFFFF;
+    --primary-subtle: #214160;
+
+    --accent: #D4B36A;
+    --accent-strong: #CFA84C;
+
+    --success: #4CC38A;
+    --warning: #E3B341;
+    --danger: #F97066;
+    --info: #6BA6F5;
+
+    --success-bg: rgba(76, 195, 138, 0.14);
+    --warning-bg: rgba(227, 179, 65, 0.14);
+    --danger-bg: rgba(249, 112, 102, 0.14);
+    --info-bg: rgba(107, 166, 245, 0.14);
+    --neutral-bg: rgba(255, 255, 255, 0.08);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
+    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55), 0 4px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================================
+   Bootstrap 5.3 semantic variable mapping (both themes)
+   ============================================================ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+    --bs-body-font-family: var(--font-sans);
+    --bs-body-font-size: var(--font-size-body);
+    --bs-body-bg: var(--bg);
+    --bs-body-color: var(--text);
+    --bs-border-color: var(--border);
+    --bs-secondary-color: var(--text-secondary);
+    --bs-secondary-bg: var(--surface-2);
+    --bs-emphasis-color: var(--text);
+    --bs-heading-color: var(--text);
+    --bs-link-color: var(--primary);
+    --bs-link-hover-color: var(--primary-hover);
+    --bs-focus-ring-width: var(--focus-width);
+    --bs-focus-ring-opacity: 0.28;
+    --bs-focus-ring-color: var(--primary);
+
+    --bs-primary: var(--primary);
+    --bs-primary-rgb: 34, 47, 80;        /* overridden per theme below */
+    --bs-primary-color: var(--on-primary);
+    --bs-primary-bg-subtle: var(--primary-subtle);
+    --bs-primary-border-subtle: var(--primary-subtle);
+    --bs-primary-text: var(--primary-hover);
+    --bs-btn-primary-bg: var(--primary);
+    --bs-btn-primary-color: var(--on-primary);
+
+    --bs-success: var(--success);
+    --bs-success-bg-subtle: var(--success-bg);
+    --bs-success-border-subtle: var(--success-bg);
+    --bs-success-text: var(--success);
+    --bs-warning: var(--warning);
+    --bs-warning-bg-subtle: var(--warning-bg);
+    --bs-warning-border-subtle: var(--warning-bg);
+    --bs-warning-text: var(--warning);
+    --bs-danger: var(--danger);
+    --bs-danger-bg-subtle: var(--danger-bg);
+    --bs-danger-border-subtle: var(--danger-bg);
+    --bs-danger-text: var(--danger);
+    --bs-info: var(--info);
+    --bs-info-bg-subtle: var(--info-bg);
+    --bs-info-border-subtle: var(--info-bg);
+    --bs-info-text: var(--info);
+
+    --bs-table-bg: var(--surface);
+    --bs-table-hover-bg: var(--surface-2);
+    --bs-table-color: var(--text);
+}
+
+:root[data-theme="light"] {
+    --bs-primary-rgb: 0, 33, 63;
+}
+
+:root[data-theme="dark"] {
+    --bs-primary-rgb: 43, 108, 184;
+}
+
+/* ============================================================
+   Nucleus utilities — the ONLY place for these numeric/bidi
+   rules in templates (rule §8 RTL/BiDi)
+   ============================================================ */
+.num {
+    direction: ltr;
+    unicode-bidi: embed;
+    text-align: end;
+    text-align: right; /* numeric cells align to the block-end in RTL */
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--font-weight-numeric);
+}
+
+.table {
+    font-size: var(--font-size-table);
+}
+
+/* ============================================================
+   Focus ring — visible everywhere, no hidden focus (§5)
+   ============================================================ */
+:focus-visible {
+    outline: var(--focus-width) solid var(--primary);
+    outline-offset: var(--focus-offset);
+    border-radius: 2px;
+}
+
+/* ============================================================
+   Reduced motion — global guard (§5, decision 3.3)
+   Nothing may override this window of reduced-motion styles.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

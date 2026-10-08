@@ -16,7 +16,7 @@
 }
 
 <div class="page-header">
-    <h2><i class="bi bi-truck text-primary"></i> أذن تسليم جديد</h2>
+    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> أذن تسليم جديد</h2>
 </div>
 
 @if (!ViewData.ModelState.IsValid)
@@ -37,7 +37,7 @@
     <input type="hidden" name="Source" id="SourceField" value="@Model.Source" />
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-diagram-3"></i> مصدر الأذن</div>
+        <div class="card-header"><i class="bi bi-diagram-3" aria-hidden="true"></i> مصدر الأذن</div>
         <div class="card-body">
             <fieldset class="row g-3">
                 <legend class="visually-hidden">اختر مصدر أذن التسليم</legend>
@@ -96,7 +96,7 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul"></i> أصناف التسليم</div>
+        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف التسليم</div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0" id="itemsTable">
@@ -120,7 +120,7 @@
                                 </td>
                                 <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" @(fieldError(idx, "Count")) /></td>
                                 <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" @(fieldError(idx, "Quantity")) /></td>
-                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>
+                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                             </tr>
                             @await Html.PartialAsync("_LineItemErrors", idx)
                         }
@@ -142,14 +142,14 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <button type="button" id="addItemBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-plus-lg"></i> إضافة</button>
+                    <button type="button" id="addItemBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ أذن التسليم</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ أذن التسليم</button>
         <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
     </div>
 </form>
@@ -225,7 +225,7 @@ if (picker && addBtn) {
         tr.innerHTML = '<td><input type="hidden" name="items[' + idx + '].ItemId" /><strong></strong></td>' +
             '<td><input name="items[' + idx + '].Count" type="number" step="0.0001" value="0" class="form-control form-control-sm" aria-label="العدد المسلّم" /></td>' +
             '<td><input name="items[' + idx + '].Quantity" type="number" step="0.0001" value="0" class="form-control form-control-sm" aria-label="الكمية المسلّمة" /></td>' +
-            '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x"></i></button></td>';
+            '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>';
         tr.querySelector('input[name$=".ItemId"]').value = picker.value;
         tr.querySelector('strong').textContent = opt.textContent.trim();
         body.appendChild(tr);
