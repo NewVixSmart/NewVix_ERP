@@ -1,34 +1,39 @@
 @model NewVixSmart.Web.Models.Stock.Warehouse
 @{ ViewData["Title"] = "إضافة مستودع جديد"; }
 
-<div class="page-header"><h2><i class="bi bi-building text-primary" aria-hidden="true"></i> إضافة مستودع جديد</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2>إضافة مستودع جديد</h2>
+    </div>
+</div>
 
-<div class="card">
+<div class="ui-section ui-card">
     <div class="card-body">
         <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
-            <div class="row g-3">
-                <div class="col-md-4">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-4" role="alert" tabindex="-1"></div>
+            <div class="ui-grid ui-grid-3">
+                <div>
                     <label asp-for="Code" class="form-label"></label>
                     <input asp-for="Code" class="form-control" />
                     <span asp-validation-for="Code" class="text-danger small" aria-invalid="true"></span>
                 </div>
-                <div class="col-md-4">
+                <div>
                     <label asp-for="Name" class="form-label"></label>
                     <input asp-for="Name" class="form-control" />
                     <span asp-validation-for="Name" class="text-danger small" aria-invalid="true"></span>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label d-block">&nbsp;</label>
+                <div>
+                    <label class="form-label block">&nbsp;</label>
                     <div class="form-check form-switch">
                         <input asp-for="IsActive" class="form-check-input" checked />
                         <label asp-for="IsActive" class="form-check-label">نشط</label>
                     </div>
                 </div>
             </div>
-            <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+            <div class="ui-form-actions">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
+                <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
             </div>
         </form>
     </div>

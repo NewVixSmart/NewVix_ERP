@@ -2,14 +2,17 @@
 @{
     ViewData["Title"] = "العلامة التجارية والمظهر";
 }
-<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-    <h2 class="h3 mb-0">
-        <i class="bi bi-palette text-primary" aria-hidden="true"></i> العلامة التجارية والمظهر
-    </h2>
-    <a asp-action="Index" class="btn btn-outline-secondary btn-sm ms-auto"><i class="bi bi-arrow-right" aria-hidden="true"></i> العودة للإعدادات</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">العلامة التجارية</span>
+        <h2><i class="bi bi-palette" aria-hidden="true"></i> العلامة التجارية والمظهر</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-ghost ui-btn-sm"><i class="bi bi-arrow-right" aria-hidden="true"></i> العودة للإعدادات</a>
+    </div>
 </div>
 
-<form asp-action="SaveBranding" method="post" enctype="multipart/form-data" class="row g-4" data-loading-submit data-loading-text="جاري الحفظ...">
+<form asp-action="SaveBranding" method="post" enctype="multipart/form-data" class="ui-grid ui-grid-2 ui-rise" data-loading-submit data-loading-text="جاري الحفظ...">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger" role="alert" tabindex="-1"></div>
     @if (Model.RowVersion is { Length: > 0 } brandingRv)
@@ -17,66 +20,66 @@
         <input type="hidden" name="RowVersion" value="@Convert.ToBase64String(brandingRv)" />
     }
 
-    <div class="col-12 col-lg-6">
-        <div class="card h-100">
+    <div class="ui-section">
+        <div class="ui-card h-full">
             <div class="card-header">
                 <i class="bi bi-building" aria-hidden="true"></i> بيانات الشركة
             </div>
             <div class="card-body">
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="CompanyName" class="form-label"></label>
-                    <input asp-for="CompanyName" class="form-control" />
+                    <input asp-for="CompanyName" class="form-control ui-input" />
                     <span asp-validation-for="CompanyName" class="text-danger small" aria-invalid="true"></span>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="Tagline" class="form-label"></label>
-                    <input asp-for="Tagline" class="form-control" placeholder="Smart Solutions" />
+                    <input asp-for="Tagline" class="form-control ui-input" placeholder="Smart Solutions" />
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="Address" class="form-label"></label>
-                    <input asp-for="Address" class="form-control" />
+                    <input asp-for="Address" class="form-control ui-input" />
                 </div>
-                <div class="row g-3">
-                    <div class="col-md-6">
+                <div class="ui-grid ui-grid-2 gap-4">
+                    <div>
                         <label asp-for="Phone" class="form-label"></label>
-                        <input asp-for="Phone" class="form-control" />
+                        <input asp-for="Phone" class="form-control ui-input" />
                     </div>
-                    <div class="col-md-6">
+                    <div>
                         <label asp-for="Email" class="form-label"></label>
-                        <input asp-for="Email" class="form-control" />
+                        <input asp-for="Email" class="form-control ui-input" />
                     </div>
                 </div>
-                <div class="mt-3">
+                <div class="mt-4">
                     <label asp-for="TaxNumber" class="form-label"></label>
-                    <input asp-for="TaxNumber" class="form-control" />
+                    <input asp-for="TaxNumber" class="form-control ui-input" />
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-lg-6">
-        <div class="card h-100">
+    <div class="ui-section">
+        <div class="ui-card h-full">
             <div class="card-header">
                 <i class="bi bi-image" aria-hidden="true"></i> شعار الشركة
             </div>
             <div class="card-body">
                 @if (Model.HasLogo)
                 {
-                    <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="flex items-center gap-3 mb-4">
                         <img class="brand-logo" style="width:72px;height:72px;" src="@Model.LogoDataUri" alt="@Model.CompanyName" />
                         <div>
                             <div class="fw-semibold">الشعار الحالي</div>
-                            <small class="text-muted d-block">@(Model.LogoFileName ?? "شعار مرفوع") — يظهر في الشريط الجانبي، صفحة الدخول، الفواتير، والطباعة.</small>
+                            <small class="text-muted block">@(Model.LogoFileName ?? "شعار مرفوع") — يظهر في الشريط الجانبي، صفحة الدخول، الفواتير، والطباعة.</small>
                         </div>
                     </div>
                 }
                 else
                 {
-                    <div class="alert alert-info small" role="status">لم يتم رفع شعار بعد. سيُستخدم الحرف الأول من اسم الشركة كشعار مبدئي.</div>
+                    <div class="ui-alert ui-alert-info small" role="status">لم يتم رفع شعار بعد. سيُستخدم الحرف الأول من اسم الشركة كشعار مبدئي.</div>
                 }
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="LogoFile" class="form-label">رفع شعار جديد</label>
-                    <input asp-for="LogoFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp" />
+                    <input asp-for="LogoFile" class="form-control ui-input" type="file" accept="image/png,image/jpeg,image/webp" />
                     <small class="text-muted">صيغ PNG أو SVG أو JPEG أو WEBP بحد أقصى 2 ميجابايت.</small>
                 </div>
                 @if (Model.HasLogo)
@@ -90,23 +93,23 @@
         </div>
     </div>
 
-    <div class="col-12">
-        <div class="card">
+    <div class="ui-section" style="grid-column: 1 / -1;">
+        <div class="ui-card">
             <div class="card-header">
                 <i class="bi bi-palette2" aria-hidden="true"></i> لوحة ألوان النظام
             </div>
             <div class="card-body">
-                <p class="text-muted small mb-3">اختر لوحة جاهزة تناسب هوية شركتك أو خصّص الألوان يدويًا. ستُطبَّق فورًا على كامل النظام (الأزرار، الشريط الجانبي، التقارير، الطباعة...).</p>
+                <p class="text-muted small mb-4">اختر لوحة جاهزة تناسب هوية شركتك أو خصّص الألوان يدويًا. ستُطبَّق فورًا على كامل النظام (الأزرار، الشريط الجانبي، التقارير، الطباعة...).</p>
 
                 <input type="hidden" asp-for="SelectedPreset" />
 
-                <div class="row g-2 mb-4">
+                <div class="ui-grid ui-grid-4 gap-2 mb-4">
                     @foreach (var preset in Model.Presets)
                     {
-                        <div class="col-6 col-md-3">
+                        <div>
                             <label class="preset-card @(Model.SelectedPreset == preset.Id ? "selected" : "")">
                                 <input type="radio" name="presetRadio" value="@preset.Id"
-                                       class="d-none"
+                                       class="hidden"
                                        data-primary="@preset.Primary"
                                        data-accent="@preset.Accent"
                                        data-sidebar="@preset.SidebarBg"
@@ -124,7 +127,7 @@
                     }
                     @if (string.IsNullOrEmpty(Model.SelectedPreset))
                     {
-                        <div class="col-12">
+                        <div style="grid-column: 1 / -1;">
                             <div class="form-check">
                                 <input type="radio" name="presetRadio" value="" id="presetCustom" class="form-check-input" checked />
                                 <label class="form-check-label" for="presetCustom">ألوان مخصصة</label>
@@ -133,40 +136,40 @@
                     }
                 </div>
 
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
+                <div class="ui-grid ui-grid-4 gap-3 mb-4">
+                    <div>
                         <label class="form-label" for="PrimaryHex">اللون الأساسي</label>
                         <div class="input-group">
                             <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" aria-hidden="true" tabindex="-1" />
-                            <input id="PrimaryHex" name="Primary" type="text" class="form-control" placeholder="#1570ef" />
+                            <input id="PrimaryHex" name="Primary" type="text" class="form-control ui-input" placeholder="#1570ef" />
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div>
                         <label class="form-label" for="AccentHex">لون التمييز</label>
                         <div class="input-group">
                             <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" aria-hidden="true" tabindex="-1" />
-                            <input id="AccentHex" name="Accent" type="text" class="form-control" placeholder="#53b1fd" />
+                            <input id="AccentHex" name="Accent" type="text" class="form-control ui-input" placeholder="#53b1fd" />
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div>
                         <label class="form-label" for="SidebarBgHex">لون الشريط الجانبي</label>
                         <div class="input-group">
                             <input asp-for="SidebarBg" type="color" class="form-control form-control-color" title="لون الشريط الجانبي" aria-hidden="true" tabindex="-1" />
-                            <input id="SidebarBgHex" name="SidebarBg" type="text" class="form-control" placeholder="#0d1b35" />
+                            <input id="SidebarBgHex" name="SidebarBg" type="text" class="form-control ui-input" placeholder="#0d1b35" />
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div>
                         <label class="form-label" for="PageBgHex">لون خلفية الصفحات</label>
                         <div class="input-group">
                             <input asp-for="PageBg" type="color" class="form-control form-control-color" title="لون خلفية الصفحات" aria-hidden="true" tabindex="-1" />
-                            <input id="PageBgHex" name="PageBg" type="text" class="form-control" placeholder="#f8f8fa" />
+                            <input id="PageBgHex" name="PageBg" type="text" class="form-control ui-input" placeholder="#f8f8fa" />
                         </div>
                     </div>
                 </div>
 
                 <div class="border rounded-3 overflow-hidden">
-                    <div class="d-flex" id="themePreview">
-                        <div class="p-3 flex-grow-1" id="prevPage" style="background:var(--color-bg-page);" role="img" aria-label="معاينة لوحة الألوان">
+                    <div class="flex" id="themePreview">
+                        <div class="p-3 flex-grow" id="prevPage" style="background:var(--color-bg-page);" role="img" aria-label="معاينة لوحة الألوان">
                             <span class="badge rounded-pill" id="prevPrimary" style="background:var(--color-primary);color:var(--fg-on-accent);">زر أساسي</span>
                             <span class="badge rounded-pill" id="prevAccent" style="background:var(--color-gold);color:var(--color-code-on-primary);">لمسة سماوية</span>
                             <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:var(--color-sidebar-bg);color:var(--color-sidebar-text);border:1px solid var(--color-sidebar-hairline);">شريط جانبي — نص</div>
@@ -176,7 +179,7 @@
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle" aria-hidden="true"></i> حفظ العلامة التجارية</button>
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-circle" aria-hidden="true"></i> حفظ العلامة التجارية</button>
             </div>
         </div>
     </div>

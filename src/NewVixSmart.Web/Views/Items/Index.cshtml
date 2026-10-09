@@ -2,28 +2,31 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "الأصناف"; }
 
-<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <h2><i class="bi bi-box-seam text-primary" aria-hidden="true"></i> الأصناف</h2>
-    <div class="d-flex gap-2 flex-wrap">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-box-seam" aria-hidden="true"></i> الأصناف</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("Reports.Export"))
         {
-        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="btn btn-outline-success">
+        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="ui-btn ui-btn-ok">
             <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel
         </a>
         }
         @if (await Perm.HasAsync("Items.Create"))
         {
-        <a asp-action="Create" class="btn btn-primary">
+        <a asp-action="Create" class="ui-btn ui-btn-pri">
             <i class="bi bi-plus-lg" aria-hidden="true"></i> صنف جديد
         </a>
         }
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
+        <form method="get" class="ui-grid ui-grid-3 items-end">
+            <div>
                 <label class="form-label" for="categoryFilter">التصنيف</label>
                 <select name="categoryId" class="form-select" id="categoryFilter">
                     <option value="">الكل</option>
@@ -33,15 +36,15 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> بحث</button>
+            <div>
+                <button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> بحث</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">الأصناف: الكود، اسم الصنف، النوع، التصنيف، وحدات العدد والكمية، الرصيد الحالي</caption>
         <thead>
             <tr>
@@ -61,38 +64,40 @@
                     <td><code>@item.Code</code></td>
                     <td><strong>@item.Name</strong></td>
                     <td>
-                        <span class="badge bg-primary">@(item.ItemType?.Name ?? "—")</span>
+                        <span class="ui-badge ui-badge-info">@(item.ItemType?.Name ?? "—")</span>
                     </td>
-                    <td><span class="badge bg-secondary">@item.Category.Name</span></td>
+                    <td><span class="ui-badge ui-badge-mute">@item.Category.Name</span></td>
                     <td>
-                        <small>عدد: @(item.CountUnit?.Name ?? "—")، كمية: @(item.QuantityUnit?.Name ?? "—")</small>
+                        <small class="text-muted">عدد: @(item.CountUnit?.Name ?? "—")، كمية: @(item.QuantityUnit?.Name ?? "—")</small>
                     </td>
                     <td>
                         @{
                             bool low = (item.CurrentCount <= item.MinCount && item.MinCount > 0) || (item.CurrentQuantity <= item.MinQuantity && item.MinQuantity > 0);
                         }
-                        <span class="badge @(low ? "bg-danger" : "bg-success")">
-                            @(low ? "منخفض: " : "متوفر: ")@item.CurrentCount.ToString("N2") / @item.CurrentQuantity.ToString("N2")
+                        <span class="ui-badge @(low ? "ui-badge-bad" : "ui-badge-ok")">
+                            @(low ? "منخفض: " : "متوفر: ")<span class="num">@item.CurrentCount.ToString("N2") / @item.CurrentQuantity.ToString("N2")</span>
                         </span>
                     </td>
-                    <td class="text-center">
-                        @if (await Perm.HasAsync("Items.Edit"))
-                        {
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل @item.Name">
-                            <i class="bi bi-pencil" aria-hidden="true"></i>
-                        </a>
-                        }
-                        <a asp-action="Details" asp-route-id="@item.PublicId" class="btn btn-sm btn-outline-info" aria-label="تفاصيل @item.Name">
-                            <i class="bi bi-eye" aria-hidden="true"></i>
-                        </a>
-                        @if (await Perm.HasAsync("Items.Delete"))
-                        {
-                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" data-confirm="هل أنت متأكد من حذف هذا الصنف؟" data-confirm-ok="حذف">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف @item.Name">
-                                <i class="bi bi-trash" aria-hidden="true"></i>
-                            </button>
-                        </form>
-                        }
+                    <td>
+                        <div class="flex flex-wrap items-center justify-center gap-1">
+                            @if (await Perm.HasAsync("Items.Edit"))
+                            {
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="تعديل @item.Name">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                            }
+                            <a asp-action="Details" asp-route-id="@item.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="تفاصيل @item.Name">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </a>
+                            @if (await Perm.HasAsync("Items.Delete"))
+                            {
+                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" data-confirm="هل أنت متأكد من حذف هذا الصنف؟" data-confirm-ok="حذف">
+                                <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف @item.Name">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                            }
+                        </div>
                     </td>
                 </tr>
             }
@@ -102,10 +107,10 @@
 
 @if (!Model.Items.Any())
 {
-    <div class="empty-state text-center py-5">
+    <div class="empty-state ui-rise">
         <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
-        <h4>لا توجد أصناف في المستودع بعد</h4>
+        <strong>لا توجد أصناف في المستودع بعد</strong>
         <p class="text-muted">ابدأ ببناء كتالوجك — أضف صنفك الأول وسيظهر هنا مباشرة.</p>
-        <a asp-action="Create" class="btn btn-primary mt-2"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة أول صنف</a>
+        <a asp-action="Create" class="ui-btn ui-btn-pri mt-2"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة أول صنف</a>
     </div>
 }

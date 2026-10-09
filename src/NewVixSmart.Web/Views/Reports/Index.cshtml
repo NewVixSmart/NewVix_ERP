@@ -2,115 +2,102 @@
 
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-file-earmark-bar-graph text-primary" aria-hidden="true"></i> التقارير</h2>
-    <a asp-action="Dashboard" class="btn btn-primary"><i class="bi bi-speedometer2" aria-hidden="true"></i> لوحة التقارير</a>
-</div>
-<p class="text-muted mb-0">اختار نوع التقرير لعرض ملخص وحركات الفترة</p>
-
-<div class="row g-4">
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-cart-check text-primary" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">تقرير المبيعات</h3>
-                <p class="text-muted small">فواتير البيع ومرتجعات البيع في فترة محددة</p>
-                <a asp-action="Sales" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
-            </div>
-        </div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
+        <h2><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> التقارير</h2>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-cart-dash text-warning" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">تقرير المشتريات</h3>
-                <p class="text-muted small">فواتير الشراء ومرتجعات الشراء في فترة محددة</p>
-                <a asp-action="Purchases" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-wallet2 text-success" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">تقرير المدفوعات</h3>
-                <p class="text-muted small">المقبوضات والمصروفات في فترة محددة</p>
-                <a asp-action="Payments" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
-            </div>
-        </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Dashboard" class="ui-btn ui-btn-pri"><i class="bi bi-speedometer2" aria-hidden="true"></i> لوحة التقارير</a>
     </div>
 </div>
+<p class="text-muted mb-4">اختار نوع التقرير لعرض ملخص وحركات الفترة</p>
 
-<div class="row g-4 mt-1">
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-box-seam text-primary" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">تصدير الأصناف</h3>
-                <p class="text-muted small">قائمة الأصناف وأرصدتها (Excel)</p>
-                <a asp-action="ExportItemsXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+<div class="ui-grid ui-grid-3 ui-section ui-rise">
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-cart-check text-primary text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">تقرير المبيعات</h3>
+            <p class="text-muted small">فواتير البيع ومرتجعات البيع في فترة محددة</p>
+            <a asp-action="Sales" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-cart-dash text-warning text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">تقرير المشتريات</h3>
+            <p class="text-muted small">فواتير الشراء ومرتجعات الشراء في فترة محددة</p>
+            <a asp-action="Purchases" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-wallet2 text-success text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">تقرير المدفوعات</h3>
+            <p class="text-muted small">المقبوضات والمصروفات في فترة محددة</p>
+            <a asp-action="Payments" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
+        </div>
+    </div>
+</div>
+
+<div class="ui-grid ui-grid-3 ui-section">
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-box-seam text-primary text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">تصدير الأصناف</h3>
+            <p class="text-muted small">قائمة الأصناف وأرصدتها (Excel)</p>
+            <a asp-action="ExportItemsXlsx" class="ui-btn ui-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-boxes text-warning text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">لقطة المخزون</h3>
+            <p class="text-muted small">أرصدة المخزون الحالية (Excel)</p>
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <a asp-action="ExportStockXlsx" class="ui-btn ui-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> كل الأصناف</a>
+                <a asp-action="ExportStockXlsx" asp-route-lowOnly="true" class="ui-btn ui-btn-outline"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> المنخفض</a>
             </div>
         </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-boxes text-warning" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">لقطة المخزون</h3>
-                <p class="text-muted small">أرصدة المخزون الحالية (Excel)</p>
-                <div class="d-flex gap-2 justify-content-center">
-                    <a asp-action="ExportStockXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> كل الأصناف</a>
-                    <a asp-action="ExportStockXlsx" asp-route-lowOnly="true" class="btn btn-outline-warning"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> المنخفض</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 text-center">
-            <div class="card-body py-5">
-                <i class="tile-xl bi bi-balance-scale text-danger" style="font-size:3rem;"></i>
-                <h3 class="mt-3 fs-5">القوائم المالية</h3>
-                <p class="text-muted small">ميزان المراجعة والقوائم مع تصدير PDF وExcel</p>
-                <a asp-action="TrialBalance" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح القوائم</a>
-            </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-balance-scale text-danger text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">القوائم المالية</h3>
+            <p class="text-muted small">ميزان المراجعة والقوائم مع تصدير PDF وExcel</p>
+            <a asp-action="TrialBalance" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح القوائم</a>
         </div>
     </div>
     @if (await Perm.HasAsync("AuditLedger.View"))
     {
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card h-100 text-center">
-                <div class="card-body py-5">
-                    <i class="tile-xl bi bi-journal-bookmark text-primary" style="font-size:3rem;"></i>
-                    <h3 class="mt-3 fs-5">سجل التدقيق المركزي</h3>
-                    <p class="text-muted small">كل قيود دفتر الأستاذ العام مع تصدير Excel</p>
-                    <a asp-action="AuditLedger" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح السجل</a>
-                </div>
+        <div class="ui-card text-center">
+            <div class="card-body">
+                <i class="bi bi-journal-bookmark text-primary text-5xl" aria-hidden="true"></i>
+                <h3 class="mt-3">سجل التدقيق المركزي</h3>
+                <p class="text-muted small">كل قيود دفتر الأستاذ العام مع تصدير Excel</p>
+                <a asp-action="AuditLedger" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح السجل</a>
             </div>
         </div>
-        }
-        @if (await Perm.HasAsync("Aging.View"))
-        {
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card h-100 text-center">
-                <div class="card-body py-5">
-                    <i class="tile-xl bi bi-hourglass-split text-warning" style="font-size:3rem;"></i>
-                    <h3 class="mt-3 fs-5">القائمة العمرية</h3>
-                    <p class="text-muted small">تحليل ذمم العملاء والموردين حسب تاريخ الاستحقاق مع تصدير Excel</p>
-                    <a asp-action="Aging" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
-                </div>
+    }
+    @if (await Perm.HasAsync("Aging.View"))
+    {
+        <div class="ui-card text-center">
+            <div class="card-body">
+                <i class="bi bi-hourglass-split text-warning text-5xl" aria-hidden="true"></i>
+                <h3 class="mt-3">القائمة العمرية</h3>
+                <p class="text-muted small">تحليل ذمم العملاء والموردين حسب تاريخ الاستحقاق مع تصدير Excel</p>
+                <a asp-action="Aging" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
             </div>
         </div>
-        }
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card h-100 text-center">
-                <div class="card-body py-5">
-                    <i class="tile-xl bi bi-cash-stack text-success" style="font-size:3rem;"></i>
-                    <h3 class="mt-3 fs-5">كشف التدفق النقدي</h3>
-                    <p class="text-muted small">المقبوضات والمصروفات وصافي التدفق مع تصدير Excel</p>
-                    <a asp-action="CashFlow" class="btn btn-primary"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
-                </div>
-            </div>
+    }
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <i class="bi bi-cash-stack text-success text-5xl" aria-hidden="true"></i>
+            <h3 class="mt-3">كشف التدفق النقدي</h3>
+            <p class="text-muted small">المقبوضات والمصروفات وصافي التدفق مع تصدير Excel</p>
+            <a asp-action="CashFlow" class="ui-btn ui-btn-pri"><i class="bi bi-arrow-left" aria-hidden="true"></i> فتح التقرير</a>
         </div>
+    </div>
 </div>
 
 @{
@@ -118,16 +105,16 @@
 }
 @if (pending != null)
 {
-    <div class="card mt-4">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span><i class="bi bi-truck text-primary" aria-hidden="true"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
-            <span class="badge bg-info text-dark fs-6">
-                @pending.Lines.Count سطراً · @pending.TotalQty.ToString("N0") كمية · @pending.TotalCount.ToString("N0") عدد · @Money.Format(pending.TotalValue)
+    <div class="ui-section ui-card">
+        <div class="card-header">
+            <span><i class="bi bi-truck" aria-hidden="true"></i> تسليمات معلّقة (ملتزمة وغير مسلَّمة)</span>
+            <span class="ui-badge ui-badge-info">
+                @pending.Lines.Count سطراً · @pending.TotalQty.ToString("N0") كمية · @pending.TotalCount.ToString("N0") عدد · <span class="num">@Money.Format(pending.TotalValue)</span>
             </span>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
+            <div class="table-container">
+                <table class="table">
                     <caption class="visually-hidden">الكميات المتعاقد عليها وغير المسلّمة لكل عميل</caption>
                     <thead><tr>
                         <th scope="col">العميل</th>
@@ -153,12 +140,12 @@
                                 <td><a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@l.OrderPublicId">@l.OrderNumber</a></td>
                                 <td>@(l.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                                 <td>@l.ItemName</td>
-                                <td>@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
-                                <td>@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
-                                <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
-                                <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
-                                <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
-                                <td>@Money.Format(l.PendingValue)</td>
+                                <td class="num">@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
+                                <td class="num">@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
+                                <td class="num">@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
+                                <td class="num">@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
+                                <td class="fw-bold num">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
+                                <td class="num">@Money.Format(l.PendingValue)</td>
                             </tr>
                         }
                     </tbody>
@@ -166,7 +153,7 @@
                     {
                         <tfoot><tr class="fw-bold">
                             <th scope="row" colspan="9">الإجمالي</th>
-                            <td>@Money.Format(pending.TotalValue)</td>
+                            <td class="num">@Money.Format(pending.TotalValue)</td>
                         </tr></tfoot>
                     }
                 </table>

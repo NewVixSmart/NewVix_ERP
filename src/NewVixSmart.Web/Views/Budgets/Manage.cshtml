@@ -1,32 +1,37 @@
 @model List<NewVixSmart.Web.Controllers.BudgetLineVm>
 @{ ViewData["Title"] = $"إدارة ميزانية سنة {ViewBag.Year}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-pencil-square text-primary" aria-hidden="true"></i> إدارة ميزانية سنة @ViewBag.Year</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> عودة</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المحاسبة</span>
+        <h2><i class="bi bi-pencil-square" aria-hidden="true"></i> إدارة ميزانية سنة @ViewBag.Year</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-ghost"><i class="bi bi-arrow-right" aria-hidden="true"></i> عودة</a>
+    </div>
 </div>
 
 @if (ViewBag.FiscalClosed == true)
 {
-    <div class="alert alert-warning">السنة المالية @ViewBag.Year مغلقة — يمكنك عرض الميزانية فقط، ولا يمكن تعديلها.</div>
+    <div class="ui-alert ui-alert-warn ui-rise">السنة المالية @ViewBag.Year مغلقة — يمكنك عرض الميزانية فقط، ولا يمكن تعديلها.</div>
 }
 @if (!Model.Any())
 {
-    <div class="alert alert-info">لا توجد حسابات P&L نشطة قابلة للميزنة.</div>
+    <div class="ui-alert ui-alert-info ui-rise">لا توجد حسابات P&amp;L نشطة قابلة للميزنة.</div>
 }
 
 <form asp-action="Manage" method="post">
     @Html.AntiForgeryToken()
     <input type="hidden" name="year" value="@ViewBag.Year" />
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="ui-section table-container ui-rise">
+        <table class="table">
             <caption class="visually-hidden">بنود الميزانية</caption>
             <thead>
                 <tr>
                     <th scope="col">الرمز</th>
                     <th scope="col">اسم الحساب</th>
                     <th scope="col">النوع</th>
-                    <th scope="col" class="text-start" style="width:220px">المبلغ السنوي</th>
+                    <th scope="col" style="width:220px">المبلغ السنوي</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,7 +41,7 @@
                         <td><code>@Model[i].Code</code></td>
                         <td><strong>@Model[i].Name</strong></td>
                         <td>@Model[i].Type.ToString()</td>
-                        <td class="text-start">
+                        <td>
                             <input type="hidden" name="lines[@i].AccountId" value="@Model[i].AccountId" />
                             <input type="hidden" name="lines[@i].Code" value="@Model[i].Code" />
                             <input type="hidden" name="lines[@i].Name" value="@Model[i].Name" />
@@ -46,7 +51,7 @@
                                 <input type="hidden" name="lines[@i].RowVersion" value="@Convert.ToBase64String(budgetLineRv)" />
                             }
                             <input type="number" name="lines[@i].AnnualAmount" value="@Model[i].AnnualAmount" step="0.01" min="0"
-                                   class="form-control text-start" dir="ltr" aria-label="المبلغ السنوي لحساب @Model[i].Name" @(ViewBag.FiscalClosed == true ? "disabled" : "") />
+                                   class="ui-input" dir="ltr" aria-label="المبلغ السنوي لحساب @Model[i].Name" @(ViewBag.FiscalClosed == true ? "disabled" : "") />
                         </td>
                     </tr>
                 }
@@ -55,8 +60,8 @@
     </div>
     @if (ViewBag.FiscalClosed != true && Model.Any())
     {
-        <div class="mt-3">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الميزانية</button>
+        <div class="ui-form-actions">
+            <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الميزانية</button>
         </div>
     }
 </form>

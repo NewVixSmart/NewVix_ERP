@@ -3,50 +3,57 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "كشف التدفق النقدي"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-cash-stack text-success" aria-hidden="true"></i> كشف التدفق النقدي</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
-</div>
-
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" for="from">من تاريخ</label>
-            <input type="date" name="from" id="from" value="@Model.From.ToString("yyyy-MM-dd")" class="form-control" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="to">إلى تاريخ</label>
-            <input type="date" name="to" id="to" value="@Model.To.ToString("yyyy-MM-dd")" class="form-control" />
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
-        @if (await Perm.HasAsync("Reports.Export"))
-        {
-            <div class="col-md-2">
-                <a asp-action="CashFlowXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
-            </div>
-        }
-    </form>
-</div></div>
-
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد افتتاحي</div><h3 class="mb-0">@Money.Format(Model.OpeningBalance)</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مقبوضات</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalReceipts)</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مصروفات</div><h3 class="mb-0 text-danger">@Money.Format(Model.TotalDisbursements)</h3></div></div>
-    <div class="col-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">رصيد ختامي</div><h3 class="mb-0 fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger")">@Money.Format(Model.ClosingBalance)</h3></div></div>
-</div>
-
-<div class="card mb-4">
-    <div class="card-header">
-        <h3 class="mb-0 fs-5">صافي التدفق النقدي: <span class="@(Model.NetCashFlow >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetCashFlow)</span></h3>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
+        <h2><i class="bi bi-cash-stack" aria-hidden="true"></i> كشف التدفق النقدي</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-method-heading"><i class="bi bi-wallet2 text-primary" aria-hidden="true"></i> التوزيع حسب طريقة الدفع</h3></div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle" aria-labelledby="cashflow-method-heading">
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-4 items-end">
+            <div>
+                <label class="form-label" for="from">من تاريخ</label>
+                <input type="date" name="from" id="from" value="@Model.From.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label" for="to">إلى تاريخ</label>
+                <input type="date" name="to" id="to" value="@Model.To.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
+            @if (await Perm.HasAsync("Reports.Export"))
+            {
+                <div>
+                    <a asp-action="CashFlowXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="ui-btn ui-btn-outline w-full"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+                </div>
+            }
+        </form>
+    </div>
+</div>
+
+<div class="ui-grid ui-grid-4 ui-section">
+    <div class="ui-stat text-center"><div class="ui-stat-label">رصيد افتتاحي</div><h3 class="ui-stat-value num">@Money.Format(Model.OpeningBalance)</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">مقبوضات</div><h3 class="ui-stat-value text-success num">@Money.Format(Model.TotalReceipts)</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">مصروفات</div><h3 class="ui-stat-value text-danger num">@Money.Format(Model.TotalDisbursements)</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">رصيد ختامي</div><h3 class="ui-stat-value fw-bold @(Model.ClosingBalance >= 0 ? "text-primary" : "text-danger") num">@Money.Format(Model.ClosingBalance)</h3></div>
+</div>
+
+<div class="ui-section ui-card">
+    <div class="card-header">
+        <h3>صافي التدفق النقدي: <span class="@(Model.NetCashFlow >= 0 ? "text-success" : "text-danger") num">@Money.Format(Model.NetCashFlow)</span></h3>
+    </div>
+</div>
+
+<div class="ui-section ui-card">
+    <div class="card-header"><h3 id="cashflow-method-heading"><i class="bi bi-wallet2" aria-hidden="true"></i> التوزيع حسب طريقة الدفع</h3></div>
+    <div class="table-container">
+        <table class="table" aria-labelledby="cashflow-method-heading">
             <caption class="visually-hidden">مقبوضات ومصروفات الفترة مقسمة حسب طريقة الدفع</caption>
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th scope="col">طريقة الدفع</th>
                     <th scope="col" class="text-end">مقبوضات</th>
@@ -63,9 +70,9 @@
                 {
                     <tr>
                         <td>@m.Method.GetDisplayName()</td>
-                        <td class="text-end">@Money.Format(m.Receipts)</td>
-                        <td class="text-end">@Money.Format(m.Disbursements)</td>
-                        <td class="text-end fw-bold @(m.Net >= 0 ? "text-success" : "text-danger")">@Money.Format(m.Net)</td>
+                        <td class="text-end num">@Money.Format(m.Receipts)</td>
+                        <td class="text-end num">@Money.Format(m.Disbursements)</td>
+                        <td class="text-end fw-bold @(m.Net >= 0 ? "text-success" : "text-danger") num">@Money.Format(m.Net)</td>
                     </tr>
                 }
             </tbody>
@@ -73,12 +80,12 @@
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><h3 class="mb-0 fs-5" id="cashflow-detail-heading"><i class="bi bi-list-ul text-success" aria-hidden="true"></i> تفاصيل الحركات</h3></div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle" aria-labelledby="cashflow-detail-heading">
+<div class="ui-section ui-card">
+    <div class="card-header"><h3 id="cashflow-detail-heading"><i class="bi bi-list-ul" aria-hidden="true"></i> تفاصيل الحركات</h3></div>
+    <div class="table-container">
+        <table class="table" aria-labelledby="cashflow-detail-heading">
             <caption class="visually-hidden">حركات المقبوضات والمصروفات في الفترة المحددة</caption>
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th scope="col">التاريخ</th>
                     <th scope="col">الإيصال</th>
@@ -100,22 +107,22 @@
                         <td>@d.Date.ToString("dd/MM/yyyy")</td>
                         <td><code>@d.Doc</code></td>
                         <td>
-                            @if (d.Type == PaymentType.Receipt) { <span class="badge bg-success">قبض</span> }
-                            else { <span class="badge bg-danger">صرف</span> }
+                            @if (d.Type == PaymentType.Receipt) { <span class="ui-badge ui-badge-ok">قبض</span> }
+                            else { <span class="ui-badge ui-badge-bad">صرف</span> }
                         </td>
                         <td>@d.Party</td>
                         <td>@d.Method.GetDisplayName()</td>
                         <td>@(d.Reference ?? "—")</td>
-                        <td class="text-end fw-bold">@Money.Format(d.Amount)</td>
+                        <td class="text-end fw-bold num">@Money.Format(d.Amount)</td>
                     </tr>
                 }
             </tbody>
             @if (Model.Details.Count > 0)
             {
-                <tfoot class="table-light fw-bold">
+                <tfoot class="fw-bold">
                     <tr>
                         <td colspan="6">مجموع التفاصيل</td>
-                        <td class="text-end">قبض: <span class="text-success">@Money.Format(Model.TotalReceipts)</span> / صرف: <span class="text-danger">@Money.Format(Model.TotalDisbursements)</span></td>
+                        <td class="text-end">قبض: <span class="text-success num">@Money.Format(Model.TotalReceipts)</span> / صرف: <span class="text-danger num">@Money.Format(Model.TotalDisbursements)</span></td>
                     </tr>
                 </tfoot>
             }

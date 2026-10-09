@@ -2,19 +2,22 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = $"تفاصيل مرتجع {Model.ReturnNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> مرتجع شراء: @Model.ReturnNumber</h2>
-    <div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> مرتجع شراء: @Model.ReturnNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (Model.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Draft && await Perm.HasAsync("PurchaseReturns.Post"))
         {
-            <form asp-action="Post" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">
+            <form asp-action="Post" asp-route-id="@Model.Id" method="post" class="inline-flex" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-check-circle" aria-hidden="true"></i> ترحيل المرتجع</button>
+                <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-check-circle" aria-hidden="true"></i> ترحيل المرتجع</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
-        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="ui-btn ui-btn-quiet"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Pdf" asp-route-id="@Model.Id" class="ui-btn ui-btn-quiet"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
@@ -27,29 +30,29 @@
     <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-2"><strong>الحالة:</strong>
+        <div class="ui-grid ui-grid-3 gap-3">
+            <div><strong>الحالة:</strong>
                 @if (Model.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Posted)
                 {
-                    <span class="badge bg-success">مرحّل</span>
-                    <small class="text-muted d-block">@Model.PostedBy — @Model.PostedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                    <span class="ui-badge ui-badge-ok">مرحّل</span>
+                    <small class="text-muted block">@Model.PostedBy — @Model.PostedAt?.ToString("dd/MM/yyyy HH:mm")</small>
                 }
                 else
                 {
-                    <span class="badge bg-warning text-dark">مسودة</span>
+                    <span class="ui-badge ui-badge-warn">مسودة</span>
                 }
             </div>
-            <div class="col-md-3"><strong>المورد:</strong> @(Model.Supplier?.Name ?? "—")</div>
-            <div class="col-md-2"><strong>التاريخ:</strong> @Model.ReturnDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>الفاتورة الأصلية:</strong> @(Model.PurchaseInvoice?.InvoiceNumber ?? "—")</div>
-            <div class="col-md-2"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div><strong>المورد:</strong> @(Model.Supplier?.Name ?? "—")</div>
+            <div><strong>التاريخ:</strong> @Model.ReturnDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>الفاتورة الأصلية:</strong> @(Model.PurchaseInvoice?.InvoiceNumber ?? "—")</div>
+            <div><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
         </div>
     </div>
 </div>
 
-<div class="table-container mb-4">
+<div class="ui-section table-container ui-rise">
     <table class="table mb-0">
         <caption class="visually-hidden">أصناف مرتجع المشتريات: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th></tr></thead>
@@ -60,15 +63,25 @@
                     <td>@item.Item.Name</td>
                     <td>@item.Count</td>
                     <td>@item.Quantity</td>
-                    <td>@Money.Format(item.UnitPrice)</td>
-                    <td class="fw-bold">@Money.Format(item.Total)</td>
+                    <td class="num">@Money.Format(item.UnitPrice)</td>
+                    <td class="num fw-bold">@Money.Format(item.Total)</td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">السبب</div><h6>@(Model.Reason ?? "—")</h6></div></div></div>
-    <div class="col-md-8"><div class="card text-center"><div class="card-body"><div class="text-muted small">إجمالي المرتجع</div><h4 class="text-danger">@Money.Format(Model.TotalAmount)</h4></div></div></div>
+<div class="ui-section ui-grid ui-grid-3 gap-3 ui-rise">
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="ui-stat-label">السبب</div>
+            <div class="font-semibold">@(Model.Reason ?? "—")</div>
+        </div>
+    </div>
+    <div class="md:col-span-2 ui-card text-center">
+        <div class="card-body">
+            <div class="ui-stat-label">إجمالي المرتجع</div>
+            <div class="ui-stat-value num text-danger">@Money.Format(Model.TotalAmount)</div>
+        </div>
+    </div>
 </div>

@@ -1,0 +1,14 @@
+{
+  "name": "new-vix-smart-ui",
+  "private": true,
+  "description": "Front-end build for New Vix Smart (Tailwind v4 + IBM Plex Sans Arabic, local-only assets)",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ../src/NewVixSmart.Web/wwwroot/css/app.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ../src/NewVixSmart.Web/wwwroot/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+    "@tailwindcss/cli": "^4.1.13",
+    "tailwindcss": "^4.1.13"
+  }
+}

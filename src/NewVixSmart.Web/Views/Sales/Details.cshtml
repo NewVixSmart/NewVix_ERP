@@ -2,30 +2,34 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = $"تفاصيل فاتورة بيع {Model.InvoiceNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> فاتورة بيع: @Model.InvoiceNumber</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2><i class="bi bi-eye" aria-hidden="true"></i> فاتورة بيع: @Model.InvoiceNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions flex gap-2">
         @if (await Perm.HasAsync("DeliveryOrders.Create"))
         {
-            <a asp-controller="DeliveryOrders" asp-action="Create" asp-route-invoiceId="@Model.Id" class="btn btn-success"><i class="bi bi-truck" aria-hidden="true"></i> إنشاء أذن تسليم</a>
+            <a asp-controller="DeliveryOrders" asp-action="Create" asp-route-invoiceId="@Model.Id" class="ui-btn ui-btn-ok"><i class="bi bi-truck" aria-hidden="true"></i> إنشاء أذن تسليم</a>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success"><i class="bi bi-printer" aria-hidden="true"></i> طباعة الفاتورة</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener noreferrer" class="ui-btn ui-btn-ghost"><i class="bi bi-printer" aria-hidden="true"></i> طباعة الفاتورة</a>
+        <a asp-action="Index" class="ui-btn ui-btn-ghost"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
-            <div class="col-md-3"><strong>التاريخ:</strong> @Model.InvoiceDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>الحالة:</strong> @(Model.IsPaid ? "مدفوعة" : "غير مدفوعة")</div>
-            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+        <div class="ui-grid ui-grid-4 gap-3">
+            <div><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div><strong>التاريخ:</strong> @Model.InvoiceDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>الحالة:</strong> @(Model.IsPaid ? "مدفوعة" : "غير مدفوعة")</div>
+            <div><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
         </div>
-        <div class="row mt-2">
-            <div class="col-md-3"><strong>شروط الدفع:</strong> @Model.PaymentTerms.GetDisplayName()</div>
-            <div class="col-md-3"><strong>تاريخ الاستحقاق:</strong> @(Model.DueDate?.ToString("dd/MM/yyyy") ?? "—")</div>
-            <div class="col-md-3"><strong>أمر البيع:</strong>
+        <div class="ui-grid ui-grid-4 gap-3 mt-2">
+            <div><strong>شروط الدفع:</strong> @Model.PaymentTerms.GetDisplayName()</div>
+            <div><strong>تاريخ الاستحقاق:</strong> @(Model.DueDate?.ToString("dd/MM/yyyy") ?? "—")</div>
+            <div class="ui-grid-span-2">
+                <strong>أمر البيع:</strong>
                 @if (Model.SalesOrder != null)
                 {
                     <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
@@ -39,10 +43,19 @@
     </div>
 </div>
 
-<div class="table-container mb-4">
-    <table class="table mb-0">
+<div class="ui-section table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">بنود فاتورة البيع رقم @Model.InvoiceNumber: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي، الخصم</caption>
-        <thead><tr><th scope="col">الصنف</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th><th scope="col">الخصم</th></tr></thead>
+        <thead>
+            <tr>
+                <th scope="col">الصنف</th>
+                <th scope="col">العدد</th>
+                <th scope="col">الكمية</th>
+                <th scope="col">سعر الوحدة</th>
+                <th scope="col">الإجمالي</th>
+                <th scope="col">الخصم</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach (var item in Model.Items)
             {
@@ -50,18 +63,38 @@
                     <td>@item.Item.Name</td>
                     <td>@item.Count</td>
                     <td>@item.Quantity</td>
-                    <td>@Money.Format(item.UnitPrice)</td>
-                    <td class="fw-bold">@Money.Format(item.Total)</td>
-                    <td>@Money.Format(item.Discount)</td>
+                    <td class="num">@Money.Format(item.UnitPrice)</td>
+                    <td class="fw-bold num">@Money.Format(item.Total)</td>
+                    <td class="num">@Money.Format(item.Discount)</td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(Model.TotalAmount)</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الخصم</div><h4 class="text-danger">@Money.Format(Model.Discount)</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الضريبة</div><h4>@Money.Format(Model.Tax)</h4></div></div></div>
-    <div class="col-md-3"><div class="card text-center"><div class="card-body"><div class="text-muted small">الصافي</div><h4 class="text-success">@Money.Format(Model.NetAmount)</h4></div></div></div>
+<div class="ui-section ui-grid ui-grid-4 gap-3 ui-rise">
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="text-muted small">الإجمالي</div>
+            <h4 class="num">@Money.Format(Model.TotalAmount)</h4>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="text-muted small">الخصم</div>
+            <h4 class="text-danger num">@Money.Format(Model.Discount)</h4>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="text-muted small">الضريبة</div>
+            <h4 class="num">@Money.Format(Model.Tax)</h4>
+        </div>
+    </div>
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="text-muted small">الصافي</div>
+            <h4 class="text-success num">@Money.Format(Model.NetAmount)</h4>
+        </div>
+    </div>
 </div>

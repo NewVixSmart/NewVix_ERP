@@ -161,6 +161,115 @@
         }
     }
 
+    // ---------- Minimal modal controller (replaces bootstrap.Modal) ----------
+    var modalFocusSource = {};
+
+    function createModalController(el) {
+        var ctrl = { el: el, isOpen: false };
+        ctrl.show = function () {
+            if (ctrl.isOpen) return;
+            ctrl.isOpen = true;
+            modalFocusSource[el.id] = document.activeElement;
+            el.classList.add('show');
+            el.setAttribute('aria-hidden', 'false');
+            var backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop show';
+            el.parentNode.insertBefore(backdrop, el.nextSibling);
+            document.body.classList.add('modal-open');
+            var focusable = el.querySelector('[data-autofocus], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])');
+            if (focusable) focusable.focus();
+        };
+        ctrl.hide = function () {
+            if (!ctrl.isOpen) return;
+            ctrl.isOpen = false;
+            el.classList.remove('show');
+            el.setAttribute('aria-hidden', 'true');
+            var backdrop = el.nextElementSibling;
+            if (backdrop && backdrop.classList.contains('modal-backdrop')) {
+                backdrop.classList.remove('show');
+                (function (bd) {
+                    setTimeout(function () { if (bd.parentNode) bd.parentNode.removeChild(bd); }, 260);
+                })(backdrop);
+            }
+            document.body.classList.remove('modal-open');
+            var source = modalFocusSource[el.id];
+            delete modalFocusSource[el.id];
+            if (source && source.focus) source.focus();
+            if (ctrl.afterHide) ctrl.afterHide();
+        };
+        return ctrl;
+    }
+
+    function openModalElement(el) {
+        if (!el._nvsModal) el._nvsModal = createModalController(el);
+        el._nvsModal.show();
+    }
+
+    // Compatibility shim for legacy inline scripts that call `new bootstrap.Modal(el).show()`
+    window.bootstrap = {
+        Modal: function (el) {
+            if (!el._nvsModal) el._nvsModal = createModalController(el);
+            return el._nvsModal;
+        }
+    };
+
+    // ---------- Delegated modal / collapse / alert toggles (no Bootstrap JS) ----------
+    document.addEventListener('click', function (e) {
+        var dismiss = e.target.closest ? e.target.closest('[data-bs-dismiss]') : null;
+        if (dismiss) {
+            var kind = dismiss.getAttribute('data-bs-dismiss');
+            if (kind === 'modal') {
+                var modal = dismiss.closest('.modal');
+                if (!modal) return;
+                if (modal._nvsModal) modal._nvsModal.hide();
+                else { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+            } else if (kind === 'alert') {
+                var alertEl = dismiss.closest('.alert');
+                if (alertEl) alertEl.remove();
+            }
+            return;
+        }
+        var modalToggle = e.target.closest ? e.target.closest('[data-bs-toggle="modal"]') : null;
+        if (modalToggle) {
+            var targetSel = modalToggle.getAttribute('data-bs-target');
+            if (targetSel) {
+                var targetModal = document.querySelector(targetSel);
+                if (targetModal) openModalElement(targetModal);
+            }
+            return;
+        }
+        var collapseToggle = e.target.closest ? e.target.closest('[data-bs-toggle="collapse"]') : null;
+        if (collapseToggle) {
+            var colSel = collapseToggle.getAttribute('data-bs-target');
+            if (colSel) {
+                var colEl = document.querySelector(colSel);
+                if (colEl) {
+                    var show = !colEl.classList.contains('show');
+                    collapseToggle.setAttribute('aria-expanded', show ? 'true' : 'false');
+                    colEl.classList.toggle('show', show);
+                }
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        var openModalEl = document.querySelector('.modal.show');
+        if (!openModalEl) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            var closeBtn = openModalEl.querySelector('[data-bs-dismiss="modal"]');
+            if (closeBtn) closeBtn.click();
+            return;
+        }
+        if (e.key !== 'Tab') return;
+        var focusables = openModalEl.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if (!focusables.length) return;
+        var first = focusables[0];
+        var lastEl = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+        else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+    });
+
     // ---------- Accessible edit-name modal (replaces prompt()) ----------
     var editModal = null;
     var editTarget = null;
@@ -214,12 +323,11 @@
                 });
         });
 
-        div.addEventListener('hidden.bs.modal', function () {
+        editModal = createModalController(div);
+        editModal.afterHide = function () {
             var input = div.querySelector('#editNameInput');
             if (input) input.value = '';
-        });
-
-        editModal = new bootstrap.Modal(div, {});
+        };
     }
 
     // ---------- Accessible confirm modal (replaces window.confirm) ----------
@@ -257,18 +365,19 @@
 
         document.body.appendChild(div);
 
+        confirmModalEl = div;
+        confirmModal = createModalController(div);
+
         div.querySelector('#appConfirmBtn').addEventListener('click', function () {
             var fn = confirmCallback;
             confirmModal.hide();
             if (typeof fn === 'function') fn();
         });
 
-        div.addEventListener('hidden.bs.modal', function () {
+        confirmModal.afterHide = function () {
             confirmCallback = null;
-        });
+        };
 
-        confirmModalEl = div;
-        confirmModal = new bootstrap.Modal(div, {});
         return confirmModalEl;
     }
 
@@ -284,19 +393,7 @@
         btn.focus();
     };
 
-    var modalFocusSource = {};
-    document.addEventListener('show.bs.modal', function (e) {
-        var modal = e.target;
-        if (!modal || !modal.id) return;
-        if (document.activeElement && (document.activeElement === modal || modal.contains(document.activeElement))) return;
-        modalFocusSource[modal.id] = document.activeElement;
-    });
-    document.addEventListener('hidden.bs.modal', function (e) {
-        var modal = e.target;
-        var source = modalFocusSource[modal.id];
-        delete modalFocusSource[modal.id];
-        if (source && source.focus) source.focus();
-    });
+    // (Modal focus restore/escape/trap handled by the modal controller and delegated listeners above.)
 
     document.addEventListener('change', function (e) {
         var sel = e.target.closest('select[data-auto-submit]');

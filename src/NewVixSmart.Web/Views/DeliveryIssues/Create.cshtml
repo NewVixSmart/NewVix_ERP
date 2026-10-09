@@ -14,99 +14,104 @@
     };
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true"></i> أمر تسليم جديد</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أمر تسليم جديد</h2>
+    </div>
 </div>
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">@TempData["Error"]</div>
 }
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
 @if (!Model.NoteOptions.Any())
 {
-    <div class="alert alert-info">لا توجد أذونات تسليم بها كمية متبقية. أنشئ أذن تسليم أولاً.</div>
-    <a asp-controller="DeliveryOrders" asp-action="Create" class="btn btn-primary">إنشاء أذن تسليم</a>
+    <div class="ui-alert ui-alert-info ui-rise">لا توجد أذونات تسليم بها كمية متبقية. أنشئ أذن تسليم أولاً.</div>
+    <a asp-controller="DeliveryOrders" asp-action="Create" class="ui-btn ui-btn-pri ui-rise">إنشاء أذن تسليم</a>
 }
 else
 {
-    <form method="post" asp-action="Create">
-        <div class="card mb-3">
-            <div class="card-header">بيانات الأمر</div>
+    <form method="post" asp-action="Create" class="ui-rise">
+        <div class="ui-section ui-card">
+            <div class="ui-card-head">
+                <span class="ui-card-title">بيانات الأمر</span>
+            </div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <label for="DeliveryOrderId" class="form-label">أذن التسليم</label>
-                        <select id="DeliveryOrderId" name="Issue.DeliveryOrderId" class="form-select" asp-items="Model.Notes"
+                <div class="ui-grid ui-grid-2 md:ui-grid-4">
+                    <div class="md:col-span-2">
+                        <label for="DeliveryOrderId" class="ui-label">أذن التسليم</label>
+                        <select id="DeliveryOrderId" name="Issue.DeliveryOrderId" class="ui-input" asp-items="Model.Notes"
                                 onchange="if(this.value){window.location.href='@Url.Action("Create", "DeliveryIssues")?deliveryOrderId='+this.value;}"></select>
                     </div>
-                    <div class="col-md-4">
-                        <label for="IssueDate" class="form-label">تاريخ الأمر</label>
-                        <input id="IssueDate" name="Issue.IssueDate" type="date" class="form-control"
+                    <div>
+                        <label for="IssueDate" class="ui-label">تاريخ الأمر</label>
+                        <input id="IssueDate" name="Issue.IssueDate" type="date" class="ui-input"
                                value="@Model.Issue.IssueDate.ToString("yyyy-MM-dd")" />
                     </div>
-                    <div class="col-md-6">
-                        <label for="Carrier" class="form-label">الناقل</label>
-                        <input id="Carrier" name="Issue.Carrier" class="form-control" value="@Model.Issue.Carrier" />
+                    <div>
+                        <label for="Carrier" class="ui-label">الناقل</label>
+                        <input id="Carrier" name="Issue.Carrier" class="ui-input" value="@Model.Issue.Carrier" />
                     </div>
-                    <div class="col-md-6">
-                        <label for="TrackingNumber" class="form-label">رقم التتبع</label>
-                        <input id="TrackingNumber" name="Issue.TrackingNumber" class="form-control" value="@Model.Issue.TrackingNumber" />
+                    <div>
+                        <label for="TrackingNumber" class="ui-label">رقم التتبع</label>
+                        <input id="TrackingNumber" name="Issue.TrackingNumber" class="ui-input" value="@Model.Issue.TrackingNumber" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-header">الأصناف</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <caption class="visually-hidden">أصناف أمر التسليم والكميات المراد تسليمها من كل سطر</caption>
-                        <thead>
+        <div class="ui-section ui-card">
+            <div class="ui-card-head">
+                <span class="ui-card-title">الأصناف</span>
+            </div>
+            <div class="table-container" style="max-height:none;border:0;border-radius:0">
+                <table class="table mb-0">
+                    <caption class="visually-hidden">أصناف أمر التسليم والكميات المراد تسليمها من كل سطر</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">الصنف</th>
+                            <th scope="col">كمية الأذن</th>
+                            <th scope="col">عدد الأذن</th>
+                            <th scope="col">الكمية المُسلَّمة</th>
+                            <th scope="col">العدد المُسلَّم</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Items.Count; i++)
+                        {
+                            var idx = i;
+                            var line = Model.Items[idx];
+                            var noteLine = Model.NoteLines.FirstOrDefault(n => n.Id == line.DeliveryOrderItemId);
                             <tr>
-                                <th scope="col">الصنف</th>
-                                <th scope="col">كمية الأذن</th>
-                                <th scope="col">عدد الأذن</th>
-                                <th scope="col">الكمية المُسلَّمة</th>
-                                <th scope="col">العدد المُسلَّم</th>
+                                <th scope="row">
+                                    <input type="hidden" name="Items[@idx].ItemId" value="@line.ItemId" />
+                                    <input type="hidden" name="Items[@idx].DeliveryOrderItemId" value="@line.DeliveryOrderItemId" />
+                                    @noteLine?.Item?.Name
+                                </th>
+                                <td>@((noteLine?.Quantity ?? 0).ToString("N2"))</td>
+                                <td>@((noteLine?.Count ?? 0).ToString("N2"))</td>
+                                <td><input name="Items[@idx].Quantity" type="number" step="0.0001" min="0" class="ui-input ui-input-sm text-end" value="@line.Quantity" aria-label="الكمية المراد تسليمها — سطر @(idx + 1)" @(fieldError(idx, "Quantity")) /></td>
+                                <td><input name="Items[@idx].Count" type="number" step="0.0001" min="0" class="ui-input ui-input-sm text-end" value="@line.Count" aria-label="العدد المراد تسليمه — سطر @(idx + 1)" @(fieldError(idx, "Count")) /></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @for (var i = 0; i < Model.Items.Count; i++)
-                            {
-                                var idx = i;
-                                var line = Model.Items[idx];
-                                var noteLine = Model.NoteLines.FirstOrDefault(n => n.Id == line.DeliveryOrderItemId);
-                                <tr>
-                                    <th scope="row">
-                                        <input type="hidden" name="Items[@idx].ItemId" value="@line.ItemId" />
-                                        <input type="hidden" name="Items[@idx].DeliveryOrderItemId" value="@line.DeliveryOrderItemId" />
-                                        @noteLine?.Item?.Name
-                                    </th>
-                                    <td>@((noteLine?.Quantity ?? 0).ToString("N2"))</td>
-                                    <td>@((noteLine?.Count ?? 0).ToString("N2"))</td>
-                                    <td><input name="Items[@idx].Quantity" type="number" step="0.0001" min="0" class="form-control form-control-sm text-end" value="@line.Quantity" aria-label="الكمية المراد تسليمها — سطر @(idx + 1)" @(fieldError(idx, "Quantity")) /></td>
-                                    <td><input name="Items[@idx].Count" type="number" step="0.0001" min="0" class="form-control form-control-sm text-end" value="@line.Count" aria-label="العدد المراد تسليمه — سطر @(idx + 1)" @(fieldError(idx, "Count")) /></td>
-                                </tr>
-                                @await Html.PartialAsync("_LineItemErrors", idx)
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                <p class="form-text mb-0">أوامر التسليم لا تحتوي أسعاراً — التسعير يتم عند إنشاء الفاتورة.</p>
+                            @await Html.PartialAsync("_LineItemErrors", idx)
+                        }
+                    </tbody>
+                </table>
             </div>
+            <div class="ui-card-foot text-muted small">أوامر التسليم لا تحتوي أسعاراً — التسعير يتم عند إنشاء الفاتورة.</div>
         </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ أمر التسليم</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+        <div class="ui-form-actions">
+            <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ أمر التسليم</button>
+            <a asp-action="Index" class="ui-btn ui-btn-quiet">إلغاء</a>
         </div>
     </form>
 }

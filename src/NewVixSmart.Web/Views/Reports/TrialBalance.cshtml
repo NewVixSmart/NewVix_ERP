@@ -1,54 +1,67 @@
 @model NewVixSmart.Web.ViewModels.Reports.TrialBalanceReportViewModel
 @{ ViewData["Title"] = "ميزان المراجعة"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-balance-scale text-primary" aria-hidden="true"></i> ميزان المراجعة</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">القوائم المالية</span>
+        <h2><i class="bi bi-balance-scale text-primary" aria-hidden="true"></i> ميزان المراجعة</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+    </div>
 </div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" for="asOfDate">حتى تاريخ</label>
-            <input type="date" name="asOf" value="@Model.AsOf.ToString("yyyy-MM-dd")" id="asOfDate" class="form-control" />
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
-    </form>
-</div></div>
+<div class="ui-card ui-section ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-3 items-end">
+            <div>
+                <label class="form-label" for="asOfDate">حتى تاريخ</label>
+                <input type="date" name="asOf" value="@Model.AsOf.ToString("yyyy-MM-dd")" id="asOfDate" class="form-control" />
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
+        </form>
+    </div>
+</div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalDebit)</h3></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalCredit)</h3></div></div>
-    <div class="col-12 col-sm-6 col-md-4"><div class="stat-card text-center">
-        <div class="text-muted small">حالة التوازن</div>
+<div class="ui-grid ui-grid-3 ui-section ui-rise">
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي المدين</span>
+        <span class="ui-stat-value text-primary">@Money.Format(Model.TotalDebit)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي الدائن</span>
+        <span class="ui-stat-value text-primary">@Money.Format(Model.TotalCredit)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">حالة التوازن</span>
         @if (Model.IsBalanced)
-        { <h4 class="mb-0 text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> متوازن</h4> }
+        { <span class="ui-stat-value text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> متوازن</span> }
         else
-        { <h4 class="mb-0 text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> غير متوازن</h4> }
-    </div></div>
+        { <span class="ui-stat-value text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> غير متوازن</span> }
+    </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0" data-table-plain>
+<div class="table-container ui-rise">
+    <table class="table" data-table-plain>
         <caption class="visually-hidden">ميزان المراجعة: أرصدة كل حساب مدين ودائن ورصيده</caption>
-        <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">الرصيد</th></tr></thead>
+        <thead><tr><th scope="col">الرمز</th><th scope="col">الحساب</th><th scope="col" class="text-end">مدين</th><th scope="col" class="text-end">دائن</th><th scope="col" class="text-end">الرصيد</th></tr></thead>
         <tbody>
             @foreach (var r in Model.Rows)
             {
                 <tr>
                     <td><code>@r.Code</code></td>
                     <td>@r.Name</td>
-                    <td>@(r.Debit > 0 ? Money.Format(r.Debit) : "—")</td>
-                    <td>@(r.Credit > 0 ? Money.Format(r.Credit) : "—")</td>
-                    <td class="fw-bold @(r.IsDebitBalance ? "text-primary" : r.IsCreditBalance ? "text-success" : "")">@(r.Balance == 0 ? "—" : Money.Format(r.Balance))</td>
+                    <td class="num">@(r.Debit > 0 ? Money.Format(r.Debit) : "—")</td>
+                    <td class="num">@(r.Credit > 0 ? Money.Format(r.Credit) : "—")</td>
+                    <td class="fw-bold num @(r.IsDebitBalance ? "text-primary" : r.IsCreditBalance ? "text-success" : "")">@(r.Balance == 0 ? "—" : Money.Format(r.Balance))</td>
                 </tr>
             }
         </tbody>
         <tfoot>
-            <tr class="table-light fw-bold">
+            <tr class="fw-bold">
                 <th scope="row" colspan="2">الإجمالي</th>
-                <td class="text-primary">@Money.Format(Model.TotalDebit)</td>
-                <td class="text-success">@Money.Format(Model.TotalCredit)</td>
+                <td class="text-primary num fw-bold">@Money.Format(Model.TotalDebit)</td>
+                <td class="text-success num fw-bold">@Money.Format(Model.TotalCredit)</td>
                 <td></td>
             </tr>
         </tfoot>
@@ -57,14 +70,14 @@
 
 @if (!Model.Rows.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد حسابات نشطة</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد حسابات نشطة</strong>
     </div>
 }
 
-<div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
-    <a asp-action="ExportTrialBalancePdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> تصدير PDF</a>
-    <a asp-action="ExportTrialBalanceXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+<div class="mt-4 flex flex-wrap gap-2 no-print">
+    <button type="button" class="ui-btn ui-btn-quiet" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
+    <a asp-action="ExportTrialBalancePdf" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="ui-btn ui-btn-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> تصدير PDF</a>
+    <a asp-action="ExportTrialBalanceXlsx" asp-route-asOf="@Model.AsOf.ToString("yyyy-MM-dd")" class="ui-btn ui-btn-ok"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
 </div>

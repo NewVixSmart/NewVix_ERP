@@ -7,20 +7,23 @@
     var canAct = Model.Status == DeliveryIssueStatus.Draft;
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true"></i> أمر تسليم <code>@Model.IssueNumber</code></h2>
-    <div class="d-flex gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
-        <a asp-action="Print" asp-route-id="@Model.PublicId" class="btn btn-outline-secondary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أمر تسليم <code>@Model.IssueNumber</code></h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet">رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.PublicId" class="ui-btn ui-btn-quiet"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
         @if (canAct && await Perm.HasAsync("DeliveryIssues.Issue"))
         {
-            <form method="post" asp-action="Issue" asp-route-id="@Model.PublicId" class="d-inline"
+            <form method="post" asp-action="Issue" asp-route-id="@Model.PublicId" class="inline-flex"
                   onsubmit="return confirm('سيتم خصم المخزون وتسجيل التكلفة. هل تريد المتابعة؟');">
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> ترحيل</button>
+                <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> ترحيل</button>
             </form>
-            <form method="post" asp-action="Cancel" asp-route-id="@Model.PublicId" class="d-inline"
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.PublicId" class="inline-flex"
                   onsubmit="return confirm('هل تريد إلغاء أمر التسليم؟');">
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
     </div>
@@ -28,37 +31,32 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="alert" aria-live="polite"><i class="bi bi-check-circle" aria-hidden="true"></i> @TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert" aria-live="assertive"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]</div>
 }
 
-<div class="card mb-3">
-    <div class="card-header">بيانات الأمر</div>
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">
+        <span class="ui-card-title">بيانات الأمر</span>
+    </div>
     <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">الحالة</dt>
-            <dd class="col-sm-9">
-                <span class="badge @(Model.Status switch { DeliveryIssueStatus.Issued => "bg-success", DeliveryIssueStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span>
+        <dl class="ui-grid ui-grid-2 md:ui-grid-3 mb-0">
+            <div><dt class="text-muted small">الحالة</dt><dd>
+                <span class="ui-badge @(Model.Status switch { DeliveryIssueStatus.Issued => "ui-badge-ok", DeliveryIssueStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@Model.Status.GetDisplayName()</span>
                 @if (Model.Status == DeliveryIssueStatus.Draft)
                 {
-                    <span class="text-muted">— لم يُرحّل بعد، الكمية ما زالت في المخزون</span>
+                    <span class="text-muted small d-block">لم يُرحّل بعد، الكمية ما زالت في المخزون</span>
                 }
                 else if (Model.Status == DeliveryIssueStatus.Issued)
                 {
-                    <span class="text-muted">— خرجت الكمية من المخزون ورُحّلت تكلفتها</span>
+                    <span class="text-muted small d-block">خرجت الكمية من المخزون ورُحّلت تكلفتها</span>
                 }
-            </dd>
-
-            <dt class="col-sm-3">أذن التسليم</dt>
-            <dd class="col-sm-9">
-                <a asp-controller="DeliveryOrders" asp-action="Details" asp-route-id="@Model.DeliveryOrder?.PublicId">@Model.DeliveryOrder?.DeliveryNumber</a>
-            </dd>
-
-            <dt class="col-sm-3">أمر البيع</dt>
-            <dd class="col-sm-9">
+            </dd></div>
+            <div><dt class="text-muted small">أذن التسليم</dt><dd><a asp-controller="DeliveryOrders" asp-action="Details" asp-route-id="@Model.DeliveryOrder?.PublicId">@Model.DeliveryOrder?.DeliveryNumber</a></dd></div>
+            <div><dt class="text-muted small">أمر البيع</dt><dd>
                 @if (Model.SalesOrder != null)
                 {
                     <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
@@ -67,63 +65,51 @@
                 {
                     <span>—</span>
                 }
-            </dd>
-
-            <dt class="col-sm-3">العميل</dt>
-            <dd class="col-sm-9">@(Model.Customer?.Name ?? "—")</dd>
-
-            <dt class="col-sm-3">التاريخ</dt>
-            <dd class="col-sm-9">@Model.IssueDate.ToString("dd/MM/yyyy")</dd>
-
-            <dt class="col-sm-3">الناقل</dt>
-            <dd class="col-sm-9">@(Model.Carrier ?? "—")</dd>
-
-            <dt class="col-sm-3">رقم التتبع</dt>
-            <dd class="col-sm-9">@(Model.TrackingNumber ?? "—")</dd>
-
-            <dt class="col-sm-3">الفاتورة</dt>
-            <dd class="col-sm-9">
+            </dd></div>
+            <div><dt class="text-muted small">العميل</dt><dd>@(Model.Customer?.Name ?? "—")</dd></div>
+            <div><dt class="text-muted small">التاريخ</dt><dd>@Model.IssueDate.ToString("dd/MM/yyyy")</dd></div>
+            <div><dt class="text-muted small">الناقل</dt><dd>@(Model.Carrier ?? "—")</dd></div>
+            <div><dt class="text-muted small">رقم التتبع</dt><dd>@(Model.TrackingNumber ?? "—")</dd></div>
+            <div><dt class="text-muted small">الفاتورة</dt><dd>
                 @if (Model.SaleInvoice != null)
                 {
                     <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.PublicId">@Model.SaleInvoice.InvoiceNumber</a>
                 }
                 else if (Model.Status == DeliveryIssueStatus.Issued)
                 {
-                    <span class="badge bg-info text-dark">غير مفوتر</span>
+                    <span class="ui-badge ui-badge-info">غير مفوتر</span>
                 }
                 else
                 {
                     <span>—</span>
                 }
-            </dd>
-
+            </dd></div>
             @if (Model.Status == DeliveryIssueStatus.Issued)
             {
-                <dt class="col-sm-3">رحّله</dt>
-                <dd class="col-sm-9">@Model.IssuedAt?.ToString("dd/MM/yyyy HH:mm") بواسطة @(Model.IssuedBy ?? "—")</dd>
+                <div class="col-span-2"><dt class="text-muted small">رحّله</dt><dd>@Model.IssuedAt?.ToString("dd/MM/yyyy HH:mm") بواسطة @(Model.IssuedBy ?? "—")</dd></div>
             }
         </dl>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">الأصناف</div>
-    <div class="card-body">
-        <div class="table-container">
-            <table class="table table-hover mb-0">
-                <caption class="visually-hidden">أصناف أمر التسليم بالكميات والعدد</caption>
-                <thead><tr><th scope="col">الصنف</th><th scope="col">الكمية</th><th scope="col">العدد</th></tr></thead>
-                <tbody>
-                    @foreach (var line in Model.Items)
-                    {
-                        <tr>
-                            <th scope="row">@line.Item?.Name</th>
-                            <td>@line.Quantity.ToString("N2")</td>
-                            <td>@line.Count.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">
+        <span class="ui-card-title">الأصناف</span>
+    </div>
+    <div class="table-container" style="max-height:none;border:0;border-radius:0">
+        <table class="table mb-0">
+            <caption class="visually-hidden">أصناف أمر التسليم بالكميات والعدد</caption>
+            <thead><tr><th scope="col">الصنف</th><th scope="col">الكمية</th><th scope="col">العدد</th></tr></thead>
+            <tbody>
+                @foreach (var line in Model.Items)
+                {
+                    <tr>
+                        <th scope="row">@line.Item?.Name</th>
+                        <td>@line.Quantity.ToString("N2")</td>
+                        <td>@line.Count.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>

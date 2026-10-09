@@ -25,6 +25,7 @@ dotnet ef migrations has-pending-model-changes \
   --project src/NewVixSmart.Web/NewVixSmart.Web.csproj \
   --startup-project src/NewVixSmart.Web/NewVixSmart.Web.csproj \
   --configuration Release    # يجب: No changes have been made to the model
+npm ci                # في ui/ — تثبيت حزم البناء
 ```
 
 - **`dotnet test` هو `-c Release` دائمًا.** لا تشغّل `dotnet test` بلا `-c`: الإصدار Debug
@@ -36,6 +37,9 @@ dotnet ef migrations has-pending-model-changes \
 - **`check-text-hygiene.ps1` يقرأ ولا يكتب**، وR8/R10 فيه تحذيرات لا أخطاء: الحكم عليها
   بشري. الاستثناءات: `wwwroot/lib` (مستورد من)، ومجلدات المخرجات، و`Migrations/*.Designer.cs`
   (يعيد EF كتابتها). اطبع القائمة بـ`-ListExclusions`.
+- **CSS نظام التصميم**: مصدره `ui/src/input.css` فقط، وناتج البناء `wwwroot/css/app.css` مُلتزم
+  في git. أي تغيير على views أو tokens أو ui-components يُلزم تشغيل `npm run build:css` في `ui/`
+  وترك الناتج مطابقًا (لا ترسل bundle قديمًا). `dotnet format` لا يمس `.css` بأي حال.
 - **`--no-restore` يحتاج restore سابقًا** (`dotnet restore` أو build). رتّبها كما في CI:
   restore ← format ← build.
 - **سلسلة الهجرات لا تُفحص محليًا**: اختبارات `MigrationChainSqlServerTests` تُتخطّى بلا

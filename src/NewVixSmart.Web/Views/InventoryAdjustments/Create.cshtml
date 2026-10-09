@@ -5,57 +5,64 @@
     var itemsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(i => new { i.Id, i.Name, i.CurrentCount, i.CurrentQuantity, CountUnit = i.CountUnit?.Name, QuantityUnit = i.QuantityUnit?.Name }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
-<div class="page-header"><h2><i class="bi bi-clipboard-data text-primary" aria-hidden="true"></i> جرد / تعديل مخزون يدوي</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-clipboard-data" aria-hidden="true"></i> جرد / تعديل مخزون يدوي</h2>
+    </div>
+</div>
 
-<div class="card">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
         <form asp-action="Create">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <div class="row g-3">
-                <div class="col-md-4">
+            <div class="ui-grid ui-grid-3">
+                <div>
                     <label asp-for="ReferenceNumber" class="form-label"></label>
                     <input asp-for="ReferenceNumber" class="form-control" value="@ViewBag.NextNumber" />
                     <span asp-validation-for="ReferenceNumber" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
+                <div>
                     <label class="form-label" for="itemSelect">الصنف</label>
                     <select asp-for="ItemId" asp-items="@(ViewBag.Items as SelectList)" class="form-select" id="itemSelect">
                         <option value="">-- اختر الصنف --</option>
                     </select>
                     <span asp-validation-for="ItemId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
+                <div>
                     <label asp-for="AdjustmentDate" class="form-label"></label>
                     <input asp-for="AdjustmentDate" class="form-control" type="date" />
                 </div>
+            </div>
 
-                <div class="col-12">
-                    <div class="alert alert-light border small py-2 mb-0" id="currentStockBox">
-                        <i class="bi bi-info-circle" aria-hidden="true"></i> اختر صنفًا لعرض الرصيد الحالي لديك.
-                    </div>
+            <div class="my-3">
+                <div class="alert alert-info small py-2 mb-0" id="currentStockBox">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i> اختر صنفًا لعرض الرصيد الحالي لديك.
                 </div>
+            </div>
 
-                <div class="col-md-6">
+            <div class="ui-grid ui-grid-2">
+                <div>
                     <label class="form-label" for="newCount">العدد الجديد</label>
                     <input asp-for="NewCount" class="form-control" type="number" step="0.0001" id="newCount" />
                     <span asp-validation-for="NewCount" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div>
                     <label class="form-label" for="newQuantity">الكمية الجديدة</label>
                     <input asp-for="NewQuantity" class="form-control" type="number" step="0.0001" id="newQuantity" />
                     <span asp-validation-for="NewQuantity" class="text-danger small"></span>
                 </div>
-
-                <div class="col-12">
-                    <label asp-for="Reason" class="form-label"></label>
-                    <textarea asp-for="Reason" class="form-control" rows="2" placeholder="مثال: جرد دوري، توالف، هدر، تصحيح رصيد..."></textarea>
-                </div>
             </div>
 
-            <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الجرد</button>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+            <div class="mt-4">
+                <label asp-for="Reason" class="form-label"></label>
+                <textarea asp-for="Reason" class="form-control" rows="2" placeholder="مثال: جرد دوري، توالف، هدر، تصحيح رصيد..."></textarea>
+            </div>
+
+            <div class="ui-form-actions">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الجرد</button>
+                <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
             </div>
         </form>
     </div>

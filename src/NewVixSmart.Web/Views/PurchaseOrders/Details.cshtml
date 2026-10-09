@@ -3,57 +3,60 @@
 @using NewVixSmart.Web.Models.Purchases
 @{ ViewData["Title"] = $"أمر شراء {Model.OrderNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> أمر شراء: @Model.OrderNumber</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> أمر شراء: @Model.OrderNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("PurchaseOrders.Approve") && Model.Status == PurchaseOrderStatus.Draft)
         {
-            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
+            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="inline-flex">
+                <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
             </form>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived))
         {
-            <a asp-action="Receive" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> استلام</a>
+            <a asp-action="Receive" asp-route-id="@Model.Id" class="ui-btn ui-btn-pri"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> استلام</a>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Receive") && (Model.Status == PurchaseOrderStatus.Approved || Model.Status == PurchaseOrderStatus.PartiallyReceived) && OrderProgress.HasReceived(Model))
         {
-            <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt" aria-hidden="true"></i> تحويل إلى فاتورة</button>
+            <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="inline-flex">
+                <button type="submit" class="ui-btn ui-btn-outline"><i class="bi bi-receipt" aria-hidden="true"></i> تحويل إلى فاتورة</button>
             </form>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Edit") && Model.Status == PurchaseOrderStatus.Draft)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="ui-btn ui-btn-quiet"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
         }
         @if (await Perm.HasAsync("PurchaseOrders.Approve") && Model.Status != PurchaseOrderStatus.Cancelled && Model.Status != PurchaseOrderStatus.Received)
         {
-            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="inline-flex">
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
-        <a asp-action="Pdf" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="ui-btn ui-btn-quiet"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Pdf" asp-route-id="@Model.Id" class="ui-btn ui-btn-quiet"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3"><strong>المورد:</strong> @(Model.Supplier?.Name ?? "—")</div>
-            <div class="col-md-3"><strong>تاريخ الأمر:</strong> @Model.OrderDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>المتوقع:</strong> @(Model.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</div>
-            <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { PurchaseOrderStatus.Approved => "bg-success", PurchaseOrderStatus.Received => "bg-info", PurchaseOrderStatus.PartiallyReceived => "bg-warning", PurchaseOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@Model.Status.GetDisplayName()</span></div>
+        <div class="ui-grid ui-grid-4 gap-3">
+            <div><strong>المورد:</strong> @(Model.Supplier?.Name ?? "—")</div>
+            <div><strong>تاريخ الأمر:</strong> @Model.OrderDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>المتوقع:</strong> @(Model.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</div>
+            <div><strong>الحالة:</strong> <span class="ui-badge @(Model.Status switch { PurchaseOrderStatus.Approved => "ui-badge-ok", PurchaseOrderStatus.Received => "ui-badge-info", PurchaseOrderStatus.PartiallyReceived => "ui-badge-warn", PurchaseOrderStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-mute" })">@Model.Status.GetDisplayName()</span></div>
         </div>
-        <div class="row mt-2">
-            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
-            <div class="col-md-6"><strong>ملاحظات:</strong> @(Model.Notes ?? "—")</div>
+        <div class="ui-grid ui-grid-4 gap-3 mt-3">
+            <div><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div class="md:col-span-2"><strong>ملاحظات:</strong> @(Model.Notes ?? "—")</div>
         </div>
     </div>
 </div>
 
-<div class="table-container mb-4">
+<div class="ui-section table-container ui-rise">
     <table class="table mb-0">
         <caption class="visually-hidden">أصناف أمر الشراء: الصنف، العدد المطلوب، الكمية المطلوبة، سعر الوحدة، الإجمالي، المستلم عدد، المستلم كمية</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المطلوب</th><th scope="col">الكمية المطلوبة</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th><th scope="col">المستلم عدد</th><th scope="col">المستلم كمية</th></tr></thead>
@@ -74,6 +77,11 @@
     </table>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(OrderProgress.Summarize(Model).Total)</h4></div></div></div>
+<div class="ui-section ui-grid ui-grid-3 gap-3 ui-rise">
+    <div class="ui-card text-center">
+        <div class="card-body">
+            <div class="ui-stat-label">الإجمالي</div>
+            <div class="ui-stat-value num">@Money.Format(OrderProgress.Summarize(Model).Total)</div>
+        </div>
+    </div>
 </div>

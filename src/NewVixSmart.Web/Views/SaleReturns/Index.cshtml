@@ -2,16 +2,21 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "مرتجعات البيع"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-arrow-return-left text-primary" aria-hidden="true"></i> مرتجعات البيع</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>مرتجعات البيع</h2>
+    </div>
     @if (await Perm.HasAsync("SaleReturns.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> مرتجع جديد</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> مرتجع جديد</a>
+        </div>
     }
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table mb-0">
         <caption class="visually-hidden">قائمة مرتجعات المبيعات: رقم المرتجع، العميل، التاريخ، الإجمالي، الحالة</caption>
         <thead><tr><th scope="col">رقم المرتجع</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">الإجمالي</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراء</th></tr></thead>
         <tbody>
@@ -25,20 +30,20 @@
                     <td>
                         @if (r.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Posted)
                         {
-                            <span class="badge bg-success">مرحّل</span>
+                            <span class="ui-badge ui-badge-ok">مرحّل</span>
                         }
                         else
                         {
-                            <span class="badge bg-warning text-dark">مسودة</span>
+                            <span class="ui-badge ui-badge-warn">مسودة</span>
                         }
                     </td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                        <a asp-action="Details" asp-route-id="@r.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض مرتجع البيع @r.ReturnNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                         @if (r.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Draft && await Perm.HasAsync("SaleReturns.Post"))
                         {
-                            <form asp-action="Post" asp-route-id="@r.Id" method="post" class="d-inline" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">
+                            <form asp-action="Post" asp-route-id="@r.Id" method="post" class="inline-flex" data-confirm="هل تريد ترحيل هذا المرتجع؟" data-confirm-ok="ترحيل">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-success" aria-label="ترحيل مرتجع البيع @r.ReturnNumber"><i class="bi bi-check-circle" aria-hidden="true"></i></button>
+                                <button type="submit" class="ui-btn ui-btn-sm ui-btn-ok" aria-label="ترحيل مرتجع البيع @r.ReturnNumber"><i class="bi bi-check-circle" aria-hidden="true"></i></button>
                             </form>
                         }
                     </td>

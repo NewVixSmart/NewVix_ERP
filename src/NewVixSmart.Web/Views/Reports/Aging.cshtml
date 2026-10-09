@@ -2,75 +2,48 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "القائمة العمرية"; }
 
-<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
         <h2><i class="bi bi-hourglass-split text-warning" aria-hidden="true"></i> القائمة العمرية</h2>
-        <p class="text-muted mb-0">حتى تاريخ @Model.AsOf.ToString("dd/MM/yyyy") — تحليل ذمم العملاء والموردين حسب تأخر الاستحقاق</p>
+        <p class="text-muted small mb-0">حتى تاريخ @Model.AsOf.ToString("dd/MM/yyyy") — تحليل ذمم العملاء والموردين حسب تأخر الاستحقاق</p>
     </div>
-    <div class="d-flex gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
         @if (await Perm.HasAsync("Aging.Export"))
         {
-            <a asp-action="AgingXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+            <a asp-action="AgingXlsx" class="ui-btn ui-btn-ok"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
         }
     </div>
 </div>
 
-<div class="row g-3 my-3">
-    <div class="col-6 col-lg-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small">ذمم عملاء — إجمالي</div>
-                    <h3 class="mb-0 mt-1">@Money.Format(Model.ArTotal)</h3>
-                </div>
-                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-people" aria-hidden="true"></i></div>
-            </div>
-        </div>
+<div class="ui-grid ui-grid-4 ui-section ui-rise">
+    <div class="ui-stat">
+        <span class="ui-stat-label">ذمم عملاء — إجمالي</span>
+        <span class="ui-stat-value">@Money.Format(Model.ArTotal)</span>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small">ذمم عملاء — متأخر</div>
-                    <h3 class="mb-0 mt-1">@Money.Format(Model.ArOverdue)</h3>
-                </div>
-                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i></div>
-            </div>
-        </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">ذمم عملاء — متأخر</span>
+        <span class="ui-stat-value text-danger">@Money.Format(Model.ArOverdue)</span>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small">ذمم موردين — إجمالي</div>
-                    <h3 class="mb-0 mt-1">@Money.Format(Model.ApTotal)</h3>
-                </div>
-                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-truck" aria-hidden="true"></i></div>
-            </div>
-        </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">ذمم موردين — إجمالي</span>
+        <span class="ui-stat-value">@Money.Format(Model.ApTotal)</span>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="text-muted small">ذمم موردين — متأخر</div>
-                    <h3 class="mb-0 mt-1">@Money.Format(Model.ApOverdue)</h3>
-                </div>
-                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i></div>
-            </div>
-        </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">ذمم موردين — متأخر</span>
+        <span class="ui-stat-value text-danger">@Money.Format(Model.ApOverdue)</span>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-5" id="aging-ar-heading"><i class="bi bi-people text-primary" aria-hidden="true"></i> ذمم العملاء</h3>
+<div class="ui-card ui-section ui-rise">
+    <div class="card-header">
+        <h3 class="card-title" id="aging-ar-heading"><i class="bi bi-people text-primary" aria-hidden="true"></i> ذمم العملاء</h3>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle" aria-labelledby="aging-ar-heading">
+        <table class="table" aria-labelledby="aging-ar-heading">
             <caption class="visually-hidden">ذمم العملاء مقسمة حسب عمر الاستحقاق: لم يستحق، 1-30، 31-60، 61-90، أكثر من 90 يوم</caption>
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th scope="col">العميل</th>
                     <th scope="col" class="text-end">لم يستحق</th>
@@ -90,38 +63,38 @@
                 {
                     <tr>
                         <td><strong>@row.PartyName</strong></td>
-                        <td class="text-end">@Money.Format(row.Current)</td>
-                        <td class="text-end">@Money.Format(row.Days1To30)</td>
-                        <td class="text-end">@Money.Format(row.Days31To60)</td>
-                        <td class="text-end">@Money.Format(row.Days61To90)</td>
-                        <td class="text-end">@Money.Format(row.Days90Plus)</td>
-                        <td class="text-end fw-bold">@Money.Format(row.Total)</td>
+                        <td class="num">@Money.Format(row.Current)</td>
+                        <td class="num">@Money.Format(row.Days1To30)</td>
+                        <td class="num">@Money.Format(row.Days31To60)</td>
+                        <td class="num">@Money.Format(row.Days61To90)</td>
+                        <td class="num">@Money.Format(row.Days90Plus)</td>
+                        <td class="num fw-bold">@Money.Format(row.Total)</td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="fw-bold table-light">
+            <tfoot class="fw-bold">
                 <tr>
-                    <td>الإجمالي</td>
-                    <td class="text-end">@Money.Format(Model.ArCurrent)</td>
-                    <td class="text-end">@Money.Format(Model.ArDays1To30)</td>
-                    <td class="text-end">@Money.Format(Model.ArDays31To60)</td>
-                    <td class="text-end">@Money.Format(Model.ArDays61To90)</td>
-                    <td class="text-end">@Money.Format(Model.ArDays90Plus)</td>
-                    <td class="text-end">@Money.Format(Model.ArTotal)</td>
+                    <th scope="row">الإجمالي</th>
+                    <td class="num fw-bold">@Money.Format(Model.ArCurrent)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ArDays1To30)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ArDays31To60)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ArDays61To90)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ArDays90Plus)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ArTotal)</td>
                 </tr>
             </tfoot>
         </table>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fs-5" id="aging-ap-heading"><i class="bi bi-truck text-warning" aria-hidden="true"></i> ذمم الموردين</h3>
+<div class="ui-card ui-section ui-rise">
+    <div class="card-header">
+        <h3 class="card-title" id="aging-ap-heading"><i class="bi bi-truck text-warning" aria-hidden="true"></i> ذمم الموردين</h3>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle" aria-labelledby="aging-ap-heading">
+        <table class="table" aria-labelledby="aging-ap-heading">
             <caption class="visually-hidden">ذمم الموردين مقسمة حسب عمر الاستحقاق: لم يستحق، 1-30، 31-60، 61-90، أكثر من 90 يوم</caption>
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th scope="col">المورد</th>
                     <th scope="col" class="text-end">لم يستحق</th>
@@ -141,24 +114,24 @@
                 {
                     <tr>
                         <td><strong>@row.PartyName</strong></td>
-                        <td class="text-end">@Money.Format(row.Current)</td>
-                        <td class="text-end">@Money.Format(row.Days1To30)</td>
-                        <td class="text-end">@Money.Format(row.Days31To60)</td>
-                        <td class="text-end">@Money.Format(row.Days61To90)</td>
-                        <td class="text-end">@Money.Format(row.Days90Plus)</td>
-                        <td class="text-end fw-bold">@Money.Format(row.Total)</td>
+                        <td class="num">@Money.Format(row.Current)</td>
+                        <td class="num">@Money.Format(row.Days1To30)</td>
+                        <td class="num">@Money.Format(row.Days31To60)</td>
+                        <td class="num">@Money.Format(row.Days61To90)</td>
+                        <td class="num">@Money.Format(row.Days90Plus)</td>
+                        <td class="num fw-bold">@Money.Format(row.Total)</td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="fw-bold table-light">
+            <tfoot class="fw-bold">
                 <tr>
-                    <td>الإجمالي</td>
-                    <td class="text-end">@Money.Format(Model.ApCurrent)</td>
-                    <td class="text-end">@Money.Format(Model.ApDays1To30)</td>
-                    <td class="text-end">@Money.Format(Model.ApDays31To60)</td>
-                    <td class="text-end">@Money.Format(Model.ApDays61To90)</td>
-                    <td class="text-end">@Money.Format(Model.ApDays90Plus)</td>
-                    <td class="text-end">@Money.Format(Model.ApTotal)</td>
+                    <th scope="row">الإجمالي</th>
+                    <td class="num fw-bold">@Money.Format(Model.ApCurrent)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ApDays1To30)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ApDays31To60)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ApDays61To90)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ApDays90Plus)</td>
+                    <td class="num fw-bold">@Money.Format(Model.ApTotal)</td>
                 </tr>
             </tfoot>
         </table>

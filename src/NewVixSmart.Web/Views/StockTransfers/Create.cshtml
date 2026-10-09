@@ -14,46 +14,51 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-arrow-left-right text-primary" aria-hidden="true"></i> تحويل مخزون جديد</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-arrow-left-right" aria-hidden="true"></i> تحويل مخزون جديد</h2>
+    </div>
+</div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
 <form asp-action="Create" id="transferForm">
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label" for="sourceWh">المستودع المصدر</label>
-                    <select asp-for="Transfer.SourceWarehouseId" asp-items="warehouses" class="form-select" id="sourceWh">
+    <div class="ui-section ui-card">
+        <div class="ui-card-body">
+            <div class="ui-grid ui-grid-4">
+                <div>
+                    <label class="ui-label" for="sourceWh">المستودع المصدر</label>
+                    <select asp-for="Transfer.SourceWarehouseId" asp-items="warehouses" class="ui-input" id="sourceWh">
                         <option value="">-- اختر المستودع المصدر --</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="targetWh">المستودع الوجهة</label>
-                    <select asp-for="Transfer.TargetWarehouseId" asp-items="warehouses" class="form-select" id="targetWh">
+                <div>
+                    <label class="ui-label" for="targetWh">المستودع الوجهة</label>
+                    <select asp-for="Transfer.TargetWarehouseId" asp-items="warehouses" class="ui-input" id="targetWh">
                         <option value="">-- اختر المستودع الوجهة --</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Transfer.TransferDate" class="form-label"></label>
-                    <input asp-for="Transfer.TransferDate" class="form-control" type="date" />
+                <div>
+                    <label asp-for="Transfer.TransferDate" class="ui-label"></label>
+                    <input asp-for="Transfer.TransferDate" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Transfer.Notes" class="form-label"></label>
-                    <input asp-for="Transfer.Notes" class="form-control" />
+                <div>
+                    <label asp-for="Transfer.Notes" class="ui-label"></label>
+                    <input asp-for="Transfer.Notes" class="ui-input" />
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف التحويل</div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0" id="itemsTable">
+    <div class="ui-section ui-card">
+        <div class="ui-card-head"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف التحويل</div>
+        <div class="ui-card-body p-0">
+            <table class="table" id="itemsTable">
                 <caption class="visually-hidden">أصناف تحويل المخزون المُدخلة: الصنف، العدد، الكمية، التكلفة، التاريخ الأصلي</caption>
                 <thead>
                     <tr>
@@ -90,14 +95,14 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+        <div class="ui-card-foot">
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> تنفيذ التحويل</button>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+    <div class="ui-form-actions">
+        <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> تنفيذ التحويل</button>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
     </div>
 </form>
 

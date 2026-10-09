@@ -5,80 +5,77 @@
     bool low = (Model.CurrentCount <= Model.MinCount && Model.MinCount > 0) || (Model.CurrentQuantity <= Model.MinQuantity && Model.MinQuantity > 0);
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> تفاصيل الصنف: @Model.Name</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-eye" aria-hidden="true"></i> تفاصيل الصنف: @Model.Name</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("Items.Edit"))
         {
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="ui-btn ui-btn-pri"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
         }
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-info-circle" aria-hidden="true"></i> معلومات الصنف</div>
-            <div class="card-body">
-                <table class="table table-borderless mb-0">
-                    <caption class="visually-hidden">معلومات الصنف: الكود، الاسم، نوع الصنف، قابل للبيع، التصنيف، وحدة العدد، وحدة الكمية، الحالة</caption>
-                    <tr><th scope="row" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
-                    <tr><th scope="row">الاسم</th><td>@Model.Name</td></tr>
-                    <tr>
-                        <th scope="row">نوع الصنف</th>
-                        <td><span class="badge bg-primary">@(Model.ItemType?.Name ?? "—")</span></td>
-                    </tr>
-                    <tr><th scope="row">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
-                    <tr><th scope="row">التصنيف</th><td><span class="badge bg-secondary">@Model.Category.Name</span></td></tr>
-                    <tr><th scope="row">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
-                    <tr><th scope="row">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
-                    <tr><th scope="row">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
-                </table>
-            </div>
+<div class="ui-grid ui-grid-2">
+    <div class="ui-card">
+        <div class="card-header"><i class="bi bi-info-circle" aria-hidden="true"></i> معلومات الصنف</div>
+        <div class="card-body">
+            <table class="table mb-0">
+                <caption class="visually-hidden">معلومات الصنف: الكود، الاسم، نوع الصنف، قابل للبيع، التصنيف، وحدة العدد، وحدة الكمية، الحالة</caption>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الاسم</th><td>@Model.Name</td></tr>
+                <tr>
+                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">نوع الصنف</th>
+                    <td><span class="ui-badge ui-badge-info">@(Model.ItemType?.Name ?? "—")</span></td>
+                </tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">التصنيف</th><td><span class="ui-badge ui-badge-mute">@Model.Category.Name</span></td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
+            </table>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-boxes" aria-hidden="true"></i> المخزون</div>
-            <div class="card-body">
-                <table class="table table-borderless mb-0">
-                    <caption class="visually-hidden">المخزون: الرصيد الحالي (عدد وكمية)، الحد الأدنى (عدد وكمية)، الحالة، تاريخ الإنشاء</caption>
-                    <tr>
-                        <th scope="row" style="width:40%">الرصيد الحالي (عدد)</th>
-                        <td class="fw-bold">@Model.CurrentCount @(Model.CountUnit?.Name ?? "")</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">الرصيد الحالي (كمية)</th>
-                        <td class="fw-bold">@Model.CurrentQuantity @(Model.QuantityUnit?.Name ?? "")</td>
-                    </tr>
-                    <tr><th scope="row">الحد الأدنى (عدد)</th><td>@Model.MinCount @(Model.CountUnit?.Name ?? "")</td></tr>
-                    <tr><th scope="row">الحد الأدنى (كمية)</th><td>@Model.MinQuantity @(Model.QuantityUnit?.Name ?? "")</td></tr>
-                    <tr>
-                        <th scope="row">الحالة</th>
-                        <td>
-                            @if (low)
-                            { <span class="badge bg-danger">مخزون منخفض!</span> }
-                            else
-                            { <span class="badge bg-success">مخزون كافٍ</span> }
-                        </td>
-                    </tr>
-                    <tr><th scope="row">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
-                </table>
-            </div>
+    <div class="ui-card">
+        <div class="card-header"><i class="bi bi-boxes" aria-hidden="true"></i> المخزون</div>
+        <div class="card-body">
+            <table class="table mb-0">
+                <caption class="visually-hidden">المخزون: الرصيد الحالي (عدد وكمية)، الحد الأدنى (عدد وكمية)، الحالة، تاريخ الإنشاء</caption>
+                <tr>
+                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line" style="width:40%">الرصيد الحالي (عدد)</th>
+                    <td class="fw-bold"><span class="num">@Model.CurrentCount</span> @(Model.CountUnit?.Name ?? "")</td>
+                </tr>
+                <tr>
+                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الرصيد الحالي (كمية)</th>
+                    <td class="fw-bold"><span class="num">@Model.CurrentQuantity</span> @(Model.QuantityUnit?.Name ?? "")</td>
+                </tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحد الأدنى (عدد)</th><td><span class="num">@Model.MinCount</span> @(Model.CountUnit?.Name ?? "")</td></tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحد الأدنى (كمية)</th><td><span class="num">@Model.MinQuantity</span> @(Model.QuantityUnit?.Name ?? "")</td></tr>
+                <tr>
+                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحالة</th>
+                    <td>
+                        @if (low)
+                        { <span class="ui-badge ui-badge-bad">مخزون منخفض!</span> }
+                        else
+                        { <span class="ui-badge ui-badge-ok">مخزون كافٍ</span> }
+                    </td>
+                </tr>
+                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
+            </table>
         </div>
     </div>
 </div>
 
-<div class="row g-4 mt-1">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-upc-scan" aria-hidden="true"></i> الباركود</div>
-            <div class="card-body text-center">
-                <partial name="_Barcode" model="@(Model.Barcode ?? Model.Code ?? $"ITM{Model.Id:D8}")" />
-                <div class="mt-3">
-                    <a asp-action="PrintLabel" asp-route-id="@Model.Id" class="btn btn-outline-primary" target="_blank" rel="noopener noreferrer"><i class="bi bi-printer" aria-hidden="true"></i> طباعة الملصق</a>
-                </div>
+<div class="ui-grid ui-grid-2 mt-4">
+    <div class="ui-card">
+        <div class="card-header"><i class="bi bi-upc-scan" aria-hidden="true"></i> الباركود</div>
+        <div class="card-body text-center">
+            <partial name="_Barcode" model="@(Model.Barcode ?? Model.Code ?? $"ITM{Model.Id:D8}")" />
+            <div class="mt-3">
+                <a asp-action="PrintLabel" asp-route-id="@Model.Id" class="ui-btn ui-btn-outline" target="_blank" rel="noopener noreferrer"><i class="bi bi-printer" aria-hidden="true"></i> طباعة الملصق</a>
             </div>
         </div>
     </div>

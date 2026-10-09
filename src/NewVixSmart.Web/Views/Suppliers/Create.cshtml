@@ -1,23 +1,57 @@
 @model NewVixSmart.Web.Models.Purchases.Supplier
 @{ ViewData["Title"] = "إضافة مورد"; }
 
-<div class="page-header"><h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> إضافة مورد</h2></div>
-<div class="card"><div class="card-body">
-    <form asp-action="Create">
-        <div class="row g-3">
-            <div class="col-md-4"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger small" aria-invalid="true"></span></div>
-            <div class="col-md-4"><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control" /></div>
-            <div class="col-md-4"><label asp-for="Phone" class="form-label"></label><input asp-for="Phone" class="form-control" /></div>
-            <div class="col-md-4"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" /></div>
-            <div class="col-md-4"><label asp-for="Address" class="form-label"></label><input asp-for="Address" class="form-control" /></div>
-            <div class="col-md-4"><label asp-for="TaxNumber" class="form-label"></label><input asp-for="TaxNumber" class="form-control" /></div>
-            <div class="col-md-4"><label asp-for="OpeningBalance" class="form-label"></label><input asp-for="OpeningBalance" class="form-control" type="number" step="0.01" /></div>
-            <div class="col-12"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="2"></textarea></div>
-        </div>
-        <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
-        </div>
-    </form>
-</div></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2>إضافة مورد</h2>
+    </div>
+</div>
+
+<div class="ui-section ui-card">
+    <div class="card-body">
+        <form asp-action="Create">
+            <div class="ui-grid ui-grid-3">
+                <div>
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small" aria-invalid="true"></span>
+                </div>
+                <div>
+                    <label asp-for="Code" class="form-label"></label>
+                    <input asp-for="Code" class="form-control" />
+                </div>
+                <div>
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="form-control" />
+                </div>
+                <div>
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                </div>
+                <div>
+                    <label asp-for="Address" class="form-label"></label>
+                    <input asp-for="Address" class="form-control" />
+                </div>
+                <div>
+                    <label asp-for="TaxNumber" class="form-label"></label>
+                    <input asp-for="TaxNumber" class="form-control" />
+                </div>
+                <div>
+                    <label asp-for="OpeningBalance" class="form-label"></label>
+                    <input asp-for="OpeningBalance" class="form-control" type="number" step="0.01" />
+                </div>
+                <div class="md:col-span-3">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="ui-form-actions">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
+                <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+            </div>
+        </form>
+    </div>
+</div>
+
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }

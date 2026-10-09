@@ -1,50 +1,75 @@
 @model NewVixSmart.Web.ViewModels.Purchases.SupplierLedgerViewModel
 @{ ViewData["Title"] = $"دفتر أستاذ - {Model.Supplier?.Name ?? ""}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-journal-bookmark text-primary" aria-hidden="true"></i> دفتر أستاذ: @(Model.Supplier?.Name ?? "—")</h2>
-    <div>
-        <span class="badge @(Model.Balance >= 0 ? "bg-danger" : "bg-success") fs-6">الرصيد: @Money.Format(Model.Balance)</span>
-        <a asp-action="LedgerXlsx" asp-route-id="@Model.Supplier?.Id" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير كشف حساب Excel</a>
-        <a asp-action="LedgerPdf" asp-route-id="@Model.Supplier?.Id" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> كشف حساب PDF</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">الموردون</span>
+        <h2><i class="bi bi-journal-bookmark" aria-hidden="true"></i> دفتر أستاذ: @(Model.Supplier?.Name ?? "—")</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <span class="ui-badge @(Model.Balance >= 0 ? "ui-badge-bad" : "ui-badge-ok")">الرصيد: <span class="num">@Money.Format(Model.Balance)</span></span>
+        <a asp-action="LedgerXlsx" asp-route-id="@Model.Supplier?.Id" class="ui-btn ui-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير كشف حساب Excel</a>
+        <a asp-action="LedgerPdf" asp-route-id="@Model.Supplier?.Id" class="ui-btn ui-btn-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> كشف حساب PDF</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="card mb-3"><div class="card-body py-2">
-    <div class="row g-3 small">
-        <div class="col"><span class="text-muted">فاتح:</span> <strong>@(Model.Supplier != null ? Money.Format(Model.Supplier.OpeningBalance) : "—")</strong></div>
-        <div class="col"><span class="text-muted">إجمالي الفواتير:</span> <strong>@Money.Format(Model.InvoicesTotal)</strong></div>
-        <div class="col"><span class="text-muted">إجمالي المدفوع:</span> <strong>@Money.Format(Model.DisbursementsTotal)</strong></div>
-        <div class="col"><span class="text-muted">إجمالي المردودات:</span> <strong>@Money.Format(Model.ReturnsTotal)</strong></div>
-        <div class="col"><span class="text-muted">التليفون:</span> <strong>@(Model.Supplier?.Phone ?? "—")</strong></div>
-    </div>
-</div></div>
-
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card"><div class="card-header"><i class="bi bi-cart-dash" aria-hidden="true"></i> فواتير الشراء</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><caption class="visually-hidden">فواتير الشراء: رقم الفاتورة، التاريخ، المبلغ، المدفوع</caption><thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
-            <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td>@Money.Format(i.NetAmount)</td><td>@Money.Format(i.PaidAmount)</td></tr> }</tbody></table>
-        </div></div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card"><div class="card-header"><i class="bi bi-wallet2" aria-hidden="true"></i> المدفوعات (المصروفات)</div><div class="card-body p-0">
-            <table class="table table-hover mb-0"><caption class="visually-hidden">المدفوعات (المصروفات): رقم الإيصال، التاريخ، المبلغ، طريقة الدفع</caption><thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
-            <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-danger fw-bold">@Money.Format(p.Amount)</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody></table>
-        </div></div>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <div class="ui-grid ui-grid-3 small">
+            <div><span class="text-muted">فاتح:</span> <strong class="num">@(Model.Supplier != null ? Money.Format(Model.Supplier.OpeningBalance) : "—")</strong></div>
+            <div><span class="text-muted">إجمالي الفواتير:</span> <strong class="num">@Money.Format(Model.InvoicesTotal)</strong></div>
+            <div><span class="text-muted">إجمالي المدفوع:</span> <strong class="num">@Money.Format(Model.DisbursementsTotal)</strong></div>
+            <div><span class="text-muted">إجمالي المردودات:</span> <strong class="num">@Money.Format(Model.ReturnsTotal)</strong></div>
+            <div><span class="text-muted">التليفون:</span> <strong class="num">@(Model.Supplier?.Phone ?? "—")</strong></div>
+        </div>
     </div>
 </div>
 
-<div class="card mt-4"><div class="card-header"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> مرتجعات الشراء</div><div class="card-body p-0">
-    <table class="table table-hover mb-0"><caption class="visually-hidden">مرتجعات الشراء: رقم المرتجع، التاريخ، المبلغ</caption><thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
-    <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold">-@Money.Format(decimal.Round(ReturnValuation.ReceivableBase(r.TotalAmount, r.PurchaseInvoice?.TotalAmount ?? 0m, r.PurchaseInvoice?.NetAmount ?? 0m), 2))</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody></table>
-</div></div>
+<div class="ui-grid ui-grid-2 ui-section">
+    <div class="ui-card">
+        <div class="card-header"><i class="bi bi-cart-dash" aria-hidden="true"></i> فواتير الشراء</div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table">
+                    <caption class="visually-hidden">فواتير الشراء: رقم الفاتورة، التاريخ، المبلغ، المدفوع</caption>
+                    <thead><tr><th scope="col">الفاتورة</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">المدفوع</th></tr></thead>
+                    <tbody>@foreach (var i in Model.Invoices) { <tr><td><code>@i.InvoiceNumber</code></td><td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td><td class="num">@Money.Format(i.NetAmount)</td><td class="num">@Money.Format(i.PaidAmount)</td></tr> }</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="ui-card">
+        <div class="card-header"><i class="bi bi-wallet2" aria-hidden="true"></i> المدفوعات (المصروفات)</div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table">
+                    <caption class="visually-hidden">المدفوعات (المصروفات): رقم الإيصال، التاريخ، المبلغ، طريقة الدفع</caption>
+                    <thead><tr><th scope="col">الإيصال</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الطريقة</th></tr></thead>
+                    <tbody>@foreach (var p in Model.Payments) { <tr><td><code>@p.ReceiptNumber</code></td><td>@p.PaymentDate.ToString("dd/MM/yyyy")</td><td class="text-danger fw-bold num">@Money.Format(p.Amount)</td><td>@p.Method.GetDisplayName()</td></tr> }</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ui-section ui-card">
+    <div class="card-header"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> مرتجعات الشراء</div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table">
+                <caption class="visually-hidden">مرتجعات الشراء: رقم المرتجع، التاريخ، المبلغ</caption>
+                <thead><tr><th scope="col">المرتجع</th><th scope="col">التاريخ</th><th scope="col">المبلغ</th></tr></thead>
+                <tbody>@foreach (var r in Model.Returns) { <tr><td><code>@r.ReturnNumber</code></td><td>@r.ReturnDate.ToString("dd/MM/yyyy")</td><td class="text-success fw-bold num">-@Money.Format(decimal.Round(ReturnValuation.ReceivableBase(r.TotalAmount, r.PurchaseInvoice?.TotalAmount ?? 0m, r.PurchaseInvoice?.NetAmount ?? 0m), 2))</td></tr> } @if (!Model.Returns.Any()) { <tr><td colspan="3" class="text-center text-muted">لا توجد مردودات</td></tr> }</tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 @if (!Model.Invoices.Any() && !Model.Payments.Any() && !Model.Returns.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد حركات على هذا المورد</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <p class="text-muted">لا توجد حركات على هذا المورد</p>
     </div>
 }

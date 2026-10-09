@@ -33,14 +33,14 @@ public sealed class SourceTextGuaranteeInventoryTests
     ///   by requests to a real host, which is why the number fell from 9 to 6.
     ///
     ///   2 further classes read Razor markup (a view cannot be executed without a browser; the
-    ///   browser-level proof is the Playwright + axe run in the docker-image CI job), and 4 read
+    ///   browser-level proof is the Playwright + axe run in the docker-image CI job), and 5 read
     ///   tooling rather than production code: the a11y gate's own JavaScript manifest, which it
-    ///   cross-checks against live controller reflection; the dependency graph; and
+    ///   cross-checks against live controller reflection; the dependency graph;
     ///   RazorHygieneTests, which reads the text-hygiene script and the CI workflow that invokes
     ///   it, and whose behavioural half - actually running that gate over throwaway fixtures -
-    ///   is the point of the class. A workflow file cannot be executed locally, so asserting on
-    ///   its text is the strongest statement available about it, exactly as for dependabot.yml.
-    ///   The fourth is DocClaimTests, which reads README.md, AGENTS.md and the CI workflow to
+    ///   is the point of the class; DesignTokenContrastTests, which asserts the authored
+    ///   @theme palette keeps its WCAG floors (the rendered proof is the axe run); and
+    ///   DocClaimTests, which reads README.md, AGENTS.md and the CI workflow to
     ///   keep the documented commands and job names resolvable. Its guarantees are textual on
     ///   purpose: it asserts that a command or a job named in a document still exists, never
     ///   what the command would print, so it cannot disagree with the suite about a count.
@@ -53,6 +53,7 @@ public sealed class SourceTextGuaranteeInventoryTests
         ["AuthzPublicIdAndItemBindingTests"] = _cSharp,      // ten Controllers/*.cs
         ["ConcurrencyPropagationTests"] = _razor,             // two order views + their controllers
         ["DependencyPinTests"] = _tooling,                   // *.csproj + .github/dependabot.yml
+        ["DesignTokenContrastTests"] = _tooling,             // ui/src/input.css (@theme palette)
         ["DocClaimTests"] = _tooling,                        // README.md + AGENTS.md + .github/workflows/ci.yml
         ["ProductionConfigGateTests"] = _config,             // appsettings*.json
         ["RazorHygieneTests"] = _tooling,                    // scripts/check-text-hygiene.ps1 + .github/workflows/ci.yml

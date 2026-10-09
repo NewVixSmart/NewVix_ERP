@@ -1,117 +1,126 @@
 @model NewVixSmart.Web.ViewModels.Core.SettingsViewModel
 @{ ViewData["Title"] = "الإعدادات"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-gear text-primary" aria-hidden="true"></i> الإعدادات</h2>
-    <div class="d-flex gap-2">
-        <a asp-action="Printing" class="btn btn-outline-primary btn-sm"><i class="bi bi-printer" aria-hidden="true"></i> إعدادات الطباعة</a>
-        <a asp-action="Branding" class="btn btn-outline-primary btn-sm"><i class="bi bi-palette" aria-hidden="true"></i> العلامة التجارية والمظهر</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">النظام</span>
+        <h2><i class="bi bi-gear" aria-hidden="true"></i> الإعدادات</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Printing" class="ui-btn ui-btn-ghost ui-btn-sm"><i class="bi bi-printer" aria-hidden="true"></i> إعدادات الطباعة</a>
+        <a asp-action="Branding" class="ui-btn ui-btn-ghost ui-btn-sm"><i class="bi bi-palette" aria-hidden="true"></i> العلامة التجارية والمظهر</a>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+<div class="ui-grid ui-grid-2 ui-rise">
+    <div class="ui-section">
+        <div class="ui-card">
+            <div class="card-header justify-between items-center">
                 <span><i class="bi bi-rulers" aria-hidden="true"></i> وحدات القياس</span>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUnitModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> وحدة جديدة</button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-pri" data-bs-toggle="modal" data-bs-target="#addUnitModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> وحدة جديدة</button>
             </div>
             <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                    <caption class="visually-hidden">وحدات القياس: الاسم، الاختصار، الوحدة الفرعية، الحالة</caption>
-                    <thead><tr><th scope="col">الاسم</th><th scope="col">الاختصار</th><th scope="col">الوحدة الفرعية</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
-                    <tbody>
-                        @foreach (var u in Model.Units)
-                        {
-                            <tr>
-                                <td><strong>@u.Name</strong></td>
-                                <td>@(u.ShortName ?? "—")</td>
-                                <td>
-                                    @if (u.SubUnits > 0) { @($"{u.SubUnits.Value} × {Model.Units.FirstOrDefault(p => p.Id == u.ParentUnitId)?.Name}") }
-                                    else { <span class="text-muted">—</span> }
-                                </td>
-                                <td>
-                                    @if (u.IsActive)
-                                    { <span>نشط</span> }
-                                    else
-                                    { <span class="text-danger">معطل</span> }
-                                </td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" data-rowversion="@(u.RowVersion is null ? string.Empty : Convert.ToBase64String(u.RowVersion))" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                                    <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="d-inline" data-confirm="حذف هذه الوحدة؟" data-confirm-ok="حذف">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                        @if (!Model.Units.Any())
-                        {
-                            <tr><td colspan="5" class="text-center text-muted py-4">لا توجد وحدات بعد</td></tr>
-                        }
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table class="table">
+                        <caption class="visually-hidden">وحدات القياس: الاسم، الاختصار، الوحدة الفرعية، الحالة</caption>
+                        <thead><tr><th scope="col">الاسم</th><th scope="col">الاختصار</th><th scope="col">الوحدة الفرعية</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+                        <tbody>
+                            @foreach (var u in Model.Units)
+                            {
+                                <tr>
+                                    <td><strong>@u.Name</strong></td>
+                                    <td>@(u.ShortName ?? "—")</td>
+                                    <td>
+                                        @if (u.SubUnits > 0) { @($"{u.SubUnits.Value} × {Model.Units.FirstOrDefault(p => p.Id == u.ParentUnitId)?.Name}") }
+                                        else { <span class="text-muted">—</span> }
+                                    </td>
+                                    <td>
+                                        @if (u.IsActive)
+                                        { <span class="ui-badge ui-badge-ok">نشط</span> }
+                                        else
+                                        { <span class="ui-badge ui-badge-bad">معطل</span> }
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" data-rowversion="@(u.RowVersion is null ? string.Empty : Convert.ToBase64String(u.RowVersion))" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                                        <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="inline-flex" data-confirm="حذف هذه الوحدة؟" data-confirm-ok="حذف">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="ui-btn ui-btn-sm ui-btn-bad" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.Units.Any())
+                            {
+                                <tr><td colspan="5" class="text-center text-muted py-4">لا توجد وحدات بعد</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-5 d-flex flex-column gap-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="flex flex-col gap-4">
+        <div class="ui-card">
+            <div class="card-header justify-between items-center">
                 <span><i class="bi bi-tags" aria-hidden="true"></i> التصنيفات الرئيسية</span>
-                <a asp-controller="Categories" asp-action="Index" class="btn btn-sm btn-outline-primary">إدارة</a>
+                <a asp-controller="Categories" asp-action="Index" class="ui-btn ui-btn-sm ui-btn-ghost">إدارة</a>
             </div>
-            <div class="list-group list-group-flush">
-                @foreach (var c in Model.Categories)
-                {
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>@c.Name</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-secondary">@c.Items.Count صنف</span>
-                            @if (!c.IsActive) { <span class="badge bg-warning text-dark">معطل</span> }
+            <div class="card-body p-0">
+                <div class="flex flex-col divide-y divide-[color:var(--color-line)]">
+                    @foreach (var c in Model.Categories)
+                    {
+                        <div class="flex justify-between items-center px-4 py-2.5">
+                            <span>@c.Name</span>
+                            <div class="flex items-center gap-2">
+                                <span class="ui-badge ui-badge-soft">@c.Items.Count صنف</span>
+                                @if (!c.IsActive) { <span class="ui-badge ui-badge-warn">معطل</span> }
+                            </div>
                         </div>
-                    </div>
-                }
-                @if (!Model.Categories.Any())
-                {
-                    <div class="list-group-item text-center text-muted">لا توجد تصنيفات</div>
-                }
+                    }
+                    @if (!Model.Categories.Any())
+                    {
+                        <div class="px-4 py-4 text-center text-muted">لا توجد تصنيفات</div>
+                    }
+                </div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="ui-card">
+            <div class="card-header justify-between items-center">
                 <span><i class="bi bi-grid" aria-hidden="true"></i> أنواع الأصناف</span>
-                <a asp-controller="ItemTypes" asp-action="Index" class="btn btn-sm btn-outline-primary">إدارة</a>
+                <a asp-controller="ItemTypes" asp-action="Index" class="ui-btn ui-btn-sm ui-btn-ghost">إدارة</a>
             </div>
-            <div class="list-group list-group-flush">
-                @foreach (var t in Model.ItemTypes)
-                {
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>@t.Name</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-secondary">@t.Items.Count صنف</span>
-                            @if (!t.IsActive) { <span class="badge bg-warning text-dark">معطل</span> }
+            <div class="card-body p-0">
+                <div class="flex flex-col divide-y divide-[color:var(--color-line)]">
+                    @foreach (var t in Model.ItemTypes)
+                    {
+                        <div class="flex justify-between items-center px-4 py-2.5">
+                            <span>@t.Name</span>
+                            <div class="flex items-center gap-2">
+                                <span class="ui-badge ui-badge-soft">@t.Items.Count صنف</span>
+                                @if (!t.IsActive) { <span class="ui-badge ui-badge-warn">معطل</span> }
+                            </div>
                         </div>
-                    </div>
-                }
-                @if (!Model.ItemTypes.Any())
-                {
-                    <div class="list-group-item text-center text-muted">لا توجد أنواع</div>
-                }
+                    }
+                    @if (!Model.ItemTypes.Any())
+                    {
+                        <div class="px-4 py-4 text-center text-muted">لا توجد أنواع</div>
+                    }
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4 mt-0">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-diagram-3" aria-hidden="true"></i> الفروع</span>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> فرع جديد</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-hover mb-0">
+<div class="ui-section ui-rise">
+    <div class="ui-card">
+        <div class="card-header justify-between items-center">
+            <span><i class="bi bi-diagram-3" aria-hidden="true"></i> الفروع</span>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-pri" data-bs-toggle="modal" data-bs-target="#addBranchModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> فرع جديد</button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table">
                     <caption class="visually-hidden">الفروع: الرمز، الاسم، العنوان، الحالة</caption>
                     <thead><tr><th scope="col">الرمز</th><th scope="col">الاسم</th><th scope="col">العنوان</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
                     <tbody>
@@ -119,22 +128,22 @@
                         {
                             <tr>
                                 <td><strong>@b.Code</strong></td>
-                                <td>@b.Name @if (Model.CurrentBranchId == b.Id) { <span class="badge bg-success">الحالي</span> }</td>
+                                <td>@b.Name @if (Model.CurrentBranchId == b.Id) { <span class="ui-badge ui-badge-ok">الحالي</span> }</td>
                                 <td>@(b.Address ?? "—")</td>
                                 <td>@(b.IsActive ? "نشط" : "معطل")</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-branch" data-id="@b.Id" data-code="@b.Code" data-name="@b.Name" data-address="@b.Address" data-phone="@b.Phone" data-active="@b.IsActive.ToString().ToLower()" data-rowversion="@(b.RowVersion is null ? string.Empty : Convert.ToBase64String(b.RowVersion))" aria-label="تعديل فرع @b.Code"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                                    <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost btn-edit-branch" data-id="@b.Id" data-code="@b.Code" data-name="@b.Name" data-address="@b.Address" data-phone="@b.Phone" data-active="@b.IsActive.ToString().ToLower()" data-rowversion="@(b.RowVersion is null ? string.Empty : Convert.ToBase64String(b.RowVersion))" aria-label="تعديل فرع @b.Code"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                                     @if (Model.CurrentBranchId != b.Id)
                                     {
-                                        <form asp-action="SetCurrentBranch" method="post" class="d-inline" data-confirm="التعامل مع @b.Name كفرع حالي؟" data-confirm-ok="تعيين">
+                                        <form asp-action="SetCurrentBranch" method="post" class="inline-flex" data-confirm="التعامل مع @b.Name كفرع حالي؟" data-confirm-ok="تعيين">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="branchId" value="@b.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تعيين @b.Name كفرع حالي"><i class="bi bi-check2" aria-hidden="true"></i></button>
+                                            <button type="submit" class="ui-btn ui-btn-sm ui-btn-ok" aria-label="تعيين @b.Name كفرع حالي"><i class="bi bi-check2" aria-hidden="true"></i></button>
                                         </form>
                                     }
-                                    <form asp-action="DeleteBranch" asp-route-id="@b.Id" method="post" class="d-inline" data-confirm="حذف هذا الفرع؟" data-confirm-ok="حذف">
+                                    <form asp-action="DeleteBranch" asp-route-id="@b.Id" method="post" class="inline-flex" data-confirm="حذف هذا الفرع؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف فرع @b.Code"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                        <button type="submit" class="ui-btn ui-btn-sm ui-btn-bad" aria-label="حذف فرع @b.Code"><i class="bi bi-trash" aria-hidden="true"></i></button>
                                     </form>
                                 </td>
                             </tr>

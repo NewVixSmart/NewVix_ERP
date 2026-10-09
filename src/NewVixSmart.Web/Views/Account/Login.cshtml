@@ -8,134 +8,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <title>تسجيل الدخول - @_brand.Profile.CompanyName</title>
-    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
-    <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
-    <link href="~/css/tokens.css" rel="stylesheet" asp-append-version="true" />
-    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/app.css" rel="stylesheet" asp-append-version="true" />
     <style nonce="@Context.GetCspNonce()">
         @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
     </style>
-    <link href="~/css/auth.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
-    <div class="lg-stage">
-        <div class="lg-shell">
-            <section class="lg-hero" aria-label="نبذة عن النظام">
-                <p class="lg-hero__eyebrow">
-                    <span class="lg-hero__eyebrow-dot" aria-hidden="true"></span>
-                    نظام إدارة الأعمال المتكامل
-                </p>
-                @if (_brand.Profile.HasLogo)
-                {
-                    <img class="lg-hero__brand lg-hero__logo" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
-                }
-                else
-                {
-                    <div class="lg-hero__brand lg-hero__monogram" aria-hidden="true"><i class="bi bi-shop" aria-hidden="true"></i></div>
-                }
-                <h1 class="lg-hero__title">@_brand.Profile.CompanyName</h1>
-                <p class="lg-hero__tagline">@(_brand.Profile.Tagline ?? "Smart Solutions")</p>
-                <div class="lg-preview" aria-hidden="true">
-                    <div class="lg-preview__head">
-                        <span class="lg-preview__title">نظرة على الأداء</span>
-                        <span class="lg-preview__live"><span class="lg-preview__live-dot" aria-hidden="true"></span>مباشر</span>
-                    </div>
-                    <div class="lg-preview__grid">
-                        <div class="lg-stat">
-                            <span class="lg-stat__value">+128</span>
-                            <span class="lg-stat__label">مبيعات اليوم</span>
-                        </div>
-                        <div class="lg-stat">
-                            <span class="lg-stat__value">1,240</span>
-                            <span class="lg-stat__label">الأصناف</span>
-                        </div>
-                        <div class="lg-stat">
-                            <span class="lg-stat__value">36</span>
-                            <span class="lg-stat__label">فواتير معلّقة</span>
-                        </div>
-                    </div>
-                    <div class="lg-preview__chart" aria-hidden="true">
-                        <span class="lg-bar lg-bar--h2"></span>
-                        <span class="lg-bar lg-bar--h5"></span>
-                        <span class="lg-bar lg-bar--h3"></span>
-                        <span class="lg-bar lg-bar--h4"></span>
-                        <span class="lg-bar lg-bar--h1"></span>
-                        <span class="lg-bar lg-bar--h5"></span>
-                        <span class="lg-bar lg-bar--h3"></span>
-                    </div>
+    <div class="ui-auth">
+        <section class="ui-auth-hero" aria-label="نبذة عن النظام">
+            <p class="ui-auth-eyebrow">
+                <i class="bi bi-stars" aria-hidden="true"></i>
+                نظام إدارة الأعمال المتكامل
+            </p>
+            @if (_brand.Profile.HasLogo)
+            {
+                <img class="brand-logo w-16 h-16" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
+            }
+            else
+            {
+                <span class="brand-monogram w-14 h-14" aria-hidden="true"><i class="bi bi-shop" aria-hidden="true"></i></span>
+            }
+            <div class="flex flex-col gap-3">
+                <h1 class="ui-auth-title">@_brand.Profile.CompanyName</h1>
+                <p class="ui-auth-tagline">@(_brand.Profile.Tagline ?? "Smart Solutions")</p>
+            </div>
+            <div class="ui-auth-tiles" aria-hidden="true">
+                <div class="ui-auth-tile">
+                    <strong>+128</strong>
+                    <span>مبيعات اليوم</span>
                 </div>
-                <div class="lg-hero__badges" aria-hidden="true">
-                    <span class="lg-hero__badge"><i class="bi bi-box-seam" aria-hidden="true"></i>المخزون</span>
-                    <span class="lg-hero__badge"><i class="bi bi-cart-check" aria-hidden="true"></i>المبيعات</span>
-                    <span class="lg-hero__badge"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i>التقارير</span>
+                <div class="ui-auth-tile">
+                    <strong>1,240</strong>
+                    <span>الأصناف</span>
                 </div>
-                <p class="lg-hero__trust"><i class="bi bi-shield-lock" aria-hidden="true"></i> بياناتك محمية ومنقولة بتشفير آمن</p>
-            </section>
-            <section class="lg-panel">
-                <header class="lg-panel__head">
-                    <p class="lg-panel__eyebrow">مرحبًا بعودتك</p>
-                    <h2 class="lg-title">تسجيل الدخول</h2>
-                    <p class="lg-subtitle">أدخل بياناتك للمتابعة إلى لوحة العمل</p>
+                <div class="ui-auth-tile">
+                    <strong>36</strong>
+                    <span>فواتير معلّقة</span>
+                </div>
+            </div>
+            <div class="ui-auth-chips" aria-hidden="true">
+                <span class="ui-auth-chip"><i class="bi bi-box-seam" aria-hidden="true"></i>المخزون</span>
+                <span class="ui-auth-chip"><i class="bi bi-cart-check" aria-hidden="true"></i>المبيعات</span>
+                <span class="ui-auth-chip"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i>التقارير</span>
+            </div>
+            <p class="ui-auth-note"><i class="bi bi-shield-lock" aria-hidden="true"></i> بياناتك محمية ومنقولة بتشفير آمن</p>
+        </section>
+        <main class="ui-auth-panel" id="mainContent">
+            <div class="ui-auth-card">
+                <header class="ui-auth-head">
+                    <p class="ui-eyebrow">مرحبًا بعودتك</p>
+                    <h2>تسجيل الدخول</h2>
+                    <p class="text-muted">أدخل بياناتك للمتابعة إلى لوحة العمل</p>
                 </header>
 
                 @if (TempData["Success"] is string successMsg)
                 {
-                    <div class="lg-alert">
-                        <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
-                            @successMsg
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                        </div>
+                    <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
+                        @successMsg
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                     </div>
                 }
                 @if (TempData["Error"] is string errorMsg)
                 {
-                    <div class="lg-alert">
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
-                            @errorMsg
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
-                        </div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
+                        @errorMsg
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                     </div>
                 }
 
-                <form class="lg-form" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
-                    <div asp-validation-summary="All" class="text-danger mb-3" role="alert" tabindex="-1"></div>
-                    <div class="lg-field">
+                <form class="flex flex-col gap-4" id="login-form" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" data-loading-submit data-loading-text="جاري الدخول...">
+                    <div asp-validation-summary="All" class="text-danger" role="alert" tabindex="-1"></div>
+                    <div class="flex flex-col gap-1">
                         <label asp-for="Username" class="form-label"></label>
-                        <div class="lg-control">
-                            <span class="lg-control__icon" aria-hidden="true"><i class="bi bi-person" aria-hidden="true"></i></span>
-                            <input asp-for="Username" class="form-control lg-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
+                        <div class="ui-input-wrap">
+                            <input asp-for="Username" class="ui-input" id="Username" placeholder="أدخل اسم المستخدم" autofocus autocomplete="username" />
                         </div>
                         <span asp-validation-for="Username" class="text-danger small" aria-invalid="true"></span>
                     </div>
-                    <div class="lg-field">
+                    <div class="flex flex-col gap-1">
                         <label asp-for="Password" class="form-label"></label>
-                        <div class="lg-control lg-control--password">
-                            <span class="lg-control__icon" aria-hidden="true"><i class="bi bi-lock" aria-hidden="true"></i></span>
-                            <input asp-for="Password" class="form-control lg-input" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
-                            <button type="button" class="lg-password-toggle" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+                        <div class="ui-input-wrap">
+                            <input asp-for="Password" class="ui-input" id="Password" placeholder="أدخل كلمة المرور" autocomplete="current-password" />
+                            <button type="button" class="ui-input-affix" data-password-toggle aria-controls="Password" aria-pressed="false" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </button>
                         </div>
                         <span asp-validation-for="Password" class="text-danger small" aria-invalid="true"></span>
                     </div>
-                    <div class="lg-actions">
-                        <div class="form-check">
-                            <input asp-for="RememberMe" class="form-check-input" />
-                            <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
-                        </div>
+                    <div class="form-check">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 lg-submit">
+                    <button type="submit" class="ui-btn ui-btn-pri ui-btn-lg">
                         <i class="bi bi-box-arrow-in-left" aria-hidden="true"></i>
                         <span>دخول</span>
                     </button>
                 </form>
 
-                <p class="lg-secure"><i class="bi bi-lock" aria-hidden="true"></i> اتصال مشفّر وآمن</p>
-
-                <p class="lg-foot">&copy; @DateTime.Now.Year @_brand.Profile.CompanyName &mdash; جميع الحقوق محفوظة</p>
-            </section>
-        </div>
+                <p class="flex items-center justify-center gap-2 text-sm text-success"><i class="bi bi-lock" aria-hidden="true"></i> اتصال مشفّر وآمن</p>
+                <p class="ui-auth-foot">&copy; @DateTime.Now.Year @_brand.Profile.CompanyName &mdash; جميع الحقوق محفوظة</p>
+            </div>
+        </main>
     </div>
     <script src="~/js/site.js" asp-append-version="true"></script>
 </body>

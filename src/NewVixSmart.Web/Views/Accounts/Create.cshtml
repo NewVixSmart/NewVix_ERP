@@ -1,27 +1,30 @@
 @model NewVixSmart.Web.Models.Accounting.GLAccount
 @{ ViewData["Title"] = "حساب جديد"; }
 
-<div class="page-header">
-    <h2><i class="bi bi-plus-circle text-primary" aria-hidden="true"></i> حساب جديد</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المحاسبة</span>
+        <h2><i class="bi bi-plus-circle" aria-hidden="true"></i> حساب جديد</h2>
+    </div>
 </div>
 
-<div class="card" style="max-width:640px">
+<div class="ui-section ui-card ui-rise" style="max-width:640px">
     <div class="card-body">
         <form asp-action="Create" method="post">
             @Html.AntiForgeryToken()
-            <div class="mb-3">
-                <label class="form-label" for="Code">رمز الحساب</label>
-                <input asp-for="Code" class="form-control" dir="ltr" required />
+            <div class="mb-4">
+                <label class="ui-label" for="Code">رمز الحساب</label>
+                <input asp-for="Code" class="ui-input" dir="ltr" required />
                 <div class="form-text">رمز رقمي فريد، مثال: 6000</div>
                 <span asp-validation-for="Code" class="text-danger" aria-invalid="true"></span>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="Name">اسم الحساب</label>
-                <input asp-for="Name" class="form-control" required />
+            <div class="mb-4">
+                <label class="ui-label" for="Name">اسم الحساب</label>
+                <input asp-for="Name" class="ui-input" required />
                 <span asp-validation-for="Name" class="text-danger" aria-invalid="true"></span>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="Type">نوع الحساب</label>
+            <div class="mb-4">
+                <label class="ui-label" for="Type">نوع الحساب</label>
                 <select asp-for="Type" class="form-select">
                     @foreach (var t in Enum.GetValues<NewVixSmart.Web.Models.Accounting.GLAccountType>())
                     {
@@ -29,21 +32,23 @@
                     }
                 </select>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="NormalBalance">طبيعة الحساب</label>
+            <div class="mb-4">
+                <label class="ui-label" for="NormalBalance">طبيعة الحساب</label>
                 <select asp-for="NormalBalance" class="form-select">
                     <option value="1">مدين</option>
                     <option value="2">دائن</option>
                 </select>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="ParentAccountId">الحساب الأب (اختياري)</label>
+            <div class="mb-4">
+                <label class="ui-label" for="ParentAccountId">الحساب الأب (اختياري)</label>
                 <select asp-for="ParentAccountId" class="form-select" asp-items="ViewBag.ParentList">
                     <option value="">—</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+            <div class="ui-form-actions">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
+                <a asp-action="Index" class="ui-btn ui-btn-ghost">إلغاء</a>
+            </div>
         </form>
     </div>
 </div>

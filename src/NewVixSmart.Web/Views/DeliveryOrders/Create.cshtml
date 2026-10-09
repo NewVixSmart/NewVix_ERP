@@ -15,56 +15,61 @@
     };
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> أذن تسليم جديد</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أذن تسليم جديد</h2>
+    </div>
 </div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 @if (ViewBag.OrderLabel != null)
 {
-    <div class="alert alert-info my-3">أمر البيع المختار: <strong>@ViewBag.OrderLabel</strong> — الأسطر المعروضة هي المتبقي غير المسجّل في أذون أخرى.</div>
+    <div class="ui-alert ui-alert-info my-4 ui-rise">أمر البيع المختار: <strong>@ViewBag.OrderLabel</strong> — الأسطر المعروضة هي المتبقي غير المسجّل في أذون أخرى.</div>
 }
 @if (ViewBag.InvoiceLabel != null)
 {
-    <div class="alert alert-info my-3">الفاتورة المختارة: <strong>@ViewBag.InvoiceLabel</strong> — تُشحن الكمية المتبقية دفعة واحدة أو جزء منها.</div>
+    <div class="ui-alert ui-alert-info my-4 ui-rise">الفاتورة المختارة: <strong>@ViewBag.InvoiceLabel</strong> — تُشحن الكمية المتبقية دفعة واحدة أو جزء منها.</div>
 }
 
-<form asp-action="Create">
+<form asp-action="Create" class="ui-rise">
     <input type="hidden" name="Source" id="SourceField" value="@Model.Source" />
 
-    <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-diagram-3" aria-hidden="true"></i> مصدر الأذن</div>
+    <div class="ui-section ui-card">
+        <div class="ui-card-head">
+            <span class="ui-card-title"><i class="bi bi-diagram-3" aria-hidden="true"></i> مصدر الأذن</span>
+        </div>
         <div class="card-body">
-            <fieldset class="row g-3">
+            <fieldset class="ui-grid ui-grid-2 md:ui-grid-4">
                 <legend class="visually-hidden">اختر مصدر أذن التسليم</legend>
-                <div class="col-md-4">
+                <div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcOrder" value="Order" @(Model.Source == "Order" ? "checked" : "") />
                         <label class="form-check-label" for="srcOrder">من أمر بيع</label>
                     </div>
-                    <select asp-for="Delivery.SalesOrderId" asp-items="@Model.SalesOrders" class="form-select form-select-sm mt-2" id="salesOrderSelect" aria-label="اختر أمر البيع المرتبط" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                    <select asp-for="Delivery.SalesOrderId" asp-items="@Model.SalesOrders" class="ui-input ui-input-sm mt-2" id="salesOrderSelect" aria-label="اختر أمر البيع المرتبط" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر أمر بيع --</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcInvoice" value="Invoice" @(Model.Source == "Invoice" ? "checked" : "") />
                         <label class="form-check-label" for="srcInvoice">من فاتورة (المسار القديم)</label>
                     </div>
-                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="form-select form-select-sm mt-2" id="invoiceSelect" aria-label="اختر فاتورة البيع المرتبطة" data-redirect="@Url.Action("Create", "DeliveryOrders")">
+                    <select asp-for="Delivery.SaleInvoiceId" asp-items="@Model.Invoices" class="ui-input ui-input-sm mt-2" id="invoiceSelect" aria-label="اختر فاتورة البيع المرتبطة" data-redirect="@Url.Action("Create", "DeliveryOrders")">
                         <option value="">-- اختر فاتورة بيع --</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="sourceChoice" id="srcFree" value="Free" @(Model.Source != "Order" && Model.Source != "Invoice" ? "checked" : "") />
                         <label class="form-check-label" for="srcFree">إدخال حر (بدون أمر أو فاتورة)</label>
                     </div>
-                    <select asp-for="Delivery.CustomerId" asp-items="@Model.Customers" class="form-select form-select-sm mt-2" id="customerSelect" aria-label="اختر العميل المستلم">
+                    <select asp-for="Delivery.CustomerId" asp-items="@Model.Customers" class="ui-input ui-input-sm mt-2" id="customerSelect" aria-label="اختر العميل المستلم">
                         <option value="">-- اختر العميل --</option>
                     </select>
                 </div>
@@ -72,68 +77,68 @@
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card">
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label asp-for="Delivery.DeliveryDate" class="form-label"></label>
-                    <input asp-for="Delivery.DeliveryDate" class="form-control" type="date" />
+            <div class="ui-grid ui-grid-2 md:ui-grid-4">
+                <div>
+                    <label asp-for="Delivery.DeliveryDate" class="ui-label"></label>
+                    <input asp-for="Delivery.DeliveryDate" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Delivery.Carrier" class="form-label"></label>
-                    <input asp-for="Delivery.Carrier" class="form-control" />
+                <div>
+                    <label asp-for="Delivery.Carrier" class="ui-label"></label>
+                    <input asp-for="Delivery.Carrier" class="ui-input" />
                 </div>
-                <div class="col-md-2">
-                    <label asp-for="Delivery.TrackingNumber" class="form-label"></label>
-                    <input asp-for="Delivery.TrackingNumber" class="form-control" />
+                <div>
+                    <label asp-for="Delivery.TrackingNumber" class="ui-label"></label>
+                    <input asp-for="Delivery.TrackingNumber" class="ui-input" />
                 </div>
-                <div class="col-12">
-                    <label asp-for="Delivery.Notes" class="form-label"></label>
-                    <textarea asp-for="Delivery.Notes" class="form-control" rows="2"></textarea>
+                <div class="col-span-2 md:col-span-4">
+                    <label asp-for="Delivery.Notes" class="ui-label"></label>
+                    <textarea asp-for="Delivery.Notes" class="ui-input" rows="2"></textarea>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف التسليم</div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="itemsTable">
-                    <caption class="visually-hidden">أصناف أذن التسليم مع الكمية والعدد المُسلَّم</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col" style="width:40%">الصنف</th>
-                            <th scope="col" style="width:20%">العدد المسلّم</th>
-                            <th scope="col" style="width:20%">الكمية المسلّمة</th>
-                            <th scope="col" style="width:20%" class="text-center">حذف</th>
-                        </tr>
-                    </thead>
-                    <tbody id="itemsBody">
-                        @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 0); idx++)
-                        {
-                            var line = Model.Items[idx];
-                            <tr>
-                                <td>
-                                    <input type="hidden" name="items[@idx].ItemId" value="@line.ItemId" />
-                                    <strong>@(Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}")</strong>
-                                </td>
-                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@line.Count" aria-label="العدد المسلّم" @(fieldError(idx, "Count")) /></td>
-                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" @(fieldError(idx, "Quantity")) /></td>
-                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
-                            </tr>
-                            @await Html.PartialAsync("_LineItemErrors", idx)
-                        }
-                    </tbody>
-                </table>
-            </div>
+    <div class="ui-section ui-card">
+        <div class="ui-card-head">
+            <span class="ui-card-title"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف التسليم</span>
         </div>
-        <div class="card-footer text-muted small">اختر صنفاً من قائمة الأصناف لإضافته. الكمية المعروضة هي المتبقية غير المسلّمة من المصدر.</div>
+        <div class="table-container" style="max-height:none;border:0;border-radius:0">
+            <table class="table mb-0" id="itemsTable">
+                <caption class="visually-hidden">أصناف أذن التسليم مع الكمية والعدد المُسلَّم</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" style="width:40%">الصنف</th>
+                        <th scope="col" style="width:20%">العدد المسلّم</th>
+                        <th scope="col" style="width:20%">الكمية المسلّمة</th>
+                        <th scope="col" style="width:20%" class="text-center">حذف</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                    @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 0); idx++)
+                    {
+                        var line = Model.Items[idx];
+                        <tr>
+                            <td>
+                                <input type="hidden" name="items[@idx].ItemId" value="@line.ItemId" />
+                                <strong>@(Model.ItemsData.FirstOrDefault(i => i.Id == line.ItemId)?.Name ?? $"صنف #{line.ItemId}")</strong>
+                            </td>
+                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="ui-input ui-input-sm count" value="@line.Count" aria-label="العدد المسلّم" @(fieldError(idx, "Count")) /></td>
+                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="ui-input ui-input-sm qty" value="@line.Quantity" aria-label="الكمية المسلّمة" @(fieldError(idx, "Quantity")) /></td>
+                            <td class="text-center"><button type="button" class="ui-btn ui-btn-sm btn-del remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                        </tr>
+                        @await Html.PartialAsync("_LineItemErrors", idx)
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="ui-card-foot text-muted small">اختر صنفاً من قائمة الأصناف لإضافته. الكمية المعروضة هي المتبقية غير المسلّمة من المصدر.</div>
         <div class="card-body border-top">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-8">
-                    <label for="itemPicker" class="form-label">إضافة صنف</label>
-                    <select id="itemPicker" class="form-select">
+            <div class="ui-grid ui-grid-2 md:ui-grid-3 items-end">
+                <div class="md:col-span-2">
+                    <label for="itemPicker" class="ui-label">إضافة صنف</label>
+                    <select id="itemPicker" class="ui-input">
                         <option value="">-- اختر الصنف --</option>
                         @foreach (var it in Model.ItemsData)
                         {
@@ -141,16 +146,16 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <button type="button" id="addItemBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
+                <div>
+                    <button type="button" id="addItemBtn" class="ui-btn ui-btn-quiet w-full"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ أذن التسليم</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    <div class="ui-form-actions">
+        <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ أذن التسليم</button>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet">إلغاء</a>
     </div>
 </form>
 

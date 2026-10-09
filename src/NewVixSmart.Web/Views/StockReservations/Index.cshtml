@@ -4,41 +4,70 @@
 @using NewVixSmart.Web.Extensions
 @{ ViewData["Title"] = "حجوزات المخزون"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-bookmark-check text-primary" aria-hidden="true"></i> حجوزات المخزون</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-bookmark-check" aria-hidden="true"></i> حجوزات المخزون</h2>
+    </div>
     @if (await Perm.HasAsync("StockReservations.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> حجز جديد</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> حجز جديد</a>
+        </div>
     }
 </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="status" aria-live="polite">
+        <i class="bi bi-check-circle" aria-hidden="true"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+    </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+    </div>
 }
 
-<ul class="nav nav-pills mb-3" aria-label="فلترة حجوزات المخزون">
-    <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
+<nav class="flex flex-wrap items-center gap-2 mb-4" aria-label="فلترة حجوزات المخزون">
+    <a class="ui-btn ui-btn-sm @(ViewBag.StatusFilter == null ? "ui-btn-pri" : "ui-btn-quiet")" asp-action="Index">الكل</a>
     @foreach (var st in Enum.GetValues<StockReservationStatus>())
     {
-        <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter as StockReservationStatus? == st ? "active" : "")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a></li>
+        <a class="ui-btn ui-btn-sm @(ViewBag.StatusFilter as StockReservationStatus? == st ? "ui-btn-pri" : "ui-btn-quiet")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a>
     }
-</ul>
+</nav>
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info">لا توجد حجوزات بعد.</div>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد حجوزات بعد</strong>
+        <p class="text-muted">ابدأ بإنشاء حجز مخزون جديد ليظهر هنا مباشرة.</p>
+    </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="table-container ui-rise">
+        <table class="table">
             <caption class="visually-hidden">قائمة حجوزات المخزون مع الحالة والكميات المحجوزة</caption>
-            <thead><tr><th scope="col">رقم الحجز</th><th scope="col">أمر البيع</th><th scope="col">العميل</th><th scope="col">عدد الأصناف</th><th scope="col">الكمية</th><th scope="col">العدد</th><th scope="col">الحالة</th><th scope="col">أُنشئ</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <thead>
+                <tr>
+                    <th scope="col">رقم الحجز</th>
+                    <th scope="col">أمر البيع</th>
+                    <th scope="col">العميل</th>
+                    <th scope="col">عدد الأصناف</th>
+                    <th scope="col">الكمية</th>
+                    <th scope="col">العدد</th>
+                    <th scope="col">الحالة</th>
+                    <th scope="col">أُنشئ</th>
+                    <th scope="col" class="text-center">إجراءات</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach (var r in Model)
                 {
@@ -55,13 +84,13 @@ else
                             }
                         </td>
                         <td>@(r.Customer?.Name ?? "—")</td>
-                        <td>@r.Items.Count</td>
-                        <td>@r.TotalQuantity.ToString("N2")</td>
-                        <td>@r.TotalCount.ToString("N2")</td>
-                        <td><span class="badge @(r.Status switch { StockReservationStatus.Released => "bg-secondary", StockReservationStatus.Consumed => "bg-success", _ => "bg-warning text-dark" })">@r.Status.GetDisplayName()</span></td>
-                        <td>@r.CreatedAt.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@r.Items.Count</td>
+                        <td class="num">@r.TotalQuantity.ToString("N2")</td>
+                        <td class="num">@r.TotalCount.ToString("N2")</td>
+                        <td><span class="ui-badge @(r.Status switch { StockReservationStatus.Released => "ui-badge-mute", StockReservationStatus.Consumed => "ui-badge-ok", _ => "ui-badge-warn" })">@r.Status.GetDisplayName()</span></td>
+                        <td class="num">@r.CreatedAt.ToString("dd/MM/yyyy")</td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@r.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض الحجز @r.ReservationNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a asp-action="Details" asp-route-id="@r.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض الحجز @r.ReservationNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                         </td>
                     </tr>
                 }

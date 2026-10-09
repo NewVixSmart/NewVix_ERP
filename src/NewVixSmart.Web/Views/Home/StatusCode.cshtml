@@ -11,15 +11,19 @@
     };
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card text-center">
-            <div class="card-body py-5">
-                <i class="bi @icon text-warning" style="font-size:3rem" aria-hidden="true"></i>
-                <p class="display-6 mb-1 mt-3">@code</p>
+<div class="ui-grid ui-grid-2 ui-rise">
+    <div style="grid-column: 1 / -1; max-width: 560px; margin: 0 auto;">
+        <div class="ui-card text-center">
+            <div class="ui-card-body py-8">
+                <div class="empty-icon mx-auto mb-4" aria-hidden="true">
+                    <i class="bi @icon text-warning" aria-hidden="true"></i>
+                </div>
+                <p class="display-6 mb-1 num">@code</p>
                 <h2 class="h4">@heading</h2>
                 <p class="text-muted mb-4">@hint</p>
-                <a asp-controller="Home" asp-action="Index" class="btn btn-primary">العودة إلى لوحة القيادة</a>
+                <div class="ui-pagehead-actions justify-center">
+                    <a asp-controller="Home" asp-action="Index" class="ui-btn ui-btn-pri">العودة إلى لوحة القيادة</a>
+                </div>
             </div>
         </div>
     </div>

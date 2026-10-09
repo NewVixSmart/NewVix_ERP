@@ -7,15 +7,18 @@
     var availability = ViewBag.Availability as Dictionary<int, NewVixSmart.Web.Services.ItemAvailability>;
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-bookmark-check text-primary" aria-hidden="true"></i> حجز <code>@Model.ReservationNumber</code></h2>
-    <div class="d-flex gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">حجوزات المخزون</span>
+        <h2><i class="bi bi-bookmark-check" aria-hidden="true"></i> حجز <code>@Model.ReservationNumber</code></h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet">رجوع</a>
         @if (Model.Status == StockReservationStatus.Active && await Perm.HasAsync("StockReservations.Release"))
         {
-            <form method="post" asp-action="Release" asp-route-id="@Model.PublicId" class="d-inline"
+            <form method="post" asp-action="Release" asp-route-id="@Model.PublicId"
                   onsubmit="return confirm('هل تريد تحرير هذا الحجز؟');">
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> تحرير الحجز</button>
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> تحرير الحجز</button>
             </form>
         }
     </div>
@@ -23,52 +26,65 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="status" aria-live="polite">
+        <i class="bi bi-check-circle" aria-hidden="true"></i>
+        <span>@TempData["Success"]</span>
+    </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <span>@TempData["Error"]</span>
+    </div>
 }
 
-<div class="card mb-3">
-    <div class="card-header">بيانات الحجز</div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">الحالة</dt>
-            <dd class="col-sm-9"><span class="badge @(Model.Status switch { StockReservationStatus.Released => "bg-secondary", StockReservationStatus.Consumed => "bg-success", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span></dd>
-
-            <dt class="col-sm-3">أمر البيع</dt>
-            <dd class="col-sm-9">
-                @if (Model.SalesOrder != null)
-                {
-                    <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
-                }
-                else
-                {
-                    <span>حجز مستقل</span>
-                }
-            </dd>
-
-            <dt class="col-sm-3">العميل</dt>
-            <dd class="col-sm-9">@(Model.Customer?.Name ?? "—")</dd>
-
-            <dt class="col-sm-3">السبب</dt>
-            <dd class="col-sm-9">@(Model.Reason ?? "—")</dd>
-
-            <dt class="col-sm-3">ملاحظات</dt>
-            <dd class="col-sm-9">@(Model.Notes ?? "—")</dd>
-
-            <dt class="col-sm-3">أُنشئ</dt>
-            <dd class="col-sm-9">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") بواسطة @(Model.CreatedBy ?? "—")</dd>
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">بيانات الحجز</div>
+    <div class="ui-card-body">
+        <dl class="ui-grid ui-grid-2 mb-0">
+            <div>
+                <dt class="ui-label mb-1">الحالة</dt>
+                <dd class="mb-0"><span class="ui-badge @(Model.Status switch { StockReservationStatus.Released => "ui-badge-mute", StockReservationStatus.Consumed => "ui-badge-ok", _ => "ui-badge-warn" })">@Model.Status.GetDisplayName()</span></dd>
+            </div>
+            <div>
+                <dt class="ui-label mb-1">أمر البيع</dt>
+                <dd class="mb-0">
+                    @if (Model.SalesOrder != null)
+                    {
+                        <a asp-controller="SalesOrders" asp-action="Details" asp-route-id="@Model.SalesOrder.PublicId">@Model.SalesOrder.OrderNumber</a>
+                    }
+                    else
+                    {
+                        <span>حجز مستقل</span>
+                    }
+                </dd>
+            </div>
+            <div>
+                <dt class="ui-label mb-1">العميل</dt>
+                <dd class="mb-0">@(Model.Customer?.Name ?? "—")</dd>
+            </div>
+            <div>
+                <dt class="ui-label mb-1">السبب</dt>
+                <dd class="mb-0">@(Model.Reason ?? "—")</dd>
+            </div>
+            <div>
+                <dt class="ui-label mb-1">ملاحظات</dt>
+                <dd class="mb-0">@(Model.Notes ?? "—")</dd>
+            </div>
+            <div>
+                <dt class="ui-label mb-1">أُنشئ</dt>
+                <dd class="mb-0">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") بواسطة @(Model.CreatedBy ?? "—")</dd>
+            </div>
         </dl>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">أصناف الحجز</div>
-    <div class="card-body">
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">أصناف الحجز</div>
+    <div class="ui-card-body">
         <div class="table-container">
-            <table class="table table-hover mb-0">
+            <table class="table">
                 <caption class="visually-hidden">أصناف الحجز والكميات المحجوزة والمستهلكة والمتبقية</caption>
                 <thead>
                     <tr>
@@ -87,11 +103,11 @@
                         var avail = availability != null && availability.TryGetValue(line.ItemId, out var a) ? a : (NewVixSmart.Web.Services.ItemAvailability?)null;
                         <tr>
                             <th scope="row">@line.Item?.Name</th>
-                            <td>@line.Quantity.ToString("N2")</td>
-                            <td>@line.Count.ToString("N2")</td>
-                            <td>@line.ConsumedQuantity.ToString("N2") / @line.ConsumedCount.ToString("N2")</td>
-                            <td>@line.RemainingQuantity.ToString("N2") / @line.RemainingCount.ToString("N2")</td>
-                            <td>
+                            <td class="num">@line.Quantity.ToString("N2")</td>
+                            <td class="num">@line.Count.ToString("N2")</td>
+                            <td class="num">@line.ConsumedQuantity.ToString("N2") / @line.ConsumedCount.ToString("N2")</td>
+                            <td class="num">@line.RemainingQuantity.ToString("N2") / @line.RemainingCount.ToString("N2")</td>
+                            <td class="num">
                                 @if (avail.HasValue)
                                 {
                                     <span>@avail.Value.CurrentQuantity.ToString("N2") / @avail.Value.CurrentCount.ToString("N2")</span>
@@ -101,7 +117,7 @@
                                     <span>—</span>
                                 }
                             </td>
-                            <td>
+                            <td class="num">
                                 @if (avail.HasValue)
                                 {
                                     <span>@avail.Value.AvailableQuantity.ToString("N2") / @avail.Value.AvailableCount.ToString("N2")</span>

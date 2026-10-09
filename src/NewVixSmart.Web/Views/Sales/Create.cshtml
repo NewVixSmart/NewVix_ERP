@@ -15,15 +15,20 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-cart-check text-primary" aria-hidden="true"></i> فاتورة بيع جديدة</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2><i class="bi bi-cart-check" aria-hidden="true"></i> فاتورة بيع جديدة</h2>
+    </div>
+</div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
-<div class="alert alert-warning" role="note">
+<div class="ui-section ui-alert ui-alert-warn ui-rise" role="note">
     <div class="fw-semibold"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> هذا المسار يُرحّل الإيراد عند التسليم مباشرة</div>
     <p class="mb-2">
         الفاتورة المباشرة تُسجّل الإيراد والمخزون معاً لحظة الخصم، ولا تستخدم أذونات التسليم ولا الحجز المسبق.
@@ -40,105 +45,135 @@
 </div>
 
 <form asp-action="Create" id="invoiceForm" data-loading-submit data-loading-text="جاري الحفظ...">
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label asp-for="Invoice.InvoiceNumber" class="form-label"></label>
-                    <input asp-for="Invoice.InvoiceNumber" class="form-control" readonly />
+            <div class="ui-grid ui-grid-4 gap-3">
+                <div>
+                    <label asp-for="Invoice.InvoiceNumber" class="ui-label"></label>
+                    <input asp-for="Invoice.InvoiceNumber" class="ui-input" readonly />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Invoice.CustomerId" class="form-label"></label>
-                    <select asp-for="Invoice.CustomerId" asp-items="@Model.Customers" class="form-select">
+                <div>
+                    <label asp-for="Invoice.CustomerId" class="ui-label"></label>
+                    <select asp-for="Invoice.CustomerId" asp-items="@Model.Customers" class="ui-select">
                         <option value="">-- اختر العميل --</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Invoice.InvoiceDate" class="form-label"></label>
-                    <input asp-for="Invoice.InvoiceDate" class="form-control" type="date" />
+                <div>
+                    <label asp-for="Invoice.InvoiceDate" class="ui-label"></label>
+                    <input asp-for="Invoice.InvoiceDate" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label d-block">&nbsp;</label>
-                    <div class="alert alert-info py-1 px-2 mb-0 small">فاتورة غير مسدّدة؛ أذن التسليم هو ما يُرحّل المخزون والأستاذ</div>
+                <div class="flex flex-col justify-end">
+                    <div class="ui-alert ui-alert-info py-2 px-2 mb-0 small">فاتورة غير مسدّدة؛ أذن التسليم هو ما يُرحّل المخزون والأستاذ</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف الفاتورة</div>
         @if (!ViewData.ModelState.IsValid && !Model.Items.Any())
         {
             <div class="card-body pb-0">@await Html.PartialAsync("_NoLineItemsNotice")</div>
         }
         <div class="card-body p-0">
-            <table class="table table-hover mb-0" id="itemsTable">
-                <caption class="visually-hidden">أصناف فاتورة البيع المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
-                <thead>
-                    <tr>
-                        <th scope="col" style="width:25%">الصنف</th>
-                        <th scope="col" style="width:15%">العدد</th>
-                        <th scope="col" style="width:15%">الكمية</th>
-                        <th scope="col" style="width:15%">سعر الوحدة</th>
-                        <th scope="col" style="width:20%">الإجمالي</th>
-                        <th scope="col" style="width:10%" class="text-center">حذف</th>
-                    </tr>
-                </thead>
-                <tbody id="itemsBody">
-                    @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 1); idx++)
-                    {
-                        var line = idx < Model.Items.Count ? Model.Items[idx] : null;
+            <div class="table-container">
+                <table class="table" id="itemsTable">
+                    <caption class="visually-hidden">أصناف فاتورة البيع المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
+                    <thead>
                         <tr>
-                            <td>
-                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
-                                    <option value="">اختر صنف</option>
-                                    @foreach (var item in Model.ItemsData)
-                                    { <option value="@item.Id" data-price="@item.SalePrice" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
-                                </select>
-                                <small class="stock-note" hidden></small>
-                            </td>
-                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" @(fieldError(idx, "Count")) /></td>
-                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" @(fieldError(idx, "Quantity")) /></td>
-                            <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
-                            <td><span class="total fw-bold">0.00</span></td>
-                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                            <th scope="col" style="width:25%">الصنف</th>
+                            <th scope="col" style="width:15%">العدد</th>
+                            <th scope="col" style="width:15%">الكمية</th>
+                            <th scope="col" style="width:15%">سعر الوحدة</th>
+                            <th scope="col" style="width:20%">الإجمالي</th>
+                            <th scope="col" style="width:10%" class="text-center">حذف</th>
                         </tr>
-                        @await Html.PartialAsync("_LineItemErrors", idx)
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody id="itemsBody">
+                        @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 1); idx++)
+                        {
+                            var line = idx < Model.Items.Count ? Model.Items[idx] : null;
+                            <tr>
+                                <td>
+                                    <select name="items[@idx].ItemId" class="ui-select ui-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
+                                        <option value="">اختر صنف</option>
+                                        @foreach (var item in Model.ItemsData)
+                                        { <option value="@item.Id" data-price="@item.SalePrice" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
+                                    </select>
+                                    <small class="stock-note" hidden></small>
+                                </td>
+                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="ui-input ui-input-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" @(fieldError(idx, "Count")) /></td>
+                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="ui-input ui-input-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" @(fieldError(idx, "Quantity")) /></td>
+                                <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="ui-input ui-input-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
+                                <td><span class="total fw-bold">0.00</span></td>
+                                <td class="text-center"><button type="button" class="ui-btn ui-btn-sm ui-btn-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                            </tr>
+                            @await Html.PartialAsync("_LineItemErrors", idx)
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-3"><label class="form-label" for="totalAmount">المبلغ الإجمالي</label><input asp-for="Invoice.TotalAmount" class="form-control" id="totalAmount" readonly />
-            <span asp-validation-for="Invoice.TotalAmount" class="text-danger small"></span></div>
-        <div class="col-md-3"><label class="form-label" for="paymentTerms">شروط الدفع</label>
-            <select asp-for="Invoice.PaymentTerms" class="form-select" id="paymentTerms">
-                <option value="0" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام (بدون تاريخ استحقاق)</option>
-                <option value="1" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net7)">7 أيام</option>
-                <option value="2" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net15)">15 يوم</option>
-                <option value="3" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net30)">30 يوم</option>
-                <option value="4" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net60)">60 يوم</option>
-                <option value="5" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OpenTerm)">آجل مفتوح (بدون تاريخ استحقاق)</option>
-            </select></div>
-        <div class="col-md-3"><label class="form-label" for="dueDate">تاريخ الاستحقاق</label><input asp-for="Invoice.DueDate" class="form-control" type="date" id="dueDate" /></div>
-        <div class="col-md-3"><label class="form-label" for="netAmount">المبلغ الصافي</label><input asp-for="Invoice.NetAmount" class="form-control fw-bold" id="netAmount" readonly /></div>
-    </div>
-    <div class="row g-3 mt-1">
-        <div class="col-md-3"><label class="form-label" for="discount">الخصم</label><input asp-for="Invoice.Discount" class="form-control" type="number" step="0.01" id="discount" value="@Model.Invoice.Discount" /></div>
-        <div class="col-md-3"><label class="form-label" for="discount2">خصم إضافي 2</label><input asp-for="Invoice.Discount2" class="form-control" type="number" step="0.01" id="discount2" /></div>
-        <div class="col-md-3"><label class="form-label" for="discount3">خصم إضافي 3</label><input asp-for="Invoice.Discount3" class="form-control" type="number" step="0.01" id="discount3" /></div>
-        <div class="col-md-3"><label class="form-label" for="tax">الضريبة</label><input asp-for="Invoice.Tax" class="form-control" type="number" step="0.01" id="tax" value="@Model.Invoice.Tax" /></div>
-    </div>
-    <div class="col-12 mt-2"><label asp-for="Invoice.Notes" class="form-label"></label><textarea asp-for="Invoice.Notes" class="form-control" rows="2"></textarea></div>
-
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الفاتورة</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    <div class="ui-section ui-card ui-rise">
+        <div class="card-body">
+            <div class="ui-grid ui-grid-4 gap-3">
+                <div>
+                    <label class="ui-label" for="totalAmount">المبلغ الإجمالي</label>
+                    <input asp-for="Invoice.TotalAmount" class="ui-input" id="totalAmount" readonly />
+                    <span asp-validation-for="Invoice.TotalAmount" class="text-danger small"></span>
+                </div>
+                <div>
+                    <label class="ui-label" for="paymentTerms">شروط الدفع</label>
+                    <select asp-for="Invoice.PaymentTerms" class="ui-select" id="paymentTerms">
+                        <option value="0" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام (بدون تاريخ استحقاق)</option>
+                        <option value="1" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net7)">7 أيام</option>
+                        <option value="2" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net15)">15 يوم</option>
+                        <option value="3" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net30)">30 يوم</option>
+                        <option value="4" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.Net60)">60 يوم</option>
+                        <option value="5" selected="@(Model.Invoice.PaymentTerms == InvoicePaymentTerms.OpenTerm)">آجل مفتوح (بدون تاريخ استحقاق)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="ui-label" for="dueDate">تاريخ الاستحقاق</label>
+                    <input asp-for="Invoice.DueDate" class="ui-input" type="date" id="dueDate" />
+                </div>
+                <div>
+                    <label class="ui-label" for="netAmount">المبلغ الصافي</label>
+                    <input asp-for="Invoice.NetAmount" class="ui-input fw-bold" id="netAmount" readonly />
+                </div>
+            </div>
+            <div class="ui-grid ui-grid-4 gap-3 mt-3">
+                <div>
+                    <label class="ui-label" for="discount">الخصم</label>
+                    <input asp-for="Invoice.Discount" class="ui-input" type="number" step="0.01" id="discount" value="@Model.Invoice.Discount" />
+                </div>
+                <div>
+                    <label class="ui-label" for="discount2">خصم إضافي 2</label>
+                    <input asp-for="Invoice.Discount2" class="ui-input" type="number" step="0.01" id="discount2" />
+                </div>
+                <div>
+                    <label class="ui-label" for="discount3">خصم إضافي 3</label>
+                    <input asp-for="Invoice.Discount3" class="ui-input" type="number" step="0.01" id="discount3" />
+                </div>
+                <div>
+                    <label class="ui-label" for="tax">الضريبة</label>
+                    <input asp-for="Invoice.Tax" class="ui-input" type="number" step="0.01" id="tax" value="@Model.Invoice.Tax" />
+                </div>
+            </div>
+            <div class="mt-3">
+                <label asp-for="Invoice.Notes" class="ui-label"></label>
+                <textarea asp-for="Invoice.Notes" class="ui-input" rows="2"></textarea>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الفاتورة</button>
+                <a asp-action="Index" class="ui-btn ui-btn-ghost">إلغاء</a>
+            </div>
+        </div>
     </div>
 </form>
 

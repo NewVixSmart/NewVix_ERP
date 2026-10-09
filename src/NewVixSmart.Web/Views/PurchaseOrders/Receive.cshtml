@@ -2,19 +2,24 @@
 @using NewVixSmart.Web.Models.Purchases
 @{ ViewData["Title"] = $"استلام: {Model.OrderNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-box-arrow-in-down text-primary" aria-hidden="true"></i> استلام: @Model.OrderNumber</h2>
-    <a asp-action="Details" asp-route-id="@Model.PublicId" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-box-arrow-in-down text-primary" aria-hidden="true"></i> استلام: @Model.OrderNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Details" asp-route-id="@Model.PublicId" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+    </div>
 </div>
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]</div>
 }
 
 <p class="text-muted">أدخل الكمية/العدد المستلم لكل صنف (لا يتجاوز المطلوب).</p>
 
-<div class="table-container">
+<div class="table-container ui-rise">
     <table class="table mb-0">
         <caption class="visually-hidden">بنود الاستلام: الصنف، العدد المطلوب، الكمية المطلوبة، المستلم عدد، المستلم كمية</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المطلوب</th><th scope="col">الكمية المطلوبة</th><th scope="col">المستلم عدد</th><th scope="col">المستلم كمية</th><th scope="col" class="text-center">استلام</th></tr></thead>
@@ -32,18 +37,18 @@
                         <td>@item.ReceivedCount</td>
                         <td>@item.ReceivedQty</td>
                         <td class="text-center">
-                            <form asp-action="Receive" asp-route-id="@Model.Id" method="post" class="row g-1 align-items-center">
+                            <form asp-action="Receive" asp-route-id="@Model.Id" method="post" class="flex flex-wrap items-end justify-center gap-2">
                                 <input type="hidden" name="orderItemId" value="@item.Id" />
-                                <div class="col">
-                                    <label class="small d-block" for="receiveCount-@item.Id">عدد</label>
-                                    <input type="number" name="receiveCount" id="receiveCount-@item.Id" step="0.0001" min="0" max="@remainingCount" class="form-control form-control-sm" value="0" />
+                                <div class="min-w-24">
+                                    <label class="ui-label" for="receiveCount-@item.Id">عدد</label>
+                                    <input type="number" name="receiveCount" id="receiveCount-@item.Id" step="0.0001" min="0" max="@remainingCount" class="ui-input ui-input-sm" value="0" />
                                 </div>
-                                <div class="col">
-                                    <label class="small d-block" for="receiveQty-@item.Id">كمية</label>
-                                    <input type="number" name="receiveQty" id="receiveQty-@item.Id" step="0.0001" min="0" max="@remainingQty" class="form-control form-control-sm" value="0" />
+                                <div class="min-w-24">
+                                    <label class="ui-label" for="receiveQty-@item.Id">كمية</label>
+                                    <input type="number" name="receiveQty" id="receiveQty-@item.Id" step="0.0001" min="0" max="@remainingQty" class="ui-input ui-input-sm" value="0" />
                                 </div>
-                                <div class="col-auto">
-                                    <button type="submit" class="btn btn-sm btn-primary mt-2" aria-label="استلام الصنف @item.Item.Name (@(item.Item.Code ?? "—"))"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i></button>
+                                <div>
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-pri" aria-label="استلام الصنف @item.Item.Name (@(item.Item.Code ?? "—"))"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i></button>
                                 </div>
                             </form>
                         </td>
@@ -57,7 +62,7 @@
                         <td>@item.Quantity</td>
                         <td>@item.ReceivedCount</td>
                         <td>@item.ReceivedQty</td>
-                        <td class="text-center"><span class="badge bg-success">مستلم</span></td>
+                        <td class="text-center"><span class="ui-badge ui-badge-ok">مستلم</span></td>
                     </tr>
                 }
             }

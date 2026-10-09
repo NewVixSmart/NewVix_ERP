@@ -1,58 +1,65 @@
 @model NewVixSmart.Web.ViewModels.Stock.StockIndexViewModel
 @{ ViewData["Title"] = "حركة المخزون"; }
 
-<div class="page-header"><h2><i class="bi bi-boxes text-primary" aria-hidden="true"></i> حركة المخزون</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-boxes" aria-hidden="true"></i> حركة المخزون</h2>
+    </div>
+</div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label" for="itemFilter">الصنف</label>
-            <select name="itemId" id="itemFilter" class="form-select">
-                <option value="">الكل</option>
-                @foreach (var item in Model.Items)
-                { <option value="@item.Id" selected="@(Model.ItemId?.ToString() == item.Id.ToString())">@item.Name</option> }
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="typeFilter">النوع</label>
-            <select name="type" id="typeFilter" class="form-select">
-                <option value="">الكل</option>
-                <option value="1" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.In)">وارد (دخول)</option>
-                <option value="2" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.Out)">صادر (خروج)</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="visually-hidden" for="stockSearch">بحث في الحركة</label>
-            <input type="search" name="search" id="stockSearch" value="@ViewBag.Search" class="form-control" placeholder="رقم المستند أو الصنف">
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> بحث</button></div>
-    </form>
-</div></div>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-4 items-end">
+            <div>
+                <label class="form-label" for="itemFilter">الصنف</label>
+                <select name="itemId" id="itemFilter" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach (var item in Model.Items)
+                    { <option value="@item.Id" selected="@(Model.ItemId?.ToString() == item.Id.ToString())">@item.Name</option> }
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="typeFilter">النوع</label>
+                <select name="type" id="typeFilter" class="form-select">
+                    <option value="">الكل</option>
+                    <option value="1" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.In)">وارد (دخول)</option>
+                    <option value="2" selected="@(Model.Type == NewVixSmart.Web.Models.Stock.MovementType.Out)">صادر (خروج)</option>
+                </select>
+            </div>
+            <div>
+                <label class="visually-hidden" for="stockSearch">بحث في الحركة</label>
+                <input type="search" name="search" id="stockSearch" value="@ViewBag.Search" class="form-control" placeholder="رقم المستند أو الصنف">
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> بحث</button></div>
+        </form>
+    </div>
+</div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">حركات المخزون: العدد والكمية المتغيرة والرصيد قبل وبعد كل حركة</caption>
         <thead><tr><th scope="col">التاريخ</th><th scope="col">الصنف</th><th scope="col">النوع</th><th scope="col">العدد</th><th scope="col">الكمية</th><th scope="col">الرصيد قبل (عدد/كمية)</th><th scope="col">الرصيد بعد (عدد/كمية)</th><th scope="col">المستند</th></tr></thead>
         <tbody>
             @foreach (var m in Model.Movements)
             {
                 <tr>
-                    <td>@m.MovementDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="num">@m.MovementDate.ToString("dd/MM/yyyy HH:mm")</td>
                     <td><strong>@m.Item.Name</strong></td>
                     <td>
                         @if (m.Type == NewVixSmart.Web.Models.Stock.MovementType.In)
-                        { <span class="badge bg-success">وارد</span> }
+                        { <span class="ui-badge ui-badge-ok">وارد</span> }
                         else
-                        { <span class="badge bg-danger">صادر</span> }
+                        { <span class="ui-badge ui-badge-bad">صادر</span> }
                     </td>
-                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
+                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold num">
                         <span class="visually-hidden">@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Count.ToString("N2")
                     </td>
-                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold">
+                    <td class="@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "text-success" : "text-danger") fw-bold num">
                         <span class="visually-hidden">@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "وارد " : "صادر ")</span>@(m.Type == NewVixSmart.Web.Models.Stock.MovementType.In ? "+" : "-")@m.Quantity.ToString("N2")
                     </td>
-                    <td>@m.CountBefore.ToString("N2") / @m.BalanceBefore.ToString("N2")</td>
-                    <td>@m.CountAfter.ToString("N2") / @m.BalanceAfter.ToString("N2")</td>
+                    <td class="num">@m.CountBefore.ToString("N2") / @m.BalanceBefore.ToString("N2")</td>
+                    <td class="num">@m.CountAfter.ToString("N2") / @m.BalanceAfter.ToString("N2")</td>
                     <td><code>@(m.DocumentNumber ?? "—")</code></td>
                 </tr>
             }
@@ -64,8 +71,8 @@
 
 @if (!Model.Movements.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد حركات مخزون</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد حركات مخزون</strong>
     </div>
 }

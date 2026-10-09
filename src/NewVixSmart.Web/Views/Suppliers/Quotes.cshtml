@@ -1,22 +1,29 @@
 @model IEnumerable<NewVixSmart.Web.Models.Purchases.SupplierQuote>
 @{ ViewData["Title"] = "أسعار الموردين"; }
 
-<div class="page-header"><h2><i class="bi bi-cash-stack text-primary" aria-hidden="true"></i> أسعار الموردين (عروض الأسعار)</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">الموردون</span>
+        <h2><i class="bi bi-cash-stack" aria-hidden="true"></i> أسعار الموردين (عروض الأسعار)</h2>
+    </div>
+</div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-6">
-            <label class="form-label" for="supplierId">المورد</label>
-            <select id="supplierId" name="supplierId" asp-items="@ViewBag.Suppliers" class="form-select">
-                <option value="">— الكل —</option>
-            </select>
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> بحث</button></div>
-    </form>
-</div></div>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-3 items-end">
+            <div>
+                <label class="form-label" for="supplierId">المورد</label>
+                <select id="supplierId" name="supplierId" asp-items="@ViewBag.Suppliers" class="form-select">
+                    <option value="">— الكل —</option>
+                </select>
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> بحث</button></div>
+        </form>
+    </div>
+</div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">أسعار الموردين: المورد، الصنف، سعر الوحدة، التاريخ، ملاحظات</caption>
         <thead><tr><th scope="col">المورد</th><th scope="col">الصنف</th><th scope="col">سعر الوحدة</th><th scope="col">التاريخ</th><th scope="col">ملاحظات</th></tr></thead>
         <tbody>
@@ -25,7 +32,7 @@
                 <tr>
                     <td>@(q.Supplier?.Name ?? "—")</td>
                     <td>@(q.Item?.Name ?? "—")</td>
-                    <td>@Money.Format(q.UnitPrice)</td>
+                    <td class="num">@Money.Format(q.UnitPrice)</td>
                     <td>@q.EffectiveDate.ToString("dd/MM/yyyy")</td>
                     <td>@(q.Notes ?? "—")</td>
                 </tr>

@@ -280,10 +280,13 @@ async function createDeliveryIssue(page, deliveryId) {
  */
 async function readNetAmount(page) {
   const text = await page.evaluate(() => {
-    for (const card of document.querySelectorAll('.card')) {
+    // The design rewrite renamed the card classes and the amount element, so both the legacy
+    // hooks (.card + h4) and the new ones (.ui-card + .ui-stat-value) are accepted. What matters
+    // is the reading a person makes: the card whose first line names the net figure.
+    for (const card of document.querySelectorAll('.card, .ui-card')) {
       const body = card.querySelector('.card-body');
       const label = body ? body.firstElementChild : null;
-      const amount = card.querySelector('h4');
+      const amount = card.querySelector('h4, .ui-stat-value');
       if (label && amount && label.innerText.includes('الصافي')) return amount.innerText;
     }
     return null;

@@ -6,7 +6,7 @@
     var svgHtml = Code128Helper.ToSvgPattern(bars, 50, 2)
         .Replace("<svg", "<svg role=\"img\" aria-label=\"رمز الباركود: " + System.Net.WebUtility.HtmlEncode(barcode) + "\"", StringComparison.OrdinalIgnoreCase);
 }
-<div class="text-center" style="display:inline-block;">
+<div class="text-center inline-block">
     @Html.Raw(svgHtml)
-    <div style="font-family: monospace; font-size: 11px; margin-top: 2px;">@barcode</div>
+    <div class="num" style="font-family: monospace; font-size: 11px; margin-top: 2px;">@barcode</div>
 </div>

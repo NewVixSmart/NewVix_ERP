@@ -2,22 +2,27 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "طلبات عرض سعر"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-envelope-open text-primary" aria-hidden="true"></i> طلبات عرض سعر</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-envelope-open text-primary" aria-hidden="true"></i> طلبات عرض سعر</h2>
+    </div>
     @if (await Perm.HasAsync("PurchaseRequests.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> تسجيل عرض سعر</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> تسجيل عرض سعر</a>
+        </div>
     }
 </div>
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info">لا توجد عروض أسعار مسجلة بعد.</div>
+    <div class="ui-section empty-state ui-rise">لا توجد عروض أسعار مسجلة بعد.</div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="ui-section table-container ui-rise">
+        <table class="table mb-0">
             <caption class="visually-hidden">طلبات عرض السعر المسجلة: المورد، الصنف، سعر الوحدة، التاريخ، ملاحظات</caption>
             <thead><tr><th scope="col">المورد</th><th scope="col">الصنف</th><th scope="col">سعر الوحدة</th><th scope="col">التاريخ</th><th scope="col">ملاحظات</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
             <tbody>
@@ -26,19 +31,19 @@ else
                     <tr>
                         <td>@q.Supplier.Name</td>
                         <td>@q.Item.Name</td>
-                        <td class="fw-bold">@Money.Format(q.UnitPrice)</td>
+                        <td class="num fw-bold">@Money.Format(q.UnitPrice)</td>
                         <td>@q.EffectiveDate.ToString("dd/MM/yyyy")</td>
                         <td>@(q.Notes ?? "—")</td>
                         <td class="text-center">
                             @if (await Perm.HasAsync("PurchaseOrders.Create"))
                             {
-                                <a asp-controller="PurchaseOrders" asp-action="Create" asp-route-fromQuoteId="@q.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تحويل إلى أمر شراء</a>
+                                <a asp-controller="PurchaseOrders" asp-action="Create" asp-route-fromQuoteId="@q.Id" class="ui-btn ui-btn-sm ui-btn-outline"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تحويل إلى أمر شراء</a>
                             }
                             @if (await Perm.HasAsync("PurchaseRequests.Delete"))
                             {
-                                <form asp-action="Remove" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm-delete>
+                                <form asp-action="Remove" asp-route-id="@q.Id" method="post" class="inline-flex" data-confirm-delete>
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض سعر الصنف @q.Item.Name من المورد @q.Supplier.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف عرض سعر الصنف @q.Item.Name من المورد @q.Supplier.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                                 </form>
                             }
                         </td>

@@ -2,16 +2,21 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "فواتير الشراء"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-cart-dash text-primary" aria-hidden="true"></i> فواتير الشراء</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-cart-dash text-primary" aria-hidden="true"></i> فواتير الشراء</h2>
+    </div>
     @if (await Perm.HasAsync("Purchases.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> فاتورة جديدة</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> فاتورة جديدة</a>
+        </div>
     }
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table mb-0">
         <caption class="visually-hidden">قائمة فواتير الشراء: رقم الفاتورة، رقم طلب الشراء، المورد، التاريخ، الإجمالي، الخصم، الصافي، الاستحقاق، الحالة</caption>
         <thead><tr><th scope="col">رقم الفاتورة</th><th scope="col">رقم طلب الشراء</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">الإجمالي</th><th scope="col">الخصم</th><th scope="col">الصافي</th><th scope="col">الاستحقاق</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
         <tbody>
@@ -22,13 +27,13 @@
                     <td>@(inv.OrderReference ?? "—")</td>
                     <td>@(inv.Supplier?.Name ?? "—")</td>
                     <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                    <td>@Money.Format(inv.TotalAmount)</td>
-                    <td>@Money.Format(inv.Discount)</td>
-                    <td class="fw-bold">@Money.Format(inv.NetAmount)</td>
+                    <td class="num">@Money.Format(inv.TotalAmount)</td>
+                    <td class="num">@Money.Format(inv.Discount)</td>
+                    <td class="num fw-bold">@Money.Format(inv.NetAmount)</td>
                     <td>@inv.PaymentTerms.GetDisplayName()@(inv.DueDate.HasValue ? $" حتى {inv.DueDate.Value:dd/MM/yyyy}" : "")</td>
                     <td>@(inv.IsPaid ? "مدفوعة" : "غير مدفوعة")</td>
                     <td class="text-center">
-                        <a asp-action="Details" asp-route-id="@inv.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض فاتورة شراء @inv.InvoiceNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                        <a asp-action="Details" asp-route-id="@inv.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض فاتورة شراء @inv.InvoiceNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                     </td>
                 </tr>
             }

@@ -9,29 +9,36 @@
     var activeFilter = ViewBag.StatusFilter as SalesOrderStatus?;
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-clipboard2-check text-primary" aria-hidden="true"></i> أوامر البيع</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أوامر البيع</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("SalesOrders.Create"))
         {
-            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر بيع جديد</a>
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر بيع جديد</a>
         }
     </div>
 </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="alert" aria-live="polite">
+        <i class="bi bi-check-circle" aria-hidden="true"></i> @TempData["Success"]
+    </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert" aria-live="assertive">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]
+    </div>
 }
 
-<ul class="nav nav-pills mb-3" aria-label="فلترة أوامر البيع">
+<ul class="nav nav-pills mb-4 ui-rise" aria-label="فلترة أوامر البيع">
     <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-1 @(activeFilter == null ? "active" : "")" asp-action="Index">
-            الكل <span class="badge bg-light text-dark">@totalCount</span>
+            الكل <span class="ui-badge ui-badge-mute">@totalCount</span>
         </a>
     </li>
     @foreach (var st in Enum.GetValues<SalesOrderStatus>())
@@ -39,8 +46,11 @@
         var count = counts.TryGetValue(st, out var c) ? c : 0;
         <li class="nav-item">
             <a class="nav-link d-flex align-items-center gap-1 @(activeFilter == st ? "active" : "") @(count == 0 && activeFilter != st ? "disabled" : "")"
-               asp-action="Index" asp-route-status="@st">
-                @st.GetDisplayName() <span class="badge @(activeFilter == st ? "bg-light text-dark" : "bg-secondary")">@count</span>
+               asp-action="Index" asp-route-status="@st"
+               aria-current="@(activeFilter == st ? "page" : null)"
+               aria-disabled="@(count == 0 && activeFilter != st ? "true" : null)"
+               tabindex="@(count == 0 && activeFilter != st ? "-1" : null)">
+                @st.GetDisplayName() <span class="ui-badge @(activeFilter == st ? "ui-badge-mute" : "ui-badge-mute")">@count</span>
             </a>
         </li>
     }
@@ -48,14 +58,14 @@
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info">
+    <div class="ui-alert ui-alert-info ui-rise">
         @(activeFilter == null ? "لا توجد أوامر بيع بعد." : $"لا توجد أوامر بحالة «{activeFilter.Value.GetDisplayName()}».")
     </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="table-container ui-rise">
+        <table class="table mb-0">
             <caption class="visually-hidden">قائمة أوامر البيع مع الكميات المطلوبة والمسلّمة والمفوترة</caption>
             <thead><tr><th scope="col">رقم الأمر</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">المتوقع</th><th scope="col">الإجمالي</th><th scope="col">مطلوب</th><th scope="col">مسلَّم</th><th scope="col">مفوتر</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
             <tbody>
@@ -71,12 +81,12 @@ else
                         <td>@t.OrderedQuantity.ToString("N2") / @t.OrderedCount.ToString("N2")</td>
                         <td>@t.DeliveredQuantity.ToString("N2") / @t.DeliveredCount.ToString("N2")</td>
                         <td>@t.InvoicedQuantity.ToString("N2") / @t.InvoicedCount.ToString("N2")</td>
-                        <td><span class="badge @(o.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@o.Status.GetDisplayName()</span></td>
+                        <td><span class="ui-badge @(o.Status switch { SalesOrderStatus.Approved => "ui-badge-ok", SalesOrderStatus.Invoiced => "ui-badge-info", SalesOrderStatus.PartiallyInvoiced => "ui-badge-warn", SalesOrderStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-mute" })">@o.Status.GetDisplayName()</span></td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@o.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a asp-action="Details" asp-route-id="@o.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض أمر البيع @o.OrderNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
                             @if (o.Status == SalesOrderStatus.Draft && await Perm.HasAsync("SalesOrders.Edit"))
                             {
-                                <a asp-action="Edit" asp-route-id="@o.Id" class="btn btn-sm btn-outline-secondary" aria-label="تعديل أمر البيع @o.OrderNumber"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                                <a asp-action="Edit" asp-route-id="@o.Id" class="ui-btn ui-btn-sm ui-btn-quiet" aria-label="تعديل أمر البيع @o.OrderNumber"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                             }
                         </td>
                     </tr>
@@ -84,5 +94,5 @@ else
             </tbody>
         </table>
     </div>
-    <p class="text-muted small mt-2 mb-0">الأرقام معروضة بالترتيب: كمية / عدد.</p>
+    <p class="text-muted small mt-4 mb-0">الأرقام معروضة بالترتيب: كمية / عدد.</p>
 }

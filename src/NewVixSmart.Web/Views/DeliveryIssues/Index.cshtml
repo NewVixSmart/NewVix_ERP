@@ -4,24 +4,29 @@
 @using NewVixSmart.Web.Extensions
 @{ ViewData["Title"] = "أوامر التسليم"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true"></i> أوامر التسليم</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أوامر التسليم</h2>
+    </div>
     @if (await Perm.HasAsync("DeliveryIssues.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر تسليم جديد</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر تسليم جديد</a>
+        </div>
     }
 </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="alert" aria-live="polite"><i class="bi bi-check-circle" aria-hidden="true"></i> @TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert" aria-live="assertive"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]</div>
 }
 
-<ul class="nav nav-pills mb-3" aria-label="فلترة أوامر التسليم">
+<ul class="nav nav-pills mb-4 ui-rise" aria-label="فلترة أوامر التسليم">
     <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
     @foreach (var st in Enum.GetValues<DeliveryIssueStatus>())
     {
@@ -31,12 +36,12 @@
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info">لا توجد أوامر تسليم بعد.</div>
+    <div class="ui-alert ui-alert-info ui-rise">لا توجد أوامر تسليم بعد.</div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="table-container ui-rise">
+        <table class="table mb-0">
             <caption class="visually-hidden">قائمة أوامر التسليم مع رقم الأذن والأمر وحالة الفوترة</caption>
             <thead>
                 <tr>
@@ -70,7 +75,7 @@ else
                         </td>
                         <td>@(i.Customer?.Name ?? "—")</td>
                         <td>@i.IssueDate.ToString("dd/MM/yyyy")</td>
-                        <td><span class="badge @(i.Status switch { DeliveryIssueStatus.Issued => "bg-success", DeliveryIssueStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@i.Status.GetDisplayName()</span></td>
+                        <td><span class="ui-badge @(i.Status switch { DeliveryIssueStatus.Issued => "ui-badge-ok", DeliveryIssueStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@i.Status.GetDisplayName()</span></td>
                         <td>
                             @if (i.SaleInvoice != null)
                             {
@@ -82,8 +87,8 @@ else
                             }
                         </td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@i.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض أمر التسليم @i.IssueNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
-                            <a asp-action="Print" asp-route-id="@i.PublicId" class="btn btn-sm btn-outline-secondary" aria-label="طباعة أمر التسليم @i.IssueNumber"><i class="bi bi-printer" aria-hidden="true"></i></a>
+                            <a asp-action="Details" asp-route-id="@i.PublicId" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض أمر التسليم @i.IssueNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a asp-action="Print" asp-route-id="@i.PublicId" class="ui-btn ui-btn-sm ui-btn-quiet" aria-label="طباعة أمر التسليم @i.IssueNumber"><i class="bi bi-printer" aria-hidden="true"></i></a>
                         </td>
                     </tr>
                 }

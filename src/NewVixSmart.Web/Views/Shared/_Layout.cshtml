@@ -8,20 +8,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <title>@ViewData["Title"] - @_brand.Profile.CompanyName</title>
-    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
-    <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
-    <link href="~/css/tokens.css" rel="stylesheet" asp-append-version="true" />
-    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/app.css" rel="stylesheet" asp-append-version="true" />
     <style nonce="@Context.GetCspNonce()">
         @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
     </style>
 </head>
 <body>
     @Html.AntiForgeryToken()
-    <a class="skip-link" href="#mainContent">تخطى إلى المحتوى الرئيسي</a>
+    <a class="ui-skip" href="#mainContent">تخطى إلى المحتوى الرئيسي</a>
     <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true"></div>
 
+    <div class="ui-shell">
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             @if (_brand.Profile.HasLogo)
@@ -34,7 +32,7 @@
             }
             <span class="brand-text">
                 <strong>@_brand.Profile.CompanyName</strong>
-                <small>@(_brand.Profile.Tagline ?? "Smart Solutions")</small>
+                <span>@(_brand.Profile.Tagline ?? "Smart Solutions")</span>
             </span>
         </div>
         <nav class="sidebar-nav" id="mainMenu" aria-label="القائمة الرئيسية">
@@ -443,7 +441,7 @@
                         <small>مستخدم مسجل الدخول</small>
                     </div>
                     <form asp-controller="Account" asp-action="Logout" method="post" role="none">
-                        <button type="submit" class="btn btn-sm" aria-label="تسجيل الخروج">
+                        <button type="submit" class="ui-btn ui-btn-sm ui-btn-icon" aria-label="تسجيل الخروج">
                             <i class="bi bi-box-arrow-left" aria-hidden="true"></i>
                         </button>
                     </form>
@@ -452,27 +450,25 @@
         </div>
     </aside>
 
-    <div class="main-content">
-        <div class="topbar">
-            <div class="topbar-inner">
-                <button type="button" class="btn btn-sm navbar-toggler topbar-toggle" id="sidebarToggle" aria-label="فتح القائمة الجانبية" aria-expanded="false" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-                <span class="topbar-title"><span class="mb-0">@ViewData["Title"]</span></span>
-                <span class="topbar-greeting" data-greeting></span>
-                <span class="topbar-spacer"></span>
-                <span class="topbar-clock"><i class="bi bi-clock" aria-hidden="true"></i> <span class="topbar-date" data-clock></span></span>
-                <button type="button" class="theme-mode-btn" data-table-density-toggle aria-pressed="false" aria-label="تبديل كثافة الجداول">
-                    <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
-                    <span class="theme-mode-label">كثافة مضغوطة</span>
-                </button>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <span class="topbar-user d-none d-xl-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity.Name</span>
-                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline d-lg-none" role="none"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-left" aria-hidden="true"></i> خروج</button></form>
-                }
-            </div>
+    <div class="ui-main">
+        <div class="ui-topbar">
+            <button type="button" class="ui-menu-btn" id="sidebarToggle" aria-label="فتح القائمة الجانبية" aria-expanded="false" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
+            <span class="ui-topbar-title">@ViewData["Title"]</span>
+            <span class="ui-chip" data-greeting></span>
+            <span class="ui-topbar-spacer"></span>
+            <span class="ui-chip"><i class="bi bi-clock" aria-hidden="true"></i> <span data-clock></span></span>
+            <button type="button" class="theme-mode-btn" data-table-density-toggle aria-pressed="false" aria-label="تبديل كثافة الجداول">
+                <i class="bi bi-arrows-collapse" aria-hidden="true"></i>
+                <span class="theme-mode-label">كثافة مضغوطة</span>
+            </button>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <span class="ui-chip max-xl:hidden"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity.Name</span>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="lg:hidden" role="none"><button type="submit" class="ui-btn ui-btn-sm ui-btn-outline"><i class="bi bi-box-arrow-left" aria-hidden="true"></i> خروج</button></form>
+            }
         </div>
 
-        <main class="page-content" id="mainContent" role="main" tabindex="-1">
+        <main class="ui-page" id="mainContent" role="main" tabindex="-1">
             <h1 class="visually-hidden">@(ViewData["Title"] ?? _brand.Profile.CompanyName)</h1>
             @if (TempData["Error"] != null)
             {
@@ -491,8 +487,8 @@
             @RenderBody()
         </main>
     </div>
+    </div>
 
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/tablist.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

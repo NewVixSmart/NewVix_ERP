@@ -1,64 +1,66 @@
 @model NewVixSmart.Web.ViewModels.Reports.DashboardReportViewModel
 @{ ViewData["Title"] = "لوحة التقارير"; }
 
-<div class="page-header">
-    <h2><i class="bi bi-speedometer2 text-primary" aria-hidden="true"></i> لوحة التقارير التشغيلية</h2>
-    <p class="text-muted mb-0">تنبيهات الاستحقاق والمخزون المنخفض — حتى @Model.AsOf.ToString("dd/MM/yyyy")</p>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
+        <h2><i class="bi bi-speedometer2" aria-hidden="true"></i> لوحة التقارير التشغيلية</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <span class="text-muted small">تنبيهات الاستحقاق والمخزون المنخفض — حتى @Model.AsOf.ToString("dd/MM/yyyy")</span>
+    </div>
 </div>
 
 @if (!Model.OverdueReceivables.Any() && !Model.OverduePayables.Any() && !Model.LowStockItems.Any())
 {
-    <div class="all-clear mb-4" role="region" aria-label="حالة الفترة">
-        <svg class="check-burst" viewBox="0 0 80 80" aria-hidden="true">
-            <circle class="burst-ring" cx="40" cy="40" r="36"></circle>
-            <path class="burst-check" d="M26 42 l10 10 l20 -22"></path>
-        </svg>
+    <div class="all-clear ui-section ui-rise" role="region" aria-label="حالة الفترة">
+        <i class="bi bi-award text-4xl" aria-hidden="true"></i>
         <div>
-            <h3><i class="bi bi-award" aria-hidden="true"></i> فترة متميزة</h3>
+            <h3>فترة متميزة</h3>
             <p>لا ذمم متأخرة ولا مخزون منخفض — كل شيء منضبط حتى @Model.AsOf.ToString("dd/MM/yyyy").</p>
         </div>
     </div>
 }
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-down-circle text-danger" aria-hidden="true"></i></div>
-            <div class="text-muted small mt-2">ذمم عملاء متأخرة (عدد)</div>
-            <h3 class="mb-0 text-danger" data-count="@Model.OverdueReceivableCount" data-decimals="0" data-count-formatted="@Model.OverdueReceivableCount.ToString("N0")">@Model.OverdueReceivableCount.ToString("N0")</h3>
+<div class="ui-grid ui-grid-4 ui-section ui-rise">
+    <div class="ui-stat text-center">
+        <div class="inline-flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-bad-soft text-bad">
+            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
         </div>
+        <div class="ui-stat-label mt-2">ذمم عملاء متأخرة (عدد)</div>
+        <h3 class="ui-stat-value text-danger" data-count="@Model.OverdueReceivableCount" data-decimals="0" data-count-formatted="@Model.OverdueReceivableCount.ToString("N0")">@Model.OverdueReceivableCount.ToString("N0")</h3>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-arrow-up-circle text-danger" aria-hidden="true"></i></div>
-            <div class="text-muted small mt-2">ذمم موردين متأخرة (عدد)</div>
-            <h3 class="mb-0 text-danger" data-count="@Model.OverduePayableCount" data-decimals="0" data-count-formatted="@Model.OverduePayableCount.ToString("N0")">@Model.OverduePayableCount.ToString("N0")</h3>
+    <div class="ui-stat text-center">
+        <div class="inline-flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-bad-soft text-bad">
+            <i class="bi bi-arrow-up-circle" aria-hidden="true"></i>
         </div>
+        <div class="ui-stat-label mt-2">ذمم موردين متأخرة (عدد)</div>
+        <h3 class="ui-stat-value text-danger" data-count="@Model.OverduePayableCount" data-decimals="0" data-count-formatted="@Model.OverduePayableCount.ToString("N0")">@Model.OverduePayableCount.ToString("N0")</h3>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card text-center border-warning">
-            <div class="stat-icon mx-auto bg-warning-subtle"><i class="bi bi-exclamation-triangle text-warning" aria-hidden="true"></i></div>
-            <div class="text-muted small mt-2">أصناف منخفضة المخزون</div>
-            <div><span class="badge @(Model.LowStockCount > 0 ? "bg-warning" : "bg-success")">@(Model.LowStockCount > 0 ? "منخفض" : "متوفر")</span></div>
-            <h3 class="mb-0 text-warning" data-count="@Model.LowStockCount" data-decimals="0" data-count-formatted="@Model.LowStockCount.ToString("N0")">@Model.LowStockCount.ToString("N0")</h3>
-            <div class="visually-hidden">عدد الأصناف منخفضة المخزون: @Model.LowStockCount</div>
+    <div class="ui-stat text-center">
+        <div class="inline-flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-warn-soft text-warning">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
         </div>
+        <div class="ui-stat-label mt-2">أصناف منخفضة المخزون</div>
+        <div><span class="ui-badge @(Model.LowStockCount > 0 ? "ui-badge-warn" : "ui-badge-ok")">@(Model.LowStockCount > 0 ? "منخفض" : "متوفر")</span></div>
+        <h3 class="ui-stat-value text-warning" data-count="@Model.LowStockCount" data-decimals="0" data-count-formatted="@Model.LowStockCount.ToString("N0")">@Model.LowStockCount.ToString("N0")</h3>
+        <div class="visually-hidden">عدد الأصناف منخفضة المخزون: @Model.LowStockCount</div>
     </div>
-    <div class="col-md-3">
-        <div class="stat-card text-center border-danger">
-            <div class="stat-icon mx-auto bg-danger-subtle"><i class="bi bi-cash-coin text-danger" aria-hidden="true"></i></div>
-            <div class="text-muted small mt-2">إجمالي المتأخر</div>
-            <h3 class="mb-0 text-danger" data-count="@(Model.OverdueReceivableTotal + Model.OverduePayableTotal)" data-decimals="2" data-count-formatted="@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)">@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)</h3>
+    <div class="ui-stat text-center">
+        <div class="inline-flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-bad-soft text-bad">
+            <i class="bi bi-cash-coin" aria-hidden="true"></i>
         </div>
+        <div class="ui-stat-label mt-2">إجمالي المتأخر</div>
+        <h3 class="ui-stat-value text-danger num" data-count="@(Model.OverdueReceivableTotal + Model.OverduePayableTotal)" data-decimals="2" data-count-formatted="@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)">@Money.Format(Model.OverdueReceivableTotal + Model.OverduePayableTotal)</h3>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-6">
+<div class="ui-grid ui-grid-2 ui-section">
+    <div>
         <div class="table-container">
-                    <table class="table table-hover mb-0">
+            <table class="table">
                 <caption class="visually-hidden">الذمم المدينة المتأخرة (العملاء)</caption>
-                    <colgroup span="6"></colgroup>
+                <colgroup span="6"></colgroup>
                 <thead>
                     <tr>
                         <th colspan="6" class="text-danger" scope="colgroup">الذمم المدينة المتأخرة (العملاء)</th>
@@ -68,32 +70,32 @@
                 <tbody>
                     @foreach (var r in Model.OverdueReceivables)
                     {
-                        <tr class="table-danger">
+                        <tr>
                             <td><code>@r.InvoiceNumber</code></td>
                             <td>@r.PartyName</td>
                             <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
-                            <td>@Money.Format(r.NetAmount)</td>
-                            <td class="fw-bold">@Money.Format(r.Outstanding)</td>
-                            <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
+                            <td class="num">@Money.Format(r.NetAmount)</td>
+                            <td class="fw-bold num">@Money.Format(r.Outstanding)</td>
+                            <td><span class="ui-badge ui-badge-bad"><span class="num">@r.DaysOverdue</span></span></td>
                         </tr>
                     }
                 </tbody>
                 @if (Model.OverdueReceivables.Any())
                 {
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Money.Format(Model.OverdueReceivableTotal)</td><td></td></tr></tfoot>
+                    <tfoot><tr class="fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger num">@Money.Format(Model.OverdueReceivableTotal)</td><td></td></tr></tfoot>
                 }
             </table>
         </div>
         @if (!Model.OverdueReceivables.Any())
         {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد ذمم عملاء متأخرة</p></div>
+            <div class="empty-state"><div class="empty-icon"><i class="bi bi-check-circle" aria-hidden="true"></i></div><p class="text-muted">لا توجد ذمم عملاء متأخرة</p></div>
         }
     </div>
-    <div class="col-lg-6">
+    <div>
         <div class="table-container">
-                    <table class="table table-hover mb-0">
+            <table class="table">
                 <caption class="visually-hidden">الذمم الدائنة المتأخرة (الموردون)</caption>
-                    <colgroup span="6"></colgroup>
+                <colgroup span="6"></colgroup>
                 <thead>
                     <tr>
                         <th colspan="6" class="text-danger" scope="colgroup">الذمم الدائنة المتأخرة (الموردون)</th>
@@ -103,60 +105,58 @@
                 <tbody>
                     @foreach (var r in Model.OverduePayables)
                     {
-                        <tr class="table-danger">
+                        <tr>
                             <td><code>@r.InvoiceNumber</code></td>
                             <td>@r.PartyName</td>
                             <td>@r.DueDate.ToString("dd/MM/yyyy")</td>
-                            <td>@Money.Format(r.NetAmount)</td>
-                            <td class="fw-bold">@Money.Format(r.Outstanding)</td>
-                            <td><span class="badge bg-danger">@r.DaysOverdue</span></td>
+                            <td class="num">@Money.Format(r.NetAmount)</td>
+                            <td class="fw-bold num">@Money.Format(r.Outstanding)</td>
+                            <td><span class="ui-badge ui-badge-bad"><span class="num">@r.DaysOverdue</span></span></td>
                         </tr>
                     }
                 </tbody>
                 @if (Model.OverduePayables.Any())
                 {
-                    <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger">@Money.Format(Model.OverduePayableTotal)</td><td></td></tr></tfoot>
+                    <tfoot><tr class="fw-bold"><th scope="row" colspan="4">الإجمالي</th><td class="text-danger num">@Money.Format(Model.OverduePayableTotal)</td><td></td></tr></tfoot>
                 }
             </table>
         </div>
         @if (!Model.OverduePayables.Any())
         {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد ذمم موردين متأخرة</p></div>
+            <div class="empty-state"><div class="empty-icon"><i class="bi bi-check-circle" aria-hidden="true"></i></div><p class="text-muted">لا توجد ذمم موردين متأخرة</p></div>
         }
     </div>
 </div>
 
-<div class="row g-4 mt-1">
-    <div class="col-12">
-        <div class="table-container">
-                    <table class="table table-hover mb-0">
-                <caption class="visually-hidden">الأصناف منخفضة المخزون</caption>
-                    <colgroup span="7"></colgroup>
-                <thead>
+<div class="ui-section">
+    <div class="table-container">
+        <table class="table">
+            <caption class="visually-hidden">الأصناف منخفضة المخزون</caption>
+            <colgroup span="7"></colgroup>
+            <thead>
+                <tr>
+                    <th colspan="7" class="text-warning" scope="colgroup">الأصناف منخفضة المخزون</th>
+                </tr>
+                <tr><th scope="col">الكود</th><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد (عدد)</th><th scope="col">الحد الأدنى</th><th scope="col">الرصيد (كمية)</th><th scope="col">الحد الأدنى</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var i in Model.LowStockItems)
+                {
                     <tr>
-                        <th colspan="7" class="text-warning" scope="colgroup">الأصناف منخفضة المخزون</th>
+                        <td><code>@(i.Code ?? "—")</code></td>
+                        <td><a asp-controller="Items" asp-action="Details" asp-route-id="@i.PublicId" class="fw-bold">@i.Name</a></td>
+                        <td>@i.CategoryName</td>
+                        <td class="fw-bold text-danger num"><span class="visually-hidden">منخفض: </span>@i.CurrentCount.ToString("N2")</td>
+                        <td class="num">@i.MinCount.ToString("N2")</td>
+                        <td class="fw-bold text-danger num"><span class="visually-hidden">منخفض: </span>@i.CurrentQuantity.ToString("N2")</td>
+                        <td class="num">@i.MinQuantity.ToString("N2")</td>
                     </tr>
-                    <tr><th scope="col">الكود</th><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد (عدد)</th><th scope="col">الحد الأدنى</th><th scope="col">الرصيد (كمية)</th><th scope="col">الحد الأدنى</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var i in Model.LowStockItems)
-                    {
-                        <tr>
-                            <td><code>@(i.Code ?? "—")</code></td>
-                            <td><a asp-controller="Items" asp-action="Details" asp-route-id="@i.PublicId" class="fw-bold">@i.Name</a></td>
-                            <td>@i.CategoryName</td>
-                            <td class="fw-bold text-danger"><span class="visually-hidden">منخفض: </span>@i.CurrentCount.ToString("N2")</td>
-                            <td>@i.MinCount.ToString("N2")</td>
-                            <td class="fw-bold text-danger"><span class="visually-hidden">منخفض: </span>@i.CurrentQuantity.ToString("N2")</td>
-                            <td>@i.MinQuantity.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        @if (!Model.LowStockItems.Any())
-        {
-            <div class="text-center py-4 text-muted"><i class="bi bi-check-circle" style="font-size:2rem;" aria-hidden="true"></i><p class="mt-2 mb-0">لا توجد أصناف منخفضة المخزون</p></div>
-        }
+                }
+            </tbody>
+        </table>
     </div>
+    @if (!Model.LowStockItems.Any())
+    {
+        <div class="empty-state"><div class="empty-icon"><i class="bi bi-check-circle" aria-hidden="true"></i></div><p class="text-muted">لا توجد أصناف منخفضة المخزون</p></div>
+    }
 </div>

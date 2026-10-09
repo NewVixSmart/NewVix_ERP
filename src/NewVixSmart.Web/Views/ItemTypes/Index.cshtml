@@ -10,30 +10,41 @@
 }
 @if (!isAjax)
 {
-    <div class="page-header d-flex justify-content-between align-items-center">
-        <h2><i class="bi bi-grid text-primary" aria-hidden="true"></i> أنواع الأصناف</h2>
+    <div class="ui-pagehead ui-rise">
+        <div class="ui-pagehead-title">
+            <span class="ui-eyebrow">الأصناف</span>
+            <h2>أنواع الأصناف</h2>
+        </div>
     </div>
 }
-<table class="table table-hover mb-0" id="itemTypesTable" data-load="true">
-    <caption class="visually-hidden">أنواع الأصناف: الاسم، الحالة</caption>
-    <thead><tr><th scope="col">الاسم</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
-    <tbody>
-        @foreach (var t in Model)
-        {
-            <tr data-id="@t.Id" data-rowversion="@(t.RowVersion is null ? string.Empty : Convert.ToBase64String(t.RowVersion))">
-                <td data-name="@t.Name">@t.Name</td>
-                <td>@(t.IsActive ? "نشط" : "غير نشط")</td>
-                <td class="text-center">
-                    @if (await Perm.HasAsync("Items.Edit"))
-                    {
-                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit" data-id="@t.Id" title="تعديل" aria-label="تعديل @t.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                    }
-                    @if (await Perm.HasAsync("Items.Delete"))
-                    {
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-del" data-id="@t.Id" title="حذف" aria-label="حذف @t.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                    }
-                </td>
+<div class="table-container ui-rise">
+    <table class="table" id="itemTypesTable" data-load="true">
+        <caption class="visually-hidden">أنواع الأصناف: الاسم، الحالة</caption>
+        <thead>
+            <tr>
+                <th scope="col">الاسم</th>
+                <th scope="col">الحالة</th>
+                <th scope="col" class="text-center">إجراءات</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr data-id="@t.Id" data-rowversion="@(t.RowVersion is null ? string.Empty : Convert.ToBase64String(t.RowVersion))">
+                    <td data-name="@t.Name">@t.Name</td>
+                    <td><span class="ui-badge @(t.IsActive ? "ui-badge-ok" : "ui-badge-mute")">@(t.IsActive ? "نشط" : "غير نشط")</span></td>
+                    <td class="text-center">
+                        @if (await Perm.HasAsync("Items.Edit"))
+                        {
+                            <button type="button" class="ui-btn ui-btn-sm btn-edit" data-id="@t.Id" title="تعديل" aria-label="تعديل @t.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                        }
+                        @if (await Perm.HasAsync("Items.Delete"))
+                        {
+                            <button type="button" class="ui-btn ui-btn-sm btn-del" data-id="@t.Id" title="حذف" aria-label="حذف @t.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

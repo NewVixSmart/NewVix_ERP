@@ -301,7 +301,7 @@ public sealed class SecurityResponseHeadersTests
             _ => Task.CompletedTask,
             site.WebRoot);
 
-        using var response = await probe.GetAsync("/site.css", https: true);
+        using var response = await probe.GetAsync("/app.css", https: true);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/css", response.Content.Headers.ContentType?.MediaType);
         // Compared directive by directive: the server is free to re-serialise the commas.
@@ -524,7 +524,7 @@ public sealed class SecurityResponseHeadersTests
         {
             _root = Path.Combine(Path.GetTempPath(), "opencode", "nvs-static-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_root);
-            File.WriteAllText(Path.Combine(_root, "site.css"), "body{color:red}");
+            File.WriteAllText(Path.Combine(_root, "app.css"), "body{color:red}");
             _provider = new PhysicalFileProvider(_root);
             WebRoot = _provider;
         }

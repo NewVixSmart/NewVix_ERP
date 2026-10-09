@@ -14,44 +14,50 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-arrow-return-right text-primary" aria-hidden="true"></i> مرتجع شراء جديد</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2><i class="bi bi-arrow-return-right text-primary" aria-hidden="true"></i> مرتجع شراء جديد</h2>
+    </div>
+</div>
 
 <form asp-action="Create" id="returnForm">
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label asp-for="ReturnNumber" class="form-label"></label>
-                    <input asp-for="ReturnNumber" class="form-control" readonly value="@ViewBag.NextNumber" />
+            <div class="ui-grid ui-grid-4 gap-3">
+                <div>
+                    <label asp-for="ReturnNumber" class="ui-label"></label>
+                    <input asp-for="ReturnNumber" class="ui-input" readonly value="@ViewBag.NextNumber" />
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="SupplierId" class="form-label"></label>
+                <div>
+                    <label asp-for="SupplierId" class="ui-label"></label>
                     <select asp-for="SupplierId" asp-items="@(ViewBag.Suppliers as SelectList)" class="form-select">
                         <option value="">-- اختر المورد --</option>
                     </select>
                     <span asp-validation-for="SupplierId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="PurchaseInvoiceId" class="form-label"></label>
+                <div>
+                    <label asp-for="PurchaseInvoiceId" class="ui-label"></label>
                     <select asp-for="PurchaseInvoiceId" asp-items="@(ViewBag.PurchaseInvoices as SelectList)" class="form-select">
                         <option value="">-- الفاتورة الأصلية (اختياري) --</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="ReturnDate" class="form-label"></label>
-                    <input asp-for="ReturnDate" class="form-control" type="date" />
+                <div>
+                    <label asp-for="ReturnDate" class="ui-label"></label>
+                    <input asp-for="ReturnDate" class="ui-input" type="date" />
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> الأصناف المرتجعة للمورد</div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0" id="itemsTable">
+            <div class="table-container">
+            <table class="table" id="itemsTable">
                 <caption class="visually-hidden">الأصناف المرتجعة للمورد المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
                 <thead>
                     <tr>
@@ -79,21 +85,31 @@
                     @await Html.PartialAsync("_LineItemErrors", 0)
                 </tbody>
             </table>
+            </div>
         </div>
         <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-3"><label class="form-label" for="totalAmount">الإجمالي</label><input asp-for="TotalAmount" class="form-control fw-bold" id="totalAmount" readonly /></div>
-        <div class="col-md-9"><label asp-for="Reason" class="form-label"></label><textarea asp-for="Reason" class="form-control" rows="1"></textarea></div>
-    </div>
-
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" name="submitAction" value="post" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ وترحيل</button>
-        <button type="submit" name="submitAction" value="draft" class="btn btn-outline-primary"><i class="bi bi-pencil-square" aria-hidden="true"></i> حفظ كمسودة</button>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+    <div class="ui-section ui-card ui-rise">
+        <div class="card-body">
+            <div class="ui-grid ui-grid-4 gap-3">
+                <div>
+                    <label class="ui-label" for="totalAmount">الإجمالي</label>
+                    <input asp-for="TotalAmount" class="ui-input fw-bold" id="totalAmount" readonly />
+                </div>
+                <div class="md:col-span-3">
+                    <label asp-for="Reason" class="ui-label"></label>
+                    <textarea asp-for="Reason" class="ui-input" rows="1"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button type="submit" name="submitAction" value="post" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ وترحيل</button>
+                <button type="submit" name="submitAction" value="draft" class="ui-btn ui-btn-outline"><i class="bi bi-pencil-square" aria-hidden="true"></i> حفظ كمسودة</button>
+                <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+            </div>
+        </div>
     </div>
 </form>
 

@@ -4,13 +4,18 @@
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-person-gear text-primary" aria-hidden="true"></i> المستخدمون والصلاحيات</h2>
-    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> مستخدم جديد</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">الحسابات والصلاحيات</span>
+        <h2><i class="bi bi-person-gear" aria-hidden="true"></i> المستخدمون والصلاحيات</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> مستخدم جديد</a>
+    </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table" id="usersTable">
         <caption class="visually-hidden">قائمة المستخدمين وأدوارهم وعدد صلاحياتهم وحالة كل حساب</caption>
         <thead>
             <tr>
@@ -29,13 +34,13 @@
                         <strong>@u.UserName</strong>
                         @if (u.IsAdmin)
                         {
-                            <span class="badge bg-dark ms-2">مدير النظام</span>
+                            <span class="ui-badge ui-badge-mute ms-2">مدير النظام</span>
                         }
                     </td>
                     <td>
                         @foreach (var r in u.DisplayRoles)
                         {
-                            <span class="badge bg-secondary me-1">@NewVixSmart.Web.ViewModels.Users.UserRoleLabels.DisplayName(r)</span>
+                            <span class="ui-badge ui-badge-soft me-1">@NewVixSmart.Web.ViewModels.Users.UserRoleLabels.DisplayName(r)</span>
                         }
                         @if (u.DisplayRoles.Count == 0)
                         {
@@ -45,42 +50,42 @@
                     <td>
                         @if (u.IsAdmin)
                         {
-                            <span class="badge bg-success">كامل (تلقائي)</span>
+                            <span class="ui-badge ui-badge-ok">كامل (تلقائي)</span>
                         }
                         else
                         {
-                            <span class="badge bg-info text-dark">@u.PermissionCount إجراء</span>
+                            <span class="ui-badge ui-badge-info">@u.PermissionCount إجراء</span>
                         }
                     </td>
                     <td>
                         @if (u.IsDeactivated)
                         {
-                            <span class="badge bg-danger">مُبطَل</span>
+                            <span class="ui-badge ui-badge-bad">مُبطَل</span>
                         }
                         else
                         {
-                            <span class="badge bg-success">نشط</span>
+                            <span class="ui-badge ui-badge-ok">نشط</span>
                         }
                     </td>
                     <td class="text-center">
-                        <div class="d-inline-flex gap-1 flex-wrap justify-content-center">
+                        <div class="inline-flex gap-1 flex-wrap justify-center">
                             @if (!u.IsAdmin)
                             {
-                                <a asp-action="Permissions" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" aria-label="إدارة صلاحيات @u.UserName">
+                                <a asp-action="Permissions" asp-route-id="@u.Id" class="ui-btn ui-btn-sm ui-btn-ghost" aria-label="إدارة صلاحيات @u.UserName">
                                     <i class="bi bi-toggles" aria-hidden="true"></i> صلاحيات
                                 </a>
                             }
                             @if (u.Id == currentUserId)
                             {
-                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                                <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" disabled
                                         title="لا يمكنك إبطال حسابك بنفسك">
                                     <i class="bi bi-person-slash" aria-hidden="true"></i> @(!u.IsDeactivated ? "إبطال" : "إعادة تفعيل")
                                 </button>
                             }
                             else
                             {
-                                <form asp-action="ToggleDeactivated" asp-route-id="@u.Id" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-sm @(u.IsDeactivated ? "btn-outline-success" : "btn-outline-danger")"
+                                <form asp-action="ToggleDeactivated" asp-route-id="@u.Id" method="post" class="inline-flex">
+                                    <button type="submit" class="ui-btn ui-btn-sm @(u.IsDeactivated ? "ui-btn-ok" : "ui-btn-bad")"
                                             aria-label="@(u.IsDeactivated ? "إعادة تفعيل حساب " : "إبطال حساب ") @u.UserName">
                                         <i class="bi bi-person-slash" aria-hidden="true"></i> @(!u.IsDeactivated ? "إبطال" : "إعادة تفعيل")
                                     </button>

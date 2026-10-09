@@ -1,16 +1,19 @@
 @model NewVixSmart.Web.ViewModels.Sales.CustomerPendingDeliveriesViewModel
 @{ ViewData["Title"] = $"تسليمات معلّقة - {Model.Customer?.Name ?? ""}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> تسليمات معلّقة: @(Model.Customer?.Name ?? "—")</h2>
-    <div>
-        <span class="badge bg-info text-dark fs-6">إجمالي غير المسلَّم: @Money.Format(Model.TotalValue)</span>
-        <a asp-action="Ledger" asp-route-id="@Model.Customer?.Id" class="btn btn-outline-primary"><i class="bi bi-journal-bookmark" aria-hidden="true"></i> كشف الحساب</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">العملاء</span>
+        <h2><i class="bi bi-truck" aria-hidden="true"></i> تسليمات معلّقة: @(Model.Customer?.Name ?? "—")</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <span class="ui-badge ui-badge-info">إجمالي غير المسلَّم: <span class="num">@Money.Format(Model.TotalValue)</span></span>
+        <a asp-action="Ledger" asp-route-id="@Model.Customer?.Id" class="ui-btn ui-btn-outline"><i class="bi bi-journal-bookmark" aria-hidden="true"></i> كشف الحساب</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="alert alert-info" role="note">
+<div class="ui-alert ui-alert-info ui-rise" role="note">
     <i class="bi bi-info-circle" aria-hidden="true"></i>
     هذه الكميات متعاقد عليها في أوامر بيع معتمدة ولم تُسلَّم بعد.
     قيمتها <strong>لا تدخل</strong> في رصيد ذمم العميل؛ الرصيد يبقى محسوباً من الفواتير فقط.
@@ -18,14 +21,14 @@
 
 @if (!Model.Lines.Any())
 {
-    <div class="alert alert-success">
+    <div class="ui-alert ui-alert-ok">
         <i class="bi bi-check2-circle" aria-hidden="true"></i> لا توجد التزامات تسليم معلّقة لهذا العميل — كل الكميات المتعاقد عليها سُلِّمت أو فُوترت.
     </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="table-container ui-rise">
+        <table class="table">
             <caption class="visually-hidden">أصناف أوامر البيع الملتزم بها وغير المسلَّمة للعميل</caption>
             <thead><tr>
                 <th scope="col">الأمر</th>
@@ -49,20 +52,20 @@ else
                         <td>@l.OrderDate.ToString("dd/MM/yyyy")</td>
                         <td>@(l.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                         <td>@l.ItemName</td>
-                        <td>@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
-                        <td>@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
-                        <td>@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
-                        <td>@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
-                        <td class="fw-bold">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
-                        <td>@Money.Format(l.UnitPrice)</td>
-                        <td>@Money.Format(l.PendingValue)</td>
+                        <td class="num">@l.Quantity.ToString("N2") / @l.Count.ToString("N2")</td>
+                        <td class="num">@l.DeliveredQty.ToString("N2") / @l.DeliveredCount.ToString("N2")</td>
+                        <td class="num">@l.InvoicedQty.ToString("N2") / @l.InvoicedCount.ToString("N2")</td>
+                        <td class="num">@l.ReservedQty.ToString("N2") / @l.ReservedCount.ToString("N2")</td>
+                        <td class="fw-bold num">@l.PendingQty.ToString("N2") / @l.PendingCount.ToString("N2")</td>
+                        <td class="num">@Money.Format(l.UnitPrice)</td>
+                        <td class="num">@Money.Format(l.PendingValue)</td>
                         <td>@(string.IsNullOrWhiteSpace(l.DeliveryNoteNumbers) ? "—" : l.DeliveryNoteNumbers)</td>
                     </tr>
                 }
             </tbody>
             <tfoot><tr class="fw-bold">
                 <th scope="row" colspan="10">الإجمالي (@Model.Lines.Count سطراً)</th>
-                <td>@Money.Format(Model.TotalValue)</td>
+                <td class="num">@Money.Format(Model.TotalValue)</td>
                 <td>—</td>
             </tr></tfoot>
         </table>

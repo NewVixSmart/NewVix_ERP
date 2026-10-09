@@ -7,11 +7,11 @@
 }
 @if (messages.Count > 0)
 {
-    <tr class="table-danger line-item-error">
+    <tr class="line-item-error" style="background-color: var(--color-bad-soft);">
         <td colspan="@colspan">
-            <div id="line-error-@rowIndex" role="alert">
-                <i class="bi bi-exclamation-triangle-fill text-danger" aria-hidden="true"></i>
-                <span class="text-danger small"><strong>خطأ في السطر رقم @(rowIndex + 1):</strong> @string.Join(" — ", messages)</span>
+            <div id="line-error-@rowIndex" class="ui-alert ui-alert-bad" role="alert">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                <span class="small"><strong>خطأ في السطر رقم @(rowIndex + 1):</strong> @string.Join(" — ", messages)</span>
             </div>
         </td>
     </tr>

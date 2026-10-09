@@ -2,24 +2,36 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "الموردين"; }
 
-<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> الموردين</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المشتريات</span>
+        <h2>الموردين</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("Suppliers.View"))
         {
-            <a asp-action="Quotes" class="btn btn-outline-success"><i class="bi bi-cash-stack" aria-hidden="true"></i> عروض الأسعار</a>
+            <a asp-action="Quotes" class="ui-btn ui-btn-quiet"><i class="bi bi-cash-stack" aria-hidden="true"></i> عروض الأسعار</a>
         }
         @if (await Perm.HasAsync("Suppliers.Create"))
         {
-            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> مورد جديد</a>
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> مورد جديد</a>
         }
     </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">الموردين: الكود، اسم المورد، التليفون، العنوان، الرصيد</caption>
-        <thead><tr><th scope="col">الكود</th><th scope="col">اسم المورد</th><th scope="col">التليفون</th><th scope="col">العنوان</th><th scope="col">الرصيد</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+        <thead>
+            <tr>
+                <th scope="col">الكود</th>
+                <th scope="col">اسم المورد</th>
+                <th scope="col">التليفون</th>
+                <th scope="col">العنوان</th>
+                <th scope="col">الرصيد</th>
+                <th scope="col" class="text-center">إجراءات</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach (var s in Model)
             {
@@ -28,19 +40,21 @@
                     <td><strong>@s.Name</strong></td>
                     <td>@(s.Phone ?? "—")</td>
                     <td>@(s.Address ?? "—")</td>
-                    <td>@Money.Format(s.OpeningBalance)</td>
-                    <td class="text-center">
-                        <a asp-action="Ledger" asp-route-id="@s.Id" class="btn btn-sm btn-outline-success" aria-label="دفتر أستاذ المورد @s.Name"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></a>
-                        @if (await Perm.HasAsync("Suppliers.Edit"))
-                        {
-                            <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-outline-primary" aria-label="تعديل المورد @s.Name"><i class="bi bi-pencil" aria-hidden="true"></i></a>
-                        }
-                        @if (await Perm.HasAsync("Suppliers.Delete"))
-                        {
-                            <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline" data-confirm="هل أنت متأكد من حذف هذا المورد؟" data-confirm-ok="حذف">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف المورد @s.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                            </form>
-                        }
+                    <td class="num">@Money.Format(s.OpeningBalance)</td>
+                    <td>
+                        <div class="flex flex-wrap items-center justify-center gap-1">
+                            <a asp-action="Ledger" asp-route-id="@s.Id" class="ui-btn ui-btn-sm ui-btn-outline" title="دفتر الأستاذ" aria-label="دفتر أستاذ المورد @s.Name"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></a>
+                            @if (await Perm.HasAsync("Suppliers.Edit"))
+                            {
+                                <a asp-action="Edit" asp-route-id="@s.Id" class="ui-btn ui-btn-sm btn-edit" title="تعديل" aria-label="تعديل المورد @s.Name"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                            }
+                            @if (await Perm.HasAsync("Suppliers.Delete"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline" data-confirm="هل أنت متأكد من حذف هذا المورد؟" data-confirm-ok="حذف">
+                                    <button type="submit" class="ui-btn ui-btn-sm btn-del" title="حذف" aria-label="حذف المورد @s.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                </form>
+                            }
+                        </div>
                     </td>
                 </tr>
             }

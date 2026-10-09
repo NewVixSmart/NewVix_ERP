@@ -3,69 +3,76 @@
     ViewData["Title"] = Model.Payment.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt ? "قبض من عميل" : "صرف لمورد";
 }
 
-<div class="page-header"><h2><i class="bi bi-wallet2 text-primary" aria-hidden="true"></i> @ViewData["Title"]</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المحاسبة</span>
+        <h2><i class="bi bi-wallet2" aria-hidden="true"></i> @ViewData["Title"]</h2>
+    </div>
+</div>
 
-<div class="card"><div class="card-body">
-    <form asp-action="Create" asp-route-type="@Model.Type">
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
-        <input type="hidden" asp-for="Type" />
-        <input type="hidden" asp-for="Payment.Type" />
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label asp-for="Payment.ReceiptNumber" class="form-label"></label>
-                <input asp-for="Payment.ReceiptNumber" class="form-control" readonly />
-            </div>
-            <div class="col-md-4">
-                <label asp-for="Payment.PaymentDate" class="form-label"></label>
-                <input asp-for="Payment.PaymentDate" class="form-control" type="date" />
-            </div>
-            <div class="col-md-4">
-                <label asp-for="Payment.Amount" class="form-label"></label>
-                <input asp-for="Payment.Amount" class="form-control" type="number" step="0.01" aria-describedby="Payment_Amount-error" />
-                <span asp-validation-for="Payment.Amount" class="text-danger small" id="Payment_Amount-error" aria-invalid="true"></span>
-            </div>
-            @if (Model.Payment.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt)
-            {
-                <div class="col-md-4">
-                    <label asp-for="Payment.CustomerId" class="form-label"></label>
-                    <select asp-for="Payment.CustomerId" asp-items="@Model.Customers" class="form-select">
-                        <option value="">-- اختر العميل --</option>
-                    </select>
-                    <span asp-validation-for="Payment.CustomerId" class="text-danger small" aria-invalid="true"></span>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form asp-action="Create" asp-route-type="@Model.Type">
+            <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise mb-4" role="alert" tabindex="-1"></div>
+            <input type="hidden" asp-for="Type" />
+            <input type="hidden" asp-for="Payment.Type" />
+            <div class="ui-grid ui-grid-3">
+                <div>
+                    <label asp-for="Payment.ReceiptNumber" class="ui-label"></label>
+                    <input asp-for="Payment.ReceiptNumber" class="ui-input" readonly />
                 </div>
-            }
-            else
-            {
-                <div class="col-md-4">
-                    <label asp-for="Payment.SupplierId" class="form-label"></label>
-                    <select asp-for="Payment.SupplierId" asp-items="@Model.Suppliers" class="form-select">
-                        <option value="">-- اختر المورد --</option>
-                    </select>
-                    <span asp-validation-for="Payment.SupplierId" class="text-danger small" aria-invalid="true"></span>
+                <div>
+                    <label asp-for="Payment.PaymentDate" class="ui-label"></label>
+                    <input asp-for="Payment.PaymentDate" class="ui-input" type="date" />
                 </div>
-            }
-            <div class="col-md-4">
-                <label asp-for="Payment.Method" class="form-label"></label>
-                <select asp-for="Payment.Method" class="form-select" aria-describedby="Payment_Method-error">
-                    <option value="1">نقداً</option>
-                    <option value="2">شيك</option>
-                    <option value="3">تحويل بنكي</option>
-                    <option value="4">بطاقة ائتمان</option>
-                </select>
-                <span asp-validation-for="Payment.Method" class="text-danger small" id="Payment_Method-error" aria-invalid="true"></span>
+                <div>
+                    <label asp-for="Payment.Amount" class="ui-label"></label>
+                    <input asp-for="Payment.Amount" class="ui-input" type="number" step="0.01" aria-describedby="Payment_Amount-error" />
+                    <span asp-validation-for="Payment.Amount" class="text-danger small" id="Payment_Amount-error" aria-invalid="true"></span>
+                </div>
+                @if (Model.Payment.Type == NewVixSmart.Web.Models.Accounting.PaymentType.Receipt)
+                {
+                    <div>
+                        <label asp-for="Payment.CustomerId" class="ui-label"></label>
+                        <select asp-for="Payment.CustomerId" asp-items="@Model.Customers" class="form-select">
+                            <option value="">-- اختر العميل --</option>
+                        </select>
+                        <span asp-validation-for="Payment.CustomerId" class="text-danger small" aria-invalid="true"></span>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <label asp-for="Payment.SupplierId" class="ui-label"></label>
+                        <select asp-for="Payment.SupplierId" asp-items="@Model.Suppliers" class="form-select">
+                            <option value="">-- اختر المورد --</option>
+                        </select>
+                        <span asp-validation-for="Payment.SupplierId" class="text-danger small" aria-invalid="true"></span>
+                    </div>
+                }
+                <div>
+                    <label asp-for="Payment.Method" class="ui-label"></label>
+                    <select asp-for="Payment.Method" class="form-select" aria-describedby="Payment_Method-error">
+                        <option value="1">نقداً</option>
+                        <option value="2">شيك</option>
+                        <option value="3">تحويل بنكي</option>
+                        <option value="4">بطاقة ائتمان</option>
+                    </select>
+                    <span asp-validation-for="Payment.Method" class="text-danger small" id="Payment_Method-error" aria-invalid="true"></span>
+                </div>
+                <div>
+                    <label asp-for="Payment.ReferenceNumber" class="ui-label"></label>
+                    <input asp-for="Payment.ReferenceNumber" class="ui-input" />
+                </div>
             </div>
-            <div class="col-md-4">
-                <label asp-for="Payment.ReferenceNumber" class="form-label"></label>
-                <input asp-for="Payment.ReferenceNumber" class="form-control" />
+            <div class="mt-4">
+                <label asp-for="Payment.Notes" class="ui-label"></label>
+                <textarea asp-for="Payment.Notes" class="ui-input" rows="2"></textarea>
             </div>
-            <div class="col-12">
-                <label asp-for="Payment.Notes" class="form-label"></label>
-                <textarea asp-for="Payment.Notes" class="form-control" rows="2"></textarea>
+            <div class="ui-form-actions">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
+                <a asp-action="Index" class="ui-btn ui-btn-ghost">إلغاء</a>
             </div>
-        </div>
-        <div class="mt-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
-        </div>
-    </form>
-</div></div>
+        </form>
+    </div>
+</div>

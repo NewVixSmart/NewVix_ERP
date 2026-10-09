@@ -1,37 +1,44 @@
 @model NewVixSmart.Web.ViewModels.Reports.PurchaseReportViewModel
 @{ ViewData["Title"] = "تقرير المشتريات"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-cart-dash text-primary" aria-hidden="true"></i> تقرير المشتريات</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
+        <h2><i class="bi bi-cart-dash" aria-hidden="true"></i> تقرير المشتريات</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+    </div>
 </div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" for="from">من تاريخ</label>
-            <input type="date" name="from" id="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="to">إلى تاريخ</label>
-            <input type="date" name="to" id="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
-        <div class="col-md-2">
-            <a asp-action="ExportPurchasesXlsx" asp-route-from="@ViewBag.From" asp-route-to="@ViewBag.To" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
-        </div>
-    </form>
-</div></div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">عدد الفواتير</div><h3 class="mb-0">@Model.InvoiceCount</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي المشتريات</div><h3 class="mb-0">@Money.Format(Model.NetPurchases)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">مرتجعات الشراء</div><h3 class="mb-0 text-danger">@Money.Format(Model.TotalReturns)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-success"><div class="text-muted small">صافي بعد المرتجعات</div><h3 class="mb-0 text-success">@Money.Format(Model.Net)</h3></div></div>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-4 items-end">
+            <div>
+                <label class="form-label" for="from">من تاريخ</label>
+                <input type="date" name="from" id="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label" for="to">إلى تاريخ</label>
+                <input type="date" name="to" id="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
+            <div>
+                <a asp-action="ExportPurchasesXlsx" asp-route-from="@ViewBag.From" asp-route-to="@ViewBag.To" class="ui-btn ui-btn-outline w-full"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="ui-grid ui-grid-4 ui-section">
+    <div class="ui-stat text-center"><div class="ui-stat-label">عدد الفواتير</div><h3 class="ui-stat-value num">@Model.InvoiceCount</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">صافي المشتريات</div><h3 class="ui-stat-value num">@Money.Format(Model.NetPurchases)</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">مرتجعات الشراء</div><h3 class="ui-stat-value text-danger num">@Money.Format(Model.TotalReturns)</h3></div>
+    <div class="ui-stat text-center"><div class="ui-stat-label">صافي بعد المرتجعات</div><h3 class="ui-stat-value text-success num">@Money.Format(Model.Net)</h3></div>
+</div>
+
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">فواتير الشراء في الفترة: الإجمالي والخصم والضريبة والصافي لكل فاتورة</caption>
         <thead><tr><th scope="col">الفاتورة</th><th scope="col">المورد</th><th scope="col">التاريخ</th><th scope="col">الإجمالي</th><th scope="col">الخصم</th><th scope="col">الضريبة</th><th scope="col">الصافي</th><th scope="col" class="visually-hidden">إجراءات</th></tr></thead>
         <tbody>
@@ -41,21 +48,21 @@
                     <td><code>@i.InvoiceNumber</code></td>
                     <td>@(i.Supplier?.Name ?? "—")</td>
                     <td>@i.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                    <td>@Money.Format(i.TotalAmount)</td>
-                    <td>@Money.Format(i.Discount)</td>
-                    <td>@Money.Format(i.Tax)</td>
-                    <td class="fw-bold">@Money.Format(i.NetAmount)</td>
-                    <td><a asp-action="PrintInvoice" asp-route-id="@i.Id" asp-route-type="purchase" class="btn btn-sm btn-outline-danger" aria-label="طباعة فاتورة شراء PDF رقم @i.InvoiceNumber"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></a></td>
+                    <td class="num">@Money.Format(i.TotalAmount)</td>
+                    <td class="num">@Money.Format(i.Discount)</td>
+                    <td class="num">@Money.Format(i.Tax)</td>
+                    <td class="fw-bold num">@Money.Format(i.NetAmount)</td>
+                    <td><a asp-action="PrintInvoice" asp-route-id="@i.Id" asp-route-type="purchase" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="طباعة فاتورة شراء PDF رقم @i.InvoiceNumber"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></a></td>
                 </tr>
             }
         </tbody>
         <tfoot>
-            <tr class="table-light fw-bold">
+            <tr class="fw-bold">
                 <td colspan="3">الإجمالي</td>
-                <td>@Money.Format(Model.TotalPurchases)</td>
-                <td>@Money.Format(Model.TotalDiscounts)</td>
-                <td>@Money.Format(Model.TotalTax)</td>
-                <td class="text-success">@Money.Format(Model.NetPurchases)</td>
+                <td class="num">@Money.Format(Model.TotalPurchases)</td>
+                <td class="num">@Money.Format(Model.TotalDiscounts)</td>
+                <td class="num">@Money.Format(Model.TotalTax)</td>
+                <td class="text-success num">@Money.Format(Model.NetPurchases)</td>
                 <td></td>
             </tr>
         </tfoot>
@@ -64,12 +71,12 @@
 
 @if (!Model.Invoices.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد فواتير شراء في هذه الفترة</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <p class="text-muted">لا توجد فواتير شراء في هذه الفترة</p>
     </div>
 }
 
 <div class="mt-4 d-print-none">
-    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
+    <button type="button" class="ui-btn ui-btn-quiet" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
 </div>

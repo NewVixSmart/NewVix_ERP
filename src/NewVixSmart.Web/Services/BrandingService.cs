@@ -9,20 +9,20 @@ public sealed record PalettePreset(string Id, string NameAr, string Primary, str
 
 public sealed class BrandingTheme
 {
-    public string Primary { get; set; } = "#1570EF";
-    public string PrimaryDark { get; set; } = "#175CD3";
-    public string PrimaryDarker { get; set; } = "#1849A9";
-    public string PrimaryFocus { get; set; } = "rgba(21, 112, 239, 0.22)";
-    public string Accent { get; set; } = "#53B1FD";
-    public string AccentStrong { get; set; } = "#2E90FA";
-    public string AccentBright { get; set; } = "#B9DCFF";
-    public string SidebarBg { get; set; } = "#ffffff";
-    public string SidebarText { get; set; } = "#101828";
-    public string SidebarSection { get; set; } = "#475467";
-    public string PageBg { get; set; } = "#f9fafb";
-    public string BsPrimaryBgSubtle { get; set; } = "#eff8ff";
-    public string BsPrimaryBorderSubtle { get; set; } = "#b2ddff";
-    public string BsPrimaryText { get; set; } = "#175cd3";
+    public string Primary { get; set; } = "#13315B";
+    public string PrimaryDark { get; set; } = "#0F2748";
+    public string PrimaryDarker { get; set; } = "#0A1B33";
+    public string PrimaryFocus { get; set; } = "rgba(19, 49, 91, 0.16)";
+    public string Accent { get; set; } = "#B08A2E";
+    public string AccentStrong { get; set; } = "#83661D";
+    public string AccentBright { get; set; } = "#D9B84C";
+    public string SidebarBg { get; set; } = "#0E1E33";
+    public string SidebarText { get; set; } = "#E8E8EE";
+    public string SidebarSection { get; set; } = "#94A3B8";
+    public string PageBg { get; set; } = "#F7F5F0";
+    public string BsPrimaryBgSubtle { get; set; } = "#D4DAE1";
+    public string BsPrimaryBorderSubtle { get; set; } = "#B3BDCA";
+    public string BsPrimaryText { get; set; } = "#0C2027";
 }
 
 public sealed class BrandingData
@@ -46,6 +46,7 @@ public class BrandingService : IBrandingService
     private const string _cacheKey = "branding.v1";
     private static readonly Dictionary<string, PalettePreset> _presetMap = new()
     {
+        ["luxury"] = new("luxury", "كحلي فاخر", "#13315b", "#b08a2e", "#0e1e33", "#f7f5f0"),
         ["modern"] = new("modern", "سافاير عالمي — Global", "#1570ef", "#53b1fd", "#ffffff", "#f9fafb"),
         ["evergreen"] = new("evergreen", "زمردي ذهبي", "#115e59", "#2dd4bf", "#0f2b26", "#f4f7f6"),
         ["indigo"] = new("indigo", "ملكي نيلي", "#4f46e5", "#818cf8", "#1e1b4b", "#f5f5fb"),
@@ -103,10 +104,10 @@ public class BrandingService : IBrandingService
             return FromPreset(preset);
         }
 
-        var primary = FirstValid(Get("Theme.Primary"), "#1570ef");
-        var accent = FirstValid(Get("Theme.Accent"), "#53b1fd");
-        var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#ffffff");
-        var pageBg = FirstValid(Get("Theme.PageBg"), "#f9fafb");
+        var primary = FirstValid(Get("Theme.Primary"), "#13315b");
+        var accent = FirstValid(Get("Theme.Accent"), "#b08a2e");
+        var sidebarBg = FirstValid(Get("Theme.SidebarBg"), "#0e1e33");
+        var pageBg = FirstValid(Get("Theme.PageBg"), "#f7f5f0");
 
         var sidebarDark = !ColorUtil.IsLight(sidebarBg);
         return new BrandingTheme
@@ -116,7 +117,7 @@ public class BrandingService : IBrandingService
             PrimaryDarker = DarkenSafe(Get("Theme.PrimaryDarker"), primary),
             PrimaryFocus = $"rgba({ColorUtil.RgbList(primary)}, 0.16)",
             Accent = accent,
-            AccentStrong = DarkenSafe(Get("Theme.AccentStrong"), accent),
+            AccentStrong = FirstValid(Get("Theme.AccentStrong"), DefaultAccentStrong(accent)),
             AccentBright = ColorUtil.Lighten(accent, 0.15),
             SidebarBg = sidebarBg,
             SidebarText = sidebarDark ? "#e8e8ee" : "#0e1620",
@@ -153,6 +154,20 @@ public class BrandingService : IBrandingService
 
     private static string FirstValid(string? value, string fallback) =>
         IsValidHex(value) ? value! : fallback;
+
+    /// <summary>
+    /// The default accent is the design-system gold, whose darkened form must stay legible on the
+    /// page background the eyebrow actually sits on. #83661d clears 4.5:1 on the page background,
+    /// on every surface, and on white, so an explicit override is the only way a weaker ink slips
+    /// in; a user-chosen accent keeps the neutral darkened derivation.
+    /// </summary>
+    private static string DefaultAccentStrong(string accent)
+    {
+        var hex = accent.Trim().TrimStart('#');
+        return hex.Equals("b08a2e", StringComparison.OrdinalIgnoreCase)
+            ? "#83661d"
+            : ColorUtil.Darken(accent, 0.18);
+    }
 
     private static bool IsValidHex(string? value)
     {

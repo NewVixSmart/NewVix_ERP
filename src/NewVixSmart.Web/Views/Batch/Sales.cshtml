@@ -7,32 +7,37 @@
         new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default });
 }
 
-<div class="page-header"><h2><i class="bi bi-collection text-primary" aria-hidden="true"></i> المبيعات الجماعية</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2><i class="bi bi-collection" aria-hidden="true"></i> المبيعات الجماعية</h2>
+    </div>
+</div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
 }
 
 <form asp-action="Sales" id="batchSalesForm">
-    <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-receipt" aria-hidden="true"></i> بيانات مشتركة لكل الفواتير</div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label asp-for="CustomerId" class="form-label"></label>
-                    <select asp-for="CustomerId" asp-items="@Model.Customers" class="form-select">
+    <div class="ui-section ui-card">
+        <div class="ui-card-head"><i class="bi bi-receipt" aria-hidden="true"></i> بيانات مشتركة لكل الفواتير</div>
+        <div class="ui-card-body">
+            <div class="ui-grid ui-grid-3">
+                <div>
+                    <label asp-for="CustomerId" class="ui-label"></label>
+                    <select asp-for="CustomerId" asp-items="@Model.Customers" class="ui-input">
                         <option value="">-- اختر العميل --</option>
                     </select>
                     <span asp-validation-for="CustomerId" class="text-danger small" aria-invalid="true"></span>
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="InvoiceDate" class="form-label"></label>
-                    <input asp-for="InvoiceDate" class="form-control" type="date" />
+                <div>
+                    <label asp-for="InvoiceDate" class="ui-label"></label>
+                    <input asp-for="InvoiceDate" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="PaymentTerms" class="form-label"></label>
-                    <select asp-for="PaymentTerms" class="form-select">
+                <div>
+                    <label asp-for="PaymentTerms" class="ui-label"></label>
+                    <select asp-for="PaymentTerms" class="ui-input">
                         <option value="0" selected="@(Model.PaymentTerms == InvoicePaymentTerms.OnReceipt)">عند الاستلام</option>
                         <option value="1" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net7)">7 أيام</option>
                         <option value="2" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net15)">15 يوم</option>
@@ -40,25 +45,25 @@
                         <option value="4" selected="@(Model.PaymentTerms == InvoicePaymentTerms.Net60)">60 يوم</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="discount">الخصم</label>
-                    <input asp-for="Discount" class="form-control" type="number" step="0.01" id="discount" value="@Model.Discount" />
+                <div>
+                    <label class="ui-label" for="discount">الخصم</label>
+                    <input asp-for="Discount" class="ui-input" type="number" step="0.01" id="discount" value="@Model.Discount" />
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="discount2">خصم إضافي 2</label>
-                    <input asp-for="Discount2" class="form-control" type="number" step="0.01" id="discount2" />
+                <div>
+                    <label class="ui-label" for="discount2">خصم إضافي 2</label>
+                    <input asp-for="Discount2" class="ui-input" type="number" step="0.01" id="discount2" />
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="discount3">خصم إضافي 3</label>
-                    <input asp-for="Discount3" class="form-control" type="number" step="0.01" id="discount3" />
+                <div>
+                    <label class="ui-label" for="discount3">خصم إضافي 3</label>
+                    <input asp-for="Discount3" class="ui-input" type="number" step="0.01" id="discount3" />
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="tax">الضريبة</label>
-                    <input asp-for="Tax" class="form-control" type="number" step="0.01" id="tax" value="@Model.Tax" />
+                <div>
+                    <label class="ui-label" for="tax">الضريبة</label>
+                    <input asp-for="Tax" class="ui-input" type="number" step="0.01" id="tax" value="@Model.Tax" />
                 </div>
-                <div class="col-12">
-                    <label asp-for="Notes" class="form-label"></label>
-                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                <div class="md:col-span-3">
+                    <label asp-for="Notes" class="ui-label"></label>
+                    <textarea asp-for="Notes" class="ui-input" rows="2"></textarea>
                 </div>
             </div>
         </div>
@@ -68,13 +73,13 @@
         @for (var i = 0; i < Model.Invoices.Count; i++)
         {
             var blockItems = Model.Invoices[i].Items ?? new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem>();
-            <div class="card invoice-block mb-3" data-invoice="@i" data-rows="@(Math.Max(1, blockItems.Count))">
+            <div class="ui-card invoice-block mb-4" data-invoice="@i" data-rows="@(Math.Max(1, blockItems.Count))">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة @(i + 1)</span>
                     <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
+                    <table class="table">
                         <caption class="visually-hidden">أصناف فاتورة @(i + 1): الصنف، العدد، الكمية، سعر الوحدة، خصم الصنف، الإجمالي</caption>
                         <thead>
                             <tr>
@@ -105,7 +110,7 @@
                                     <td><input name="Invoices[@i].Items[@j].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" /></td>
                                     <td><input name="Invoices[@i].Items[@j].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" /></td>
                                     <td><input name="Invoices[@i].Items[@j].Discount" type="number" step="0.01" class="form-control form-control-sm line-discount" value="@(line?.Discount ?? 0)" aria-label="خصم الصنف" /></td>
-                                    <td><span class="total fw-bold">0.00</span></td>
+                                    <td><span class="total fw-bold num">0.00</span></td>
                                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                                 </tr>
                             }
@@ -120,13 +125,13 @@
         }
     </div>
 
-    <div class="mb-3">
-        <button type="button" class="btn btn-outline-primary" id="addInvoice"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة فاتورة أخرى</button>
+    <div class="mb-4">
+        <button type="button" class="ui-btn ui-btn-outline" id="addInvoice"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة فاتورة أخرى</button>
     </div>
 
-    <div class="mt-2 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> ترحيل الفواتير دفعة واحدة</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    <div class="ui-form-actions">
+        <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> ترحيل الفواتير دفعة واحدة</button>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet">إلغاء</a>
     </div>
 </form>
 

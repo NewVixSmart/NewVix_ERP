@@ -7,33 +7,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <title>غير مصرح - @_brand.Profile.CompanyName</title>
-    <link href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
     <link href="~/lib/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
-    <link href="~/lib/fonts/cairo/cairo.css" rel="stylesheet" />
-    <link href="~/css/tokens.css" rel="stylesheet" asp-append-version="true" />
-    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+    <link href="~/css/app.css" rel="stylesheet" asp-append-version="true" />
     <style nonce="@Context.GetCspNonce()">
         @Html.Raw(Branding.RenderThemeCss(_brand.Theme))
     </style>
-    <link href="~/css/auth.css" rel="stylesheet" asp-append-version="true" />
 </head>
 <body>
-    <div class="lg-stage">
-        <main class="lg-shell">
-            <section class="lg-hero">
-                <div class="lg-hero__brand" aria-hidden="true"><i class="bi bi-shield-lock" aria-hidden="true"></i></div>
-                <h1 class="lg-hero__title">غير مصرح</h1>
-                <p class="lg-hero__tagline">هذه الصفحة محمية ولا يمكن الوصول إليها بحسابك الحالي.</p>
-                <p class="lg-hero__trust"><i class="bi bi-shield-lock" aria-hidden="true"></i> اتصال آمن وإدارة صلاحيات مركزية</p>
-            </section>
-            <section class="lg-panel">
-                <div class="lg-panel__head">
-                    <h2 class="lg-title">تم رفض الوصول</h2>
-                    <p class="lg-subtitle">ليس لديك الصلاحية للوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تعتقد أن الوصول يجب أن يكون متاحاً لك.</p>
-                </div>
-                <a asp-controller="Account" asp-action="Login" class="btn btn-primary w-100 lg-submit"><i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> العودة لتسجيل الدخول</a>
-                <p class="lg-foot">@_brand.Profile.CompanyName — جميع الحقوق محفوظة.</p>
-            </section>
+    <div class="ui-auth">
+        <section class="ui-auth-hero" aria-label="نبذة عن الحماية">
+            <p class="ui-auth-eyebrow">
+                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                وصول محمي
+            </p>
+            @if (_brand.Profile.HasLogo)
+            {
+                <img class="brand-logo w-16 h-16" src="@_brand.Profile.LogoDataUri()" alt="@_brand.Profile.CompanyName" />
+            }
+            else
+            {
+                <span class="brand-monogram w-14 h-14" aria-hidden="true"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+            }
+            <div class="flex flex-col gap-3">
+                <h1 class="ui-auth-title">غير مصرح</h1>
+                <p class="ui-auth-tagline">هذه الصفحة محمية ولا يمكن الوصول إليها بحسابك الحالي.</p>
+            </div>
+            <p class="ui-auth-note"><i class="bi bi-lock" aria-hidden="true"></i> اتصال آمن وإدارة صلاحيات مركزية</p>
+        </section>
+        <main class="ui-auth-panel" id="mainContent">
+            <div class="ui-auth-card">
+                <header class="ui-auth-head">
+                    <p class="ui-eyebrow">تم رفض الوصول</p>
+                    <h2>الصلاحية غير متاحة</h2>
+                    <p class="text-muted">ليس لديك الصلاحية للوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تعتقد أن الوصول يجب أن يكون متاحاً لك.</p>
+                </header>
+                <a asp-controller="Account" asp-action="Login" class="ui-btn ui-btn-pri ui-btn-lg justify-center"><i class="bi bi-box-arrow-in-left" aria-hidden="true"></i> العودة لتسجيل الدخول</a>
+                <p class="ui-auth-foot">@_brand.Profile.CompanyName &mdash; جميع الحقوق محفوظة.</p>
+            </div>
         </main>
     </div>
     <script src="~/js/site.js" asp-append-version="true"></script>

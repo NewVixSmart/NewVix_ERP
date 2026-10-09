@@ -3,43 +3,60 @@
     ViewData["Title"] = "تقرير المخزون الكامل";
 }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-clipboard2-data text-primary" aria-hidden="true"></i> تقرير المخزون الكامل</h2>
-    <div class="d-flex gap-2">
-        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير الأصناف</a>
-        <a asp-controller="Reports" asp-action="ExportStockXlsx" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> لقطة المخزون</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-clipboard2-data" aria-hidden="true"></i> تقرير المخزون الكامل</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-controller="Reports" asp-action="ExportItemsXlsx" class="ui-btn ui-btn-ok"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير الأصناف</a>
+        <a asp-controller="Reports" asp-action="ExportStockXlsx" class="ui-btn ui-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> لقطة المخزون</a>
     </div>
 </div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" for="categoryFilter">التصنيف</label>
-            <select name="categoryId" id="categoryFilter" class="form-select">
-                <option value="">الكل</option>
-                @foreach (var c in Model.Categories)
-                { <option value="@c.Id" selected="@(Model.CategoryId?.ToString() == c.Id.ToString())">@c.Name</option> }
-            </select>
-        </div>
-        <div class="col-md-3">
-            <div class="form-check form-switch mt-4">
-                <input type="checkbox" name="lowOnly" value="true" class="form-check-input" id="lowOnly" checked="@(Model.LowOnly)" />
-                <label class="form-check-label" for="lowOnly">فقط المخزون المنخفض</label>
+<div class="ui-section ui-card ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-3 items-end">
+            <div>
+                <label class="form-label" for="categoryFilter">التصنيف</label>
+                <select name="categoryId" id="categoryFilter" class="form-select">
+                    <option value="">الكل</option>
+                    @foreach (var c in Model.Categories)
+                    { <option value="@c.Id" selected="@(Model.CategoryId?.ToString() == c.Id.ToString())">@c.Name</option> }
+                </select>
             </div>
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> تصفية</button></div>
-    </form>
-</div></div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">عدد الأصناف</div><h3 class="mb-0">@Model.TotalItems</h3></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">أصناف منخفضة</div><h3 class="mb-0 text-danger">@Model.LowItems</h3></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الكمية</div><h3 class="mb-0">@Model.TotalQuantity.ToString("N2")</h3></div></div>
-    <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">قيمة المخزون (بسعر الشراء)</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalValue)</h3></div></div>
+            <div>
+                <div class="form-check">
+                    <input type="checkbox" name="lowOnly" value="true" class="form-check-input" id="lowOnly" checked="@(Model.LowOnly)" />
+                    <label class="form-check-label" for="lowOnly">فقط المخزون المنخفض</label>
+                </div>
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> تصفية</button></div>
+        </form>
+    </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="ui-grid ui-grid-4 mb-4 ui-rise">
+    <div class="ui-stat">
+        <span class="ui-stat-label">عدد الأصناف</span>
+        <span class="ui-stat-value">@Model.TotalItems</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">أصناف منخفضة</span>
+        <span class="ui-stat-value text-danger">@Model.LowItems</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي الكمية</span>
+        <span class="ui-stat-value">@Model.TotalQuantity.ToString("N2")</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">قيمة المخزون (بسعر الشراء)</span>
+        <span class="ui-stat-value text-success">@Money.Format(Model.TotalValue)</span>
+    </div>
+</div>
+
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">تقرير المخزون: رصيد كل صنف وحدوده الدنيا وقيمته بسعر الشراء</caption>
         <thead><tr><th scope="col">الكود</th><th scope="col">الصنف</th><th scope="col">النوع</th><th scope="col">التصنيف</th><th scope="col">الرصيد الحالي</th><th scope="col">الحد الأدنى</th><th scope="col">الحالة</th><th scope="col">القيمة</th></tr></thead>
         <tbody>
@@ -50,24 +67,24 @@
                     <td><code>@(item.Code ?? "—")</code></td>
                     <td><strong>@item.Name</strong></td>
                     <td>
-                        <span class="badge bg-primary">@(item.ItemType?.Name ?? "—")</span>
+                        <span class="ui-badge ui-badge-info">@(item.ItemType?.Name ?? "—")</span>
                     </td>
-                    <td><span class="badge bg-secondary">@item.Category.Name</span></td>
+                    <td><span class="ui-badge ui-badge-mute">@item.Category.Name</span></td>
                     <td>
-                        @item.CurrentCount.ToString("N2") @(item.CountUnit?.ShortName ?? item.CountUnit?.Name ?? "")<br/>
-                        <small class="text-muted">@item.CurrentQuantity.ToString("N2") @(item.QuantityUnit?.ShortName ?? item.QuantityUnit?.Name ?? "")</small>
+                        <span class="num">@item.CurrentCount.ToString("N2")</span> @(item.CountUnit?.ShortName ?? item.CountUnit?.Name ?? "")<br/>
+                        <small class="text-muted"><span class="num">@item.CurrentQuantity.ToString("N2")</span> @(item.QuantityUnit?.ShortName ?? item.QuantityUnit?.Name ?? "")</small>
                     </td>
                     <td>
-                        @item.MinCount.ToString("N2")<br/>
-                        <small class="text-muted">@item.MinQuantity.ToString("N2")</small>
+                        <span class="num">@item.MinCount.ToString("N2")</span><br/>
+                        <small class="text-muted"><span class="num">@item.MinQuantity.ToString("N2")</span></small>
                     </td>
                     <td>
                         @if (low)
-                        { <span class="badge bg-danger">منخفض</span> }
+                        { <span class="ui-badge ui-badge-bad">منخفض</span> }
                         else
-                        { <span class="badge bg-success">كافٍ</span> }
+                        { <span class="ui-badge ui-badge-ok">كافٍ</span> }
                     </td>
-                    <td class="fw-bold">@(Money.Format((item.QuantityUnitId.HasValue || item.CurrentQuantity > 0) ? item.CurrentQuantity * item.PurchasePrice : item.CurrentCount * item.PurchasePrice))</td>
+                    <td class="fw-bold num">@(Money.Format((item.QuantityUnitId.HasValue || item.CurrentQuantity > 0) ? item.CurrentQuantity * item.PurchasePrice : item.CurrentCount * item.PurchasePrice))</td>
                 </tr>
             }
         </tbody>
@@ -76,8 +93,8 @@
 
 @if (!Model.Items.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد أصناف مطابقة</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد أصناف مطابقة</strong>
     </div>
 }

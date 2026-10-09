@@ -16,36 +16,37 @@
     };
 }
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-    <h2 class="h3 mb-0">
-        <i class="bi bi-printer text-primary" aria-hidden="true"></i> استوديو الطباعة
-    </h2>
-    <div class="ms-auto d-flex flex-wrap gap-2">
-        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right" aria-hidden="true"></i> العودة للإعدادات</a>
-        <form asp-action="ResetPrinting" method="post" class="d-inline" data-confirm="استعادة جميع إعدادات الطباعة إلى الافتراضي؟" data-confirm-ok="استعادة">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">الطباعة</span>
+        <h2><i class="bi bi-printer" aria-hidden="true"></i> استوديو الطباعة</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-ghost ui-btn-sm"><i class="bi bi-arrow-right" aria-hidden="true"></i> العودة للإعدادات</a>
+        <form asp-action="ResetPrinting" method="post" class="inline-flex" data-confirm="استعادة جميع إعدادات الطباعة إلى الافتراضي؟" data-confirm-ok="استعادة">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> استعادة الإعدادات الافتراضية</button>
+            <button type="submit" class="ui-btn ui-btn-bad ui-btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> استعادة الإعدادات الافتراضية</button>
         </form>
     </div>
 </div>
 
-<p class="text-muted mb-3">تُطبَّق هذه الإعدادات على الطباعة المباشرة وتصدير PDF في كامل النظام (الفواتير، عروض الأسعار، التقارير، كشوف الحسابات...).</p>
+<p class="text-muted mb-4 ui-rise">تُطبَّق هذه الإعدادات على الطباعة المباشرة وتصدير PDF في كامل النظام (الفواتير، عروض الأسعار، التقارير، كشوف الحسابات...).</p>
 
-<div class="alert alert-info d-flex align-items-start gap-2" role="status">
+<div class="ui-alert ui-alert-info flex items-start gap-2 ui-rise" role="status">
     <i class="bi bi-info-circle flex-shrink-0 mt-1" aria-hidden="true"></i>
     <div>عدّل الإعدادات وشاهد المعاينة الحية فورًا، ثم اضغط «حفظ الإعدادات». المعاينة تستخدم نموذج بيانات تجريبي ولا تُحفظ.</div>
 </div>
 
-<div class="row g-4">
-    <div class="col-12 col-lg-3 order-lg-1">
-        <div class="card">
+<div class="ui-grid ui-grid-3 ui-rise" style="align-items: start;">
+    <div>
+        <div class="ui-card">
             <div class="card-header"><i class="bi bi-files" aria-hidden="true"></i> أنواع المستندات</div>
             <div class="card-body p-0">
-                <div class="list-group list-group-flush" id="groupList" role="tablist" aria-orientation="vertical" aria-label="أنواع المستندات">
+                <div class="flex flex-col divide-y divide-[color:var(--color-line)]" id="groupList" role="tablist" aria-orientation="vertical" aria-label="أنواع المستندات">
                     @foreach (var g in studioGroups)
                     {
                         <button type="button"
-                                class="list-group-item list-group-item-action studio-group-button @(g.Index == 0 ? "active" : "")"
+                                class="studio-group-button px-4 py-2.5 text-start @(g.Index == 0 ? "active" : "")"
                                 id="group-@g.Slug"
                                 role="tab"
                                 aria-selected="@(g.Index == 0 ? "true" : "false")"
@@ -61,7 +62,7 @@
         </div>
     </div>
 
-    <div class="col-12 col-lg-9 order-lg-2">
+    <div style="grid-column: 2 / -1;">
         <form asp-action="SavePrinting" method="post"
               id="printStudioForm"
               data-loading-submit data-loading-text="جاري الحفظ..."
@@ -72,42 +73,42 @@
             @* بصمةُ ما عُرض فعلًا، فيقارنها الخادم بالمحفوظ قبل الكتابة. *@
             <input type="hidden" name="printFingerprint" value="@ViewBag.PrintFingerprint" />
 
-            <div class="row g-4">
-                <div class="col-xl-7">
+            <div class="ui-grid ui-grid-2 ui-rise" style="align-items: start;">
+                <div style="grid-column: 1 / 2;">
                     @foreach (var g in studioGroups)
                     {
-                        <section id="panel-@g.Slug" class="studio-panel @(g.Index == 0 ? "" : "d-none")"
-                                 role="tabpanel" aria-labelledby="group-@g.Slug" data-slug="@g.Slug">
-                            <fieldset class="card mb-3">
-                                <legend class="card-header w-100"><i class="bi bi-fonts" aria-hidden="true"></i> الصفحة والخط</legend>
+                        <section id="panel-@g.Slug" class="studio-panel @(g.Index == 0 ? "" : "hidden")"
+                                  role="tabpanel" aria-labelledby="group-@g.Slug" data-slug="@g.Slug">
+                            <fieldset class="ui-card mb-4">
+                                <legend class="card-header w-full"><i class="bi bi-fonts" aria-hidden="true"></i> الصفحة والخط</legend>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-6 col-md-4">
+                                    <div class="ui-grid ui-grid-3 gap-3">
+                                        <div>
                                             <label class="form-label" for="PageSize_@g.Slug">حجم الورق</label>
-                                            <select class="form-select" name="PageSize" id="PageSize_@g.Slug">
+                                            <select class="form-select ui-input" name="PageSize" id="PageSize_@g.Slug">
                                                 <option value="A4">A4</option>
                                                 <option value="A5">A5</option>
                                                 <option value="Letter">Letter</option>
                                             </select>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="Orientation_@g.Slug">الاتجاه</label>
-                                            <select class="form-select" name="Orientation" id="Orientation_@g.Slug">
+                                            <select class="form-select ui-input" name="Orientation" id="Orientation_@g.Slug">
                                                 <option value="Portrait">عمودي</option>
                                                 <option value="Landscape">أفقي</option>
                                             </select>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="Margin_@g.Slug">هوامش الورق</label>
-                                            <select class="form-select" name="Margin" id="Margin_@g.Slug">
+                                            <select class="form-select ui-input" name="Margin" id="Margin_@g.Slug">
                                                 <option value="Normal">عادية</option>
                                                 <option value="Narrow">ضيقة</option>
                                                 <option value="Wide">واسعة</option>
                                             </select>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="FontScale_@g.Slug">حجم الخط</label>
-                                            <select class="form-select" name="FontScale" id="FontScale_@g.Slug">
+                                            <select class="form-select ui-input" name="FontScale" id="FontScale_@g.Slug">
                                                 @for (var s = 0.8; s <= 1.3001; s += 0.05)
                                                 {
                                                     var isDefaultFont = Math.Abs(s - 1.0) < 0.001;
@@ -115,9 +116,9 @@
                                                 }
                                             </select>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="Decimals_@g.Slug">المنازل العشرية</label>
-                                            <select class="form-select" name="Decimals" id="Decimals_@g.Slug">
+                                            <select class="form-select ui-input" name="Decimals" id="Decimals_@g.Slug">
                                                 @for (var d = 0; d <= 4; d++)
                                                 {
                                                     var isDefaultDecimals = d == 2;
@@ -129,19 +130,19 @@
                                 </div>
                             </fieldset>
 
-                            <fieldset class="card mb-3">
-                                <legend class="card-header w-100"><i class="bi bi-card-heading" aria-hidden="true"></i> الترويسة</legend>
+                            <fieldset class="ui-card mb-4">
+                                <legend class="card-header w-full"><i class="bi bi-card-heading" aria-hidden="true"></i> الترويسة</legend>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-6 col-md-4">
+                                    <div class="ui-grid ui-grid-3 gap-3">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowLogo" value="true" id="ShowLogo_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowLogo_@g.Slug">إظهار شعار الشركة</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="LogoScalePercent_@g.Slug">حجم الشعار</label>
-                                            <select class="form-select" name="LogoScalePercent" id="LogoScalePercent_@g.Slug">
+                                            <select class="form-select ui-input" name="LogoScalePercent" id="LogoScalePercent_@g.Slug">
                                                 @for (var p = 50; p <= 150; p += 10)
                                                 {
                                                     var isDefaultScale = p == 100;
@@ -149,96 +150,96 @@
                                                 }
                                             </select>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowCompanyName" value="true" id="ShowCompanyName_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowCompanyName_@g.Slug">إظهار اسم الشركة</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowTagline" value="true" id="ShowTagline_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowTagline_@g.Slug">إظهار الشعار النصي</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowCompanyContact" value="true" id="ShowCompanyContact_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowCompanyContact_@g.Slug">إظهار العنوان والهاتف والبريد</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowTaxNumber" value="true" id="ShowTaxNumber_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowTaxNumber_@g.Slug">إظهار الرقم الضريبي</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowDocTitle" value="true" id="ShowDocTitle_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowDocTitle_@g.Slug">إظهار عنوان المستند</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="AccentColor_@g.Slug">اللون المميز</label>
                                             <div class="input-group studio-color-pair">
                                                 <input type="color" class="form-control form-control-color" id="AccentColorPicker_@g.Slug" value="#10b981" aria-hidden="true" tabindex="-1" />
-                                                <input type="text" class="form-control" name="AccentColor" id="AccentColor_@g.Slug" value="#10b981" />
+                                                <input type="text" class="form-control ui-input" name="AccentColor" id="AccentColor_@g.Slug" value="#10b981" />
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="TableHeaderBg_@g.Slug">لون خلفية رأس الجدول</label>
                                             <div class="input-group studio-color-pair">
                                                 <input type="color" class="form-control form-control-color" id="TableHeaderBgPicker_@g.Slug" value="#eaf5f0" aria-hidden="true" tabindex="-1" />
-                                                <input type="text" class="form-control" name="TableHeaderBg" id="TableHeaderBg_@g.Slug" value="#eaf5f0" />
+                                                <input type="text" class="form-control ui-input" name="TableHeaderBg" id="TableHeaderBg_@g.Slug" value="#eaf5f0" />
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="TableHeaderText_@g.Slug">لون نص رأس الجدول</label>
                                             <div class="input-group studio-color-pair">
                                                 <input type="color" class="form-control form-control-color" id="TableHeaderTextPicker_@g.Slug" value="#0e1620" aria-hidden="true" tabindex="-1" />
-                                                <input type="text" class="form-control" name="TableHeaderText" id="TableHeaderText_@g.Slug" value="#0e1620" />
+                                                <input type="text" class="form-control ui-input" name="TableHeaderText" id="TableHeaderText_@g.Slug" value="#0e1620" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </fieldset>
 
-                            <fieldset class="card mb-3">
-                                <legend class="card-header w-100"><i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i> أعمدة الجدول</legend>
+                            <fieldset class="ui-card mb-4">
+                                <legend class="card-header w-full"><i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i> أعمدة الجدول</legend>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-6 col-md-4">
+                                    <div class="ui-grid ui-grid-3 gap-3">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowItemCode" value="true" id="ShowItemCode_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowItemCode_@g.Slug">إظهار رمز الصنف</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowBarcode" value="true" id="ShowBarcode_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowBarcode_@g.Slug">إظهار الباركود</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowUnitPrice" value="true" id="ShowUnitPrice_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowUnitPrice_@g.Slug">إظهار سعر الوحدة</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowDiscountColumn" value="true" id="ShowDiscountColumn_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowDiscountColumn_@g.Slug">إظهار عمود الخصم</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowCount" value="true" id="ShowCount_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowCount_@g.Slug">إظهار الرصيد</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowQuantity" value="true" id="ShowQuantity_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowQuantity_@g.Slug">إظهار الكمية</label>
@@ -248,81 +249,81 @@
                                 </div>
                             </fieldset>
 
-                            <fieldset class="card mb-3">
-                                <legend class="card-header w-100"><i class="bi bi-calculator" aria-hidden="true"></i> الإجماليات والتذييل</legend>
+                            <fieldset class="ui-card mb-4">
+                                <legend class="card-header w-full"><i class="bi bi-calculator" aria-hidden="true"></i> الإجماليات والتذييل</legend>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-6 col-md-4">
+                                    <div class="ui-grid ui-grid-3 gap-3">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowSubtotal" value="true" id="ShowSubtotal_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowSubtotal_@g.Slug">إظهار المجموع الفرعي</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowTotalDiscount" value="true" id="ShowTotalDiscount_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowTotalDiscount_@g.Slug">إظهار إجمالي الخصم</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowTotalTax" value="true" id="ShowTotalTax_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowTotalTax_@g.Slug">إظهار إجمالي الضريبة</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowGrandTotal" value="true" id="ShowGrandTotal_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowGrandTotal_@g.Slug">إظهار الإجمالي الكلي</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowAmountInWords" value="true" id="ShowAmountInWords_@g.Slug" />
                                                 <label class="form-check-label" for="ShowAmountInWords_@g.Slug">إظهار المبلغ كتابةً</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowPaidBadge" value="true" id="ShowPaidBadge_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowPaidBadge_@g.Slug">إظهار شارة المدفوع</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowCreatedBy" value="true" id="ShowCreatedBy_@g.Slug" />
                                                 <label class="form-check-label" for="ShowCreatedBy_@g.Slug">إظهار منشئ المستند</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowFooter" value="true" id="ShowFooter_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowFooter_@g.Slug">إظهار التذييل</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowSignatureLines" value="true" id="ShowSignatureLines_@g.Slug" />
                                                 <label class="form-check-label" for="ShowSignatureLines_@g.Slug">إظهار خطوط التوقيع</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <div class="form-check form-switch">
                                                 <input type="checkbox" role="switch" class="form-check-input" name="ShowPageNumbers" value="true" id="ShowPageNumbers_@g.Slug" checked />
                                                 <label class="form-check-label" for="ShowPageNumbers_@g.Slug">إظهار أرقام الصفحات</label>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="FooterNoteText_@g.Slug">ملاحظة التذييل</label>
-                                            <input type="text" class="form-control" name="FooterNoteText" id="FooterNoteText_@g.Slug" value="شكراً لتعاملكم معنا" />
+                                            <input type="text" class="form-control ui-input" name="FooterNoteText" id="FooterNoteText_@g.Slug" value="شكراً لتعاملكم معنا" />
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="SignatureOne_@g.Slug">التوقيع الأول</label>
-                                            <input type="text" class="form-control" name="SignatureOne" id="SignatureOne_@g.Slug" value="إعداد" />
+                                            <input type="text" class="form-control ui-input" name="SignatureOne" id="SignatureOne_@g.Slug" value="إعداد" />
                                         </div>
-                                        <div class="col-6 col-md-4">
+                                        <div>
                                             <label class="form-label" for="SignatureTwo_@g.Slug">التوقيع الثاني</label>
-                                            <input type="text" class="form-control" name="SignatureTwo" id="SignatureTwo_@g.Slug" value="اعتماد" />
+                                            <input type="text" class="form-control ui-input" name="SignatureTwo" id="SignatureTwo_@g.Slug" value="اعتماد" />
                                         </div>
                                     </div>
                                 </div>
@@ -330,22 +331,22 @@
                         </section>
                     }
 
-                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                    <div class="flex flex-wrap items-center gap-3 mb-4">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" name="applyToAll" value="true" id="applyToAll" />
                             <label class="form-check-label" for="applyToAll">تطبيق هذه الإعدادات على جميع أنواع المستندات</label>
                         </div>
-                        <div class="ms-auto">
-                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle" aria-hidden="true"></i> حفظ الإعدادات</button>
+                        <div class="me-auto">
+                            <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-circle" aria-hidden="true"></i> حفظ الإعدادات</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-xl-5">
-                    <div class="card" style="position: sticky; top: 1rem;">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="ui-card" style="position: sticky; top: 1rem;">
+                        <div class="card-header justify-between items-center">
                             <span><i class="bi bi-eye" aria-hidden="true"></i> معاينة حية</span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="pdfPreviewBtn"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> معاينة PDF</button>
+                            <button type="button" class="ui-btn ui-btn-ghost ui-btn-sm" id="pdfPreviewBtn"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> معاينة PDF</button>
                         </div>
                         <div class="card-body p-0">
                             <iframe id="printPreview"

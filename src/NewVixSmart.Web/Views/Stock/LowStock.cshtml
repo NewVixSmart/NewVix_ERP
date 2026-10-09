@@ -3,20 +3,20 @@
     ViewData["Title"] = "انخفاض المخزون";
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-exclamation-triangle text-danger" aria-hidden="true"></i> انخفاض المخزون</h2>
-</div>
-
-<div class="card mb-4 border-warning">
-    <div class="card-body py-2">
-        <p class="mb-0 text-warning-emphasis fw-bold">
-            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> الأصناف التالية انخفض رصيدها عن الحد الأدنى (@Model.Count) وتحتاج إلى إعادة توريد.
-        </p>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> انخفاض المخزون</h2>
     </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="ui-alert ui-alert-warn ui-rise mb-4">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+    <p class="mb-0 fw-bold">الأصناف التالية انخفض رصيدها عن الحد الأدنى (@Model.Count) وتحتاج إلى إعادة توريد.</p>
+</div>
+
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">الأصناف التي انخفض رصيدها عن الحد الأدنى مع قيمة النقص في العدد والكمية</caption>
         <thead><tr><th scope="col">الكود</th><th scope="col">الصنف</th><th scope="col">التصنيف</th><th scope="col">الرصيد الحالي (عدد/كمية)</th><th scope="col">الحد الأدنى</th><th scope="col">النقص</th></tr></thead>
         <tbody>
@@ -25,8 +25,8 @@
                 <tr>
                     <td><code>@(item.Code ?? "—")</code></td>
                     <td><strong>@item.Name</strong></td>
-                    <td><span class="badge bg-secondary">@item.CategoryName</span></td>
-                    <td>
+                    <td><span class="ui-badge ui-badge-mute">@item.CategoryName</span></td>
+                    <td class="num">
                         @if (item.IsCountLow)
                         { <span class="text-danger fw-bold">@item.CurrentCount.ToString("N2")</span> }
                         else
@@ -37,10 +37,10 @@
                         else
                         { <span>@item.CurrentQuantity.ToString("N2")</span> }
                     </td>
-                    <td>@item.MinCount.ToString("N2") / @item.MinQuantity.ToString("N2")</td>
+                    <td class="num">@item.MinCount.ToString("N2") / @item.MinQuantity.ToString("N2")</td>
                     <td class="text-danger fw-bold">
-                        @if (item.IsCountLow) { <span>عدد: -@item.CountDeficit.ToString("N2")</span> }
-                        @if (item.IsQuantityLow) { <span>كمية: -@item.QuantityDeficit.ToString("N2")</span> }
+                        @if (item.IsCountLow) { <span>عدد: <span class="num">-@item.CountDeficit.ToString("N2")</span></span> }
+                        @if (item.IsQuantityLow) { <span>كمية: <span class="num">-@item.QuantityDeficit.ToString("N2")</span></span> }
                     </td>
                 </tr>
             }
@@ -50,12 +50,12 @@
 
 @if (!Model.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-check-circle" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد أصناف بمخزون منخفض</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-check-circle" aria-hidden="true"></i></div>
+        <strong>لا توجد أصناف بمخزون منخفض</strong>
     </div>
 }
 
 <div class="mt-3">
-    <a asp-controller="Stock" asp-action="Report" class="btn btn-outline-primary"><i class="bi bi-clipboard2-data" aria-hidden="true"></i> تقرير المخزون</a>
+    <a asp-controller="Stock" asp-action="Report" class="ui-btn ui-btn-outline"><i class="bi bi-clipboard2-data" aria-hidden="true"></i> تقرير المخزون</a>
 </div>

@@ -40,6 +40,17 @@ jobs:
       - name: Verify Razor and Markdown text hygiene
         run: pwsh -NoProfile -File scripts/check-text-hygiene.ps1
 
+      # THE design-system build gate. The Tailwind sources live in ui/ and the built
+      # app.css is committed, so a stray edit to a view, a new utility class, or a changed
+      # token must produce (and commit) the matching bundle. `git diff --exit-code` fails the
+      # run when the checked-in bundle is stale, and npm ci respects the pinned lockfile.
+      - name: Build app.css from ui/ (Tailwind v4) and fail on uncommitted output
+        run: |
+          cd ui
+          npm ci
+          npm run build:css
+          git diff --exit-code -- ../src/NewVixSmart.Web/wwwroot/css/app.css
+
       - name: Setup .NET
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:

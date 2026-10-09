@@ -14,40 +14,45 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-receipt-cutoff text-primary" aria-hidden="true"></i> عرض سعر جديد</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2><i class="bi bi-receipt-cutoff" aria-hidden="true"></i> عرض سعر جديد</h2>
+    </div>
+</div>
 
 @if (!ViewData.ModelState.IsValid)
 {
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" tabindex="-1"></div>
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad ui-rise" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 }
 
 <form asp-action="Create" id="quoteForm">
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label asp-for="Quote.QuoteNumber" class="form-label"></label>
-                    <input asp-for="Quote.QuoteNumber" class="form-control" readonly />
+            <div class="ui-grid ui-grid-5 gap-3">
+                <div class="ui-grid-span-5 sm:ui-grid-span-1">
+                    <label asp-for="Quote.QuoteNumber" class="ui-label"></label>
+                    <input asp-for="Quote.QuoteNumber" class="ui-input" readonly />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Quote.CustomerId" class="form-label"></label>
-                    <select asp-for="Quote.CustomerId" asp-items="@Model.Customers" class="form-select">
+                <div class="ui-grid-span-5 sm:ui-grid-span-1">
+                    <label asp-for="Quote.CustomerId" class="ui-label"></label>
+                    <select asp-for="Quote.CustomerId" asp-items="@Model.Customers" class="ui-select">
                         <option value="">-- اختر العميل --</option>
                     </select>
                     <span asp-validation-for="Quote.CustomerId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-2">
-                    <label asp-for="Quote.QuoteDate" class="form-label"></label>
-                    <input asp-for="Quote.QuoteDate" class="form-control" type="date" />
+                <div class="ui-grid-span-5 sm:ui-grid-span-1">
+                    <label asp-for="Quote.QuoteDate" class="ui-label"></label>
+                    <input asp-for="Quote.QuoteDate" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-2">
-                    <label asp-for="Quote.ValidUntil" class="form-label"></label>
-                    <input asp-for="Quote.ValidUntil" class="form-control" type="date" />
+                <div class="ui-grid-span-5 sm:ui-grid-span-1">
+                    <label asp-for="Quote.ValidUntil" class="ui-label"></label>
+                    <input asp-for="Quote.ValidUntil" class="ui-input" type="date" />
                 </div>
-                <div class="col-md-3">
-                    <label asp-for="Quote.SupplierQuoteId" class="form-label"></label>
-                    <select asp-for="Quote.SupplierQuoteId" asp-items="@Model.SupplierQuotes" class="form-select">
+                <div class="ui-grid-span-5 sm:ui-grid-span-1">
+                    <label asp-for="Quote.SupplierQuoteId" class="ui-label"></label>
+                    <select asp-for="Quote.SupplierQuoteId" asp-items="@Model.SupplierQuotes" class="ui-select">
                         <option value="">لا يوجد</option>
                     </select>
                 </div>
@@ -55,65 +60,85 @@
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card ui-rise">
         <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> أصناف العرض</div>
         @if (!ViewData.ModelState.IsValid && !Model.Items.Any())
         {
             <div class="card-body pb-0">@await Html.PartialAsync("_NoLineItemsNotice")</div>
         }
         <div class="card-body p-0">
-            <table class="table table-hover mb-0" id="itemsTable">
-                <caption class="visually-hidden">أصناف عرض السعر المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
-                <thead>
-                    <tr>
-                        <th scope="col" style="width:25%">الصنف</th>
-                        <th scope="col" style="width:15%">العدد</th>
-                        <th scope="col" style="width:15%">الكمية</th>
-                        <th scope="col" style="width:15%">سعر الوحدة</th>
-                        <th scope="col" style="width:20%">الإجمالي</th>
-                        <th scope="col" style="width:10%" class="text-center">حذف</th>
-                    </tr>
-                </thead>
-                <tbody id="itemsBody">
-                    @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 1); idx++)
-                    {
-                        var line = idx < Model.Items.Count ? Model.Items[idx] : null;
+            <div class="table-container">
+                <table class="table" id="itemsTable">
+                    <caption class="visually-hidden">أصناف عرض السعر المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
+                    <thead>
                         <tr>
-                            <td>
-                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
-                                    <option value="">اختر صنف</option>
-                                    @foreach (var item in Model.ItemsData)
-                                    { <option value="@item.Id" data-price="@item.SalePrice" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
-                                </select>
-                            </td>
-                            <td><input name="items[@idx].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" @(fieldError(idx, "Count")) /></td>
-                            <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" @(fieldError(idx, "Quantity")) /></td>
-                            <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
-                            <td><span class="total fw-bold">0.00</span></td>
-                            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                            <th scope="col" style="width:25%">الصنف</th>
+                            <th scope="col" style="width:15%">العدد</th>
+                            <th scope="col" style="width:15%">الكمية</th>
+                            <th scope="col" style="width:15%">سعر الوحدة</th>
+                            <th scope="col" style="width:20%">الإجمالي</th>
+                            <th scope="col" style="width:10%" class="text-center">حذف</th>
                         </tr>
-                        @await Html.PartialAsync("_LineItemErrors", idx)
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody id="itemsBody">
+                        @for (var idx = 0; idx < (Model.Items.Any() ? Model.Items.Count : 1); idx++)
+                        {
+                            var line = idx < Model.Items.Count ? Model.Items[idx] : null;
+                            <tr>
+                                <td>
+                                    <select name="items[@idx].ItemId" class="ui-select ui-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
+                                        <option value="">اختر صنف</option>
+                                        @foreach (var item in Model.ItemsData)
+                                        { <option value="@item.Id" data-price="@item.SalePrice" data-count="@item.CurrentCount" data-qty="@item.CurrentQuantity" selected="@(line?.ItemId == item.Id)">@item.Name</option> }
+                                    </select>
+                                </td>
+                                <td><input name="items[@idx].Count" type="number" step="0.0001" class="ui-input ui-input-sm count" value="@(line?.Count ?? 0)" aria-label="العدد" @(fieldError(idx, "Count")) /></td>
+                                <td><input name="items[@idx].Quantity" type="number" step="0.0001" class="ui-input ui-input-sm qty" value="@(line?.Quantity ?? 0)" aria-label="الكمية" @(fieldError(idx, "Quantity")) /></td>
+                                <td><input name="items[@idx].UnitPrice" type="number" step="0.001" class="ui-input ui-input-sm price" value="@(line?.UnitPrice ?? 0)" aria-label="سعر الوحدة" @(fieldError(idx, "UnitPrice")) /></td>
+                                <td><span class="total fw-bold">0.00</span></td>
+                                <td class="text-center"><button type="button" class="ui-btn ui-btn-sm ui-btn-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                            </tr>
+                            @await Html.PartialAsync("_LineItemErrors", idx)
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-3"><label class="form-label" for="totalAmount">الإجمالي</label><input asp-for="Quote.TotalAmount" class="form-control" id="totalAmount" readonly />
-            <span asp-validation-for="Quote.TotalAmount" class="text-danger small"></span></div>
-        <div class="col-md-3"><label class="form-label" for="discount">الخصم</label><input asp-for="Quote.Discount" class="form-control" type="number" step="0.01" id="discount" value="@Model.Quote.Discount" /></div>
-        <div class="col-md-3"><label class="form-label" for="tax">الضريبة</label><input asp-for="Quote.Tax" class="form-control" type="number" step="0.01" id="tax" value="@Model.Quote.Tax" /></div>
-        <div class="col-md-3"><label class="form-label" for="netAmount">المبلغ الصافي</label><input asp-for="Quote.NetAmount" class="form-control fw-bold" id="netAmount" readonly /></div>
-    </div>
-    <div class="col-12 mt-2"><label asp-for="Quote.Notes" class="form-label"></label><textarea asp-for="Quote.Notes" class="form-control" rows="2"></textarea></div>
-
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ عرض السعر</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    <div class="ui-section ui-card ui-rise">
+        <div class="card-body">
+            <div class="ui-grid ui-grid-4 gap-3">
+                <div>
+                    <label class="ui-label" for="totalAmount">الإجمالي</label>
+                    <input asp-for="Quote.TotalAmount" class="ui-input" id="totalAmount" readonly />
+                    <span asp-validation-for="Quote.TotalAmount" class="text-danger small"></span>
+                </div>
+                <div>
+                    <label class="ui-label" for="discount">الخصم</label>
+                    <input asp-for="Quote.Discount" class="ui-input" type="number" step="0.01" id="discount" value="@Model.Quote.Discount" />
+                </div>
+                <div>
+                    <label class="ui-label" for="tax">الضريبة</label>
+                    <input asp-for="Quote.Tax" class="ui-input" type="number" step="0.01" id="tax" value="@Model.Quote.Tax" />
+                </div>
+                <div>
+                    <label class="ui-label" for="netAmount">المبلغ الصافي</label>
+                    <input asp-for="Quote.NetAmount" class="ui-input fw-bold" id="netAmount" readonly />
+                </div>
+            </div>
+            <div class="mt-3">
+                <label asp-for="Quote.Notes" class="ui-label"></label>
+                <textarea asp-for="Quote.Notes" class="ui-input" rows="2"></textarea>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ عرض السعر</button>
+                <a asp-action="Index" class="ui-btn ui-btn-ghost">إلغاء</a>
+            </div>
+        </div>
     </div>
 </form>
 

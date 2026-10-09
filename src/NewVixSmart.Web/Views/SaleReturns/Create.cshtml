@@ -14,44 +14,51 @@
     };
 }
 
-<div class="page-header"><h2><i class="bi bi-arrow-return-left text-primary" aria-hidden="true"></i> مرتجع بيع جديد</h2></div>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>مرتجع بيع جديد</h2>
+    </div>
+</div>
 
-<form asp-action="Create" id="returnForm">
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert" tabindex="-1"></div>
+<form asp-action="Create" id="returnForm" class="ui-rise">
+    <div asp-validation-summary="ModelOnly" class="ui-alert ui-alert-bad mb-4" role="alert" tabindex="-1"></div>
     @await Html.PartialAsync("_UnhandledFieldErrors")
 
-    <div class="card mb-3">
+    <div class="ui-section ui-card">
         <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label asp-for="ReturnNumber" class="form-label"></label>
-                    <input asp-for="ReturnNumber" class="form-control" readonly value="@ViewBag.NextNumber" />
+            <div class="ui-grid ui-grid-2 md:ui-grid-4">
+                <div>
+                    <label asp-for="ReturnNumber" class="ui-label"></label>
+                    <input asp-for="ReturnNumber" class="ui-input" readonly value="@ViewBag.NextNumber" />
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="CustomerId" class="form-label"></label>
-                    <select asp-for="CustomerId" asp-items="@(ViewBag.Customers as SelectList)" class="form-select">
+                <div>
+                    <label asp-for="CustomerId" class="ui-label"></label>
+                    <select asp-for="CustomerId" asp-items="@(ViewBag.Customers as SelectList)" class="ui-input">
                         <option value="">-- اختر العميل --</option>
                     </select>
-                    <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                    <span asp-validation-for="CustomerId" class="field-validation-error"></span>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="SaleInvoiceId" class="form-label"></label>
-                    <select asp-for="SaleInvoiceId" asp-items="@(ViewBag.SaleInvoices as SelectList)" class="form-select">
+                <div>
+                    <label asp-for="SaleInvoiceId" class="ui-label"></label>
+                    <select asp-for="SaleInvoiceId" asp-items="@(ViewBag.SaleInvoices as SelectList)" class="ui-input">
                         <option value="">-- الفاتورة الأصلية (اختياري) --</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="ReturnDate" class="form-label"></label>
-                    <input asp-for="ReturnDate" class="form-control" type="date" />
+                <div>
+                    <label asp-for="ReturnDate" class="ui-label"></label>
+                    <input asp-for="ReturnDate" class="ui-input" type="date" />
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-list-ul" aria-hidden="true"></i> الأصناف المرتجعة</div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0" id="itemsTable">
+    <div class="ui-section ui-card">
+        <div class="ui-card-head">
+            <span class="ui-card-title"><i class="bi bi-list-ul" aria-hidden="true"></i> الأصناف المرتجعة</span>
+        </div>
+        <div class="table-container" style="max-height:none;border:0;border-radius:0">
+            <table class="table mb-0" id="itemsTable">
                 <caption class="visually-hidden">الأصناف المرتجعة للعميل المُدخلة: الصنف، العدد، الكمية، سعر الوحدة، الإجمالي</caption>
                 <thead>
                     <tr>
@@ -65,35 +72,39 @@
                 </thead>
                 <tbody id="itemsBody">
                     <tr>
-                        <td><select name="items[0].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(0, "ItemId"))>
+                        <td><select name="items[0].ItemId" class="ui-input ui-input-sm item-select" aria-label="الصنف" @(fieldError(0, "ItemId"))>
                             <option value="">اختر صنف</option>
                             @foreach (var item in (List<NewVixSmart.Web.Models.Core.Item>)ViewBag.Items)
                             { <option value="@item.Id">@item.Name</option> }
                         </select></td>
-                        <td><input name="items[0].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" @(fieldError(0, "Count")) /></td>
-                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" @(fieldError(0, "Quantity")) /></td>
-                        <td><input name="items[0].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" @(fieldError(0, "UnitPrice")) /></td>
-                        <td><span class="total fw-bold">0.00</span></td>
-                        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
+                        <td><input name="items[0].Count" type="number" step="0.0001" class="ui-input ui-input-sm count" value="0" aria-label="العدد" @(fieldError(0, "Count")) /></td>
+                        <td><input name="items[0].Quantity" type="number" step="0.0001" class="ui-input ui-input-sm qty" value="0" aria-label="الكمية" @(fieldError(0, "Quantity")) /></td>
+                        <td><input name="items[0].UnitPrice" type="number" step="0.001" class="ui-input ui-input-sm price" value="0" aria-label="سعر الوحدة" @(fieldError(0, "UnitPrice")) /></td>
+                        <td><span class="total fw-bold num">0.00</span></td>
+                        <td class="text-center"><button type="button" class="ui-btn ui-btn-sm btn-del remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>
                     </tr>
                     @await Html.PartialAsync("_LineItemErrors", 0)
                 </tbody>
             </table>
         </div>
-        <div class="card-footer">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
+        <div class="ui-card-foot">
+            <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" id="addRow"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-3"><label class="form-label" for="totalAmount">الإجمالي</label><input asp-for="TotalAmount" class="form-control fw-bold" id="totalAmount" readonly /></div>
-        <div class="col-md-9"><label asp-for="Reason" class="form-label"></label><textarea asp-for="Reason" class="form-control" rows="1"></textarea></div>
+    <div class="ui-section">
+        <div class="ui-grid ui-grid-2 md:ui-grid-4">
+            <div><label class="ui-label" for="totalAmount">الإجمالي</label><input asp-for="TotalAmount" class="ui-input fw-bold num" id="totalAmount" readonly /></div>
+        </div>
+        <div class="mt-4">
+            <label asp-for="Reason" class="ui-label"></label><textarea asp-for="Reason" class="ui-input" rows="1"></textarea>
+        </div>
     </div>
 
-    <div class="mt-4 d-flex gap-2">
-        <button type="submit" name="submitAction" value="post" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ وترحيل</button>
-        <button type="submit" name="submitAction" value="draft" class="btn btn-outline-primary"><i class="bi bi-pencil-square" aria-hidden="true"></i> حفظ كمسودة</button>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
+    <div class="ui-form-actions">
+        <button type="submit" name="submitAction" value="post" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ وترحيل</button>
+        <button type="submit" name="submitAction" value="draft" class="ui-btn ui-btn-outline"><i class="bi bi-pencil-square" aria-hidden="true"></i> حفظ كمسودة</button>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-x-lg" aria-hidden="true"></i> إلغاء</a>
     </div>
 </form>
 
@@ -106,12 +117,12 @@
         const firstRow = tbody.querySelector('tr');
         const options = firstRow?.querySelector('.item-select')?.innerHTML ?? '<option value="">—</option>';
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
-            <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
-            <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
-            <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
-            <td><span class="total fw-bold">0.00</span></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>`;
+        tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="ui-input ui-input-sm item-select" aria-label="الصنف">${options}</select></td>
+            <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="ui-input ui-input-sm count" value="0" aria-label="العدد" /></td>
+            <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="ui-input ui-input-sm qty" value="0" aria-label="الكمية" /></td>
+            <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="ui-input ui-input-sm price" value="0" aria-label="سعر الوحدة" /></td>
+            <td><span class="total fw-bold num">0.00</span></td>
+            <td class="text-center"><button type="button" class="ui-btn ui-btn-sm btn-del remove-row" aria-label="حذف السطر"><i class="bi bi-x" aria-hidden="true"></i></button></td>`;
         tbody.appendChild(tr);
         rowIndex++;
         bindEvents();

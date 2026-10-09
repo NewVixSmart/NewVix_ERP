@@ -3,32 +3,35 @@
 @using NewVixSmart.Web.Models.Sales
 @{ ViewData["Title"] = $"أذن تسليم {Model.DeliveryNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-truck text-primary" aria-hidden="true"></i> أذن تسليم: @Model.DeliveryNumber</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أذن تسليم: @Model.DeliveryNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("DeliveryOrders.Deliver") && Model.Status == DeliveryOrderStatus.Draft)
         {
-            <form asp-action="Deliver" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="ترحيل أذن التسليم: خصم المخزون وتسجيل قيود البيع؟">
+            <form asp-action="Deliver" asp-route-id="@Model.Id" method="post" class="inline-flex" data-confirm="ترحيل أذن التسليم: خصم المخزون وتسجيل قيود البيع؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> ترحيل التسليم</button>
+                <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> ترحيل التسليم</button>
             </form>
-            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إلغاء أذن التسليم؟">
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="inline-flex" data-confirm="إلغاء أذن التسليم؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="ui-btn ui-btn-quiet"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
-            <div class="col-md-3"><strong>تاريخ التسليم:</strong> @Model.DeliveryDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { DeliveryOrderStatus.Delivered => "bg-success", DeliveryOrderStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@Model.Status.GetDisplayName()</span></div>
-            <div class="col-md-3"><strong>فاتورة البيع:</strong>
+        <div class="ui-grid ui-grid-2 md:ui-grid-4">
+            <div><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div><strong>تاريخ التسليم:</strong> @Model.DeliveryDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>الحالة:</strong> <span class="ui-badge @(Model.Status switch { DeliveryOrderStatus.Delivered => "ui-badge-ok", DeliveryOrderStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@Model.Status.GetDisplayName()</span></div>
+            <div><strong>فاتورة البيع:</strong>
                 @if (Model.SaleInvoice != null)
                 {
                     <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleInvoice.PublicId">@Model.SaleInvoice.InvoiceNumber</a>
@@ -38,21 +41,19 @@
                     <span>—</span>
                 }
             </div>
-        </div>
-        <div class="row mt-2">
-            <div class="col-md-3"><strong>الناقل:</strong> @(Model.Carrier ?? "—")</div>
-            <div class="col-md-3"><strong>رقم التتبع:</strong> @(Model.TrackingNumber ?? "—")</div>
-            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
-            <div class="col-md-3"><strong>رحّلها:</strong> @(Model.DeliveredBy ?? "—") @(Model.DeliveredAt.HasValue ? $"في {Model.DeliveredAt.Value:dd/MM/yyyy HH:mm}" : "")</div>
+            <div><strong>الناقل:</strong> @(Model.Carrier ?? "—")</div>
+            <div><strong>رقم التتبع:</strong> @(Model.TrackingNumber ?? "—")</div>
+            <div><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div><strong>رحّلها:</strong> @(Model.DeliveredBy ?? "—") @(Model.DeliveredAt.HasValue ? $"في {Model.DeliveredAt.Value:dd/MM/yyyy HH:mm}" : "")</div>
         </div>
         @if (!string.IsNullOrWhiteSpace(Model.Notes))
         {
-            <div class="row mt-2"><div class="col-12"><strong>ملاحظات:</strong> @Model.Notes</div></div>
+            <div class="mt-4"><strong>ملاحظات:</strong> @Model.Notes</div>
         }
     </div>
 </div>
 
-<div class="table-container mb-4">
+<div class="table-container mb-4 ui-rise">
     <table class="table mb-0">
         <caption class="visually-hidden">أصناف أذن التسليم: الصنف، العدد المسلّم، الكمية المسلّمة</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المسلّم</th><th scope="col">الكمية المسلّمة</th></tr></thead>
@@ -76,56 +77,61 @@
     var canCreateIssue = DeliveryOpenLines.CanIssueMoreLines(Model);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="h5 mb-0"><i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true"></i> أوامر التسليم</h3>
-    @if (canCreateIssue && await Perm.HasAsync("DeliveryIssues.Create"))
-    {
-        <a asp-controller="DeliveryIssues" asp-action="Create" asp-route-deliveryOrderId="@Model.Id"
-           class="btn btn-primary btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر تسليم جديد</a>
-    }
-</div>
-
-<div class="table-container mb-4">
-    <table class="table mb-0">
-        <caption class="visually-hidden">أوامر التسليم المرتبطة بهذا الإذن مع حالتها وفاتورتها</caption>
-        <thead><tr><th scope="col">رقم الأمر</th><th scope="col">التاريخ</th><th scope="col">الأصناف</th><th scope="col">الحالة</th><th scope="col">الفاتورة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
-        <tbody>
-            @if (!Model.Issues.Any())
-            {
-                <tr><td colspan="6" class="text-muted">لا توجد أوامر تسليم لهذا الإذن بعد.</td></tr>
-            }
-            @foreach (var issue in Model.Issues.OrderByDescending(i => i.Id))
-            {
-                <tr>
-                    <th scope="row"><a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId">@issue.IssueNumber</a></th>
-                    <td>@issue.IssueDate.ToString("dd/MM/yyyy")</td>
-                    <td>
-                        @if (!issue.Items.Any())
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                        else
-                        {
-                            @string.Join("، ", issue.Items.Select(i => $"{i.Item?.Name}: {i.Quantity:N2} / {i.Count:N2}"))
-                        }
-                    </td>
-                    <td><span class="badge @(issue.Status switch { DeliveryIssueStatus.Issued => "bg-success", DeliveryIssueStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@issue.Status.GetDisplayName()</span></td>
-                    <td>
-                        @if (issue.SaleInvoice != null)
-                        {
-                            <a asp-controller="Sales" asp-action="Details" asp-route-id="@issue.SaleInvoice.PublicId">@issue.SaleInvoice.InvoiceNumber</a>
-                        }
-                        else
-                        {
-                            <span>غير مفوتر</span>
-                        }
-                    </td>
-                    <td class="text-center">
-                        <a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId"
-                           class="btn btn-sm btn-outline-info" aria-label="عرض أمر التسليم @issue.IssueNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+<div class="ui-section">
+    <div class="ui-pagehead">
+        <div class="ui-pagehead-title">
+            <h3 class="h5 mb-0"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> أوامر التسليم</h3>
+        </div>
+        @if (canCreateIssue && await Perm.HasAsync("DeliveryIssues.Create"))
+        {
+            <div class="ui-pagehead-actions">
+                <a asp-controller="DeliveryIssues" asp-action="Create" asp-route-deliveryOrderId="@Model.Id"
+                   class="ui-btn ui-btn-pri ui-btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i> أمر تسليم جديد</a>
+            </div>
+        }
+    </div>
+    <div class="table-container mb-4 ui-rise">
+        <table class="table mb-0">
+            <caption class="visually-hidden">أوامر التسليم المرتبطة بهذا الإذن مع حالتها وفاتورتها</caption>
+            <thead><tr><th scope="col">رقم الأمر</th><th scope="col">التاريخ</th><th scope="col">الأصناف</th><th scope="col">الحالة</th><th scope="col">الفاتورة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <tbody>
+                @if (!Model.Issues.Any())
+                {
+                    <tr><td colspan="6" class="text-muted">لا توجد أوامر تسليم لهذا الإذن بعد.</td></tr>
+                }
+                @foreach (var issue in Model.Issues.OrderByDescending(i => i.Id))
+                {
+                    <tr>
+                        <th scope="row"><a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId">@issue.IssueNumber</a></th>
+                        <td>@issue.IssueDate.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            @if (!issue.Items.Any())
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                @string.Join("، ", issue.Items.Select(i => $"{i.Item?.Name}: {i.Quantity:N2} / {i.Count:N2}"))
+                            }
+                        </td>
+                        <td><span class="ui-badge @(issue.Status switch { DeliveryIssueStatus.Issued => "ui-badge-ok", DeliveryIssueStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@issue.Status.GetDisplayName()</span></td>
+                        <td>
+                            @if (issue.SaleInvoice != null)
+                            {
+                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@issue.SaleInvoice.PublicId">@issue.SaleInvoice.InvoiceNumber</a>
+                            }
+                            else
+                            {
+                                <span>غير مفوتر</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId"
+                               class="ui-btn ui-btn-sm ui-btn-outline" aria-label="عرض أمر التسليم @issue.IssueNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>

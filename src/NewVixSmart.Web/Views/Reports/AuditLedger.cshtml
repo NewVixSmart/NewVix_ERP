@@ -3,78 +3,94 @@
 @using NewVixSmart.Web.Models.Accounting
 @{ ViewData["Title"] = "سجل التدقيق المركزي"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-journal-bookmark text-primary" aria-hidden="true"></i> سجل التدقيق المركزي</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">التقارير</span>
+        <h2><i class="bi bi-journal-bookmark text-primary" aria-hidden="true"></i> سجل التدقيق المركزي</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+    </div>
 </div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-2">
-            <label class="form-label" for="fromDate">من تاريخ</label>
-            <input type="date" name="from" value="@ViewBag.From" id="fromDate" class="form-control" />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label" for="toDate">إلى تاريخ</label>
-            <input type="date" name="to" value="@ViewBag.To" id="toDate" class="form-control" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="accountFilter">الحساب</label>
-            <select name="accountId" id="accountFilter" class="form-select">
-                <option value="">كل الحسابات</option>
-                @foreach (var a in (System.Collections.Generic.IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Accounts ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>())
-                {
-                    var isSelected = Model.AccountId.HasValue && Model.AccountId.Value.ToString() == a.Value;
-                    <option value="@a.Value" selected="@(isSelected)">@a.Text</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label" for="sourceFilter">المصدر</label>
-            <select name="source" id="sourceFilter" class="form-select">
-                <option value="">كل المصادر</option>
-                @foreach (var s in Enum.GetValues<JournalSource>())
-                {
-                    <option value="@s" selected="@(Model.Source == s)">@s.GetDisplayName()</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-1"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
-        <div class="col-md-2">
-            <a asp-action="AuditLedgerXlsx"
-               asp-route-from="@ViewBag.From"
-               asp-route-to="@ViewBag.To"
-               asp-route-accountId="@Model.AccountId"
-               asp-route-source="@Model.Source?.ToString()"
-               class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
-        </div>
-    </form>
-</div></div>
+<div class="ui-card ui-section ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-4 items-end">
+            <div>
+                <label class="form-label" for="fromDate">من تاريخ</label>
+                <input type="date" name="from" value="@ViewBag.From" id="fromDate" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label" for="toDate">إلى تاريخ</label>
+                <input type="date" name="to" value="@ViewBag.To" id="toDate" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label" for="accountFilter">الحساب</label>
+                <select name="accountId" id="accountFilter" class="form-select">
+                    <option value="">كل الحسابات</option>
+                    @foreach (var a in (System.Collections.Generic.IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Accounts ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>())
+                    {
+                        var isSelected = Model.AccountId.HasValue && Model.AccountId.Value.ToString() == a.Value;
+                        <option value="@a.Value" selected="@(isSelected)">@a.Text</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="sourceFilter">المصدر</label>
+                <select name="source" id="sourceFilter" class="form-select">
+                    <option value="">كل المصادر</option>
+                    @foreach (var s in Enum.GetValues<JournalSource>())
+                    {
+                        <option value="@s" selected="@(Model.Source == s)">@s.GetDisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
+            <div>
+                <a asp-action="AuditLedgerXlsx"
+                   asp-route-from="@ViewBag.From"
+                   asp-route-to="@ViewBag.To"
+                   asp-route-accountId="@Model.AccountId"
+                   asp-route-source="@Model.Source?.ToString()"
+                   class="ui-btn ui-btn-ok w-full"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+            </div>
+        </form>
+    </div>
+</div>
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">عدد القيود</div><h3 class="mb-0">@Model.TotalEntries</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المدين</div><h3 class="mb-0 text-primary">@Money.Format(Model.TotalDebit)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الدائن</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalCredit)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center">
-        <div class="text-muted small">حالة توازن الفترة</div>
+<div class="ui-grid ui-grid-4 ui-section ui-rise">
+    <div class="ui-stat">
+        <span class="ui-stat-label">عدد القيود</span>
+        <span class="ui-stat-value">@Model.TotalEntries</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي المدين</span>
+        <span class="ui-stat-value text-primary">@Money.Format(Model.TotalDebit)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي الدائن</span>
+        <span class="ui-stat-value text-success">@Money.Format(Model.TotalCredit)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">حالة توازن الفترة</span>
         @if (Model.IsBalanced)
-        { <h4 class="mb-0 text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> متوازن</h4> }
+        { <span class="ui-stat-value text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> متوازن</span> }
         else
-        { <h4 class="mb-0 text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> غير متوازن</h4> }
-    </div></div>
+        { <span class="ui-stat-value text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> غير متوازن</span> }
+    </div>
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">قيود دفتر الأستاذ العام في الفترة: رقم القيد وتاريخه ومصدره وإجمالياته</caption>
         <thead><tr>
-            <th scope="col">رقم القيد</th><th scope="col">التاريخ</th><th scope="col">البيان</th><th scope="col">المصدر</th><th scope="col">المرجع</th><th scope="col">الفرع</th><th scope="col">أنشئ بواسطة</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">التوازن</th><th scope="col" class="visually-hidden">التفاصيل</th>
+            <th scope="col">رقم القيد</th><th scope="col">التاريخ</th><th scope="col">البيان</th><th scope="col">المصدر</th><th scope="col">المرجع</th><th scope="col">الفرع</th><th scope="col">أنشئ بواسطة</th><th scope="col" class="text-end">مدين</th><th scope="col" class="text-end">دائن</th><th scope="col" class="text-end">التوازن</th><th scope="col" class="visually-hidden">التفاصيل</th>
         </tr></thead>
         <tbody>
             @foreach (var e in Model.Entries)
             {
                 var detailsId = "details-" + e.Id;
-                <tr class="table-primary fw-bold">
+                <tr class="fw-bold bg-surface-3">
                     <td><code>@e.EntryNumber</code></td>
                     <td>@e.Date.ToString("dd/MM/yyyy")</td>
                     <td>@e.Description</td>
@@ -82,21 +98,21 @@
                     <td>@(e.SourceId > 0 ? e.SourceId.ToString() : "—")</td>
                     <td>@(e.BranchId?.ToString() ?? "—")</td>
                     <td>@(e.CreatedBy ?? "—")</td>
-                    <td class="text-primary">@Money.Format(e.TotalDebit)</td>
-                    <td class="text-success">@Money.Format(e.TotalCredit)</td>
-                    <td class="@(e.IsBalanced ? "text-success" : "text-danger")">@Money.Format(e.Balance)</td>
+                    <td class="text-primary num">@Money.Format(e.TotalDebit)</td>
+                    <td class="text-success num">@Money.Format(e.TotalCredit)</td>
+                    <td class="@(e.IsBalanced ? "text-success" : "text-danger") num">@Money.Format(e.Balance)</td>
                     <td>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#@detailsId" aria-expanded="false" aria-controls="@detailsId" aria-label="عرض تفاصيل القيد @e.EntryNumber">
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" data-bs-toggle="collapse" data-bs-target="#@detailsId" aria-expanded="false" aria-controls="@detailsId" aria-label="عرض تفاصيل القيد @e.EntryNumber">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
                     </td>
                 </tr>
                 <tr class="collapse" id="@detailsId">@* aria via heading row above *@
                     <td colspan="11" class="p-0">
-                        <table class="table table-sm table-striped mb-0">
+                        <table class="table">
                             <caption class="visually-hidden">تفاصيل قيد @e.EntryNumber: حساب مدين وآخر دائن وبيان كل سطر</caption>
-                            <thead><tr class="table-light">
-                                <th scope="col">رمز الحساب</th><th scope="col">اسم الحساب</th><th scope="col">مدين</th><th scope="col">دائن</th><th scope="col">البيان</th>
+                            <thead><tr>
+                                <th scope="col">رمز الحساب</th><th scope="col">اسم الحساب</th><th scope="col" class="text-end">مدين</th><th scope="col" class="text-end">دائن</th><th scope="col">البيان</th>
                             </tr></thead>
                             <tbody>
                                 @foreach (var l in e.Lines)
@@ -104,8 +120,8 @@
                                     <tr>
                                         <td><code>@l.AccountCode</code></td>
                                         <td>@l.AccountName</td>
-                                        <td>@(l.Debit > 0 ? Money.Format(l.Debit) : "—")</td>
-                                        <td>@(l.Credit > 0 ? Money.Format(l.Credit) : "—")</td>
+                                        <td class="num">@(l.Debit > 0 ? Money.Format(l.Debit) : "—")</td>
+                                        <td class="num">@(l.Credit > 0 ? Money.Format(l.Credit) : "—")</td>
                                         <td>@(l.Description ?? "—")</td>
                                     </tr>
                                 }
@@ -120,12 +136,12 @@
 
 @if (!Model.Entries.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد قيود مطابقة في هذه الفترة</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد قيود مطابقة في هذه الفترة</strong>
     </div>
 }
 
-<div class="mt-4 d-print-none">
-    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
+<div class="mt-4 no-print">
+    <button type="button" class="ui-btn ui-btn-quiet" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
 </div>

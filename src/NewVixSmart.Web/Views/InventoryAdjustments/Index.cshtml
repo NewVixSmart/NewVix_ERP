@@ -2,16 +2,21 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "سجلات الجرد"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-clipboard-data text-primary" aria-hidden="true"></i> سجلات الجرد</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المخزون</span>
+        <h2><i class="bi bi-clipboard-data" aria-hidden="true"></i> سجلات الجرد</h2>
+    </div>
     @if (await Perm.HasAsync("InventoryAdjustments.Create"))
     {
-        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> جرد جديد</a>
+        <div class="ui-pagehead-actions">
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> جرد جديد</a>
+        </div>
     }
 </div>
 
-<div class="table-container">
-    <table class="table table-hover mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">سجلات الجرد: الصنف والعدد والكمية الجديدان وسبب الجرد وتاريخه</caption>
         <thead><tr><th scope="col">رقم المستند</th><th scope="col">الصنف</th><th scope="col">العدد الجديد</th><th scope="col">الكمية الجديدة</th><th scope="col">السبب</th><th scope="col">تاريخ الجرد</th><th scope="col">بواسطة</th><th scope="col" class="text-center">إجراء</th></tr></thead>
         <tbody>
@@ -20,16 +25,16 @@
                 <tr>
                     <td><code>@a.ReferenceNumber</code></td>
                     <td><strong>@a.Item.Name</strong></td>
-                    <td>@a.NewCount.ToString("N2")</td>
-                    <td>@a.NewQuantity.ToString("N2")</td>
+                    <td class="num">@a.NewCount.ToString("N2")</td>
+                    <td class="num">@a.NewQuantity.ToString("N2")</td>
                     <td>@(a.Reason ?? "—")</td>
-                    <td>@a.AdjustmentDate.ToString("dd/MM/yyyy")</td>
+                    <td class="num">@a.AdjustmentDate.ToString("dd/MM/yyyy")</td>
                     <td>@(a.CreatedBy ?? "—")</td>
                     <td class="text-center">
                         @if (await Perm.HasAsync("InventoryAdjustments.Delete"))
                         {
-                        <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" data-confirm="حذف سجل الجرد وحركته المرتبطة؟" data-confirm-ok="حذف">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف سجل الجرد @a.ReferenceNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                        <form asp-action="Delete" asp-route-id="@a.Id" method="post" data-confirm="حذف سجل الجرد وحركته المرتبطة؟" data-confirm-ok="حذف">
+                            <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف سجل الجرد @a.ReferenceNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
                         </form>
                         }
                     </td>

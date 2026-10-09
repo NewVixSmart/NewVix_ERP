@@ -1,87 +1,106 @@
 @model NewVixSmart.Web.ViewModels.Reports.IncomeStatementReportViewModel
 @{ ViewData["Title"] = "قائمة الدخل"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-graph-up-arrow text-primary" aria-hidden="true"></i> قائمة الدخل</h2>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">القوائم المالية</span>
+        <h2><i class="bi bi-graph-up-arrow text-primary" aria-hidden="true"></i> قائمة الدخل</h2>
+    </div>
+    <div class="ui-pagehead-actions">
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> كل التقارير</a>
+    </div>
 </div>
 
-<div class="card mb-4"><div class="card-body">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label" for="fromDate">من تاريخ</label>
-            <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" id="fromDate" class="form-control" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label" for="toDate">إلى تاريخ</label>
-            <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" id="toDate" class="form-control" />
-        </div>
-        <div class="col-md-2"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
-    </form>
-</div></div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي الإيرادات</div><h3 class="mb-0 text-success">@Money.Format(Model.TotalRevenue)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">إجمالي المصروفات</div><h3 class="mb-0 text-danger">@Money.Format(Model.TotalExpenses)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center"><div class="text-muted small">صافي الإيرادات</div><h3 class="mb-0">@Money.Format(Model.NetRevenue)</h3></div></div>
-    <div class="col-12 col-sm-6 col-lg-3"><div class="stat-card text-center border-@(Model.NetIncome >= 0 ? "success" : "danger")"><div class="text-muted small">صافي الدخل</div><h3 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetIncome)</h3></div></div>
+<div class="ui-card ui-section ui-rise">
+    <div class="card-body">
+        <form method="get" class="ui-grid ui-grid-3 items-end">
+            <div>
+                <label class="form-label" for="fromDate">من تاريخ</label>
+                <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" id="fromDate" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label" for="toDate">إلى تاريخ</label>
+                <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" id="toDate" class="form-control" />
+            </div>
+            <div><button type="submit" class="ui-btn ui-btn-outline w-full"><i class="bi bi-search" aria-hidden="true"></i> عرض</button></div>
+        </form>
+    </div>
 </div>
 
-<div class="table-container mb-4">
-    <table class="table table-hover mb-0" data-table-plain>
+<div class="ui-grid ui-grid-4 ui-section ui-rise">
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي الإيرادات</span>
+        <span class="ui-stat-value text-success">@Money.Format(Model.TotalRevenue)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">إجمالي المصروفات</span>
+        <span class="ui-stat-value text-danger">@Money.Format(Model.TotalExpenses)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">صافي الإيرادات</span>
+        <span class="ui-stat-value">@Money.Format(Model.NetRevenue)</span>
+    </div>
+    <div class="ui-stat">
+        <span class="ui-stat-label">صافي الدخل</span>
+        <span class="ui-stat-value @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetIncome)</span>
+    </div>
+</div>
+
+<div class="table-container mb-4 ui-rise">
+    <table class="table" data-table-plain>
         <caption class="visually-hidden">إيرادات الفترة</caption>
-        <thead><tr><th scope="col">الرمز</th><th scope="col">الإيرادات</th><th scope="col">المبلغ</th></tr></thead>
+        <thead><tr><th scope="col">الرمز</th><th scope="col">الإيرادات</th><th scope="col" class="text-end">المبلغ</th></tr></thead>
         <tbody>
             @foreach (var l in Model.RevenueLines)
             {
-                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-success">@Money.Format(l.Amount)</td></tr>
+                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-success num">@Money.Format(l.Amount)</td></tr>
             }
             @foreach (var l in Model.ContraRevenueLines)
             {
-                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge bg-danger ms-1">خصم</span></td><td class="text-danger">-@Money.Format(l.Amount)</td></tr>
+                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge ui-badge-bad ms-1">خصم</span></td><td class="text-danger num">-@Money.Format(l.Amount)</td></tr>
             }
         </tbody>
-        <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">صافي الإيرادات</th><td class="text-success">@Money.Format(Model.NetRevenue)</td></tr></tfoot>
+        <tfoot><tr class="fw-bold"><th scope="row" colspan="2">صافي الإيرادات</th><td class="text-success num fw-bold">@Money.Format(Model.NetRevenue)</td></tr></tfoot>
     </table>
 </div>
 
-<div class="table-container mb-4">
-    <table class="table table-hover mb-0" data-table-plain>
+<div class="table-container mb-4 ui-rise">
+    <table class="table" data-table-plain>
         <caption class="visually-hidden">مصاريف الفترة</caption>
-        <thead><tr><th scope="col">الرمز</th><th scope="col">المصروفات</th><th scope="col">المبلغ</th></tr></thead>
+        <thead><tr><th scope="col">الرمز</th><th scope="col">المصروفات</th><th scope="col" class="text-end">المبلغ</th></tr></thead>
         <tbody>
             @foreach (var l in Model.ExpenseLines)
             {
-                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-danger">@Money.Format(l.Amount)</td></tr>
+                <tr><td><code>@l.Code</code></td><td>@l.Name</td><td class="text-danger num">@Money.Format(l.Amount)</td></tr>
             }
             @foreach (var l in Model.ContraExpenseLines)
             {
-                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge bg-success ms-1">خصم</span></td><td class="text-success">-@Money.Format(l.Amount)</td></tr>
+                <tr><td><code>@l.Code</code></td><td>@l.Name <span class="badge ui-badge-ok ms-1">خصم</span></td><td class="text-success num">-@Money.Format(l.Amount)</td></tr>
             }
         </tbody>
-        <tfoot><tr class="table-light fw-bold"><th scope="row" colspan="2">صافي المصروفات</th><td class="text-danger">@Money.Format(Model.NetExpenses)</td></tr></tfoot>
+        <tfoot><tr class="fw-bold"><th scope="row" colspan="2">صافي المصروفات</th><td class="text-danger num fw-bold">@Money.Format(Model.NetExpenses)</td></tr></tfoot>
     </table>
 </div>
 
-<div class="table-container">
-    <table class="table mb-0">
+<div class="table-container ui-rise">
+    <table class="table">
         <caption class="visually-hidden">صافي الدخل = صافي الإيرادات ناقص صافي المصروفات</caption>
         <tbody>
-            <tr><td><h4 class="mb-0">صافي الدخل</h4></td><td class="text-end"><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetIncome)</h4></td></tr>
+            <tr><td><h4 class="mb-0">صافي الدخل</h4></td><td class="text-end num"><h4 class="mb-0 @(Model.NetIncome >= 0 ? "text-success" : "text-danger")">@Money.Format(Model.NetIncome)</h4></td></tr>
         </tbody>
     </table>
 </div>
 
 @if (!Model.RevenueLines.Any() && !Model.ExpenseLines.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-inbox" style="font-size:3rem;" aria-hidden="true"></i>
-        <p class="mt-2">لا توجد حركات إيرادات أو مصروفات في هذه الفترة</p>
+    <div class="empty-state ui-rise">
+        <div class="empty-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+        <strong>لا توجد حركات إيرادات أو مصروفات في هذه الفترة</strong>
     </div>
 }
 
-<div class="mt-4 d-print-none d-flex gap-2 flex-wrap">
-    <button type="button" class="btn btn-outline-dark" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
-    <a asp-action="ExportIncomeStatementPdf" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> تصدير PDF</a>
-    <a asp-action="ExportIncomeStatementXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
+<div class="mt-4 flex flex-wrap gap-2 no-print">
+    <button type="button" class="ui-btn ui-btn-quiet" data-auto-print><i class="bi bi-printer" aria-hidden="true"></i> طباعة</button>
+    <a asp-action="ExportIncomeStatementPdf" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="ui-btn ui-btn-danger"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> تصدير PDF</a>
+    <a asp-action="ExportIncomeStatementXlsx" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" class="ui-btn ui-btn-ok"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> تصدير Excel</a>
 </div>

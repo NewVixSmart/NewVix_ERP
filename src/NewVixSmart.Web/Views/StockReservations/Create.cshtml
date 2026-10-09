@@ -2,43 +2,49 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "حجز مخزون جديد"; }
 
-<div class="page-header">
-    <h2><i class="bi bi-bookmark-plus text-primary" aria-hidden="true"></i> حجز مخزون جديد</h2>
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">حجوزات المخزون</span>
+        <h2><i class="bi bi-bookmark-plus" aria-hidden="true"></i> حجز مخزون جديد</h2>
+    </div>
 </div>
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">
+        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <span>@TempData["Error"]</span>
+    </div>
 }
 
 <form method="post" asp-action="Create">
-    <div class="card mb-3">
-        <div class="card-header">بيانات الحجز</div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label for="CustomerId" class="form-label">العميل (اختياري)</label>
-                    <select id="CustomerId" name="Reservation.CustomerId" class="form-select" asp-items="Model.Customers">
+    <div class="ui-section ui-card">
+        <div class="ui-card-head">بيانات الحجز</div>
+        <div class="ui-card-body">
+            <div class="ui-grid ui-grid-2">
+                <div>
+                    <label for="CustomerId" class="ui-label">العميل (اختياري)</label>
+                    <select id="CustomerId" name="Reservation.CustomerId" class="ui-input" asp-items="Model.Customers">
                         <option value="">— بدون عميل —</option>
                     </select>
                 </div>
-                <div class="col-md-6">
-                    <label for="Reason" class="form-label">السبب</label>
-                    <input id="Reason" name="Reservation.Reason" class="form-control" value="@Model.Reservation.Reason" />
+                <div>
+                    <label for="Reason" class="ui-label">السبب</label>
+                    <input id="Reason" name="Reservation.Reason" class="ui-input" value="@Model.Reservation.Reason" />
                 </div>
-                <div class="col-12">
-                    <label for="Notes" class="form-label">ملاحظات</label>
-                    <textarea id="Notes" name="Reservation.Notes" class="form-control" rows="2">@Model.Reservation.Notes</textarea>
+                <div class="md:col-span-2">
+                    <label for="Notes" class="ui-label">ملاحظات</label>
+                    <textarea id="Notes" name="Reservation.Notes" class="ui-input" rows="2">@Model.Reservation.Notes</textarea>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header">الأصناف المحجوزة</div>
-        <div class="card-body">
+    <div class="ui-section ui-card">
+        <div class="ui-card-head">الأصناف المحجوزة</div>
+        <div class="ui-card-body">
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-2">
+                <table class="table">
                     <caption class="visually-hidden">أصناف الحجز مع الكمية والعدد، والرصيد المتاح لكل صنف</caption>
                     <thead>
                         <tr>
@@ -66,23 +72,23 @@
                                         }
                                     </select>
                                 </td>
-                                <td class="text-end" data-role="available-qty">@(avail.ItemId == 0 ? "—" : avail.AvailableQuantity.ToString("N2"))</td>
-                                <td class="text-end" data-role="available-count">@(avail.ItemId == 0 ? "—" : avail.AvailableCount.ToString("N2"))</td>
-                                <td><input name="StandaloneItems[@idx].Quantity" class="form-control form-control-sm text-end" type="number" step="0.0001" min="0" value="0" data-role="qty" data-label="الكمية المحجوزة" aria-label="الكمية المحجوزة — سطر @(idx + 1)" /></td>
-                                <td><input name="StandaloneItems[@idx].Count" class="form-control form-control-sm text-end" type="number" step="0.0001" min="0" value="0" data-role="count" data-label="العدد المحجوز" aria-label="العدد المحجوز — سطر @(idx + 1)" /></td>
-                                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" data-role="remove" aria-label="حذف السطر"><i class="bi bi-x-lg" aria-hidden="true"></i></button></td>
+                                <td class="num" data-role="available-qty">@(avail.ItemId == 0 ? "—" : avail.AvailableQuantity.ToString("N2"))</td>
+                                <td class="num" data-role="available-count">@(avail.ItemId == 0 ? "—" : avail.AvailableCount.ToString("N2"))</td>
+                                <td><input name="StandaloneItems[@idx].Quantity" class="ui-input ui-input-sm num" type="number" step="0.0001" min="0" value="0" data-role="qty" data-label="الكمية المحجوزة" aria-label="الكمية المحجوزة — سطر @(idx + 1)" /></td>
+                                <td><input name="StandaloneItems[@idx].Count" class="ui-input ui-input-sm num" type="number" step="0.0001" min="0" value="0" data-role="count" data-label="العدد المحجوز" aria-label="العدد المحجوز — سطر @(idx + 1)" /></td>
+                                <td class="text-center"><button type="button" class="ui-btn ui-btn-sm ui-btn-danger" data-role="remove" aria-label="حذف السطر"><i class="bi bi-x-lg" aria-hidden="true"></i></button></td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-line"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة صنف</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" id="add-line"><i class="bi bi-plus-lg" aria-hidden="true"></i> إضافة صنف</button>
         </div>
     </div>
 
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الحجز</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    <div class="ui-form-actions">
+        <button type="submit" class="ui-btn ui-btn-pri"><i class="bi bi-check-lg" aria-hidden="true"></i> حفظ الحجز</button>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet">إلغاء</a>
     </div>
 </form>
 

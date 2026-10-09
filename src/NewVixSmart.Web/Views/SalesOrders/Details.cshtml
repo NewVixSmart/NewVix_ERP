@@ -5,49 +5,50 @@
 @using NewVixSmart.Web.Extensions
 @{ ViewData["Title"] = $"أمر بيع {Model.OrderNumber}"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-eye text-primary" aria-hidden="true"></i> أمر بيع: @Model.OrderNumber</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2>أمر بيع: @Model.OrderNumber</h2>
+    </div>
+    <div class="ui-pagehead-actions">
         @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status == SalesOrderStatus.Draft)
         {
-            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="تتم فوترة أمر البيع المعتمد؟">
+            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="inline-flex" data-confirm="تتم فوترة أمر البيع المعتمد؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
+                <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> اعتماد</button>
             </form>
         }
         @if (await Perm.HasAsync("SalesOrders.Convert") && (Model.Status == SalesOrderStatus.Approved || Model.Status == SalesOrderStatus.PartiallyInvoiced))
         {
-            <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="إنشاء فاتورة من الكميات المسلَّمة غير المفوترة فقط. هل تريد المتابعة؟">
+            <form asp-action="CreateInvoice" asp-route-id="@Model.Id" method="post" class="inline-flex" data-confirm="إنشاء فاتورة من الكميات المسلَّمة غير المفوترة فقط. هل تريد المتابعة؟">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة التسليمات</button>
+                <button type="submit" class="ui-btn ui-btn-outline"><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة التسليمات</button>
             </form>
         }
         @if (await Perm.HasAsync("SalesOrders.Edit") && Model.Status == SalesOrderStatus.Draft)
         {
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="ui-btn ui-btn-quiet"><i class="bi bi-pencil" aria-hidden="true"></i> تعديل</a>
         }
         @if (await Perm.HasAsync("SalesOrders.Approve") && Model.Status != SalesOrderStatus.Cancelled && Model.Status != SalesOrderStatus.Invoiced)
         {
-            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-inline">
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="inline-flex">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
+                <button type="submit" class="ui-btn ui-btn-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> إلغاء</button>
             </form>
         }
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
-        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" rel="noopener" class="ui-btn ui-btn-quiet"><i class="bi bi-printer" aria-hidden="true"></i> طباعة</a>
+        <a asp-action="Index" class="ui-btn ui-btn-quiet"><i class="bi bi-arrow-right" aria-hidden="true"></i> رجوع</a>
     </div>
 </div>
 
-<div class="card mb-4">
+<div class="ui-section ui-card ui-rise">
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3"><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
-            <div class="col-md-3"><strong>تاريخ الأمر:</strong> @Model.OrderDate.ToString("dd/MM/yyyy")</div>
-            <div class="col-md-3"><strong>المتوقع:</strong> @(Model.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</div>
-            <div class="col-md-3"><strong>الحالة:</strong> <span class="badge @(Model.Status switch { SalesOrderStatus.Approved => "bg-success", SalesOrderStatus.Invoiced => "bg-info", SalesOrderStatus.PartiallyInvoiced => "bg-warning", SalesOrderStatus.Cancelled => "bg-danger", _ => "bg-secondary" })">@Model.Status.GetDisplayName()</span></div>
-        </div>
-        <div class="row mt-2">
-            <div class="col-md-3"><strong>عرض السعر المصدر:</strong>
+        <div class="ui-grid ui-grid-2 md:ui-grid-4">
+            <div><strong>العميل:</strong> @(Model.Customer?.Name ?? "—")</div>
+            <div><strong>تاريخ الأمر:</strong> @Model.OrderDate.ToString("dd/MM/yyyy")</div>
+            <div><strong>المتوقع:</strong> @(Model.ExpectedDate?.ToString("dd/MM/yyyy") ?? "—")</div>
+            <div><strong>الحالة:</strong> <span class="ui-badge @(Model.Status switch { SalesOrderStatus.Approved => "ui-badge-ok", SalesOrderStatus.Invoiced => "ui-badge-info", SalesOrderStatus.PartiallyInvoiced => "ui-badge-warn", SalesOrderStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-mute" })">@Model.Status.GetDisplayName()</span></div>
+            <div><strong>عرض السعر المصدر:</strong>
                 @if (Model.SaleQuoteId.HasValue)
                 {
                     <a asp-controller="SalesQuotes" asp-action="Details" asp-route-id="@Model.SaleQuote!.PublicId">عرض #@Model.SaleQuoteId.Value</a>
@@ -57,13 +58,13 @@
                     <span>—</span>
                 }
             </div>
-            <div class="col-md-3"><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
-            <div class="col-md-3"><strong>ملاحظات:</strong> @(Model.Notes ?? "—")</div>
+            <div><strong>أنشأها:</strong> @(Model.CreatedBy ?? "—")</div>
+            <div><strong>ملاحظات:</strong> @(Model.Notes ?? "—")</div>
         </div>
     </div>
 </div>
 
-<div class="table-container mb-4">
+<div class="table-container mb-4 ui-rise">
     <table class="table mb-0">
         <caption class="visually-hidden">أصناف أمر البيع مع الكميات المحجوزة والمسلّمة والمفوترة</caption>
         <thead><tr><th scope="col">الصنف</th><th scope="col">العدد المطلوب</th><th scope="col">الكمية المطلوبة</th><th scope="col">سعر الوحدة</th><th scope="col">الإجمالي</th><th scope="col">المحجوز</th><th scope="col">المفوتر عدد</th><th scope="col">المفوتر كمية</th><th scope="col">المسلَّم غير المفوتر</th><th scope="col">التقدّم</th></tr></thead>
@@ -96,8 +97,10 @@
     </table>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-bookmark-check" aria-hidden="true"></i> الحجز</div>
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">
+        <span class="ui-card-title"><i class="bi bi-bookmark-check" aria-hidden="true"></i> الحجز</span>
+    </div>
     <div class="card-body">
         @{
             var reservation = ViewBag.Reservation as NewVixSmart.Web.Models.Stock.StockReservation;
@@ -108,95 +111,95 @@
         }
         else
         {
-            <dl class="row mb-0">
-                <dt class="col-sm-3">رقم الحجز</dt>
-                <dd class="col-sm-9"><a asp-controller="StockReservations" asp-action="Details" asp-route-id="@reservation.PublicId">@reservation.ReservationNumber</a></dd>
-                <dt class="col-sm-3">الحالة</dt>
-                <dd class="col-sm-9">@reservation.Status.GetDisplayName()</dd>
-                <dt class="col-sm-3">الكمية المحجوزة</dt>
-                <dd class="col-sm-9">@reservation.TotalQuantity.ToString("N2") كمية / @reservation.TotalCount.ToString("N2") عدد</dd>
+            <dl class="ui-grid ui-grid-2 md:ui-grid-3 mb-0">
+                <div><dt class="text-muted small">رقم الحجز</dt><dd><a asp-controller="StockReservations" asp-action="Details" asp-route-id="@reservation.PublicId">@reservation.ReservationNumber</a></dd></div>
+                <div><dt class="text-muted small">الحالة</dt><dd>@reservation.Status.GetDisplayName()</dd></div>
+                <div><dt class="text-muted small">الكمية المحجوزة</dt><dd>@reservation.TotalQuantity.ToString("N2") كمية / @reservation.TotalCount.ToString("N2") عدد</dd></div>
             </dl>
         }
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-truck" aria-hidden="true"></i> أذونات التسليم وأوامرها</div>
-    <div class="card-body p-0">
-        <div class="table-container">
-            <table class="table mb-0">
-                <caption class="visually-hidden">أذونات التسليم المرتبطة بالأمر وأوامر التسليم وحالاتها</caption>
-                <thead><tr><th scope="col">أذن التسليم</th><th scope="col">التاريخ</th><th scope="col">الحالة</th><th scope="col">أوامر التسليم</th></tr></thead>
-                <tbody>
-                    @if (Model.DeliveryOrders == null || !Model.DeliveryOrders.Any())
-                    {
-                        <tr><td colspan="4" class="text-muted">لا توجد أذونات تسليم لهذا الأمر بعد.</td></tr>
-                    }
-                    @foreach (var note in Model.DeliveryOrders!.OrderByDescending(d => d.Id))
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">
+        <span class="ui-card-title"><i class="bi bi-truck" aria-hidden="true"></i> أذونات التسليم وأوامرها</span>
+    </div>
+    <div class="table-container" style="max-height:none;border:0;border-radius:0">
+        <table class="table mb-0">
+            <caption class="visually-hidden">أذونات التسليم المرتبطة بالأمر وأوامر التسليم وحالاتها</caption>
+            <thead><tr><th scope="col">أذن التسليم</th><th scope="col">التاريخ</th><th scope="col">الحالة</th><th scope="col">أوامر التسليم</th></tr></thead>
+            <tbody>
+                @if (Model.DeliveryOrders == null || !Model.DeliveryOrders.Any())
+                {
+                    <tr><td colspan="4" class="text-muted">لا توجد أذونات تسليم لهذا الأمر بعد.</td></tr>
+                }
+                @foreach (var note in Model.DeliveryOrders!.OrderByDescending(d => d.Id))
+                {
+                    <tr>
+                        <th scope="row"><a asp-controller="DeliveryOrders" asp-action="Details" asp-route-id="@note.PublicId">@note.DeliveryNumber</a></th>
+                        <td>@note.DeliveryDate.ToString("dd/MM/yyyy")</td>
+                        <td><span class="ui-badge @(note.Status switch { DeliveryOrderStatus.Delivered => "ui-badge-ok", DeliveryOrderStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@note.Status.GetDisplayName()</span></td>
+                        <td>
+                            @if (note.Issues == null || !note.Issues.Any())
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                foreach (var issue in note.Issues.OrderBy(i => i.Id))
+                                {
+                                    <a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId" class="me-2">
+                                        @issue.IssueNumber
+                                        <span class="ui-badge @(issue.Status switch { DeliveryIssueStatus.Issued => "ui-badge-ok", DeliveryIssueStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@issue.Status.GetDisplayName()</span>
+                                    </a>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="ui-section ui-card ui-rise">
+    <div class="ui-card-head">
+        <span class="ui-card-title"><i class="bi bi-receipt" aria-hidden="true"></i> الفواتير</span>
+    </div>
+    <div class="table-container" style="max-height:none;border:0;border-radius:0">
+        <table class="table mb-0">
+            <caption class="visually-hidden">فواتير البيع المرتبطة بهذا الأمر</caption>
+            <thead><tr><th scope="col">رقم الفاتورة</th><th scope="col">التاريخ</th><th scope="col">الصافي</th><th scope="col">الضريبة</th><th scope="col">الخصم</th><th scope="col">الحالة</th></tr></thead>
+            <tbody>
+                @{
+                    var invoices = ViewBag.Invoices as List<NewVixSmart.Web.Models.Sales.SaleInvoice>;
+                }
+                @if (invoices == null || !invoices.Any())
+                {
+                    <tr><td colspan="6" class="text-muted">لم تُصدر فواتير لهذا الأمر بعد.</td></tr>
+                }
+                else
+                {
+                    foreach (var inv in invoices)
                     {
                         <tr>
-                            <th scope="row"><a asp-controller="DeliveryOrders" asp-action="Details" asp-route-id="@note.PublicId">@note.DeliveryNumber</a></th>
-                            <td>@note.DeliveryDate.ToString("dd/MM/yyyy")</td>
-                            <td><span class="badge @(note.Status switch { DeliveryOrderStatus.Delivered => "bg-success", DeliveryOrderStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@note.Status.GetDisplayName()</span></td>
-                            <td>
-                                @if (note.Issues == null || !note.Issues.Any())
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                                else
-                                {
-                                    foreach (var issue in note.Issues.OrderBy(i => i.Id))
-                                    {
-                                        <a asp-controller="DeliveryIssues" asp-action="Details" asp-route-id="@issue.PublicId" class="me-2">
-                                            @issue.IssueNumber
-                                            <span class="badge @(issue.Status switch { DeliveryIssueStatus.Issued => "bg-success", DeliveryIssueStatus.Cancelled => "bg-danger", _ => "bg-warning text-dark" })">@issue.Status.GetDisplayName()</span>
-                                        </a>
-                                    }
-                                }
-                            </td>
+                            <th scope="row"><a asp-controller="Sales" asp-action="Details" asp-route-id="@inv.PublicId">@inv.InvoiceNumber</a></th>
+                            <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                            <td>@Money.Format(inv.NetAmount)</td>
+                            <td>@Money.Format(inv.Tax)</td>
+                            <td>@Money.Format(inv.Discount)</td>
+                            <td><span class="ui-badge @(inv.IsPaid ? "ui-badge-ok" : "ui-badge-warn")">@OrderProgress.SettlementLabel(inv)</span></td>
                         </tr>
                     }
-                </tbody>
-            </table>
-        </div>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-receipt" aria-hidden="true"></i> الفواتير</div>
-    <div class="card-body p-0">
-        <div class="table-container">
-            <table class="table mb-0">
-                <caption class="visually-hidden">فواتير البيع المرتبطة بهذا الأمر</caption>
-                <thead><tr><th scope="col">رقم الفاتورة</th><th scope="col">التاريخ</th><th scope="col">الصافي</th><th scope="col">الضريبة</th><th scope="col">الخصم</th><th scope="col">الحالة</th></tr></thead>
-                <tbody>
-                    @{
-                        var invoices = ViewBag.Invoices as List<NewVixSmart.Web.Models.Sales.SaleInvoice>;
-                    }
-                    @if (invoices == null || !invoices.Any())
-                    {
-                        <tr><td colspan="6" class="text-muted">لم تُصدر فواتير لهذا الأمر بعد.</td></tr>
-                    }
-                    else
-                    {
-                        foreach (var inv in invoices)
-                        {
-                            <tr>
-                                <th scope="row"><a asp-controller="Sales" asp-action="Details" asp-route-id="@inv.PublicId">@inv.InvoiceNumber</a></th>
-                                <td>@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
-                                <td>@Money.Format(inv.NetAmount)</td>
-                                <td>@Money.Format(inv.Tax)</td>
-                                <td>@Money.Format(inv.Discount)</td>
-                                <td><span class="badge @(inv.IsPaid ? "bg-success" : "bg-warning text-dark")">@OrderProgress.SettlementLabel(inv)</span></td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
-        </div>
+<div class="ui-grid ui-grid-2 md:ui-grid-4">
+    <div class="ui-stat ui-rise">
+        <span class="ui-stat-label">الإجمالي</span>
+        <span class="ui-stat-value">@Money.Format(OrderProgress.Summarize(Model).Total)</span>
     </div>
-</div>
-
-<div class="row g-3">
-    <div class="col-md-4"><div class="card text-center"><div class="card-body"><div class="text-muted small">الإجمالي</div><h4>@Money.Format(OrderProgress.Summarize(Model).Total)</h4></div></div></div>
 </div>

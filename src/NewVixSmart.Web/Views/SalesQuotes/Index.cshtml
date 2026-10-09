@@ -2,39 +2,52 @@
 @inject NewVixSmart.Web.Services.IPermissionService Perm
 @{ ViewData["Title"] = "عروض أسعار العملاء"; }
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <h2><i class="bi bi-receipt-cutoff text-primary" aria-hidden="true"></i> عروض أسعار العملاء</h2>
-    <div class="d-flex gap-2">
+<div class="ui-pagehead ui-rise">
+    <div class="ui-pagehead-title">
+        <span class="ui-eyebrow">المبيعات</span>
+        <h2><i class="bi bi-receipt-cutoff" aria-hidden="true"></i> عروض أسعار العملاء</h2>
+    </div>
+    <div class="ui-pagehead-actions flex gap-2">
         @if (await Perm.HasAsync("SalesQuotes.Convert"))
         {
-            <a asp-action="MassConvert" class="btn btn-outline-success"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تحويل جماعي</a>
+            <a asp-action="MassConvert" class="ui-btn ui-btn-ok"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تحويل جماعي</a>
         }
         @if (await Perm.HasAsync("SalesQuotes.Create"))
         {
-            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> عرض سعر جديد</a>
+            <a asp-action="Create" class="ui-btn ui-btn-pri"><i class="bi bi-plus-lg" aria-hidden="true"></i> عرض سعر جديد</a>
         }
     </div>
 </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise alert-dismissible" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise alert-dismissible" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info">لا توجد عروض أسعار مسجلة بعد.</div>
+    <div class="ui-alert ui-alert-info ui-rise">لا توجد عروض أسعار مسجلة بعد.</div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table table-hover mb-0">
+    <div class="ui-section table-container ui-rise">
+        <table class="table">
             <caption class="visually-hidden">قائمة عروض الأسعار: رقم العرض، العميل، التاريخ، صالح حتى، الصافي، الحالة</caption>
-            <thead><tr><th scope="col">رقم العرض</th><th scope="col">العميل</th><th scope="col">التاريخ</th><th scope="col">صالح حتى</th><th scope="col">الصافي</th><th scope="col">الحالة</th><th scope="col" class="text-center">إجراءات</th></tr></thead>
+            <thead>
+                <tr>
+                    <th scope="col">رقم العرض</th>
+                    <th scope="col">العميل</th>
+                    <th scope="col">التاريخ</th>
+                    <th scope="col">صالح حتى</th>
+                    <th scope="col">الصافي</th>
+                    <th scope="col">الحالة</th>
+                    <th scope="col" class="text-center">إجراءات</th>
+                </tr>
+            </thead>
             <tbody>
                 @foreach (var q in Model)
                 {
@@ -43,40 +56,40 @@ else
                         <td><strong>@(q.Customer?.Name ?? "—")</strong></td>
                         <td>@q.QuoteDate.ToString("dd/MM/yyyy")</td>
                         <td>@(q.ValidUntil?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        <td class="fw-bold">@Money.Format(q.NetAmount)</td>
+                        <td class="fw-bold num">@Money.Format(q.NetAmount)</td>
                         <td>
                             @if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted)
                             {
-                                <span class="badge bg-success">محوّل</span>
+                                <span class="ui-badge ui-badge-ok">محوّل</span>
                             }
                             else if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Cancelled)
                             {
-                                <span class="badge bg-secondary">ملغي</span>
+                                <span class="ui-badge ui-badge-mute">ملغي</span>
                             }
                             else if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converting)
                             {
-                                <span class="badge bg-warning text-dark">جارٍ التحويل</span>
+                                <span class="ui-badge ui-badge-warn">جارٍ التحويل</span>
                             }
                             else
                             {
-                                <span class="badge bg-warning text-dark">مسودة</span>
+                                <span class="ui-badge ui-badge-warn">مسودة</span>
                             }
                         </td>
                         <td class="text-center">
-                            <a asp-action="Details" asp-route-id="@q.PublicId" class="btn btn-sm btn-outline-info" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
-                            <a asp-action="Print" asp-route-id="@q.Id" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" aria-label="طباعة عرض السعر @q.QuoteNumber"><i class="bi bi-printer" aria-hidden="true"></i></a>
+                            <a asp-action="Details" asp-route-id="@q.PublicId" class="ui-btn ui-btn-sm ui-btn-ghost" aria-label="عرض عرض السعر @q.QuoteNumber"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a asp-action="Print" asp-route-id="@q.Id" target="_blank" rel="noopener" class="ui-btn ui-btn-sm ui-btn-ghost" aria-label="طباعة عرض السعر @q.QuoteNumber"><i class="bi bi-printer" aria-hidden="true"></i></a>
                             @if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
                             {
                                 <form asp-action="Convert" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى أمر بيع؟" data-confirm-ok="تحويل">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-success" aria-label="تحويل عرض السعر @q.QuoteNumber"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></button>
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-ok" aria-label="تحويل عرض السعر @q.QuoteNumber"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></button>
                                 </form>
                             }
                             @if (q.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Delete"))
                             {
                                 <form asp-action="Delete" asp-route-id="@q.Id" method="post" class="d-inline" data-confirm="هل تريد حذف عرض السعر هذا؟" data-confirm-ok="حذف">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="حذف عرض السعر @q.QuoteNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف عرض السعر @q.QuoteNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
                                 </form>
                             }
                         </td>
