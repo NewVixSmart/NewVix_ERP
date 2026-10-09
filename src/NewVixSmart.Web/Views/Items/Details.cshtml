@@ -25,17 +25,17 @@
         <div class="card-body">
             <table class="table mb-0">
                 <caption class="visually-hidden">معلومات الصنف: الكود، الاسم، نوع الصنف، قابل للبيع، التصنيف، وحدة العدد، وحدة الكمية، الحالة</caption>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الاسم</th><td>@Model.Name</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line" style="width:40%">الكود</th><td><code>@(Model.Code ?? "—")</code></td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">الاسم</th><td>@Model.Name</td></tr>
                 <tr>
-                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">نوع الصنف</th>
+                    <th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">نوع الصنف</th>
                     <td><span class="ui-badge ui-badge-info">@(Model.ItemType?.Name ?? "—")</span></td>
                 </tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">التصنيف</th><td><span class="ui-badge ui-badge-mute">@Model.Category.Name</span></td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">قابل للبيع</th><td>@(Model.IsSellable ? "نعم" : "لا — خاص بالإنتاج")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">التصنيف</th><td><span class="ui-badge ui-badge-mute">@Model.Category.Name</span></td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">وحدة العدد</th><td>@(Model.CountUnit?.Name ?? "—")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">وحدة الكمية</th><td>@(Model.QuantityUnit?.Name ?? "—")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold">الحالة</th><td>@(Model.IsActive ? "نشط" : "غير نشط")</td></tr>
             </table>
         </div>
     </div>
@@ -45,17 +45,17 @@
             <table class="table mb-0">
                 <caption class="visually-hidden">المخزون: الرصيد الحالي (عدد وكمية)، الحد الأدنى (عدد وكمية)، الحالة، تاريخ الإنشاء</caption>
                 <tr>
-                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line" style="width:40%">الرصيد الحالي (عدد)</th>
+                    <th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line" style="width:40%">الرصيد الحالي (عدد)</th>
                     <td class="fw-bold"><span class="num">@Model.CurrentCount</span> @(Model.CountUnit?.Name ?? "")</td>
                 </tr>
                 <tr>
-                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الرصيد الحالي (كمية)</th>
+                    <th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">الرصيد الحالي (كمية)</th>
                     <td class="fw-bold"><span class="num">@Model.CurrentQuantity</span> @(Model.QuantityUnit?.Name ?? "")</td>
                 </tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحد الأدنى (عدد)</th><td><span class="num">@Model.MinCount</span> @(Model.CountUnit?.Name ?? "")</td></tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحد الأدنى (كمية)</th><td><span class="num">@Model.MinQuantity</span> @(Model.QuantityUnit?.Name ?? "")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">الحد الأدنى (عدد)</th><td><span class="num">@Model.MinCount</span> @(Model.CountUnit?.Name ?? "")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">الحد الأدنى (كمية)</th><td><span class="num">@Model.MinQuantity</span> @(Model.QuantityUnit?.Name ?? "")</td></tr>
                 <tr>
-                    <th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold border-b border-line">الحالة</th>
+                    <th scope="row" class="py-2 px-3.5 align-middle font-semibold border-b border-line">الحالة</th>
                     <td>
                         @if (low)
                         { <span class="ui-badge ui-badge-bad">مخزون منخفض!</span> }
@@ -63,7 +63,7 @@
                         { <span class="ui-badge ui-badge-ok">مخزون كافٍ</span> }
                     </td>
                 </tr>
-                <tr><th scope="row" class="py-2 px-[0.875rem] align-middle font-semibold">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
+                <tr><th scope="row" class="py-2 px-3.5 align-middle font-semibold">تاريخ الإنشاء</th><td>@Model.CreatedAt.ToString("dd/MM/yyyy")</td></tr>
             </table>
         </div>
     </div>

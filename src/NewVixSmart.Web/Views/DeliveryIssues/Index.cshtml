@@ -27,10 +27,10 @@
 }
 
 <ul class="nav nav-pills mb-4 ui-rise" aria-label="فلترة أوامر التسليم">
-    <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
+    <li><a class="nav-link @(ViewBag.StatusFilter == null ? "active" : "")" asp-action="Index">الكل</a></li>
     @foreach (var st in Enum.GetValues<DeliveryIssueStatus>())
     {
-        <li class="nav-item"><a class="nav-link @(ViewBag.StatusFilter as DeliveryIssueStatus? == st ? "active" : "")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a></li>
+        <li><a class="nav-link @(ViewBag.StatusFilter as DeliveryIssueStatus? == st ? "active" : "")" asp-action="Index" asp-route-status="@st">@st.GetDisplayName()</a></li>
     }
 </ul>
 

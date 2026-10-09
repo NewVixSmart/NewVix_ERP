@@ -12,7 +12,7 @@
         <a asp-action="Pdf" asp-route-id="@Model.Id" class="ui-btn ui-btn-ghost"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> تحميل PDF</a>
         @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Draft && await Perm.HasAsync("SalesQuotes.Convert"))
         {
-            <form asp-action="Convert" asp-route-id="@Model.Id" method="post" class="d-inline" data-confirm="هل تريد تحويل هذا العرض إلى أمر بيع؟ لن تُرحّل فاتورة أو مخزون الآن" data-confirm-ok="تحويل">
+            <form asp-action="Convert" asp-route-id="@Model.Id" method="post" class="inline" data-confirm="هل تريد تحويل هذا العرض إلى أمر بيع؟ لن تُرحّل فاتورة أو مخزون الآن" data-confirm-ok="تحويل">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="ui-btn ui-btn-ok"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> تحويل إلى أمر بيع</button>
             </form>
@@ -23,11 +23,11 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="ui-alert ui-alert-ok ui-rise alert-dismissible" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="ui-alert ui-alert-bad ui-rise alert-dismissible" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 
 <div class="ui-section ui-card ui-rise">
@@ -38,7 +38,7 @@
                 @if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Converted)
                 {
                     <span class="ui-badge ui-badge-ok">محوّل</span>
-                    <small class="text-muted d-block">@Model.ConvertedBy — @Model.ConvertedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                    <small class="text-muted block">@Model.ConvertedBy — @Model.ConvertedAt?.ToString("dd/MM/yyyy HH:mm")</small>
                 }
                 else if (Model.Status == NewVixSmart.Web.Models.Sales.SaleQuoteStatus.Cancelled)
                 {

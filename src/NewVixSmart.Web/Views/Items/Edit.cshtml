@@ -134,7 +134,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true" aria-labelledby="categoriesModalTitle">
+<div class="modal" id="categoriesModal" tabindex="-1" aria-hidden="true" aria-labelledby="categoriesModalTitle">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -159,7 +159,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="itemTypesModal" tabindex="-1" aria-hidden="true" aria-labelledby="itemTypesModalTitle">
+<div class="modal" id="itemTypesModal" tabindex="-1" aria-hidden="true" aria-labelledby="itemTypesModalTitle">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -234,7 +234,7 @@
         (window.originalCategories || []).forEach(c => {
             const tr = document.createElement('tr');
             tr.innerHTML = '<td><input type="text" class="form-control form-control-sm cat-name" value="' + escapeHtml(c.name) + '" data-id="' + c.id + '" aria-label="اسم التصنيف" /></td>' +
-                '<td><select class="form-select form-select-sm cat-active" data-id="' + c.id + '" aria-label="حالة التصنيف">' +
+                '<td><select class="form-select ui-select-sm cat-active" data-id="' + c.id + '" aria-label="حالة التصنيف">' +
                 '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
                 '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
                 '<td class="text-center"><button class="btn btn-sm btn-outline-primary cat-save" data-id="' + c.id + '" title="حفظ" aria-label="حفظ التصنيف ' + escapeHtml(c.name) + '"><i class="bi bi-check-lg" aria-hidden="true"></i></button>' +
@@ -314,7 +314,7 @@
         (window.originalItemTypes || []).forEach(c => {
             const tr = document.createElement('tr');
             tr.innerHTML = '<td><input type="text" class="form-control form-control-sm type-name" value="' + escapeHtml(c.name) + '" data-id="' + c.id + '" aria-label="اسم نوع الصنف" /></td>' +
-                '<td><select class="form-select form-select-sm type-active" data-id="' + c.id + '" aria-label="حالة نوع الصنف">' +
+                '<td><select class="form-select ui-select-sm type-active" data-id="' + c.id + '" aria-label="حالة نوع الصنف">' +
                 '<option value="true"' + (c.active ? ' selected' : '') + '>نشط</option>' +
                 '<option value="false"' + (!c.active ? ' selected' : '') + '>غير نشط</option></select></td>' +
                 '<td class="text-center"><button class="btn btn-sm btn-outline-primary type-save" data-id="' + c.id + '" title="حفظ" aria-label="حفظ نوع الصنف ' + escapeHtml(c.name) + '"><i class="bi bi-check-lg" aria-hidden="true"></i></button>' +

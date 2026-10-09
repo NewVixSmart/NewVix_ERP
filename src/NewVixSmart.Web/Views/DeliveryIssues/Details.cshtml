@@ -48,11 +48,11 @@
                 <span class="ui-badge @(Model.Status switch { DeliveryIssueStatus.Issued => "ui-badge-ok", DeliveryIssueStatus.Cancelled => "ui-badge-bad", _ => "ui-badge-warn" })">@Model.Status.GetDisplayName()</span>
                 @if (Model.Status == DeliveryIssueStatus.Draft)
                 {
-                    <span class="text-muted small d-block">لم يُرحّل بعد، الكمية ما زالت في المخزون</span>
+                    <span class="text-muted small block">لم يُرحّل بعد، الكمية ما زالت في المخزون</span>
                 }
                 else if (Model.Status == DeliveryIssueStatus.Issued)
                 {
-                    <span class="text-muted small d-block">خرجت الكمية من المخزون ورُحّلت تكلفتها</span>
+                    <span class="text-muted small block">خرجت الكمية من المخزون ورُحّلت تكلفتها</span>
                 }
             </dd></div>
             <div><dt class="text-muted small">أذن التسليم</dt><dd><a asp-controller="DeliveryOrders" asp-action="Details" asp-route-id="@Model.DeliveryOrder?.PublicId">@Model.DeliveryOrder?.DeliveryNumber</a></dd></div>

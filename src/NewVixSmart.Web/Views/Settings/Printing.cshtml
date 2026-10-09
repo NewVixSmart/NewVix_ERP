@@ -25,7 +25,7 @@
         <a asp-action="Index" class="ui-btn ui-btn-ghost ui-btn-sm"><i class="bi bi-arrow-right" aria-hidden="true"></i> العودة للإعدادات</a>
         <form asp-action="ResetPrinting" method="post" class="inline-flex" data-confirm="استعادة جميع إعدادات الطباعة إلى الافتراضي؟" data-confirm-ok="استعادة">
             @Html.AntiForgeryToken()
-            <button type="submit" class="ui-btn ui-btn-bad ui-btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> استعادة الإعدادات الافتراضية</button>
+            <button type="submit" class="ui-btn ui-btn-danger ui-btn-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> استعادة الإعدادات الافتراضية</button>
         </form>
     </div>
 </div>
@@ -42,7 +42,7 @@
         <div class="ui-card">
             <div class="card-header"><i class="bi bi-files" aria-hidden="true"></i> أنواع المستندات</div>
             <div class="card-body p-0">
-                <div class="flex flex-col divide-y divide-[color:var(--color-line)]" id="groupList" role="tablist" aria-orientation="vertical" aria-label="أنواع المستندات">
+                <div class="flex flex-col divide-line" id="groupList" role="tablist" aria-orientation="vertical" aria-label="أنواع المستندات">
                     @foreach (var g in studioGroups)
                     {
                         <button type="button"
@@ -183,21 +183,21 @@
                                         <div>
                                             <label class="form-label" for="AccentColor_@g.Slug">اللون المميز</label>
                                             <div class="input-group studio-color-pair">
-                                                <input type="color" class="form-control form-control-color" id="AccentColorPicker_@g.Slug" value="#10b981" aria-hidden="true" tabindex="-1" />
+                                                <input type="color" class="form-control" id="AccentColorPicker_@g.Slug" value="#10b981" aria-hidden="true" tabindex="-1" />
                                                 <input type="text" class="form-control ui-input" name="AccentColor" id="AccentColor_@g.Slug" value="#10b981" />
                                             </div>
                                         </div>
                                         <div>
                                             <label class="form-label" for="TableHeaderBg_@g.Slug">لون خلفية رأس الجدول</label>
                                             <div class="input-group studio-color-pair">
-                                                <input type="color" class="form-control form-control-color" id="TableHeaderBgPicker_@g.Slug" value="#eaf5f0" aria-hidden="true" tabindex="-1" />
+                                                <input type="color" class="form-control" id="TableHeaderBgPicker_@g.Slug" value="#eaf5f0" aria-hidden="true" tabindex="-1" />
                                                 <input type="text" class="form-control ui-input" name="TableHeaderBg" id="TableHeaderBg_@g.Slug" value="#eaf5f0" />
                                             </div>
                                         </div>
                                         <div>
                                             <label class="form-label" for="TableHeaderText_@g.Slug">لون نص رأس الجدول</label>
                                             <div class="input-group studio-color-pair">
-                                                <input type="color" class="form-control form-control-color" id="TableHeaderTextPicker_@g.Slug" value="#0e1620" aria-hidden="true" tabindex="-1" />
+                                                <input type="color" class="form-control" id="TableHeaderTextPicker_@g.Slug" value="#0e1620" aria-hidden="true" tabindex="-1" />
                                                 <input type="text" class="form-control ui-input" name="TableHeaderText" id="TableHeaderText_@g.Slug" value="#0e1620" />
                                             </div>
                                         </div>

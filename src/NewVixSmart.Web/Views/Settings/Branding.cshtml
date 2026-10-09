@@ -68,7 +68,7 @@
                     <div class="flex items-center gap-3 mb-4">
                         <img class="brand-logo" style="width:72px;height:72px;" src="@Model.LogoDataUri" alt="@Model.CompanyName" />
                         <div>
-                            <div class="fw-semibold">الشعار الحالي</div>
+                            <div class="font-semibold">الشعار الحالي</div>
                             <small class="text-muted block">@(Model.LogoFileName ?? "شعار مرفوع") — يظهر في الشريط الجانبي، صفحة الدخول، الفواتير، والطباعة.</small>
                         </div>
                     </div>
@@ -140,42 +140,42 @@
                     <div>
                         <label class="form-label" for="PrimaryHex">اللون الأساسي</label>
                         <div class="input-group">
-                            <input asp-for="Primary" type="color" class="form-control form-control-color" title="اللون الأساسي" aria-hidden="true" tabindex="-1" />
+                            <input asp-for="Primary" type="color" class="form-control" title="اللون الأساسي" aria-hidden="true" tabindex="-1" />
                             <input id="PrimaryHex" name="Primary" type="text" class="form-control ui-input" placeholder="#1570ef" />
                         </div>
                     </div>
                     <div>
                         <label class="form-label" for="AccentHex">لون التمييز</label>
                         <div class="input-group">
-                            <input asp-for="Accent" type="color" class="form-control form-control-color" title="لون التمييز" aria-hidden="true" tabindex="-1" />
+                            <input asp-for="Accent" type="color" class="form-control" title="لون التمييز" aria-hidden="true" tabindex="-1" />
                             <input id="AccentHex" name="Accent" type="text" class="form-control ui-input" placeholder="#53b1fd" />
                         </div>
                     </div>
                     <div>
                         <label class="form-label" for="SidebarBgHex">لون الشريط الجانبي</label>
                         <div class="input-group">
-                            <input asp-for="SidebarBg" type="color" class="form-control form-control-color" title="لون الشريط الجانبي" aria-hidden="true" tabindex="-1" />
+                            <input asp-for="SidebarBg" type="color" class="form-control" title="لون الشريط الجانبي" aria-hidden="true" tabindex="-1" />
                             <input id="SidebarBgHex" name="SidebarBg" type="text" class="form-control ui-input" placeholder="#0d1b35" />
                         </div>
                     </div>
                     <div>
                         <label class="form-label" for="PageBgHex">لون خلفية الصفحات</label>
                         <div class="input-group">
-                            <input asp-for="PageBg" type="color" class="form-control form-control-color" title="لون خلفية الصفحات" aria-hidden="true" tabindex="-1" />
+                            <input asp-for="PageBg" type="color" class="form-control" title="لون خلفية الصفحات" aria-hidden="true" tabindex="-1" />
                             <input id="PageBgHex" name="PageBg" type="text" class="form-control ui-input" placeholder="#f8f8fa" />
                         </div>
                     </div>
                 </div>
 
-                <div class="border rounded-3 overflow-hidden">
+                <div class="border border-line rounded-lg overflow-hidden">
                     <div class="flex" id="themePreview">
                         <div class="p-3 flex-grow" id="prevPage" style="background:var(--color-bg-page);" role="img" aria-label="معاينة لوحة الألوان">
                             <span class="badge rounded-pill" id="prevPrimary" style="background:var(--color-primary);color:var(--fg-on-accent);">زر أساسي</span>
                             <span class="badge rounded-pill" id="prevAccent" style="background:var(--color-gold);color:var(--color-code-on-primary);">لمسة سماوية</span>
-                            <div class="rounded-2 p-2 mt-2 small" id="prevSidebar" style="background:var(--color-sidebar-bg);color:var(--color-sidebar-text);border:1px solid var(--color-sidebar-hairline);">شريط جانبي — نص</div>
+                            <div class="rounded-md p-2 mt-2 small" id="prevSidebar" style="background:var(--color-sidebar-bg);color:var(--color-sidebar-text);border:1px solid var(--color-sidebar-hairline);">شريط جانبي — نص</div>
                         </div>
                     </div>
-                    <div class="bg-body border-top small text-muted p-2">معاينة حية — احرص على تباين مناسب للنصوص (4.5:1 على الأقل).</div>
+                    <div class="bg-[var(--color-bg-page)] border-t border-line small text-muted p-2">معاينة حية — احرص على تباين مناسب للنصوص (4.5:1 على الأقل).</div>
                 </div>
             </div>
             <div class="card-footer text-end">

@@ -29,7 +29,7 @@
 }
 
 <div class="ui-section ui-alert ui-alert-warn ui-rise" role="note">
-    <div class="fw-semibold"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> هذا المسار يُرحّل الإيراد عند التسليم مباشرة</div>
+    <div class="font-semibold"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> هذا المسار يُرحّل الإيراد عند التسليم مباشرة</div>
     <p class="mb-2">
         الفاتورة المباشرة تُسجّل الإيراد والمخزون معاً لحظة الخصم، ولا تستخدم أذونات التسليم ولا الحجز المسبق.
         راجع الحساب والضريبة فقط.
@@ -195,7 +195,7 @@ document.getElementById('addRow').addEventListener('click', function() {
     items.forEach(i => { options += `<option value="${i.id}" data-price="${i.salePrice}" data-count="${i.currentCount}" data-qty="${i.currentQuantity}">${escapeHtml(i.name)}</option>`; });
     const tr = document.createElement('tr');
     tr.classList.add('row-in');
-    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select><small class="stock-note" hidden></small></td>
+    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف">${options}</select><small class="stock-note" hidden></small></td>
         <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
         <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>

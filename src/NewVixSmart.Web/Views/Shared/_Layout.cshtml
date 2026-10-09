@@ -472,14 +472,14 @@
             <h1 class="visually-hidden">@(ViewData["Title"] ?? _brand.Profile.CompanyName)</h1>
             @if (TempData["Error"] != null)
             {
-                <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
+                <div class="alert alert-danger" role="alert" aria-live="assertive">
                     <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @TempData["Error"]
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                 </div>
             }
             @if (TempData["Success"] != null)
             {
-                <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
+                <div class="alert alert-success" role="status" aria-live="polite">
                     <i class="bi bi-check-circle" aria-hidden="true"></i> @TempData["Success"]
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                 </div>

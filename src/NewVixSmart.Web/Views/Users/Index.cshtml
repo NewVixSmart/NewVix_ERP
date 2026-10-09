@@ -85,7 +85,7 @@
                             else
                             {
                                 <form asp-action="ToggleDeactivated" asp-route-id="@u.Id" method="post" class="inline-flex">
-                                    <button type="submit" class="ui-btn ui-btn-sm @(u.IsDeactivated ? "ui-btn-ok" : "ui-btn-bad")"
+                                    <button type="submit" class="ui-btn ui-btn-sm @(u.IsDeactivated ? "ui-btn-ok" : "ui-btn-danger")"
                                             aria-label="@(u.IsDeactivated ? "إعادة تفعيل حساب " : "إبطال حساب ") @u.UserName">
                                         <i class="bi bi-person-slash" aria-hidden="true"></i> @(!u.IsDeactivated ? "إبطال" : "إعادة تفعيل")
                                     </button>

@@ -64,14 +64,14 @@
 
                 @if (TempData["Success"] is string successMsg)
                 {
-                    <div class="alert alert-success alert-dismissible fade show" role="status" aria-live="polite">
+                    <div class="alert alert-success" role="status" aria-live="polite">
                         @successMsg
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                     </div>
                 }
                 @if (TempData["Error"] is string errorMsg)
                 {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert" aria-live="assertive">
+                    <div class="alert alert-danger" role="alert" aria-live="assertive">
                         @errorMsg
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق التنبيه"></button>
                     </div>

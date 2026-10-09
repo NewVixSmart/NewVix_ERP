@@ -76,7 +76,7 @@
                         var line = Model.Items[idx];
                         <tr>
                             <td>
-                                <select name="items[@idx].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
+                                <select name="items[@idx].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف" @(fieldError(idx, "ItemId"))>
                                     <option value="">اختر صنف</option>
                                     @foreach (var item in items)
                                     {
@@ -123,7 +123,7 @@ document.getElementById('addRow').addEventListener('click', function() {
     let options = '<option value="">اختر صنف</option>';
     items.forEach(i => { options += `<option value="${i.id}" data-count="${i.currentCount}" data-qty="${i.currentQuantity}" data-price="${i.purchasePrice}">${escapeHtml(i.name)}</option>`; });
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
+    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف">${options}</select></td>
         <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
         <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="items[${rowIndex}].UnitCost" type="number" step="0.000001" class="form-control form-control-sm price" value="0" aria-label="التكلفة" /></td>

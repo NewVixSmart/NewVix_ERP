@@ -44,7 +44,7 @@
                                         <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost btn-edit-unit" data-id="@u.Id" data-name="@u.Name" data-short="@u.ShortName" data-sub="@u.SubUnits" data-parent="@u.ParentUnitId" data-active="@u.IsActive.ToString().ToLower()" data-rowversion="@(u.RowVersion is null ? string.Empty : Convert.ToBase64String(u.RowVersion))" aria-label="تعديل وحدة @u.Name"><i class="bi bi-pencil" aria-hidden="true"></i></button>
                                         <form asp-action="DeleteUnit" asp-route-id="@u.Id" method="post" class="inline-flex" data-confirm="حذف هذه الوحدة؟" data-confirm-ok="حذف">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="ui-btn ui-btn-sm ui-btn-bad" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                            <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف وحدة @u.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                                         </form>
                                     </td>
                                 </tr>
@@ -67,7 +67,7 @@
                 <a asp-controller="Categories" asp-action="Index" class="ui-btn ui-btn-sm ui-btn-ghost">إدارة</a>
             </div>
             <div class="card-body p-0">
-                <div class="flex flex-col divide-y divide-[color:var(--color-line)]">
+                <div class="flex flex-col divide-line">
                     @foreach (var c in Model.Categories)
                     {
                         <div class="flex justify-between items-center px-4 py-2.5">
@@ -91,7 +91,7 @@
                 <a asp-controller="ItemTypes" asp-action="Index" class="ui-btn ui-btn-sm ui-btn-ghost">إدارة</a>
             </div>
             <div class="card-body p-0">
-                <div class="flex flex-col divide-y divide-[color:var(--color-line)]">
+                <div class="flex flex-col divide-line">
                     @foreach (var t in Model.ItemTypes)
                     {
                         <div class="flex justify-between items-center px-4 py-2.5">
@@ -143,7 +143,7 @@
                                     }
                                     <form asp-action="DeleteBranch" asp-route-id="@b.Id" method="post" class="inline-flex" data-confirm="حذف هذا الفرع؟" data-confirm-ok="حذف">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="ui-btn ui-btn-sm ui-btn-bad" aria-label="حذف فرع @b.Code"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                        <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف فرع @b.Code"><i class="bi bi-trash" aria-hidden="true"></i></button>
                                     </form>
                                 </td>
                             </tr>
@@ -159,7 +159,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalTitle">
+<div class="modal" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalTitle">
     <div class="modal-dialog">
         <form asp-action="AddUnit" method="post" class="modal-content">
             @Html.AntiForgeryToken()
@@ -176,7 +176,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitModalTitle">
+<div class="modal" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitModalTitle">
     <div class="modal-dialog">
         <form asp-action="UpdateUnit" method="post" class="modal-content">
             @Html.AntiForgeryToken()
@@ -186,12 +186,12 @@
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="editUnitName">اسم الوحدة</label><input name="Name" id="editUnitName" class="form-control" required maxlength="50" /></div>
                 <div class="mb-3"><label class="form-label" for="editUnitShort">الاختصار</label><input name="ShortName" id="editUnitShort" class="form-control" maxlength="20" /></div>
-                <div class="row g-3">
-                    <div class="col-6">
+                <div class="ui-grid ui-grid-2">
+                    <div>
                         <label class="form-label" for="editUnitSub">الوحدات الفرعية</label>
                         <input type="number" name="SubUnits" id="editUnitSub" class="form-control" min="0" value="0" />
                     </div>
-                    <div class="col-6">
+                    <div>
                         <label class="form-label" for="editUnitParent">الوحدة الأم</label>
                         <select name="ParentUnitId" id="editUnitParent" class="form-select">
                             <option value="">— بدون —</option>
@@ -215,7 +215,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalTitle">
+<div class="modal" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalTitle">
     <div class="modal-dialog">
         <form asp-action="AddBranch" method="post" class="modal-content">
             @Html.AntiForgeryToken()
@@ -233,7 +233,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalTitle">
+<div class="modal" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalTitle">
     <div class="modal-dialog">
         <form asp-action="UpdateBranch" method="post" class="modal-content">
             @Html.AntiForgeryToken()

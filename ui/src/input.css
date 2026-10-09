@@ -652,6 +652,20 @@
     }
   }
 
+  @media (min-width: 640px) {
+    .sm\:ui-grid-span-1 {
+      grid-column: span 1;
+    }
+
+    .sm\:ui-grid-span-2 {
+      grid-column: span 2;
+    }
+  }
+
+  .divide-line > * + * {
+    border-top: 1px solid var(--color-line);
+  }
+
   .ui-stat {
     display: flex;
     flex-direction: column;
@@ -1559,10 +1573,41 @@
   }
 
   .form-control-sm,
-  .ui-input-sm {
+  .ui-input-sm,
+  .form-select-sm,
+  .ui-select-sm {
     min-height: 2.125rem;
     padding: 0.25rem 0.5rem;
     font-size: 0.8125rem;
+  }
+
+  .form-control[type="color"] {
+    flex: none;
+    width: 3rem;
+    height: 2.375rem;
+    padding: 0.25rem;
+    cursor: pointer;
+  }
+
+  .progress {
+    display: flex;
+    align-items: center;
+    height: 1.25rem;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-surface-3);
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--color-ok);
+    color: var(--color-surface);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    white-space: nowrap;
   }
 
   textarea.ui-input,
@@ -1755,6 +1800,12 @@
     color: var(--color-bad);
   }
 
+  .ui-alert-soft {
+    border-color: var(--color-line);
+    background-color: var(--color-surface-2);
+    color: var(--color-ink-soft);
+  }
+
   .ui-alert-info,
   .alert-info {
     border-color: color-mix(in srgb, var(--color-info) 35%, white);
@@ -1819,6 +1870,12 @@
     border-color: var(--color-line);
     background-color: var(--color-surface-3);
     color: var(--color-ink-soft);
+  }
+
+  .ui-badge-soft {
+    border-color: var(--color-line);
+    background-color: var(--color-surface-2);
+    color: var(--color-mute);
   }
 
   .badge-stock-ok {
@@ -2501,6 +2558,11 @@
 
 @media print {
 
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .sidebar,
   .ui-topbar,
   .mobile-overlay,
@@ -2508,6 +2570,9 @@
   .ui-skip,
   .data-toolbar,
   .data-pager,
+  .ui-pagehead-actions,
+  .ui-form-actions,
+  .modal,
   .no-print,
   .d-print-none {
     display: none !important;
@@ -2533,6 +2598,14 @@
   .card,
   .table-container {
     border-color: #cccccc;
+    box-shadow: none;
+  }
+
+  input,
+  select,
+  textarea {
+    border: 0;
+    background-color: transparent;
     box-shadow: none;
   }
 

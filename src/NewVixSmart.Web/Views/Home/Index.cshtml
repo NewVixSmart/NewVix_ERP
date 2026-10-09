@@ -47,7 +47,7 @@
 
 @if (Model.OverdueReceivableCount > 0 || Model.OverduePayableCount > 0 || Model.DueSoonReceivableCount > 0 || Model.DueSoonPayableCount > 0)
 {
-    <div class="ui-card mb-4 border-danger ui-rise">
+    <div class="ui-card mb-4 border-bad ui-rise">
         <div class="ui-card-head ui-alert-bad flex justify-between items-center">
             <span><i class="bi bi-hourglass-split" aria-hidden="true"></i> تنبيه: فواتير متأخرة أو تستحق خلال 7 أيام</span>
             @if (await Perm.HasAsync("Aging.View"))

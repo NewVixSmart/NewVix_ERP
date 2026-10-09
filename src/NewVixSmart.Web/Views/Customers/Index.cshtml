@@ -60,7 +60,7 @@
                         }
                         @if (await Perm.HasAsync("Customers.Delete"))
                         {
-                            <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="d-inline" data-confirm="هل أنت متأكد من حذف هذا العميل؟" data-confirm-ok="حذف">
+                            <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="inline" data-confirm="هل أنت متأكد من حذف هذا العميل؟" data-confirm-ok="حذف">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="ui-btn ui-btn-sm ui-btn-danger" aria-label="حذف العميل @c.Name"><i class="bi bi-trash" aria-hidden="true"></i></button>
                             </form>

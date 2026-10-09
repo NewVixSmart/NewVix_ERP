@@ -36,16 +36,16 @@
 }
 
 <ul class="nav nav-pills mb-4 ui-rise" aria-label="فلترة أوامر البيع">
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1 @(activeFilter == null ? "active" : "")" asp-action="Index">
+    <li>
+        <a class="nav-link flex items-center gap-1 @(activeFilter == null ? "active" : "")" asp-action="Index">
             الكل <span class="ui-badge ui-badge-mute">@totalCount</span>
         </a>
     </li>
     @foreach (var st in Enum.GetValues<SalesOrderStatus>())
     {
         var count = counts.TryGetValue(st, out var c) ? c : 0;
-        <li class="nav-item">
-            <a class="nav-link d-flex align-items-center gap-1 @(activeFilter == st ? "active" : "") @(count == 0 && activeFilter != st ? "disabled" : "")"
+        <li>
+            <a class="nav-link flex items-center gap-1 @(activeFilter == st ? "active" : "") @(count == 0 && activeFilter != st ? "disabled" : "")"
                asp-action="Index" asp-route-status="@st"
                aria-current="@(activeFilter == st ? "page" : null)"
                aria-disabled="@(count == 0 && activeFilter != st ? "true" : null)"

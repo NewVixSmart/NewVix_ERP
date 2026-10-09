@@ -37,7 +37,7 @@
                 @if (Model.Status == NewVixSmart.Web.Models.Accounting.ReturnStatus.Posted)
                 {
                     <span class="ui-badge ui-badge-ok">مرحّل</span>
-                    <small class="text-muted d-block">@Model.PostedBy — @Model.PostedAt?.ToString("dd/MM/yyyy HH:mm")</small>
+                    <small class="text-muted block">@Model.PostedBy — @Model.PostedAt?.ToString("dd/MM/yyyy HH:mm")</small>
                 }
                 else
                 {

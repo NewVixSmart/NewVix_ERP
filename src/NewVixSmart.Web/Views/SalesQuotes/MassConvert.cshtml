@@ -13,11 +13,11 @@
 
 @if (TempData["Success"] != null)
 {
-    <div class="ui-alert ui-alert-ok ui-rise alert-dismissible" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-ok ui-rise" role="alert">@TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="ui-alert ui-alert-bad ui-rise alert-dismissible" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
+    <div class="ui-alert ui-alert-bad ui-rise" role="alert">@TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button></div>
 }
 
 @if (!Model.Any())

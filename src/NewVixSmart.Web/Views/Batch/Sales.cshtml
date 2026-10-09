@@ -74,7 +74,7 @@
         {
             var blockItems = Model.Invoices[i].Items ?? new List<NewVixSmart.Web.Models.Sales.SaleInvoiceItem>();
             <div class="ui-card invoice-block mb-4" data-invoice="@i" data-rows="@(Math.Max(1, blockItems.Count))">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header flex justify-between items-center">
                     <span><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة @(i + 1)</span>
                     <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
                 </div>
@@ -98,7 +98,7 @@
                                 var line = j < blockItems.Count ? blockItems[j] : null;
                                 <tr>
                                     <td>
-                                        <select name="Invoices[@i].Items[@j].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">
+                                        <select name="Invoices[@i].Items[@j].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف">
                                             <option value="">اختر صنف</option>
                                             @foreach (var item in Model.ItemsData)
                                             {
@@ -117,7 +117,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer d-flex gap-2 justify-content-between">
+                <div class="card-footer flex gap-2 justify-between">
                     <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
                     <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x" aria-hidden="true"></i> حذف الفاتورة</button>
                 </div>
@@ -152,7 +152,7 @@ items.forEach(i => {
 
 function lineRow(invIdx, rowIdx) {
     return `<tr>
-        <td><select name="Invoices[${invIdx}].Items[${rowIdx}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
+        <td><select name="Invoices[${invIdx}].Items[${rowIdx}].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف">${itemsOptions}</select></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="Invoices[${invIdx}].Items[${rowIdx}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
@@ -168,7 +168,7 @@ function newInvoiceBlock(invIdx) {
     div.dataset.invoice = invIdx;
     div.dataset.rows = 1;
     div.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header flex justify-between items-center">
             <span><i class="bi bi-receipt" aria-hidden="true"></i> فاتورة ${invIdx + 1}</span>
             <span class="small text-muted">الإجمالي: <strong class="block-total">0.00</strong> — الصافي: <strong class="block-net">0.00</strong></span>
         </div>
@@ -189,7 +189,7 @@ function newInvoiceBlock(invIdx) {
                 <tbody class="block-rows">${lineRow(invIdx, 0)}</tbody>
             </table>
         </div>
-        <div class="card-footer d-flex gap-2 justify-content-between">
+        <div class="card-footer flex gap-2 justify-between">
             <button type="button" class="btn btn-sm btn-outline-primary add-row"><i class="bi bi-plus" aria-hidden="true"></i> إضافة صنف</button>
             <button type="button" class="btn btn-sm btn-outline-danger remove-block"><i class="bi bi-x" aria-hidden="true"></i> حذف الفاتورة</button>
         </div>`;

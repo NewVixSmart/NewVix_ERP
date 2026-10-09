@@ -159,7 +159,7 @@ document.getElementById('addRow').addEventListener('click', function() {
     let options = '<option value="">اختر صنف</option>';
     items.forEach(i => { options += `<option value="${i.id}" data-price="${i.salePrice}" data-count="${i.currentCount}" data-qty="${i.currentQuantity}">${escapeHtml(i.name)}</option>`; });
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select form-select-sm item-select" aria-label="الصنف">${options}</select></td>
+    tr.innerHTML = `<td><select name="items[${rowIndex}].ItemId" class="form-select ui-select-sm item-select" aria-label="الصنف">${options}</select></td>
         <td><input name="items[${rowIndex}].Count" type="number" step="0.0001" class="form-control form-control-sm count" value="0" aria-label="العدد" /></td>
         <td><input name="items[${rowIndex}].Quantity" type="number" step="0.0001" class="form-control form-control-sm qty" value="0" aria-label="الكمية" /></td>
         <td><input name="items[${rowIndex}].UnitPrice" type="number" step="0.001" class="form-control form-control-sm price" value="0" aria-label="سعر الوحدة" /></td>
